@@ -7,6 +7,7 @@ import {
   GitFork,
   Layers3,
   Save,
+  Search,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "../convex/_generated/api";
@@ -89,6 +90,55 @@ function getModelPreviewClass(modelKey: string) {
   return modelKey.includes("tray") ? "tray" : "holder";
 }
 
+function getModelTypeLabel(modelKey: string) {
+  return modelKey.includes("tray") ? "Tray" : "Holder";
+}
+
+export function filterDashboardModels<T extends DashboardModelSummary>(
+  models: T[],
+  query: string,
+) {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return models;
+  }
+  return models.filter((model) =>
+    [model.name, model.description ?? "", getModelTypeLabel(model.key)]
+      .filter((value) => value.length > 0)
+      .some((value) => value.toLowerCase().includes(normalizedQuery)),
+  );
+}
+
+export function DashboardToolbar({
+  count,
+  query,
+  total,
+  onQueryChange,
+}: {
+  count: number;
+  query: string;
+  total: number;
+  onQueryChange: (query: string) => void;
+}) {
+  return (
+    <div className="dashboard-toolbar">
+      <label className="dashboard-search">
+        <Search aria-hidden="true" />
+        <input
+          aria-label="Search models"
+          onChange={(event) => onQueryChange(event.currentTarget.value)}
+          placeholder="Search models"
+          type="search"
+          value={query}
+        />
+      </label>
+      <span className="dashboard-result-count">
+        {count} of {total}
+      </span>
+    </div>
+  );
+}
+
 export function DashboardSidebar({
   modelCount,
   versionCount,
@@ -149,6 +199,11 @@ export function DashboardModelCard({
       <div className="dashboard-card-copy">
         <strong>{model.name}</strong>
         <p>{model.description ?? "Parametric STL model"}</p>
+        <div className="dashboard-card-meta" aria-label={`${model.name} metadata`}>
+          <span>{getModelTypeLabel(model.key)}</span>
+          <span>STL</span>
+          <span>Ready</span>
+        </div>
       </div>
       <button onClick={() => onOpenModel(model.key)} type="button">
         <span>Open</span>
@@ -188,8 +243,7 @@ async function uploadBlob(
 export function LibraryUnavailableMessage() {
   return (
     <p className="library-note">
-      Convex persistence is configured for Vercel. Local saved versions appear
-      when `VITE_CONVEX_URL` is available.
+      Saved versions are unavailable in local library mode.
     </p>
   );
 }
@@ -298,7 +352,7 @@ export function LibraryDashboard({
 }: LibraryDashboardProps) {
   useCatalogSeed(catalogModels);
   const library = useQuery(api.library.listLibrary);
-  const sourceModels = useMemo(() => {
+  const sourceModels = useMemo<DashboardModelSummary[]>(() => {
     const persistedModels = library?.models.filter((model) => !model.uploaded);
     return persistedModels && persistedModels.length > 0
       ? persistedModels.map((model) => ({
@@ -311,6 +365,11 @@ export function LibraryDashboard({
   const versions = (library?.versions ?? []) as SavedLibraryVersion[];
   const forks = versions.filter((version) => version.source === "fork");
   const saved = versions.filter((version) => version.source !== "fork");
+  const [modelQuery, setModelQuery] = useState("");
+  const filteredModels = useMemo(
+    () => filterDashboardModels(sourceModels, modelQuery),
+    [modelQuery, sourceModels],
+  );
 
   return (
     <main className="dashboard-shell">
@@ -321,65 +380,71 @@ export function LibraryDashboard({
 
       <section className="dashboard-main">
         <header className="dashboard-header">
-        <div>
-          <p>3D Prints</p>
-          <h1>Model Library</h1>
-        </div>
-        {actions ? <div className="dashboard-actions">{actions}</div> : null}
+          <div>
+            <p>3D Prints</p>
+            <h1>Model Library</h1>
+          </div>
+          {actions ? <div className="dashboard-actions">{actions}</div> : null}
         </header>
 
         <section className="dashboard-section" aria-labelledby="dashboard-models">
-        <div className="dashboard-section-heading">
-          <h2 id="dashboard-models">Models</h2>
-          <span>{sourceModels.length} available</span>
-        </div>
-        <div className="dashboard-grid">
-          {sourceModels.map((model) => (
-            <DashboardModelCard
-              key={model.key}
-              model={model}
-              onOpenModel={onOpenModel}
-            />
-          ))}
-        </div>
+          <div className="dashboard-section-heading">
+            <h2 id="dashboard-models">Models</h2>
+            <span>{sourceModels.length} available</span>
+          </div>
+          <DashboardToolbar
+            count={filteredModels.length}
+            onQueryChange={setModelQuery}
+            query={modelQuery}
+            total={sourceModels.length}
+          />
+          <div className="dashboard-grid">
+            {filteredModels.map((model) => (
+              <DashboardModelCard
+                key={model.key}
+                model={model}
+                onOpenModel={onOpenModel}
+              />
+            ))}
+          </div>
         </section>
 
         <section className="dashboard-section" aria-labelledby="dashboard-forks">
-        <div className="dashboard-section-heading">
-          <h2 id="dashboard-forks">Saved Versions And Forks</h2>
-          <span>{versions.length} total</span>
-        </div>
-        <div className="dashboard-list">
-          {versions.length === 0 ? (
-            <p className="library-empty">No saved versions yet.</p>
-          ) : null}
-          {[...forks, ...saved].map((version) => (
-            <article className="dashboard-row" key={version._id}>
-              <span className="dashboard-row-icon" aria-hidden="true">
-                {version.source === "fork" ? <GitFork /> : <Clock3 />}
-              </span>
-              <div className="dashboard-row-copy">
-                <strong>{version.title}</strong>
-                <span>
-                  {version.modelName} ·{" "}
-                  {version.source === "fork" ? "Fork" : "Saved"} ·{" "}
-                  {formatDate(version.updatedAt)}
+          <div className="dashboard-section-heading">
+            <h2 id="dashboard-forks">Saved Versions And Forks</h2>
+            <span>{versions.length} total</span>
+          </div>
+          <div className="dashboard-list">
+            {versions.length === 0 ? (
+              <p className="library-empty">No saved versions yet.</p>
+            ) : null}
+            {[...forks, ...saved].map((version) => (
+              <article className="dashboard-row" key={version._id}>
+                <span className="dashboard-row-icon" aria-hidden="true">
+                  {version.source === "fork" ? <GitFork /> : <Clock3 />}
                 </span>
-              </div>
-              <div className="dashboard-row-actions">
-                <button onClick={() => onOpenVersion(version)} type="button">
-                  <span>Open</span>
-                  <ChevronRight aria-hidden="true" />
-                </button>
-                {version.stlUrl ? (
-                  <a href={version.stlUrl} rel="noreferrer" target="_blank">
-                    STL
-                  </a>
-                ) : null}
-              </div>
-            </article>
-          ))}
-        </div>
+                <div className="dashboard-row-copy">
+                  <strong>{version.title}</strong>
+                  <span>
+                    {version.modelName} ·{" "}
+                    {version.source === "fork" ? "Fork" : "Saved"} ·{" "}
+                    {formatDate(version.updatedAt)}
+                  </span>
+                </div>
+                <div className="dashboard-row-actions">
+                  <button onClick={() => onOpenVersion(version)} type="button">
+                    <span>Open</span>
+                    <ChevronRight aria-hidden="true" />
+                  </button>
+                  {version.stlUrl ? (
+                    <a href={version.stlUrl} rel="noreferrer" target="_blank">
+                      STL
+                    </a>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
         </section>
       </section>
     </main>

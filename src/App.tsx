@@ -31,6 +31,8 @@ import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import {
   DashboardModelCard,
   DashboardSidebar,
+  DashboardToolbar,
+  filterDashboardModels,
   LibraryDashboard,
   LibraryUnavailableMessage,
   SaveForkControls,
@@ -1812,6 +1814,12 @@ function StaticDashboard({
   catalogModels: CatalogSeedModel[];
   onOpenModel: (modelId: string) => void;
 }) {
+  const [modelQuery, setModelQuery] = useState("");
+  const filteredModels = useMemo(
+    () => filterDashboardModels(catalogModels, modelQuery),
+    [catalogModels, modelQuery],
+  );
+
   return (
     <main className="dashboard-shell">
       <DashboardSidebar
@@ -1833,8 +1841,14 @@ function StaticDashboard({
             <h2 id="dashboard-models">Models</h2>
             <span>{catalogModels.length} available</span>
           </div>
+          <DashboardToolbar
+            count={filteredModels.length}
+            onQueryChange={setModelQuery}
+            query={modelQuery}
+            total={catalogModels.length}
+          />
           <div className="dashboard-grid">
-            {catalogModels.map((modelEntry) => (
+            {filteredModels.map((modelEntry) => (
               <DashboardModelCard
                 key={modelEntry.key}
                 model={modelEntry}
