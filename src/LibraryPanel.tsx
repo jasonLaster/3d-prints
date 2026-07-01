@@ -1,5 +1,13 @@
 import { useMutation, useQuery } from "convex/react";
-import { CopyPlus, Save } from "lucide-react";
+import {
+  Box,
+  ChevronRight,
+  Clock3,
+  CopyPlus,
+  GitFork,
+  Layers3,
+  Save,
+} from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
@@ -37,6 +45,12 @@ type CurrentModel = {
   name: string;
 };
 
+type DashboardModelSummary = {
+  key: string;
+  name: string;
+  description?: string;
+};
+
 type SaveForkControlsProps = {
   activeVersionId: Id<"versions"> | null;
   currentModel: CurrentModel;
@@ -69,6 +83,79 @@ function defaultTitle(modelName: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(Date.now())}`;
+}
+
+function getModelPreviewClass(modelKey: string) {
+  return modelKey.includes("tray") ? "tray" : "holder";
+}
+
+export function DashboardSidebar({
+  modelCount,
+  versionCount,
+}: {
+  modelCount: number;
+  versionCount: number | string;
+}) {
+  return (
+    <aside className="dashboard-sidebar" aria-label="Library navigation">
+      <div className="dashboard-brand">
+        <span className="dashboard-brand-mark" aria-hidden="true">
+          <Box />
+        </span>
+        <div>
+          <strong>3D Prints</strong>
+          <span>Parametric library</span>
+        </div>
+      </div>
+      <nav className="dashboard-nav" aria-label="Dashboard sections">
+        <a href="#dashboard-models" className="active">
+          <Layers3 aria-hidden="true" />
+          Models
+        </a>
+        <a href="#dashboard-forks">
+          <GitFork aria-hidden="true" />
+          Versions
+        </a>
+      </nav>
+      <div className="dashboard-sidebar-stats" aria-label="Library stats">
+        <div>
+          <strong>{modelCount}</strong>
+          <span>Models</span>
+        </div>
+        <div>
+          <strong>{versionCount}</strong>
+          <span>Versions</span>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+export function DashboardModelCard({
+  model,
+  onOpenModel,
+}: {
+  model: DashboardModelSummary;
+  onOpenModel: (modelId: string) => void;
+}) {
+  return (
+    <article className="dashboard-card">
+      <div
+        aria-hidden="true"
+        className={`model-preview ${getModelPreviewClass(model.key)}`}
+      >
+        <span />
+      </div>
+      <div className="dashboard-card-copy">
+        <strong>{model.name}</strong>
+        <p>{model.description ?? "Parametric STL model"}</p>
+      </div>
+      <button onClick={() => onOpenModel(model.key)} type="button">
+        <span>Open</span>
+        <ChevronRight aria-hidden="true" />
+      </button>
+    </article>
+  );
 }
 
 function useCatalogSeed(catalogModels: CatalogSeedModel[]) {
@@ -227,35 +314,37 @@ export function LibraryDashboard({
 
   return (
     <main className="dashboard-shell">
-      <header className="dashboard-header">
+      <DashboardSidebar
+        modelCount={sourceModels.length}
+        versionCount={versions.length}
+      />
+
+      <section className="dashboard-main">
+        <header className="dashboard-header">
         <div>
           <p>3D Prints</p>
           <h1>Model Library</h1>
         </div>
         {actions ? <div className="dashboard-actions">{actions}</div> : null}
-      </header>
+        </header>
 
-      <section className="dashboard-section" aria-labelledby="dashboard-models">
+        <section className="dashboard-section" aria-labelledby="dashboard-models">
         <div className="dashboard-section-heading">
           <h2 id="dashboard-models">Models</h2>
           <span>{sourceModels.length} available</span>
         </div>
         <div className="dashboard-grid">
           {sourceModels.map((model) => (
-            <article className="dashboard-card" key={model.key}>
-              <div>
-                <strong>{model.name}</strong>
-                <p>{model.description ?? "Parametric STL model"}</p>
-              </div>
-              <button onClick={() => onOpenModel(model.key)} type="button">
-                Open
-              </button>
-            </article>
+            <DashboardModelCard
+              key={model.key}
+              model={model}
+              onOpenModel={onOpenModel}
+            />
           ))}
         </div>
-      </section>
+        </section>
 
-      <section className="dashboard-section" aria-labelledby="dashboard-forks">
+        <section className="dashboard-section" aria-labelledby="dashboard-forks">
         <div className="dashboard-section-heading">
           <h2 id="dashboard-forks">Saved Versions And Forks</h2>
           <span>{versions.length} total</span>
@@ -266,16 +355,21 @@ export function LibraryDashboard({
           ) : null}
           {[...forks, ...saved].map((version) => (
             <article className="dashboard-row" key={version._id}>
-              <div>
+              <span className="dashboard-row-icon" aria-hidden="true">
+                {version.source === "fork" ? <GitFork /> : <Clock3 />}
+              </span>
+              <div className="dashboard-row-copy">
                 <strong>{version.title}</strong>
                 <span>
-                  {version.modelName} · {version.source === "fork" ? "Fork" : "Saved"} ·{" "}
+                  {version.modelName} ·{" "}
+                  {version.source === "fork" ? "Fork" : "Saved"} ·{" "}
                   {formatDate(version.updatedAt)}
                 </span>
               </div>
               <div className="dashboard-row-actions">
                 <button onClick={() => onOpenVersion(version)} type="button">
-                  Open
+                  <span>Open</span>
+                  <ChevronRight aria-hidden="true" />
                 </button>
                 {version.stlUrl ? (
                   <a href={version.stlUrl} rel="noreferrer" target="_blank">
@@ -286,6 +380,7 @@ export function LibraryDashboard({
             </article>
           ))}
         </div>
+        </section>
       </section>
     </main>
   );

@@ -29,6 +29,8 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import {
+  DashboardModelCard,
+  DashboardSidebar,
   LibraryDashboard,
   LibraryUnavailableMessage,
   SaveForkControls,
@@ -1293,7 +1295,7 @@ const HolderViewer = forwardRef<
   useEffect(() => {
     if (sceneRef.current) {
       sceneRef.current.background = new THREE.Color(
-        theme === "dark" ? "#111510" : "#f4f7f2",
+        theme === "dark" ? "#0f1117" : "#f7f8fb",
       );
     }
   }, [theme]);
@@ -1305,7 +1307,7 @@ const HolderViewer = forwardRef<
     }
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(theme === "dark" ? "#111510" : "#f4f7f2");
+    scene.background = new THREE.Color(theme === "dark" ? "#0f1117" : "#f7f8fb");
     sceneRef.current = scene;
 
     const renderer = new THREE.WebGLRenderer({
@@ -1329,11 +1331,11 @@ const HolderViewer = forwardRef<
     controls.maxDistance = 1400;
     controlsRef.current = controls;
 
-    scene.add(new THREE.HemisphereLight("#fff8ec", "#a2aaa0", 2.1));
+    scene.add(new THREE.HemisphereLight("#ffffff", "#aeb7c4", 2.1));
     const keyLight = new THREE.DirectionalLight("#ffffff", 2.4);
     keyLight.position.set(180, -160, 260);
     scene.add(keyLight);
-    const fillLight = new THREE.DirectionalLight("#d7fff4", 0.8);
+    const fillLight = new THREE.DirectionalLight("#dbeafe", 0.78);
     fillLight.position.set(-220, 140, 120);
     scene.add(fillLight);
 
@@ -1343,7 +1345,7 @@ const HolderViewer = forwardRef<
       initialDimensions.width * 1.8,
       260,
     );
-    const grid = new THREE.GridHelper(gridSize, 26, "#9da88d", "#cfd7c8");
+    const grid = new THREE.GridHelper(gridSize, 26, "#c7ced8", "#e2e6ec");
     grid.rotation.x = Math.PI / 2;
     grid.position.z = -0.2;
     scene.add(grid);
@@ -1367,7 +1369,7 @@ const HolderViewer = forwardRef<
     const guide = new THREE.Mesh(
       guideGeometry,
       new THREE.MeshBasicMaterial({
-        color: "#c4934b",
+        color: "#2563eb",
         transparent: true,
         opacity: 0.2,
         wireframe: true,
@@ -1397,28 +1399,28 @@ const HolderViewer = forwardRef<
         mainBaseRef.current = normalizedMain.basePositions;
 
         const mainMaterial = new THREE.MeshStandardMaterial({
-          color: model.viewer === "japandi-tray-v1" ? "#d8c7aa" : "#111313",
+          color: model.viewer === "japandi-tray-v1" ? "#d8dee9" : "#111318",
           roughness: 0.78,
           metalness: 0.08,
           side: THREE.DoubleSide,
         });
         mainMaterialRef.current = mainMaterial;
         const domeMaterial = new THREE.MeshStandardMaterial({
-          color: "#111313",
+          color: "#111318",
           roughness: 0.72,
           metalness: 0.06,
           side: THREE.DoubleSide,
         });
         domeMaterialRef.current = domeMaterial;
         const sandMaterial = new THREE.MeshStandardMaterial({
-          color: "#c4934b",
+          color: "#c7a45d",
           roughness: 0.86,
           metalness: 0,
           transparent: true,
           opacity: 0.9,
         });
         const ghostMaterial = new THREE.MeshBasicMaterial({
-          color: "#7b7f78",
+          color: "#7f8794",
           transparent: true,
           opacity: 0.22,
           wireframe: true,
@@ -1812,42 +1814,45 @@ function StaticDashboard({
 }) {
   return (
     <main className="dashboard-shell">
-      <header className="dashboard-header">
-        <div>
-          <p>3D Prints</p>
-          <h1>Model Library</h1>
-        </div>
-        {actions ? <div className="dashboard-actions">{actions}</div> : null}
-      </header>
+      <DashboardSidebar
+        modelCount={catalogModels.length}
+        versionCount="Offline"
+      />
 
-      <section className="dashboard-section" aria-labelledby="dashboard-models">
-        <div className="dashboard-section-heading">
-          <h2 id="dashboard-models">Models</h2>
-          <span>{catalogModels.length} available</span>
-        </div>
-        <div className="dashboard-grid">
-          {catalogModels.map((modelEntry) => (
-            <article className="dashboard-card" key={modelEntry.key}>
-              <div>
-                <strong>{modelEntry.name}</strong>
-                <p>{modelEntry.description ?? "Parametric STL model"}</p>
-              </div>
-              <button onClick={() => onOpenModel(modelEntry.key)} type="button">
-                Open
-              </button>
-            </article>
-          ))}
-        </div>
-      </section>
+      <section className="dashboard-main">
+        <header className="dashboard-header">
+          <div>
+            <p>3D Prints</p>
+            <h1>Model Library</h1>
+          </div>
+          {actions ? <div className="dashboard-actions">{actions}</div> : null}
+        </header>
 
-      <section className="dashboard-section" aria-labelledby="dashboard-forks">
-        <div className="dashboard-section-heading">
-          <h2 id="dashboard-forks">Saved Versions And Forks</h2>
-          <span>Convex not connected</span>
-        </div>
-        <div className="dashboard-list">
-          <LibraryUnavailableMessage />
-        </div>
+        <section className="dashboard-section" aria-labelledby="dashboard-models">
+          <div className="dashboard-section-heading">
+            <h2 id="dashboard-models">Models</h2>
+            <span>{catalogModels.length} available</span>
+          </div>
+          <div className="dashboard-grid">
+            {catalogModels.map((modelEntry) => (
+              <DashboardModelCard
+                key={modelEntry.key}
+                model={modelEntry}
+                onOpenModel={onOpenModel}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="dashboard-section" aria-labelledby="dashboard-forks">
+          <div className="dashboard-section-heading">
+            <h2 id="dashboard-forks">Saved Versions And Forks</h2>
+            <span>Convex not connected</span>
+          </div>
+          <div className="dashboard-list">
+            <LibraryUnavailableMessage />
+          </div>
+        </section>
       </section>
     </main>
   );
@@ -1908,7 +1913,9 @@ function WorkspaceHeader({
             unit={unit}
           />
         ) : (
-          <LibraryUnavailableMessage />
+          <p className="workspace-sync-note" role="status">
+            Local library
+          </p>
         )}
         <ThemeToggle onChange={onThemeChange} theme={theme} />
       </div>
@@ -2395,7 +2402,7 @@ export default function App({
           <header className="inspector-header">
             <div>
               <p>Model controls</p>
-              <h2>Parameters</h2>
+              <h2>Inspector</h2>
             </div>
           </header>
 
