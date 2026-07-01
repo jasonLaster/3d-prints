@@ -1,6 +1,6 @@
-# Paper Holder Parametric Audit Specifications
+# Paper Towel Holder Parametric Audit Specifications
 
-The source STL is treated as the adjustable holder body with an integrated center tube. The former separate cap is no longer part of the design intent; the center tube is now the weighted sand chamber and receives a rounded top.
+The source STL is treated as the adjustable holder body with an integrated center tube. The former separate cap is no longer part of the design intent; the center tube is now the weighted sand chamber and receives a rounded top. Runtime audit metadata lives in `public/models/paper-towel-holder/model.json`, and the model-specific script lives at `models/paper-towel-holder/audit.mjs`.
 
 ## Dimension Targets
 

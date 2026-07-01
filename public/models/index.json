@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "paper-towel-holder",
+      "name": "Paper Towel Holder",
+      "configUrl": "/models/paper-towel-holder/model.json"
+    },
+    {
+      "id": "japandi-tray",
+      "name": "Japandi Tray",
+      "configUrl": "/models/japandi-tray/model.json"
+    }
+  ]
+}

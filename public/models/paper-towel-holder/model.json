@@ -1,0 +1,147 @@
+{
+  "id": "paper-towel-holder",
+  "name": "Paper Towel Holder",
+  "subtitle": "Parametric STL",
+  "description": "Adjustable paper towel holder with independent holder height, holder diameter, and weighted center tube diameter controls.",
+  "viewer": "weighted-paper-towel-holder-v1",
+  "stl": {
+    "fileName": "paper-towel-holder.stl",
+    "sourceName": "Kuchenrolle V2 250mm-260mm.stl",
+    "units": "mm",
+    "url": "/models/paper-towel-holder/paper-towel-holder.stl"
+  },
+  "export": {
+    "filePrefix": "paper-towel-holder"
+  },
+  "geometry": {
+    "originalHeight": 215.7379913330078,
+    "originalDiameter": 123.80001068115234,
+    "mainAxis": {
+      "x": 159.82770919799805,
+      "y": 155.08623123168945
+    },
+    "fixedCoreRadius": 34,
+    "outerMoveStartRadius": 42,
+    "bottomLockedHeight": 8,
+    "topLockedHeight": 18,
+    "centerTubeOuterDiameter": 36,
+    "centerTubeInnerDiameter": 25,
+    "tubeToHolderDiameterClearance": 28,
+    "centerTubeOriginalTop": 210,
+    "centerTubeTopClearance": 5.7379913330078125,
+    "sandBottomHeight": 8,
+    "sandHeadspace": 3,
+    "sandDensityGramsPerCc": 1.6
+  },
+  "parameters": [
+    {
+      "key": "height",
+      "label": "Holder height",
+      "default": 215.7,
+      "limits": {
+        "min": 170,
+        "max": 450,
+        "step": 0.5
+      }
+    },
+    {
+      "key": "diameter",
+      "label": "Holder diameter",
+      "default": 123.8,
+      "limits": {
+        "min": 96,
+        "max": 260,
+        "step": 0.5
+      }
+    },
+    {
+      "key": "tubeDiameter",
+      "label": "Center tube diameter",
+      "default": 36,
+      "limits": {
+        "min": 24,
+        "max": 120,
+        "step": 0.5
+      }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.6,
+    "dimensionTargets": [
+      "Default holder height is 215.738 mm, measured from the original holder body.",
+      "Default holder outer diameter is 123.800 mm, measured across the original holder body.",
+      "Default center tube outer diameter is 36.000 mm.",
+      "Default center tube sand chamber diameter is 25.000 mm.",
+      "The rounded weighted top reaches 5.738 mm below the selected holder height."
+    ],
+    "invariants": [
+      "Do not apply uniform XYZ scaling to the whole STL.",
+      "Do not scale the center tube diameter when paper towel holder diameter changes.",
+      "Do not scale the holder diameter when center tube diameter changes.",
+      "Keep the holder central/core zone unchanged radially except for the selected center tube diameter.",
+      "Keep the holder bottom locking band unchanged vertically.",
+      "Keep the holder top lip/socket band unchanged in local shape while translating it vertically during height changes.",
+      "Change holder diameter by moving the outer holder annulus radially, not by changing Z height or center tube dimensions.",
+      "Change holder height by remapping the middle holder span between fixed bottom and top bands.",
+      "Change center tube diameter by remapping the center post radius only.",
+      "Keep the rounded center tube top tied to holder height and selected tube diameter."
+    ],
+    "checks": [
+      {
+        "key": "holderHeightTarget",
+        "label": "Holder height target",
+        "minMiddleHeightMm": 80
+      },
+      {
+        "key": "holderDiameterTarget",
+        "label": "Holder diameter target"
+      },
+      {
+        "key": "centerTubeOuterDiameter",
+        "label": "Center tube outer diameter"
+      },
+      {
+        "key": "sandChamber",
+        "label": "Sand chamber",
+        "minSandVolumeCc": 60
+      },
+      {
+        "key": "estimatedSandMass",
+        "label": "Estimated sand mass",
+        "minSandMassKg": 0.1
+      },
+      {
+        "key": "roundedTop",
+        "label": "Rounded top"
+      },
+      {
+        "key": "tubeToHolderClearance",
+        "label": "Tube-to-holder clearance"
+      },
+      {
+        "key": "tubeRadialMove",
+        "label": "Tube radial move"
+      },
+      {
+        "key": "roundedTopHeight",
+        "label": "Rounded top height"
+      },
+      {
+        "key": "bottomTopLockBands",
+        "label": "Bottom/top lock bands"
+      },
+      {
+        "key": "outerWallRadialMove",
+        "label": "Outer wall radial move"
+      }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/paper-towel-holder/audit.mjs",
+      "command": "npm run audit -- paper-towel-holder",
+      "description": "Validates the model JSON, source STL, parameter limits, and default paper towel holder invariants."
+    }
+  ]
+}

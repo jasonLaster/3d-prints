@@ -1,0 +1,150 @@
+{
+  "id": "japandi-tray",
+  "name": "Japandi Tray",
+  "subtitle": "Parametric STL",
+  "description": "Rounded Japandi tray with adjustable length, width, wall height, floor thickness, and rib relief.",
+  "viewer": "japandi-tray-v1",
+  "stl": {
+    "fileName": "japandi-tray.stl",
+    "sourceName": "obj_1_Body1.stl",
+    "units": "mm",
+    "url": "/models/japandi-tray/japandi-tray.stl"
+  },
+  "export": {
+    "filePrefix": "japandi-tray"
+  },
+  "geometry": {
+    "originalLength": 166.62370109558105,
+    "originalWidth": 166.62236261367798,
+    "originalHeight": 20,
+    "mainAxis": {
+      "x": 89.96045780181885,
+      "y": 90.01605868339539,
+      "z": 0
+    },
+    "originalFloorThickness": 2.6,
+    "originalRibRelief": 1,
+    "minimumWallHeight": 8,
+    "minimumFloorThickness": 1.2,
+    "minimumRibRelief": 0,
+    "maximumRibRelief": 1.8
+  },
+  "parameters": [
+    {
+      "key": "length",
+      "label": "Tray length",
+      "statusLabel": "L",
+      "default": 166.6,
+      "limits": {
+        "min": 90,
+        "max": 360,
+        "step": 0.5
+      }
+    },
+    {
+      "key": "width",
+      "label": "Tray width",
+      "statusLabel": "W",
+      "default": 166.6,
+      "limits": {
+        "min": 70,
+        "max": 300,
+        "step": 0.5
+      }
+    },
+    {
+      "key": "height",
+      "label": "Wall height",
+      "statusLabel": "H",
+      "default": 20,
+      "limits": {
+        "min": 10,
+        "max": 80,
+        "step": 0.5
+      }
+    },
+    {
+      "key": "floorThickness",
+      "label": "Floor thickness",
+      "statusLabel": "Floor",
+      "default": 2.6,
+      "limits": {
+        "min": 1.2,
+        "max": 8,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "ribRelief",
+      "label": "Rib relief",
+      "statusLabel": "Rib",
+      "default": 1,
+      "limits": {
+        "min": 0,
+        "max": 1.8,
+        "step": 0.05
+      }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.6,
+    "dimensionTargets": [
+      "Default tray length is 166.624 mm, measured on the source STL X axis.",
+      "Default tray width is 166.622 mm, measured on the source STL Y axis.",
+      "Default tray wall height is 20.000 mm, measured on the source STL Z axis.",
+      "Length and width are independently adjustable so the square source tray can become an oblong tray.",
+      "Floor thickness remaps the lower floor band independently from wall height.",
+      "Rib relief scales the existing vertical side texture without changing target bounding length, width, or height."
+    ],
+    "invariants": [
+      "Keep the tray centered on its source axis while changing dimensions.",
+      "Change tray length on the X axis and tray width on the Y axis independently.",
+      "Change tray wall height on the Z axis without changing selected length or width.",
+      "Keep selected floor thickness below selected wall height.",
+      "Keep rib relief within the configured range so side texture remains printable.",
+      "Preserve the source STL as the original overlay reference."
+    ],
+    "checks": [
+      {
+        "key": "trayLengthTarget",
+        "label": "Tray length target"
+      },
+      {
+        "key": "trayWidthTarget",
+        "label": "Tray width target"
+      },
+      {
+        "key": "trayHeightTarget",
+        "label": "Wall height target"
+      },
+      {
+        "key": "trayFloorThickness",
+        "label": "Floor thickness"
+      },
+      {
+        "key": "trayRibRelief",
+        "label": "Rib relief"
+      },
+      {
+        "key": "trayAspectRatio",
+        "label": "Aspect ratio"
+      },
+      {
+        "key": "trayInteriorDepth",
+        "label": "Interior depth"
+      },
+      {
+        "key": "trayOriginalReference",
+        "label": "Original reference"
+      }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/japandi-tray/audit.mjs",
+      "command": "npm run audit -- japandi-tray",
+      "description": "Validates the Japandi tray JSON, source STL dimensions, parameter limits, and tray-specific invariants."
+    }
+  ]
+}
