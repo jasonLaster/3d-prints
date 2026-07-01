@@ -50,6 +50,8 @@ npm run verify
 npm run build:vercel
 ```
 
-`docs/testing-and-audit-coverage.md` maps the original product requests to the
-model audit scripts, app behavior, and Playwright coverage. The sampled
-code/docs/tests cross-audit lives in `docs/line-coverage-audit.md`.
+`docs/specifications.md` defines the product and engineering contract.
+`docs/test-plan.md` defines the release gates. `docs/testing-and-audit-coverage.md`
+maps the original product requests to the model audit scripts, app behavior, and
+Playwright coverage. The sampled code/docs/tests cross-audit lives in
+`docs/line-coverage-audit.md`.

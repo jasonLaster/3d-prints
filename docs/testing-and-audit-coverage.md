@@ -4,6 +4,7 @@ This project has three verification layers:
 
 - Model audit scripts validate static model JSON, STL presence, source STL measurements, parameter limits, and model-specific invariant lists.
 - Playwright tests validate the running React app, including the dashboard, 3D canvas, controls, URL state, unit conversion, model opening, themes, and sidebar resizing.
+- Product specifications and test-plan docs define the acceptance contract and release gates.
 - Cross-audit notes compare selected lines in docs, tests, and code so each sampled behavior has written intent, implementation, and executable coverage.
 
 ## Request Coverage Matrix
@@ -30,6 +31,7 @@ This project has three verification layers:
 | Parameter state is saved in the URL | This coverage document | Playwright changes parameters and units, reloads from a URL, and verifies controls rehydrate from query params |
 | Right sidebar has a resizable rail | This coverage document | Playwright drags the `Resize sidebar` separator, checks width and localStorage, then tests keyboard resize |
 | Convex library stores saved versions and forks | `docs/convex-library.md`; Convex schema and functions | Static Playwright checks require Convex schema/functions/docs; app tests verify Save/Fork controls and dashboard library sections |
+| Comprehensive specifications and test plan stay current | `docs/specifications.md`; `docs/test-plan.md` | Static Playwright checks require the specs, test layers, release gate, and non-goals to stay documented |
 
 ## Playwright Coverage Contract
 

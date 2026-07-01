@@ -83,6 +83,35 @@ test.describe("3D print app", () => {
     await expectCanvasHasRenderedModel(page);
   });
 
+  test("dashboard model opening clears stale parameter query values", async ({ page }) => {
+    await page.goto(
+      "/?unit=mm&theme=dark&length=360&width=300&height=80&floorThickness=8&ribRelief=1.8",
+    );
+
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    await expect(page.getByRole("heading", { name: "Model Library" })).toBeVisible();
+    await expect(page.locator("canvas")).toHaveCount(0);
+
+    await openDashboardModel(page, "Japandi Tray");
+
+    await expect(page).toHaveURL(/model=japandi-tray/);
+    await expect(page).not.toHaveURL(/length=360/);
+    await expect(page).not.toHaveURL(/floorThickness=8/);
+    await expect(page.getByLabel("Tray length in millimeters")).toHaveValue("166.6");
+    await expect(page.getByLabel("Tray width in millimeters")).toHaveValue("166.6");
+    await expect(page.getByLabel("Wall height in millimeters")).toHaveValue("20.0");
+    await expect(page.getByLabel("Floor thickness in millimeters")).toHaveValue("2.6");
+  });
+
+  test("unknown model ids render a load error instead of a blank workspace", async ({
+    page,
+  }) => {
+    await page.goto("/?model=missing-model&theme=light");
+
+    await expect(page.getByText('Unknown model "missing-model"')).toBeVisible();
+    await expect(page.locator("canvas")).toHaveCount(0);
+  });
+
   test("loads the default paper towel holder with audited controls and a rendered canvas", async ({
     page,
   }) => {
@@ -129,6 +158,45 @@ test.describe("3D print app", () => {
     await expect(page.getByText("50.0 mm").first()).toBeVisible();
   });
 
+  test("uses one contextual unit dropdown to switch all parameter rows", async ({
+    page,
+  }) => {
+    await openReady(page, "/?model=paper-towel-holder&unit=mm&theme=light");
+
+    await chooseSelectOption(page, "Holder height units", "cm");
+
+    await expect(page).toHaveURL(/unit=cm/);
+    await expect(page.getByLabel("Holder height in centimeters")).toHaveValue("21.57");
+    await expect(page.getByLabel("Holder diameter in centimeters")).toHaveValue("12.38");
+    await expect(page.getByLabel("Center tube diameter in centimeters")).toHaveValue("3.60");
+
+    const holderHeight = page.getByLabel("Holder height in centimeters");
+    await holderHeight.fill("30");
+    await holderHeight.blur();
+
+    await expect(holderHeight).toHaveValue("30.00");
+    await expect(page).toHaveURL(/height=300/);
+    await expect(page.getByTestId("viewer-status")).toContainText("Holder height 30.00 cm");
+  });
+
+  test("clamps dependent holder diameter and tube diameter limits", async ({
+    page,
+  }) => {
+    await openReady(page, "/?model=paper-towel-holder&unit=mm&theme=light");
+
+    const holderDiameter = page.getByLabel("Holder diameter in millimeters");
+    const tubeDiameter = page.getByLabel("Center tube diameter in millimeters");
+
+    await tubeDiameter.fill("120");
+    await tubeDiameter.blur();
+    await expect(tubeDiameter).toHaveValue("95.8");
+
+    await holderDiameter.fill("100");
+    await holderDiameter.blur();
+    await expect(holderDiameter).toHaveValue("123.8");
+    await expect(page.getByText("Tube-to-holder clearance")).toBeVisible();
+  });
+
   test("opens catalog models from the dashboard and exposes tray parameters", async ({
     page,
   }) => {
@@ -165,6 +233,25 @@ test.describe("3D print app", () => {
     await expect(floorThickness).toHaveValue("1/8");
     await expect(page).toHaveURL(/floorThickness=3\.2/);
     await expect(page.getByTestId("viewer-status")).toContainText("Floor 1/8 in");
+  });
+
+  test("clamps tray floor thickness below the selected wall height", async ({
+    page,
+  }) => {
+    await openReady(page, "/?model=japandi-tray&unit=mm&theme=light");
+
+    const wallHeight = page.getByLabel("Wall height in millimeters");
+    const floorThickness = page.getByLabel("Floor thickness in millimeters");
+
+    await wallHeight.fill("10");
+    await wallHeight.blur();
+    await expect(wallHeight).toHaveValue("10.0");
+
+    await floorThickness.fill("20");
+    await floorThickness.blur();
+    await expect(floorThickness).toHaveValue("8.0");
+    await expect(page).toHaveURL(/height=10/);
+    await expect(page).toHaveURL(/floorThickness=8/);
   });
 
   test("rehydrates model, unit, theme, and parameter values from the URL", async ({ page }) => {
@@ -252,6 +339,21 @@ test.describe("3D print app", () => {
     });
   });
 
+  test("exports the active generated STL with a parameterized file name", async ({
+    page,
+  }) => {
+    await openReady(page, "/?model=japandi-tray&theme=light&length=210&width=120&height=28");
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "Export" }).click(),
+    ]);
+
+    expect(download.suggestedFilename()).toMatch(
+      /^japandi-tray-length-210\.0-width-120\.0-height-28\.0-floorThickness-2\.6-ribRelief-1\.0\.stl$/,
+    );
+  });
+
   test("resizes the right sidebar by pointer and keyboard", async ({ page }) => {
     await openReady(page, "/?model=japandi-tray&theme=light");
 
@@ -318,5 +420,14 @@ test.describe("3D print app", () => {
     await expect(page.getByText(title, { exact: true })).toBeVisible();
     await expect(page.getByText(forkTitle, { exact: true })).toBeVisible();
     await expect(page.getByLabel("Upload STL")).toHaveCount(0);
+
+    await page
+      .locator(".dashboard-row")
+      .filter({ hasText: forkTitle })
+      .getByRole("button", { name: "Open" })
+      .click();
+    await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
+    await expect(page).toHaveURL(/model=japandi-tray/);
+    await expect(page.getByLabel("Version name")).toBeVisible();
   });
 });

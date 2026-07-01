@@ -2082,7 +2082,9 @@ export default function App({
     if (!selectedModelId) {
       setModel(null);
       setParams(null);
-      setLoadError("");
+      if (!getRequestedModelId()) {
+        setLoadError("");
+      }
       return undefined;
     }
 
