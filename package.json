@@ -5,12 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc && vite build",
+    "build": "npm run build:app",
+    "build:app": "tsc && vite build",
+    "build:vercel": "npx convex deploy --cmd 'npm run build:app' --cmd-url-env-var-name VITE_CONVEX_URL",
     "preview": "vite preview --host 127.0.0.1",
-    "audit": "node scripts/audit-model.mjs"
+    "audit": "node scripts/audit-model.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "verify": "npm run audit && npm run build && npm run test:e2e"
   },
   "dependencies": {
+    "@radix-ui/react-select": "^2.3.2",
     "@vitejs/plugin-react": "^5.0.0",
+    "convex": "^1.42.1",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -18,9 +25,12 @@
     "vite": "^6.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/three": "^0.185.0",
+    "pngjs": "^7.0.0",
     "typescript": "^5.6.3"
   }
 }

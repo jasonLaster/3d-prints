@@ -5,13 +5,17 @@ import {
   ArrowUp,
   Download,
   Focus,
+  Moon,
   RotateCcw,
   SlidersHorizontal,
+  Sun,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
 import {
   forwardRef,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -23,16 +27,31 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
+import {
+  LibraryPanel,
+  LibraryUnavailablePanel,
+  type SavedLibraryVersion,
+} from "./LibraryPanel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./components/ui/select";
+import type { Id } from "../convex/_generated/dataModel";
 
 type ModelParams = Record<string, number>;
 type CoreViewMode = "surface" | "fill" | "section";
 type LengthUnit = "mm" | "cm" | "in";
 type RenderMode = "solid" | "xray" | "wire";
+type ThemeMode = "light" | "dark";
 type ViewPreset = "iso" | "top" | "xEdge" | "yEdge";
 type SupportedViewer = "weighted-paper-towel-holder-v1" | "japandi-tray-v1";
 
 type ViewerHandle = {
   exportStl: () => void;
+  getStlBlob: () => Blob | null;
   resetCamera: () => void;
 };
 
@@ -161,6 +180,19 @@ type ModelCatalog = {
 };
 
 const CATALOG_URL = "/models/index.json";
+const PARAM_QUERY_KEYS = [
+  "height",
+  "diameter",
+  "tubeDiameter",
+  "length",
+  "width",
+  "floorThickness",
+  "ribRelief",
+];
+const SIDEBAR_WIDTH_KEY = "3d-prints:sidebar-width";
+const SIDEBAR_MIN_WIDTH = 320;
+const SIDEBAR_MAX_WIDTH = 620;
+const SIDEBAR_DEFAULT_WIDTH = 390;
 
 const UNIT_OPTIONS: Record<
   LengthUnit,
@@ -182,6 +214,41 @@ const RENDER_MODE_LABELS: Record<RenderMode, string> = {
   wire: "Wire",
 };
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function isLengthUnit(value: string | null): value is LengthUnit {
+  return value === "mm" || value === "cm" || value === "in";
+}
+
+function isThemeMode(value: string | null): value is ThemeMode {
+  return value === "light" || value === "dark";
+}
+
+function getInitialUnit(): LengthUnit {
+  const unit = new URLSearchParams(window.location.search).get("unit");
+  return isLengthUnit(unit) ? unit : "mm";
+}
+
+function getInitialTheme(): ThemeMode {
+  const theme = new URLSearchParams(window.location.search).get("theme");
+  if (isThemeMode(theme)) {
+    return theme;
+  }
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
+function getStoredSidebarWidth() {
+  const storedWidth = Number(window.localStorage.getItem(SIDEBAR_WIDTH_KEY));
+  if (!Number.isFinite(storedWidth)) {
+    return SIDEBAR_DEFAULT_WIDTH;
+  }
+  return clamp(storedWidth, SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH);
+}
+
 function smoothStep(edge0: number, edge1: number, value: number) {
   const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
   return t * t * (3 - 2 * t);
@@ -197,6 +264,9 @@ function fromUnit(value: number, unit: LengthUnit) {
 
 function formatLength(valueMm: number, unit: LengthUnit, digits?: number) {
   const option = UNIT_OPTIONS[unit];
+  if (unit === "in") {
+    return `${formatFractionalInches(toUnit(valueMm, unit))} ${option.label}`;
+  }
   return `${toUnit(valueMm, unit).toFixed(digits ?? option.digits)} ${
     option.label
   }`;
@@ -206,6 +276,90 @@ function formatSignedLength(valueMm: number, unit: LengthUnit) {
   const normalized = Math.abs(valueMm) < 0.05 ? 0 : valueMm;
   const sign = normalized > 0 ? "+" : "";
   return `${sign}${formatLength(normalized, unit)}`;
+}
+
+function greatestCommonDivisor(a: number, b: number): number {
+  return b === 0 ? a : greatestCommonDivisor(b, a % b);
+}
+
+function formatFractionalInches(valueIn: number, denominator = 8) {
+  const sign = valueIn < 0 ? "-" : "";
+  const absoluteValue = Math.abs(valueIn);
+  let whole = Math.floor(absoluteValue);
+  let numerator = Math.round((absoluteValue - whole) * denominator);
+
+  if (numerator === denominator) {
+    whole += 1;
+    numerator = 0;
+  }
+
+  if (numerator === 0) {
+    return `${sign}${whole}`;
+  }
+
+  const divisor = greatestCommonDivisor(numerator, denominator);
+  const fraction = `${numerator / divisor}/${denominator / divisor}`;
+  return whole > 0 ? `${sign}${whole} ${fraction}` : `${sign}${fraction}`;
+}
+
+function formatLengthInput(valueMm: number, unit: LengthUnit) {
+  if (unit === "in") {
+    return formatFractionalInches(toUnit(valueMm, unit));
+  }
+
+  return toUnit(valueMm, unit).toFixed(UNIT_OPTIONS[unit].digits);
+}
+
+function parseFractionalNumber(rawValue: string) {
+  const cleaned = rawValue
+    .toLowerCase()
+    .replace(/inches|inch|in|cm|mm|["']/g, "")
+    .replace(/(\d+)(st|nd|rd|th)\b/g, "$1")
+    .replace(/\bths?\b/g, "")
+    .replace(/-/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned) {
+    return null;
+  }
+
+  let total = 0;
+  for (const part of cleaned.split(" ")) {
+    if (!part) {
+      continue;
+    }
+    if (part.includes("/")) {
+      const [numerator, denominator] = part.split("/").map(Number);
+      if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) {
+        return null;
+      }
+      total += numerator / denominator;
+    } else {
+      const parsed = Number(part);
+      if (!Number.isFinite(parsed)) {
+        return null;
+      }
+      total += parsed;
+    }
+  }
+
+  return total;
+}
+
+function parseLengthInput(rawValue: string, unit: LengthUnit) {
+  const cleaned = rawValue
+    .toLowerCase()
+    .replace(/inches|inch|in|cm|mm|["']/g, "")
+    .trim();
+  const parsed = unit === "in" ? parseFractionalNumber(rawValue) : Number(cleaned);
+  if (!cleaned) {
+    return null;
+  }
+  if (parsed === null || !Number.isFinite(parsed)) {
+    return null;
+  }
+  return fromUnit(parsed, unit);
 }
 
 function getParameter(model: ModelDefinition, key: string) {
@@ -228,6 +382,61 @@ function getDefaultParams(model: ModelDefinition): ModelParams {
   return Object.fromEntries(
     model.parameters.map((parameter) => [parameter.key, parameter.default]),
   );
+}
+
+function getParamsFromUrl(model: ModelDefinition) {
+  const searchParams = new URLSearchParams(window.location.search);
+  const params = getDefaultParams(model);
+
+  if (searchParams.get("model") !== model.id) {
+    return params;
+  }
+
+  for (const parameter of model.parameters) {
+    const value = searchParams.get(parameter.key);
+    if (value === null) {
+      continue;
+    }
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      params[parameter.key] = clamp(
+        parsed,
+        parameter.limits.min,
+        parameter.limits.max,
+      );
+    }
+  }
+
+  return params;
+}
+
+function writeUrlState({
+  modelId,
+  params,
+  theme,
+  unit,
+}: {
+  modelId: string;
+  params: ModelParams;
+  theme: ThemeMode;
+  unit: LengthUnit;
+}) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("model", modelId);
+  url.searchParams.set("unit", unit);
+  url.searchParams.set("theme", theme);
+
+  for (const key of PARAM_QUERY_KEYS) {
+    url.searchParams.delete(key);
+  }
+
+  for (const [key, value] of Object.entries(params)) {
+    if (Number.isFinite(value)) {
+      url.searchParams.set(key, Number(value.toFixed(3)).toString());
+    }
+  }
+
+  window.history.replaceState(null, "", url);
 }
 
 function getParameterLimits(
@@ -837,10 +1046,11 @@ const HolderViewer = forwardRef<
     coreViewMode: CoreViewMode;
     renderMode: RenderMode;
     showOriginal: boolean;
+    theme: ThemeMode;
     unit: LengthUnit;
   }
 >(function HolderViewer(
-  { model, params, coreViewMode, renderMode, showOriginal, unit },
+  { model, params, coreViewMode, renderMode, showOriginal, theme, unit },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -996,11 +1206,11 @@ const HolderViewer = forwardRef<
     ghostMesh.visible = latestShowOriginalRef.current;
   }, [model]);
 
-  const exportStl = useCallback(() => {
+  const createStlBlob = useCallback(() => {
     const mainMesh = mainMeshRef.current;
     const domeMesh = domeMeshRef.current;
     if (!mainMesh) {
-      return;
+      return null;
     }
 
     const group = new THREE.Group();
@@ -1019,16 +1229,26 @@ const HolderViewer = forwardRef<
     const exporter = new STLExporter();
     const result = exporter.parse(group, { binary: true });
     const blob = new Blob([result], { type: "model/stl" });
-    downloadBlob(blob, getExportFileName(model, latestParamsRef.current));
 
     holder.geometry.dispose();
     roundedTop?.geometry.dispose();
+
+    return blob;
   }, [model]);
 
-  useImperativeHandle(ref, () => ({ exportStl, resetCamera }), [
-    exportStl,
-    resetCamera,
-  ]);
+  const exportStl = useCallback(() => {
+    const blob = createStlBlob();
+    if (!blob) {
+      return;
+    }
+    downloadBlob(blob, getExportFileName(model, latestParamsRef.current));
+  }, [createStlBlob, model]);
+
+  useImperativeHandle(
+    ref,
+    () => ({ exportStl, getStlBlob: createStlBlob, resetCamera }),
+    [createStlBlob, exportStl, resetCamera],
+  );
 
   useEffect(() => {
     latestParamsRef.current = params;
@@ -1043,13 +1263,21 @@ const HolderViewer = forwardRef<
   }, [params, resetCamera]);
 
   useEffect(() => {
+    if (sceneRef.current) {
+      sceneRef.current.background = new THREE.Color(
+        theme === "dark" ? "#111510" : "#f4f7f2",
+      );
+    }
+  }, [theme]);
+
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) {
       return undefined;
     }
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#f4f7f2");
+    scene.background = new THREE.Color(theme === "dark" ? "#111510" : "#f4f7f2");
     sceneRef.current = scene;
 
     const renderer = new THREE.WebGLRenderer({
@@ -1384,18 +1612,24 @@ function NumberControl({
   const id = label.toLowerCase().replace(/\s+/g, "-");
   const unitId = `${id}-unit`;
   const unitOption = UNIT_OPTIONS[unit];
-  const displayValue = Number(toUnit(valueMm, unit).toFixed(unitOption.digits));
-  const displayMin = Number(toUnit(limits.min, unit).toFixed(unitOption.digits));
-  const displayMax = Number(toUnit(limits.max, unit).toFixed(unitOption.digits));
-  const displayStep = Number(toUnit(limits.step, unit).toFixed(unitOption.digits));
+  const [draftValue, setDraftValue] = useState(() =>
+    formatLengthInput(valueMm, unit),
+  );
+  const displayValue = Number(toUnit(valueMm, unit).toFixed(4));
+  const displayMin = Number(toUnit(limits.min, unit).toFixed(4));
+  const displayMax = Number(toUnit(limits.max, unit).toFixed(4));
+  const displayStep = Number(toUnit(limits.step, unit).toFixed(4));
   const updateValue = (rawValue: string) => {
-    const parsed = Number(rawValue);
-    if (!Number.isFinite(parsed)) {
+    const nextMm = parseLengthInput(rawValue, unit);
+    if (nextMm === null) {
       return;
     }
-    const nextMm = fromUnit(parsed, unit);
     onChange(Math.min(limits.max, Math.max(limits.min, nextMm)));
   };
+
+  useEffect(() => {
+    setDraftValue(formatLengthInput(valueMm, unit));
+  }, [unit, valueMm]);
 
   return (
     <div className="number-control">
@@ -1412,26 +1646,35 @@ function NumberControl({
         />
         <input
           aria-label={`${label} in ${unitOption.name}`}
-          type="number"
-          min={displayMin}
-          max={displayMax}
-          step={displayStep}
-          value={displayValue}
-          onChange={(event) => updateValue(event.currentTarget.value)}
+          inputMode={unit === "in" ? "text" : "decimal"}
+          type="text"
+          value={draftValue}
+          onBlur={() => setDraftValue(formatLengthInput(valueMm, unit))}
+          onChange={(event) => {
+            setDraftValue(event.currentTarget.value);
+            updateValue(event.currentTarget.value);
+          }}
         />
-        <select
-          aria-label={`${label} units`}
-          id={unitId}
-          onChange={(event) => onUnitChange(event.currentTarget.value as LengthUnit)}
-          title={`${label} units`}
+        <Select
+          onValueChange={(value) => onUnitChange(value as LengthUnit)}
           value={unit}
         >
-          {Object.entries(UNIT_OPTIONS).map(([value, option]) => (
-            <option key={value} value={value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger
+            aria-label={`${label} units`}
+            className="unit-select-trigger"
+            id={unitId}
+            title={`${label} units`}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(UNIT_OPTIONS).map(([value, option]) => (
+              <SelectItem key={value} value={value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
@@ -1543,18 +1786,39 @@ function ModelSelector({
   onChange: (modelId: string) => void;
 }) {
   return (
-    <select
-      aria-label="Model"
-      className="model-select"
-      onChange={(event) => onChange(event.currentTarget.value)}
-      value={selectedModelId}
+    <Select onValueChange={onChange} value={selectedModelId}>
+      <SelectTrigger aria-label="Model" className="model-select">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {catalog.models.map((entry) => (
+          <SelectItem key={entry.id} value={entry.id}>
+            {entry.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function ThemeToggle({
+  theme,
+  onChange,
+}: {
+  theme: ThemeMode;
+  onChange: (theme: ThemeMode) => void;
+}) {
+  const isDark = theme === "dark";
+  return (
+    <button
+      aria-label={isDark ? "Use light theme" : "Use dark theme"}
+      className="theme-toggle"
+      onClick={() => onChange(isDark ? "light" : "dark")}
+      title={isDark ? "Use light theme" : "Use dark theme"}
+      type="button"
     >
-      {catalog.models.map((entry) => (
-        <option key={entry.id} value={entry.id}>
-          {entry.name}
-        </option>
-      ))}
-    </select>
+      {isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+    </button>
   );
 }
 
@@ -1572,17 +1836,35 @@ function getRequestedModelId() {
   return new URLSearchParams(window.location.search).get("model") ?? "";
 }
 
-export default function App() {
+export default function App({
+  convexEnabled = false,
+}: {
+  convexEnabled?: boolean;
+}) {
   const [catalog, setCatalog] = useState<ModelCatalog | null>(null);
   const [selectedModelId, setSelectedModelId] = useState("");
   const [model, setModel] = useState<ModelDefinition | null>(null);
   const [params, setParams] = useState<ModelParams | null>(null);
   const [loadError, setLoadError] = useState("");
-  const [unit, setUnit] = useState<LengthUnit>("mm");
+  const [unit, setUnit] = useState<LengthUnit>(() => getInitialUnit());
+  const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme());
+  const [sidebarWidth, setSidebarWidth] = useState(() => getStoredSidebarWidth());
   const [coreViewMode, setCoreViewMode] = useState<CoreViewMode>("surface");
   const [renderMode, setRenderMode] = useState<RenderMode>("solid");
   const [showOriginal, setShowOriginal] = useState(false);
+  const [activeVersionId, setActiveVersionId] = useState<Id<"versions"> | null>(
+    null,
+  );
   const viewerRef = useRef<ViewerHandle | null>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
+  }, [sidebarWidth]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1646,7 +1928,7 @@ export default function App() {
           return;
         }
         setModel(nextModel);
-        setParams(getDefaultParams(nextModel));
+        setParams(getParamsFromUrl(nextModel));
         setShowOriginal(false);
         setCoreViewMode("surface");
         setRenderMode("solid");
@@ -1669,6 +1951,37 @@ export default function App() {
     }
     return buildAuditItems(params, unit, model);
   }, [model, params, unit]);
+
+  const catalogSeedModels = useMemo(() => {
+    if (!catalog) {
+      return [];
+    }
+
+    return catalog.models.map((entry) => {
+      const isCurrentModel = model?.id === entry.id;
+      return {
+        key: entry.id,
+        name: entry.name,
+        configUrl: entry.configUrl,
+        description: isCurrentModel ? model.description : undefined,
+        publicStlUrl: isCurrentModel ? model.stl.url : undefined,
+        fileName: isCurrentModel ? model.stl.fileName : undefined,
+      };
+    });
+  }, [catalog, model]);
+
+  useEffect(() => {
+    if (!model || !params || !selectedModelId || model.id !== selectedModelId) {
+      return;
+    }
+
+    writeUrlState({
+      modelId: selectedModelId,
+      params,
+      theme,
+      unit,
+    });
+  }, [model, params, selectedModelId, theme, unit]);
 
   const updateParam = (key: string, value: number) => {
     if (!model) {
@@ -1693,10 +2006,77 @@ export default function App() {
   };
 
   const selectModel = (modelId: string) => {
+    setActiveVersionId(null);
     setSelectedModelId(modelId);
+  };
+
+  const openLibraryVersion = (version: SavedLibraryVersion) => {
     const url = new URL(window.location.href);
-    url.searchParams.set("model", modelId);
+    url.searchParams.set("model", version.modelKey);
+    url.searchParams.set("unit", version.unit);
+    url.searchParams.set("theme", version.theme);
+    for (const key of PARAM_QUERY_KEYS) {
+      url.searchParams.delete(key);
+    }
+    for (const [key, value] of Object.entries(version.params)) {
+      if (Number.isFinite(value)) {
+        url.searchParams.set(key, Number(value.toFixed(3)).toString());
+      }
+    }
     window.history.replaceState(null, "", url);
+
+    setUnit(version.unit);
+    setTheme(version.theme);
+    setActiveVersionId(version._id);
+
+    if (model?.id === version.modelKey) {
+      const nextParams = getDefaultParams(model);
+      for (const parameter of model.parameters) {
+        const value = version.params[parameter.key];
+        if (Number.isFinite(value)) {
+          nextParams[parameter.key] = clamp(
+            value,
+            parameter.limits.min,
+            parameter.limits.max,
+          );
+        }
+      }
+      setParams(nextParams);
+    }
+
+    setSelectedModelId(version.modelKey);
+  };
+
+  const resizeSidebarBy = (delta: number) => {
+    setSidebarWidth((currentWidth) =>
+      clamp(
+        currentWidth + delta,
+        SIDEBAR_MIN_WIDTH,
+        SIDEBAR_MAX_WIDTH,
+      ),
+    );
+  };
+
+  const startSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const resize = (pointerEvent: PointerEvent) => {
+      setSidebarWidth(
+        clamp(
+          window.innerWidth - pointerEvent.clientX,
+          SIDEBAR_MIN_WIDTH,
+          SIDEBAR_MAX_WIDTH,
+        ),
+      );
+    };
+    const stopResize = () => {
+      window.removeEventListener("pointermove", resize);
+      window.removeEventListener("pointerup", stopResize);
+      document.body.classList.remove("is-resizing-sidebar");
+    };
+
+    document.body.classList.add("is-resizing-sidebar");
+    window.addEventListener("pointermove", resize);
+    window.addEventListener("pointerup", stopResize, { once: true });
   };
 
   if (loadError) {
@@ -1708,7 +2088,14 @@ export default function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main
+      className="app-shell"
+      style={
+        {
+          "--inspector-width": `${sidebarWidth}px`,
+        } as CSSProperties
+      }
+    >
       <section
         className="scene-panel"
         aria-label={`${model.name} model viewer`}
@@ -1721,9 +2108,37 @@ export default function App() {
           ref={viewerRef}
           renderMode={renderMode}
           showOriginal={showOriginal}
+          theme={theme}
           unit={unit}
         />
       </section>
+
+      <div
+        aria-label="Resize sidebar"
+        aria-orientation="vertical"
+        aria-valuemax={SIDEBAR_MAX_WIDTH}
+        aria-valuemin={SIDEBAR_MIN_WIDTH}
+        aria-valuenow={sidebarWidth}
+        className="sidebar-resizer"
+        onKeyDown={(event) => {
+          if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            resizeSidebarBy(20);
+          } else if (event.key === "ArrowRight") {
+            event.preventDefault();
+            resizeSidebarBy(-20);
+          } else if (event.key === "Home") {
+            event.preventDefault();
+            setSidebarWidth(SIDEBAR_MAX_WIDTH);
+          } else if (event.key === "End") {
+            event.preventDefault();
+            setSidebarWidth(SIDEBAR_MIN_WIDTH);
+          }
+        }}
+        onPointerDown={startSidebarResize}
+        role="separator"
+        tabIndex={0}
+      />
 
       <aside className="inspector" aria-label="Parameters and audit">
         <header className="inspector-header">
@@ -1732,6 +2147,7 @@ export default function App() {
             <h1>{model.name}</h1>
           </div>
           <div className="header-tools">
+            <ThemeToggle onChange={setTheme} theme={theme} />
             <SlidersHorizontal aria-hidden="true" />
             <ModelSelector
               catalog={catalog}
@@ -1742,6 +2158,23 @@ export default function App() {
         </header>
 
         <div className="inspector-body">
+          {convexEnabled ? (
+            <LibraryPanel
+              activeVersionId={activeVersionId}
+              catalogModels={catalogSeedModels}
+              currentModel={{ id: model.id, name: model.name }}
+              exportFileName={getExportFileName(model, params)}
+              onCreateStlBlob={() => viewerRef.current?.getStlBlob() ?? null}
+              onOpenVersion={openLibraryVersion}
+              onSavedVersion={setActiveVersionId}
+              params={params}
+              theme={theme}
+              unit={unit}
+            />
+          ) : (
+            <LibraryUnavailablePanel />
+          )}
+
           <section className="panel-section">
             <h2>Parameters</h2>
             {model.parameters.map((parameter) => (

@@ -22,6 +22,15 @@ Current models:
 The model JSON owns the display name, STL URL, parameter definitions, audit
 checks, dimension invariants, and associated scripts for that print.
 
+## Library Persistence
+
+Saved versions, forks, and uploaded STL assets are backed by Convex through the
+Vercel Marketplace integration. The schema and functions live in `convex/`, and
+the sidebar library UI saves generated STL snapshots plus parameter state.
+
+See `docs/convex-library.md` for the storage model, user flows, local setup, and
+Vercel deployment command.
+
 ## Development
 
 ```bash
@@ -35,4 +44,11 @@ npm run dev
 npm run build
 npm run audit
 npm run audit -- japandi-tray
+npm run test:e2e
+npm run verify
+npm run build:vercel
 ```
+
+`docs/testing-and-audit-coverage.md` maps the original product requests to the
+model audit scripts, app behavior, and Playwright coverage. The sampled
+code/docs/tests cross-audit lives in `docs/line-coverage-audit.md`.
