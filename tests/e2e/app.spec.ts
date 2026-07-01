@@ -54,7 +54,35 @@ async function chooseSelectOption(page: Page, label: string, option: string) {
   await page.getByRole("option", { name: option, exact: true }).click();
 }
 
+async function openDashboardModel(page: Page, modelName: string) {
+  await page
+    .locator(".dashboard-card")
+    .filter({ hasText: modelName })
+    .getByRole("button", { name: "Open" })
+    .click();
+}
+
 test.describe("3D print app", () => {
+  test("shows a dashboard of models and saved forks before opening a workspace", async ({
+    page,
+  }) => {
+    await page.goto("/?theme=light");
+
+    await expect(page.getByRole("heading", { name: "Model Library" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Models" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Saved Versions And Forks" })).toBeVisible();
+    await expect(page.locator(".dashboard-card").filter({ hasText: "Paper Towel Holder" })).toBeVisible();
+    await expect(page.locator(".dashboard-card").filter({ hasText: "Japandi Tray" })).toBeVisible();
+    await expect(page.locator("canvas")).toHaveCount(0);
+
+    await openDashboardModel(page, "Japandi Tray");
+
+    await expect(page).toHaveURL(/model=japandi-tray/);
+    await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
+    await expect(page.getByLabel("Japandi Tray model viewer")).toBeVisible();
+    await expectCanvasHasRenderedModel(page);
+  });
+
   test("loads the default paper towel holder with audited controls and a rendered canvas", async ({
     page,
   }) => {
@@ -63,7 +91,9 @@ test.describe("3D print app", () => {
 
       await expect(page.getByRole("heading", { name: "Paper Towel Holder" })).toBeVisible();
       await expect(page.getByLabel("Paper Towel Holder model viewer")).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Dashboard" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Library" })).toHaveCount(0);
+      await expect(page.getByRole("combobox", { name: "Model" })).toHaveCount(0);
       await expect(page.locator("select")).toHaveCount(0);
 
       await expect(page.locator("#holder-height")).toHaveAttribute("max", "450");
@@ -99,16 +129,19 @@ test.describe("3D print app", () => {
     await expect(page.getByText("50.0 mm").first()).toBeVisible();
   });
 
-  test("switches catalog models through the shadcn select and exposes tray parameters", async ({
+  test("opens catalog models from the dashboard and exposes tray parameters", async ({
     page,
   }) => {
     await openReady(page, "/?model=paper-towel-holder&theme=light");
 
-    await chooseSelectOption(page, "Model", "Japandi Tray");
+    await page.getByRole("button", { name: "Dashboard" }).click();
+    await expect(page.getByRole("heading", { name: "Model Library" })).toBeVisible();
+    await openDashboardModel(page, "Japandi Tray");
 
     await expect(page).toHaveURL(/model=japandi-tray/);
     await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
     await expect(page.getByLabel("Japandi Tray model viewer")).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Model" })).toHaveCount(0);
     await expect(page.getByLabel("Tray length in millimeters")).toHaveValue("166.6");
     await expect(page.getByLabel("Tray width in millimeters")).toHaveValue("166.6");
     await expect(page.getByLabel("Wall height in millimeters")).toHaveValue("20.0");
@@ -185,11 +218,19 @@ test.describe("3D print app", () => {
     await expectCanvasHasRenderedModel(page);
   });
 
-  test("camera orientation, pan, zoom, and frame controls keep the 3D canvas alive", async ({
+  test("footer orientation, reset, frame, export, pan, and zoom keep the 3D canvas alive", async ({
     page,
   }) => {
     await expectNoPageErrors(page, async () => {
       await openReady(page, "/?model=japandi-tray&theme=light");
+
+      const trayLength = page.getByLabel("Tray length in millimeters");
+      await trayLength.fill("200");
+      await trayLength.blur();
+      await expect(trayLength).toHaveValue("200.0");
+      await page.getByRole("button", { name: "Reset" }).click();
+      await expect(trayLength).toHaveValue("166.6");
+      await expect(page.getByRole("button", { name: "Export" })).toBeVisible();
 
       for (const label of [
         "Zoom in",
@@ -198,7 +239,7 @@ test.describe("3D print app", () => {
         "Pan left",
         "Pan right",
         "Pan down",
-        "Frame model",
+        "Frame",
         "Top view",
         "Align X edge to view",
         "Align Y edge to view",
@@ -252,7 +293,9 @@ test.describe("3D print app", () => {
     await expectCanvasHasRenderedModel(page);
   });
 
-  test("saves, forks, and uploads through the Convex library", async ({ page }) => {
+  test("saves and forks through the Convex header, then lists them on the dashboard", async ({
+    page,
+  }) => {
     test.skip(
       !process.env.VITE_CONVEX_URL,
       "Set VITE_CONVEX_URL to run live Convex persistence coverage.",
@@ -264,20 +307,16 @@ test.describe("3D print app", () => {
     await page.getByLabel("Version name").fill(title);
     await page.getByRole("button", { name: "Save current version" }).click();
     await expect(page.getByRole("status")).toContainText("Version saved.");
-    await expect(page.getByText(title, { exact: true })).toBeVisible();
 
     const forkTitle = `${title} fork`;
     await page.getByLabel("Version name").fill(forkTitle);
     await page.getByRole("button", { name: "Fork current version" }).click();
     await expect(page.getByRole("status")).toContainText("Fork saved.");
-    await expect(page.getByText(forkTitle, { exact: true })).toBeVisible();
 
-    await page.getByLabel("Upload STL").setInputFiles({
-      name: `${title}.stl`,
-      mimeType: "model/stl",
-      buffer: Buffer.from("solid uploaded\nendsolid uploaded\n"),
-    });
-    await expect(page.getByRole("status")).toContainText("Uploaded STL saved to library.");
-    await expect(page.getByText(`${title}.stl`, { exact: false })).toBeVisible();
+    await page.getByRole("button", { name: "Dashboard" }).click();
+    await expect(page.getByRole("heading", { name: "Saved Versions And Forks" })).toBeVisible();
+    await expect(page.getByText(title, { exact: true })).toBeVisible();
+    await expect(page.getByText(forkTitle, { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Upload STL")).toHaveCount(0);
   });
 });

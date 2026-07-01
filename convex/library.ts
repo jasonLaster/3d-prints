@@ -27,6 +27,21 @@ export const upsertCatalogModels = mutation({
     const now = Date.now();
 
     for (const model of args.models) {
+      const optionalFields: {
+        description?: string;
+        publicStlUrl?: string;
+        fileName?: string;
+      } = {};
+      if (model.description !== undefined) {
+        optionalFields.description = model.description;
+      }
+      if (model.publicStlUrl !== undefined) {
+        optionalFields.publicStlUrl = model.publicStlUrl;
+      }
+      if (model.fileName !== undefined) {
+        optionalFields.fileName = model.fileName;
+      }
+
       const existing = await ctx.db
         .query("models")
         .withIndex("by_key", (q) => q.eq("key", model.key))
@@ -36,9 +51,7 @@ export const upsertCatalogModels = mutation({
         await ctx.db.patch(existing._id, {
           name: model.name,
           configUrl: model.configUrl,
-          description: model.description,
-          publicStlUrl: model.publicStlUrl,
-          fileName: model.fileName,
+          ...optionalFields,
           updatedAt: now,
         });
       } else {
@@ -47,39 +60,12 @@ export const upsertCatalogModels = mutation({
           name: model.name,
           uploaded: false,
           configUrl: model.configUrl,
-          description: model.description,
-          publicStlUrl: model.publicStlUrl,
-          fileName: model.fileName,
+          ...optionalFields,
           createdAt: now,
           updatedAt: now,
         });
       }
     }
-  },
-});
-
-export const saveUploadedModel = mutation({
-  args: {
-    title: v.string(),
-    fileName: v.string(),
-    stlStorageId: v.id("_storage"),
-    size: v.number(),
-    description: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const now = Date.now();
-    const key = `uploaded:${args.stlStorageId}`;
-    return await ctx.db.insert("models", {
-      key,
-      name: args.title,
-      uploaded: true,
-      description: args.description,
-      fileName: args.fileName,
-      stlStorageId: args.stlStorageId,
-      size: args.size,
-      createdAt: now,
-      updatedAt: now,
-    });
   },
 });
 

@@ -5,9 +5,9 @@ import {
   ArrowUp,
   Download,
   Focus,
+  LayoutDashboard,
   Moon,
   RotateCcw,
-  SlidersHorizontal,
   Sun,
   ZoomIn,
   ZoomOut,
@@ -16,6 +16,7 @@ import {
   forwardRef,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -28,8 +29,10 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import {
-  LibraryPanel,
-  LibraryUnavailablePanel,
+  LibraryDashboard,
+  LibraryUnavailableMessage,
+  SaveForkControls,
+  type CatalogSeedModel,
   type SavedLibraryVersion,
 } from "./LibraryPanel";
 import {
@@ -53,6 +56,7 @@ type ViewerHandle = {
   exportStl: () => void;
   getStlBlob: () => Blob | null;
   resetCamera: () => void;
+  setView: (preset: ViewPreset) => void;
 };
 
 type AuditStatus = "pass" | "warn";
@@ -434,6 +438,25 @@ function writeUrlState({
     if (Number.isFinite(value)) {
       url.searchParams.set(key, Number(value.toFixed(3)).toString());
     }
+  }
+
+  window.history.replaceState(null, "", url);
+}
+
+function writeDashboardUrlState({
+  theme,
+  unit,
+}: {
+  theme: ThemeMode;
+  unit: LengthUnit;
+}) {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("model");
+  url.searchParams.set("unit", unit);
+  url.searchParams.set("theme", theme);
+
+  for (const key of PARAM_QUERY_KEYS) {
+    url.searchParams.delete(key);
   }
 
   window.history.replaceState(null, "", url);
@@ -1246,8 +1269,13 @@ const HolderViewer = forwardRef<
 
   useImperativeHandle(
     ref,
-    () => ({ exportStl, getStlBlob: createStlBlob, resetCamera }),
-    [createStlBlob, exportStl, resetCamera],
+    () => ({
+      exportStl,
+      getStlBlob: createStlBlob,
+      resetCamera,
+      setView: setCameraView,
+    }),
+    [createStlBlob, exportStl, resetCamera, setCameraView],
   );
 
   useEffect(() => {
@@ -1529,9 +1557,9 @@ const HolderViewer = forwardRef<
             <ArrowLeft aria-hidden="true" />
           </button>
           <button
-            aria-label="Frame model"
+            aria-label="Center view"
             onClick={resetCamera}
-            title="Frame model"
+            title="Center view"
             type="button"
           >
             <Focus aria-hidden="true" />
@@ -1554,40 +1582,6 @@ const HolderViewer = forwardRef<
             <ArrowDown aria-hidden="true" />
           </button>
           <span />
-        </div>
-        <div className="viewer-orientation-controls" aria-label="Snap view">
-          <button
-            aria-label="Isometric view"
-            onClick={() => setCameraView("iso")}
-            title="Isometric view"
-            type="button"
-          >
-            3D
-          </button>
-          <button
-            aria-label="Top view"
-            onClick={() => setCameraView("top")}
-            title="Top view"
-            type="button"
-          >
-            Top
-          </button>
-          <button
-            aria-label="Align X edge to view"
-            onClick={() => setCameraView("xEdge")}
-            title="Align X edge to view"
-            type="button"
-          >
-            X
-          </button>
-          <button
-            aria-label="Align Y edge to view"
-            onClick={() => setCameraView("yEdge")}
-            title="Align Y edge to view"
-            type="button"
-          >
-            Y
-          </button>
         </div>
       </div>
     </div>
@@ -1776,31 +1770,6 @@ function AuditList({ items }: { items: AuditItem[] }) {
   );
 }
 
-function ModelSelector({
-  catalog,
-  selectedModelId,
-  onChange,
-}: {
-  catalog: ModelCatalog;
-  selectedModelId: string;
-  onChange: (modelId: string) => void;
-}) {
-  return (
-    <Select onValueChange={onChange} value={selectedModelId}>
-      <SelectTrigger aria-label="Model" className="model-select">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {catalog.models.map((entry) => (
-          <SelectItem key={entry.id} value={entry.id}>
-            {entry.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
 function ThemeToggle({
   theme,
   onChange,
@@ -1829,6 +1798,201 @@ function LoadingShell({ message }: { message: string }) {
         <div>{message}</div>
       </section>
     </main>
+  );
+}
+
+function StaticDashboard({
+  actions,
+  catalogModels,
+  onOpenModel,
+}: {
+  actions?: ReactNode;
+  catalogModels: CatalogSeedModel[];
+  onOpenModel: (modelId: string) => void;
+}) {
+  return (
+    <main className="dashboard-shell">
+      <header className="dashboard-header">
+        <div>
+          <p>3D Prints</p>
+          <h1>Model Library</h1>
+        </div>
+        {actions ? <div className="dashboard-actions">{actions}</div> : null}
+      </header>
+
+      <section className="dashboard-section" aria-labelledby="dashboard-models">
+        <div className="dashboard-section-heading">
+          <h2 id="dashboard-models">Models</h2>
+          <span>{catalogModels.length} available</span>
+        </div>
+        <div className="dashboard-grid">
+          {catalogModels.map((modelEntry) => (
+            <article className="dashboard-card" key={modelEntry.key}>
+              <div>
+                <strong>{modelEntry.name}</strong>
+                <p>{modelEntry.description ?? "Parametric STL model"}</p>
+              </div>
+              <button onClick={() => onOpenModel(modelEntry.key)} type="button">
+                Open
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="dashboard-section" aria-labelledby="dashboard-forks">
+        <div className="dashboard-section-heading">
+          <h2 id="dashboard-forks">Saved Versions And Forks</h2>
+          <span>Convex not connected</span>
+        </div>
+        <div className="dashboard-list">
+          <LibraryUnavailableMessage />
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function WorkspaceHeader({
+  activeVersionId,
+  convexEnabled,
+  exportFileName,
+  model,
+  params,
+  theme,
+  unit,
+  onCreateStlBlob,
+  onOpenDashboard,
+  onSavedVersion,
+  onThemeChange,
+}: {
+  activeVersionId: Id<"versions"> | null;
+  convexEnabled: boolean;
+  exportFileName: string;
+  model: ModelDefinition;
+  params: ModelParams;
+  theme: ThemeMode;
+  unit: LengthUnit;
+  onCreateStlBlob: () => Blob | null;
+  onOpenDashboard: () => void;
+  onSavedVersion: (versionId: Id<"versions">) => void;
+  onThemeChange: (theme: ThemeMode) => void;
+}) {
+  return (
+    <header className="workspace-header">
+      <div className="workspace-title">
+        <button
+          className="dashboard-link"
+          onClick={onOpenDashboard}
+          title="Open dashboard"
+          type="button"
+        >
+          <LayoutDashboard aria-hidden="true" />
+          Dashboard
+        </button>
+        <div>
+          <p>{model.subtitle}</p>
+          <h1>{model.name}</h1>
+        </div>
+      </div>
+      <div className="workspace-actions">
+        {convexEnabled ? (
+          <SaveForkControls
+            activeVersionId={activeVersionId}
+            currentModel={{ id: model.id, name: model.name }}
+            exportFileName={exportFileName}
+            onCreateStlBlob={onCreateStlBlob}
+            onSavedVersion={onSavedVersion}
+            params={params}
+            theme={theme}
+            unit={unit}
+          />
+        ) : (
+          <LibraryUnavailableMessage />
+        )}
+        <ThemeToggle onChange={onThemeChange} theme={theme} />
+      </div>
+    </header>
+  );
+}
+
+function WorkspaceFooter({
+  onExport,
+  onFrame,
+  onReset,
+  onSetView,
+}: {
+  onExport: () => void;
+  onFrame: () => void;
+  onReset: () => void;
+  onSetView: (preset: ViewPreset) => void;
+}) {
+  return (
+    <footer className="workspace-footer" aria-label="Model actions">
+      <div
+        className="footer-control-group"
+        role="group"
+        aria-label="Orientation controls"
+      >
+        <span>Orientation</span>
+        <button
+          aria-label="Isometric view"
+          onClick={() => onSetView("iso")}
+          title="Isometric view"
+          type="button"
+        >
+          3D
+        </button>
+        <button
+          aria-label="Top view"
+          onClick={() => onSetView("top")}
+          title="Top view"
+          type="button"
+        >
+          Top
+        </button>
+        <button
+          aria-label="Align X edge to view"
+          onClick={() => onSetView("xEdge")}
+          title="Align X edge to view"
+          type="button"
+        >
+          X
+        </button>
+        <button
+          aria-label="Align Y edge to view"
+          onClick={() => onSetView("yEdge")}
+          title="Align Y edge to view"
+          type="button"
+        >
+          Y
+        </button>
+      </div>
+
+      <div
+        className="footer-control-group footer-actions"
+        role="group"
+        aria-label="Model file actions"
+      >
+        <button onClick={onReset} title="Reset parameters" type="button">
+          <RotateCcw aria-hidden="true" />
+          Reset
+        </button>
+        <button onClick={onFrame} title="Frame model" type="button">
+          <Focus aria-hidden="true" />
+          Frame
+        </button>
+        <button
+          className="primary-action"
+          onClick={onExport}
+          title="Export adjusted STL"
+          type="button"
+        >
+          <Download aria-hidden="true" />
+          Export
+        </button>
+      </div>
+    </footer>
   );
 }
 
@@ -1885,10 +2049,17 @@ export default function App({
             return current;
           }
           const requestedModelId = getRequestedModelId();
+          if (!requestedModelId) {
+            return "";
+          }
           const requestedModel = nextCatalog.models.find(
             (entry) => entry.id === requestedModelId,
           );
-          return requestedModel?.id ?? nextCatalog.models[0]?.id ?? "";
+          if (!requestedModel) {
+            setLoadError(`Unknown model "${requestedModelId}"`);
+            return "";
+          }
+          return requestedModel.id;
         });
       } catch (error) {
         if (!cancelled) {
@@ -1904,7 +2075,14 @@ export default function App({
   }, []);
 
   useEffect(() => {
-    if (!catalog || !selectedModelId) {
+    if (!catalog) {
+      return undefined;
+    }
+
+    if (!selectedModelId) {
+      setModel(null);
+      setParams(null);
+      setLoadError("");
       return undefined;
     }
 
@@ -1952,21 +2130,24 @@ export default function App({
     return buildAuditItems(params, unit, model);
   }, [model, params, unit]);
 
-  const catalogSeedModels = useMemo(() => {
+  const catalogSeedModels = useMemo<CatalogSeedModel[]>(() => {
     if (!catalog) {
       return [];
     }
 
     return catalog.models.map((entry) => {
       const isCurrentModel = model?.id === entry.id;
-      return {
+      const seedModel: CatalogSeedModel = {
         key: entry.id,
         name: entry.name,
         configUrl: entry.configUrl,
-        description: isCurrentModel ? model.description : undefined,
-        publicStlUrl: isCurrentModel ? model.stl.url : undefined,
-        fileName: isCurrentModel ? model.stl.fileName : undefined,
       };
+      if (isCurrentModel) {
+        seedModel.description = model.description;
+        seedModel.publicStlUrl = model.stl.url;
+        seedModel.fileName = model.stl.fileName;
+      }
+      return seedModel;
     });
   }, [catalog, model]);
 
@@ -2005,9 +2186,37 @@ export default function App({
     }
   };
 
-  const selectModel = (modelId: string) => {
+  const openModel = (modelId: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("model", modelId);
+    url.searchParams.set("unit", unit);
+    url.searchParams.set("theme", theme);
+    for (const key of PARAM_QUERY_KEYS) {
+      url.searchParams.delete(key);
+    }
+    window.history.replaceState(null, "", url);
+
     setActiveVersionId(null);
+    setLoadError("");
+    setModel(null);
+    setParams(null);
     setSelectedModelId(modelId);
+  };
+
+  const openDashboard = () => {
+    writeDashboardUrlState({ theme, unit });
+    setActiveVersionId(null);
+    setLoadError("");
+    setModel(null);
+    setParams(null);
+    setSelectedModelId("");
+  };
+
+  const updateTheme = (nextTheme: ThemeMode) => {
+    setTheme(nextTheme);
+    if (!selectedModelId) {
+      writeDashboardUrlState({ theme: nextTheme, unit });
+    }
   };
 
   const openLibraryVersion = (version: SavedLibraryVersion) => {
@@ -2083,164 +2292,165 @@ export default function App({
     return <LoadingShell message={loadError} />;
   }
 
-  if (!catalog || !model || !params) {
+  if (!catalog) {
+    return <LoadingShell message="Loading model library" />;
+  }
+
+  if (!selectedModelId) {
+    const dashboardActions = (
+      <ThemeToggle onChange={updateTheme} theme={theme} />
+    );
+
+    return convexEnabled ? (
+      <LibraryDashboard
+        actions={dashboardActions}
+        catalogModels={catalogSeedModels}
+        onOpenModel={openModel}
+        onOpenVersion={openLibraryVersion}
+      />
+    ) : (
+      <StaticDashboard
+        actions={dashboardActions}
+        catalogModels={catalogSeedModels}
+        onOpenModel={openModel}
+      />
+    );
+  }
+
+  if (!model || !params) {
     return <LoadingShell message="Loading model" />;
   }
 
   return (
     <main
-      className="app-shell"
+      className="workspace-shell"
       style={
         {
           "--inspector-width": `${sidebarWidth}px`,
         } as CSSProperties
       }
     >
-      <section
-        className="scene-panel"
-        aria-label={`${model.name} model viewer`}
-      >
-        <HolderViewer
-          coreViewMode={coreViewMode}
-          key={model.id}
-          model={model}
-          params={params}
-          ref={viewerRef}
-          renderMode={renderMode}
-          showOriginal={showOriginal}
-          theme={theme}
-          unit={unit}
-        />
-      </section>
-
-      <div
-        aria-label="Resize sidebar"
-        aria-orientation="vertical"
-        aria-valuemax={SIDEBAR_MAX_WIDTH}
-        aria-valuemin={SIDEBAR_MIN_WIDTH}
-        aria-valuenow={sidebarWidth}
-        className="sidebar-resizer"
-        onKeyDown={(event) => {
-          if (event.key === "ArrowLeft") {
-            event.preventDefault();
-            resizeSidebarBy(20);
-          } else if (event.key === "ArrowRight") {
-            event.preventDefault();
-            resizeSidebarBy(-20);
-          } else if (event.key === "Home") {
-            event.preventDefault();
-            setSidebarWidth(SIDEBAR_MAX_WIDTH);
-          } else if (event.key === "End") {
-            event.preventDefault();
-            setSidebarWidth(SIDEBAR_MIN_WIDTH);
-          }
-        }}
-        onPointerDown={startSidebarResize}
-        role="separator"
-        tabIndex={0}
+      <WorkspaceHeader
+        activeVersionId={activeVersionId}
+        convexEnabled={convexEnabled}
+        exportFileName={getExportFileName(model, params)}
+        model={model}
+        onCreateStlBlob={() => viewerRef.current?.getStlBlob() ?? null}
+        onOpenDashboard={openDashboard}
+        onSavedVersion={setActiveVersionId}
+        onThemeChange={updateTheme}
+        params={params}
+        theme={theme}
+        unit={unit}
       />
 
-      <aside className="inspector" aria-label="Parameters and audit">
-        <header className="inspector-header">
-          <div>
-            <p>{model.subtitle}</p>
-            <h1>{model.name}</h1>
-          </div>
-          <div className="header-tools">
-            <ThemeToggle onChange={setTheme} theme={theme} />
-            <SlidersHorizontal aria-hidden="true" />
-            <ModelSelector
-              catalog={catalog}
-              onChange={selectModel}
-              selectedModelId={selectedModelId}
-            />
-          </div>
-        </header>
+      <div className="app-shell">
+        <section
+          className="scene-panel"
+          aria-label={`${model.name} model viewer`}
+        >
+          <HolderViewer
+            coreViewMode={coreViewMode}
+            key={model.id}
+            model={model}
+            params={params}
+            ref={viewerRef}
+            renderMode={renderMode}
+            showOriginal={showOriginal}
+            theme={theme}
+            unit={unit}
+          />
+        </section>
 
-        <div className="inspector-body">
-          {convexEnabled ? (
-            <LibraryPanel
-              activeVersionId={activeVersionId}
-              catalogModels={catalogSeedModels}
-              currentModel={{ id: model.id, name: model.name }}
-              exportFileName={getExportFileName(model, params)}
-              onCreateStlBlob={() => viewerRef.current?.getStlBlob() ?? null}
-              onOpenVersion={openLibraryVersion}
-              onSavedVersion={setActiveVersionId}
-              params={params}
-              theme={theme}
-              unit={unit}
-            />
-          ) : (
-            <LibraryUnavailablePanel />
-          )}
+        <div
+          aria-label="Resize sidebar"
+          aria-orientation="vertical"
+          aria-valuemax={SIDEBAR_MAX_WIDTH}
+          aria-valuemin={SIDEBAR_MIN_WIDTH}
+          aria-valuenow={sidebarWidth}
+          className="sidebar-resizer"
+          onKeyDown={(event) => {
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              resizeSidebarBy(20);
+            } else if (event.key === "ArrowRight") {
+              event.preventDefault();
+              resizeSidebarBy(-20);
+            } else if (event.key === "Home") {
+              event.preventDefault();
+              setSidebarWidth(SIDEBAR_MAX_WIDTH);
+            } else if (event.key === "End") {
+              event.preventDefault();
+              setSidebarWidth(SIDEBAR_MIN_WIDTH);
+            }
+          }}
+          onPointerDown={startSidebarResize}
+          role="separator"
+          tabIndex={0}
+        />
 
-          <section className="panel-section">
-            <h2>Parameters</h2>
-            {model.parameters.map((parameter) => (
-              <NumberControl
-                key={parameter.key}
-                label={parameter.label}
-                limits={getParameterLimits(model, params, parameter.key)}
-                onChange={(value) => updateParam(parameter.key, value)}
-                onUnitChange={setUnit}
-                unit={unit}
-                valueMm={params[parameter.key]}
-              />
-            ))}
-          </section>
+        <aside className="inspector" aria-label="Parameters and audit">
+          <header className="inspector-header">
+            <div>
+              <p>Model controls</p>
+              <h2>Parameters</h2>
+            </div>
+          </header>
 
-          {model.viewer === "weighted-paper-towel-holder-v1" ? (
+          <div className="inspector-body">
             <section className="panel-section">
-              <h2>Weighted Center</h2>
-              <CoreViewControl onChange={setCoreViewMode} value={coreViewMode} />
+              <h2>Parameters</h2>
+              {model.parameters.map((parameter) => (
+                <NumberControl
+                  key={parameter.key}
+                  label={parameter.label}
+                  limits={getParameterLimits(model, params, parameter.key)}
+                  onChange={(value) => updateParam(parameter.key, value)}
+                  onUnitChange={setUnit}
+                  unit={unit}
+                  valueMm={params[parameter.key]}
+                />
+              ))}
             </section>
-          ) : null}
 
-          <section className="panel-section">
-            <h2>Rendering</h2>
-            <RenderModeControl onChange={setRenderMode} value={renderMode} />
-            <OriginalOverlayToggle
-              checked={showOriginal}
-              label={
-                model.viewer === "weighted-paper-towel-holder-v1"
-                  ? "Original inlay"
-                  : "Original STL"
-              }
-              onChange={setShowOriginal}
-            />
-          </section>
+            {model.viewer === "weighted-paper-towel-holder-v1" ? (
+              <section className="panel-section">
+                <h2>Weighted Center</h2>
+                <CoreViewControl
+                  onChange={setCoreViewMode}
+                  value={coreViewMode}
+                />
+              </section>
+            ) : null}
 
-          <section className="panel-section">
-            <h2>Audit</h2>
-            <AuditList items={auditItems} />
-          </section>
-        </div>
+            <section className="panel-section">
+              <h2>Rendering</h2>
+              <RenderModeControl onChange={setRenderMode} value={renderMode} />
+              <OriginalOverlayToggle
+                checked={showOriginal}
+                label={
+                  model.viewer === "weighted-paper-towel-holder-v1"
+                    ? "Original inlay"
+                    : "Original STL"
+                }
+                onChange={setShowOriginal}
+              />
+            </section>
 
-        <footer className="inspector-actions">
-          <button onClick={resetParams} title="Reset parameters" type="button">
-            <RotateCcw aria-hidden="true" />
-            Reset
-          </button>
-          <button
-            onClick={() => viewerRef.current?.resetCamera()}
-            title="Frame model"
-            type="button"
-          >
-            <Focus aria-hidden="true" />
-            Frame
-          </button>
-          <button
-            className="primary-action"
-            onClick={() => viewerRef.current?.exportStl()}
-            title="Export adjusted STL"
-            type="button"
-          >
-            <Download aria-hidden="true" />
-            Export
-          </button>
-        </footer>
-      </aside>
+            <section className="panel-section">
+              <h2>Audit</h2>
+              <AuditList items={auditItems} />
+            </section>
+          </div>
+        </aside>
+      </div>
+
+      <WorkspaceFooter
+        onExport={() => viewerRef.current?.exportStl()}
+        onFrame={() => viewerRef.current?.resetCamera()}
+        onReset={resetParams}
+        onSetView={(preset) => viewerRef.current?.setView(preset)}
+      />
     </main>
   );
 }

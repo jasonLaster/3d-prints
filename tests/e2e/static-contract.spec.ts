@@ -42,7 +42,10 @@ test("request coverage document tracks the app behaviors under Playwright", () =
     "Tube diameter is independently parameterized",
     "Imperial fractions such as `1/8th in` are accepted",
     "Unit control appears as contextual text with a caret",
-    "Pan, zoom, frame, and edge-oriented views",
+    "Dashboard shows models and saved forks",
+    "Save and Fork are in the workspace header with theme",
+    "Footer owns orientation, reset, frame, and export actions",
+    "Pan and zoom are easy to use in 3D",
     "Rendering options include a solid view",
     "Original inlay/source overlay can be toggled",
     "per-model JSON for parameters, audit, and scripts",
@@ -50,7 +53,7 @@ test("request coverage document tracks the app behaviors under Playwright", () =
     "Dark theme is available",
     "Parameter state is saved in the URL",
     "Right sidebar has a resizable rail",
-    "Convex library stores saved versions, forks, and uploaded STL assets",
+    "Convex library stores saved versions and forks",
   ];
 
   for (const phrase of requiredPhrases) {
@@ -89,7 +92,7 @@ test("line coverage audit samples exactly ten documented request lines", () => {
     .filter((line) => /^\| \d+ \|/.test(line));
 
   expect(sampledRows).toHaveLength(10);
-  expect(lineAudit).toContain("cross-model URL-state leak");
+  expect(lineAudit).toContain("dashboard model-opening path");
   expect(lineAudit).toContain("All ten sampled lines");
 });
 
@@ -104,8 +107,9 @@ test("Convex library persistence is documented and wired to Vercel builds", () =
     "Vercel Marketplace resource",
     "Save",
     "Fork",
-    "Upload STL",
     "Open",
+    "Dashboard view",
+    "Arbitrary STL upload is intentionally not supported yet",
     "VITE_CONVEX_URL",
   ]) {
     expect(docs).toContain(phrase);
@@ -116,7 +120,7 @@ test("Convex library persistence is documented and wired to Vercel builds", () =
   expect(functions).toContain("generateUploadUrl");
   expect(functions).toContain("saveVersion");
   expect(functions).toContain("forkVersion");
-  expect(functions).toContain("saveUploadedModel");
+  expect(functions).not.toContain("saveUploadedModel");
   expect(functions).toContain("listLibrary");
   expect(packageJson.scripts["build:vercel"]).toContain("convex deploy");
   expect(packageJson.scripts["build:vercel"]).toContain("VITE_CONVEX_URL");

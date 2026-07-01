@@ -22,11 +22,12 @@ Current models:
 The model JSON owns the display name, STL URL, parameter definitions, audit
 checks, dimension invariants, and associated scripts for that print.
 
-## Library Persistence
+## Dashboard And Persistence
 
-Saved versions, forks, and uploaded STL assets are backed by Convex through the
-Vercel Marketplace integration. The schema and functions live in `convex/`, and
-the sidebar library UI saves generated STL snapshots plus parameter state.
+The root route is a dashboard for opening catalog models and saved versions or
+forks. Saved versions and forks are backed by Convex through the Vercel
+Marketplace integration. The schema and functions live in `convex/`, and the
+workspace header saves generated STL snapshots plus parameter state.
 
 See `docs/convex-library.md` for the storage model, user flows, local setup, and
 Vercel deployment command.
