@@ -54,46 +54,36 @@ async function chooseSelectOption(page: Page, label: string, option: string) {
   await page.getByRole("option", { name: option, exact: true }).click();
 }
 
-async function openDashboardModel(page: Page, modelName: string) {
-  await page
-    .locator(".dashboard-card")
-    .filter({ hasText: modelName })
-    .getByRole("button", { name: "Open" })
-    .click();
+async function openSidebarModel(page: Page, modelName: string) {
+  await page.getByRole("button", { name: `Open ${modelName}` }).click();
+}
+
+async function openActions(page: Page) {
+  await page.getByRole("button", { name: "Workspace actions" }).click();
 }
 
 test.describe("3D print app", () => {
-  test("shows a dashboard of models and saved forks before opening a workspace", async ({
+  test("opens the default workspace with model navigation in the sidebar", async ({
     page,
   }) => {
     await page.goto("/?theme=light");
 
-    await expect(page.getByRole("heading", { name: "Model Library" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Models" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Saved Versions And Forks" })).toBeVisible();
-    await expect(page.locator(".dashboard-card").filter({ hasText: "Paper Towel Holder" })).toBeVisible();
-    await expect(page.locator(".dashboard-card").filter({ hasText: "Japandi Tray" })).toBeVisible();
-    await expect(page.locator("canvas")).toHaveCount(0);
-
-    await openDashboardModel(page, "Japandi Tray");
-
-    await expect(page).toHaveURL(/model=japandi-tray/);
     await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
+    await expect(page).toHaveURL(/model=japandi-tray/);
+    await expect(page.getByRole("button", { name: "Dashboard" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Open Paper Towel Holder" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open Japandi Tray" })).toBeVisible();
     await expect(page.getByLabel("Japandi Tray model viewer")).toBeVisible();
     await expectCanvasHasRenderedModel(page);
   });
 
-  test("dashboard model opening clears stale parameter query values", async ({ page }) => {
+  test("root model opening clears stale parameter query values", async ({ page }) => {
     await page.goto(
       "/?unit=mm&theme=dark&length=360&width=300&height=80&floorThickness=8&ribRelief=1.8",
     );
 
     await expect(page.locator("html")).toHaveClass(/dark/);
-    await expect(page.getByRole("heading", { name: "Model Library" })).toBeVisible();
-    await expect(page.locator("canvas")).toHaveCount(0);
-
-    await openDashboardModel(page, "Japandi Tray");
-
+    await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
     await expect(page).toHaveURL(/model=japandi-tray/);
     await expect(page).not.toHaveURL(/length=360/);
     await expect(page).not.toHaveURL(/floorThickness=8/);
@@ -120,7 +110,8 @@ test.describe("3D print app", () => {
 
       await expect(page.getByRole("heading", { name: "Paper Towel Holder" })).toBeVisible();
       await expect(page.getByLabel("Paper Towel Holder model viewer")).toBeVisible();
-      await expect(page.getByRole("button", { name: "Dashboard" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Dashboard" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Workspace actions" })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Library" })).toHaveCount(0);
       await expect(page.getByRole("combobox", { name: "Model" })).toHaveCount(0);
       await expect(page.locator("select")).toHaveCount(0);
@@ -197,14 +188,12 @@ test.describe("3D print app", () => {
     await expect(page.getByText("Tube-to-holder clearance")).toBeVisible();
   });
 
-  test("opens catalog models from the dashboard and exposes tray parameters", async ({
+  test("opens catalog models from the sidebar and exposes tray parameters", async ({
     page,
   }) => {
     await openReady(page, "/?model=paper-towel-holder&theme=light");
 
-    await page.getByRole("button", { name: "Dashboard" }).click();
-    await expect(page.getByRole("heading", { name: "Model Library" })).toBeVisible();
-    await openDashboardModel(page, "Japandi Tray");
+    await openSidebarModel(page, "Japandi Tray");
 
     await expect(page).toHaveURL(/model=japandi-tray/);
     await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
@@ -275,6 +264,7 @@ test.describe("3D print app", () => {
     await openReady(page, "/?model=paper-towel-holder&theme=light");
 
     await expect(page.locator("html")).not.toHaveClass(/dark/);
+    await openActions(page);
     await page.getByRole("button", { name: "Use dark theme" }).click();
     await expect(page.locator("html")).toHaveClass(/dark/);
     await expect(page).toHaveURL(/theme=dark/);
@@ -305,7 +295,7 @@ test.describe("3D print app", () => {
     await expectCanvasHasRenderedModel(page);
   });
 
-  test("footer orientation, reset, frame, export, pan, and zoom keep the 3D canvas alive", async ({
+  test("cube orientation, workspace actions, and zoom keep the 3D canvas alive", async ({
     page,
   }) => {
     await expectNoPageErrors(page, async () => {
@@ -315,6 +305,7 @@ test.describe("3D print app", () => {
       await trayLength.fill("200");
       await trayLength.blur();
       await expect(trayLength).toHaveValue("200.0");
+      await openActions(page);
       await page.getByRole("button", { name: "Reset" }).click();
       await expect(trayLength).toHaveValue("166.6");
       await expect(page.getByRole("button", { name: "Export" })).toBeVisible();
@@ -322,10 +313,6 @@ test.describe("3D print app", () => {
       for (const label of [
         "Zoom in",
         "Zoom out",
-        "Pan up",
-        "Pan left",
-        "Pan right",
-        "Pan down",
         "Frame",
         "Top view",
         "Align X edge to view",
@@ -346,7 +333,9 @@ test.describe("3D print app", () => {
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
+      openActions(page).then(() =>
       page.getByRole("button", { name: "Export" }).click(),
+      ),
     ]);
 
     expect(download.suggestedFilename()).toMatch(
@@ -354,11 +343,43 @@ test.describe("3D print app", () => {
     );
   });
 
-  test("resizes the right sidebar by pointer and keyboard", async ({ page }) => {
+  test("resizes and collapses the model library and inspector sidebars", async ({ page }) => {
     await openReady(page, "/?model=japandi-tray&theme=light");
 
+    const library = page.getByRole("complementary", { name: "Workspace model library" });
+    const librarySeparator = page.getByRole("separator", { name: "Resize model library" });
+    const libraryBefore = (await library.boundingBox())?.width ?? 0;
+    const librarySeparatorBox = await librarySeparator.boundingBox();
+    expect(librarySeparatorBox).not.toBeNull();
+
+    await page.mouse.move(librarySeparatorBox!.x + 2, librarySeparatorBox!.y + 80);
+    await page.mouse.down();
+    await page.mouse.move(librarySeparatorBox!.x + 80, librarySeparatorBox!.y + 80, { steps: 6 });
+    await page.mouse.up();
+
+    await expect
+      .poll(async () => (await library.boundingBox())?.width ?? 0)
+      .toBeGreaterThan(libraryBefore + 40);
+    await expect
+      .poll(async () =>
+        Number(await page.evaluate(() => window.localStorage.getItem("3d-prints:library-sidebar-width"))),
+      )
+      .toBeGreaterThan(libraryBefore + 40);
+
+    await librarySeparator.focus();
+    await page.keyboard.press("Home");
+    await expect(librarySeparator).toHaveAttribute("aria-valuenow", "240");
+    await page.keyboard.press("End");
+    await expect(librarySeparator).toHaveAttribute("aria-valuenow", "460");
+
+    await page.getByRole("button", { name: "Collapse model library" }).click();
+    await expect(page.getByRole("button", { name: "Expand model library" })).toBeVisible();
+    await expect(page.getByRole("separator", { name: "Resize model library" })).toBeHidden();
+    await page.getByRole("button", { name: "Expand model library" }).click();
+    await expect(page.getByRole("button", { name: "Collapse model library" })).toBeVisible();
+
     const inspector = page.getByRole("complementary", { name: "Parameters and audit" });
-    const separator = page.getByRole("separator", { name: "Resize sidebar" });
+    const separator = page.getByRole("separator", { name: "Resize inspector" });
     const before = (await inspector.boundingBox())?.width ?? 0;
     const separatorBox = await separator.boundingBox();
     expect(separatorBox).not.toBeNull();
@@ -391,11 +412,12 @@ test.describe("3D print app", () => {
     await expect(page.locator("html")).toHaveClass(/dark/);
     await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
     await expect(page.getByLabel("Tray length in inches")).toBeVisible();
-    await expect(page.getByRole("separator", { name: "Resize sidebar" })).toBeHidden();
+    await expect(page.getByRole("separator", { name: "Resize model library" })).toBeHidden();
+    await expect(page.getByRole("separator", { name: "Resize inspector" })).toBeHidden();
     await expectCanvasHasRenderedModel(page);
   });
 
-  test("saves and forks through the Convex header, then lists them on the dashboard", async ({
+  test("saves and forks through the actions menu, then lists selected-model versions", async ({
     page,
   }) => {
     test.skip(
@@ -406,7 +428,7 @@ test.describe("3D print app", () => {
     await openReady(page, "/?model=japandi-tray&theme=light");
 
     const title = `Playwright ${Date.now()}`;
-    await page.getByRole("button", { name: "Version actions" }).click();
+    await openActions(page);
     await page.getByLabel("Version name").fill(title);
     await page.getByRole("button", { name: "Save current version" }).click();
     await expect(page.getByRole("status")).toContainText("Version saved.");
@@ -416,21 +438,20 @@ test.describe("3D print app", () => {
     await page.getByRole("button", { name: "Fork current version" }).click();
     await expect(page.getByRole("status")).toContainText("Fork saved.");
 
-    await page.getByRole("button", { name: "Dashboard" }).click();
-    await expect(page.getByRole("heading", { name: "Saved Versions And Forks" })).toBeVisible();
+    await page.getByRole("button", { name: "Saved Versions" }).click();
     await expect(page.getByText(title, { exact: true })).toBeVisible();
     await expect(page.getByText(forkTitle, { exact: true })).toBeVisible();
     await expect(page.getByLabel("Upload STL")).toHaveCount(0);
 
     await page
-      .locator(".dashboard-row")
-      .filter({ hasText: forkTitle })
-      .getByRole("button", { name: "Open" })
+      .getByRole("button", { name: `Open ${forkTitle}` })
       .click();
     await expect(page.getByRole("heading", { name: forkTitle })).toBeVisible();
     await expect(page.getByText("Japandi Tray", { exact: true })).toBeVisible();
     await expect(page).toHaveURL(/model=japandi-tray/);
-    await page.getByRole("button", { name: "Version actions" }).click();
+    if (!(await page.getByLabel("Version name").isVisible())) {
+      await openActions(page);
+    }
     await expect(page.getByLabel("Version name")).toBeVisible();
   });
 });

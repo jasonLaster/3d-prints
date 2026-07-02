@@ -16,13 +16,13 @@ Generated STL snapshots are stored in Convex File Storage. A saved version conta
 - Save: uploads the current generated STL to Convex Storage and inserts a `versions` record with model id, params, unit, theme, and file name.
 - Fork: creates a new version with `source: "fork"` and links to the active saved version when one is open.
 - Open: rehydrates a saved version into the viewer by restoring model, unit, theme, params, URL state, and active version id.
-- Dashboard view: shows catalog models, saved versions, forks, source-model counts, and direct generated-STL links.
+- Selected-model sidebar view: shows saved versions and forks scoped to the active model, plus direct generated-STL links when available.
 
 Arbitrary STL upload is intentionally not supported yet. It would require model metadata capture, viewer routing, parameter schema authoring, audit setup, and safer file validation beyond the current saved-version workflow.
 
 ## Local Development
 
-The React app enables Convex only when `VITE_CONVEX_URL` is present and `VITE_DISABLE_CONVEX` is not `true`. Without a connected runtime, or when Convex returns an error, the dashboard and workspace header render a persistence-offline note so the catalog and model viewer stay usable.
+The React app enables Convex only when `VITE_CONVEX_URL` is present and `VITE_DISABLE_CONVEX` is not `true`. Without a connected runtime, or when Convex returns an error, the model sidebar and workspace actions menu render a persistence-offline note so the catalog and model viewer stay usable.
 
 For connected local development, run Convex and copy the generated URL into `.env.local`:
 
@@ -50,5 +50,5 @@ Convex deploys the backend first, then injects the deployment URL into the Vite 
 
 - `convex/schema.ts` defines `models` and `versions`.
 - `convex/library.ts` owns generated-STL upload URLs, catalog seeding, saved versions, forks, and library listing.
-- `src/LibraryPanel.tsx` owns the Save, Fork, Open, and dashboard library UI.
-- `src/App.tsx` owns STL blob generation and saved-version rehydration.
+- `src/LibraryPanel.tsx` owns the Convex Save and Fork controls plus shared library messaging.
+- `src/App.tsx` owns the model sidebar, STL blob generation, and saved-version rehydration.

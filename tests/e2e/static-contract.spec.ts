@@ -203,17 +203,17 @@ test("request coverage document tracks the app behaviors under Playwright", () =
     "Tube diameter is independently parameterized",
     "Imperial fractions such as `1/8th in` are accepted",
     "Unit control appears as contextual text with a caret",
-    "Dashboard shows models and saved forks",
-    "Save and Fork are in the workspace header with theme",
-    "Footer owns orientation, reset, frame, and export actions",
-    "Pan and zoom are easy to use in 3D",
+    "Sidebar shows models and selected-model saved versions",
+    "Save, Fork, theme, reset, frame, and export are in one actions menu",
+    "Orientation cube owns 3D, top, X, and Y views",
+    "Zoom remains easy to use in 3D",
     "Rendering options include a solid view",
     "Original inlay/source overlay can be toggled",
     "per-model JSON for parameters, audit, and scripts",
     "Japandi tray supports width, length, height, floor thickness, and rib relief",
     "Dark theme is available",
     "Parameter state is saved in the URL",
-    "Right sidebar has a resizable rail",
+    "Sidebars have resizable rails",
     "Convex library stores saved versions and forks",
     "Comprehensive specifications and test plan stay current",
   ];
@@ -229,12 +229,12 @@ test("product specifications and test plan describe the release contract", () =>
   const readme = readText(path.join(root, "README.md"));
 
   for (const phrase of [
-    "The root route `/` is the model dashboard",
+    "The root route `/` opens the default model workspace",
     "Parameter query values are always stored in millimeters",
     "The app must never solve parameter changes by uniformly scaling all axes",
     "Arbitrary STL upload is intentionally unsupported",
     "Export downloads the current generated STL",
-    "The sidebar resizer is keyboard reachable",
+    "The sidebar resizers are keyboard reachable",
   ]) {
     expect(specs).toContain(phrase);
   }
@@ -284,7 +284,7 @@ test("line coverage audit samples exactly ten documented request lines", () => {
     .filter((line) => /^\| \d+ \|/.test(line));
 
   expect(sampledRows).toHaveLength(10);
-  expect(lineAudit).toContain("dashboard model-opening path");
+  expect(lineAudit).toContain("root and sidebar model-opening path");
   expect(lineAudit).toContain("All ten sampled lines");
 });
 
@@ -300,7 +300,7 @@ test("Convex library persistence is documented and wired to Vercel builds", () =
     "Save",
     "Fork",
     "Open",
-    "Dashboard view",
+    "Selected-model sidebar view",
     "Arbitrary STL upload is intentionally not supported yet",
     "VITE_CONVEX_URL",
   ]) {

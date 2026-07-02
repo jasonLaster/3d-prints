@@ -1,18 +1,16 @@
 import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
   Box,
-  Check,
+  ChevronDown,
   ChevronRight,
   Clock3,
   Download,
   Focus,
   GitFork,
-  LayoutDashboard,
   Layers3,
+  MoreHorizontal,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   RotateCcw,
   Search,
   SlidersHorizontal,
@@ -40,11 +38,7 @@ import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { api } from "../convex/_generated/api";
 import {
-  DashboardModelCard,
-  DashboardSidebar,
-  DashboardToolbar,
-  filterDashboardModels,
-  LibraryDashboard,
+  filterLibraryModels,
   LibraryUnavailableMessage,
   SaveForkControls,
   type CatalogSeedModel,
@@ -199,6 +193,7 @@ type ModelCatalog = {
 };
 
 const CATALOG_URL = "/models/index.json";
+const DEFAULT_MODEL_ID = "japandi-tray";
 const PARAM_QUERY_KEYS = [
   "height",
   "diameter",
@@ -212,6 +207,11 @@ const SIDEBAR_WIDTH_KEY = "3d-prints:sidebar-width";
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 620;
 const SIDEBAR_DEFAULT_WIDTH = 390;
+const LIBRARY_SIDEBAR_WIDTH_KEY = "3d-prints:library-sidebar-width";
+const LIBRARY_SIDEBAR_MIN_WIDTH = 240;
+const LIBRARY_SIDEBAR_MAX_WIDTH = 460;
+const LIBRARY_SIDEBAR_DEFAULT_WIDTH = 320;
+const LIBRARY_SIDEBAR_COLLAPSED_WIDTH = 52;
 const SCENE_BACKGROUND = {
   light: "#f7f8fb",
   dark: "#090c11",
@@ -274,6 +274,20 @@ function getStoredSidebarWidth() {
     return SIDEBAR_DEFAULT_WIDTH;
   }
   return clamp(storedWidth, SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH);
+}
+
+function getStoredLibrarySidebarWidth() {
+  const storedWidth = Number(
+    window.localStorage.getItem(LIBRARY_SIDEBAR_WIDTH_KEY),
+  );
+  if (!Number.isFinite(storedWidth)) {
+    return LIBRARY_SIDEBAR_DEFAULT_WIDTH;
+  }
+  return clamp(
+    storedWidth,
+    LIBRARY_SIDEBAR_MIN_WIDTH,
+    LIBRARY_SIDEBAR_MAX_WIDTH,
+  );
 }
 
 function smoothStep(edge0: number, edge1: number, value: number) {
@@ -461,25 +475,6 @@ function writeUrlState({
     if (Number.isFinite(value)) {
       url.searchParams.set(key, Number(value.toFixed(3)).toString());
     }
-  }
-
-  window.history.replaceState(null, "", url);
-}
-
-function writeDashboardUrlState({
-  theme,
-  unit,
-}: {
-  theme: ThemeMode;
-  unit: LengthUnit;
-}) {
-  const url = new URL(window.location.href);
-  url.searchParams.delete("model");
-  url.searchParams.set("unit", unit);
-  url.searchParams.set("theme", theme);
-
-  for (const key of PARAM_QUERY_KEYS) {
-    url.searchParams.delete(key);
   }
 
   window.history.replaceState(null, "", url);
@@ -1117,6 +1112,24 @@ const HolderViewer = forwardRef<
   const latestCoreViewModeRef = useRef(coreViewMode);
   const latestRenderModeRef = useRef(renderMode);
   const latestShowOriginalRef = useRef(showOriginal);
+  const [activeViewPreset, setActiveViewPreset] = useState<ViewPreset>("iso");
+  const [cubeTransform, setCubeTransform] = useState(
+    "rotateX(-28deg) rotateY(34deg)",
+  );
+
+  const updateCubeOrientation = useCallback(() => {
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    if (!camera || !controls) {
+      return;
+    }
+
+    const offset = camera.position.clone().sub(controls.target);
+    const spherical = new THREE.Spherical().setFromVector3(offset);
+    const pitch = clamp(THREE.MathUtils.radToDeg(spherical.phi) - 90, -82, 82);
+    const yaw = -THREE.MathUtils.radToDeg(spherical.theta);
+    setCubeTransform(`rotateX(${pitch.toFixed(1)}deg) rotateY(${yaw.toFixed(1)}deg)`);
+  }, []);
 
   const setCameraView = useCallback((preset: ViewPreset) => {
     const camera = cameraRef.current;
@@ -1161,7 +1174,9 @@ const HolderViewer = forwardRef<
     camera.updateProjectionMatrix();
     controls.target.copy(target);
     controls.update();
-  }, [model]);
+    setActiveViewPreset(preset);
+    updateCubeOrientation();
+  }, [model, updateCubeOrientation]);
 
   const resetCamera = useCallback(() => {
     setCameraView("iso");
@@ -1182,29 +1197,6 @@ const HolderViewer = forwardRef<
     offset.setLength(nextDistance);
     camera.position.copy(controls.target).add(offset);
     camera.updateProjectionMatrix();
-    controls.update();
-  }, []);
-
-  const panBy = useCallback((xDirection: number, yDirection: number) => {
-    const camera = cameraRef.current;
-    const controls = controlsRef.current;
-    if (!camera || !controls) {
-      return;
-    }
-
-    camera.updateMatrixWorld();
-    const distance = camera.position.distanceTo(controls.target);
-    const visibleHeight =
-      2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * distance;
-    const panStep = visibleHeight * 0.12;
-    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
-    const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
-    const movement = right
-      .multiplyScalar(xDirection * panStep)
-      .add(up.multiplyScalar(yDirection * panStep));
-
-    camera.position.add(movement);
-    controls.target.add(movement);
     controls.update();
   }, []);
 
@@ -1360,6 +1352,8 @@ const HolderViewer = forwardRef<
     controls.minDistance = 80;
     controls.maxDistance = 1400;
     controlsRef.current = controls;
+    const handleControlChange = () => updateCubeOrientation();
+    controls.addEventListener("change", handleControlChange);
 
     scene.add(new THREE.HemisphereLight("#ffffff", "#aeb7c4", 2.1));
     const keyLight = new THREE.DirectionalLight("#ffffff", 2.4);
@@ -1536,6 +1530,7 @@ const HolderViewer = forwardRef<
         cancelAnimationFrame(animationRef.current);
       }
       resizeObserver.disconnect();
+      controls.removeEventListener("change", handleControlChange);
       controls.dispose();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {
@@ -1551,7 +1546,7 @@ const HolderViewer = forwardRef<
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [model, resetCamera, updateMeshes]);
+  }, [model, resetCamera, updateCubeOrientation, updateMeshes]);
 
   return (
     <div className="viewer" ref={containerRef}>
@@ -1564,22 +1559,6 @@ const HolderViewer = forwardRef<
       </div>
       <div className="viewer-nav" aria-label="3D view controls">
         <div className="viewer-tool-rail" role="group" aria-label="View tools">
-          <button
-            aria-label="Isometric view"
-            onClick={() => setCameraView("iso")}
-            title="Isometric view"
-            type="button"
-          >
-            <Box aria-hidden="true" />
-          </button>
-          <button
-            aria-label="Top view"
-            onClick={() => setCameraView("top")}
-            title="Top view"
-            type="button"
-          >
-            Top
-          </button>
           <button
             aria-label="Zoom in"
             onClick={() => zoomBy(0.82)}
@@ -1605,62 +1584,16 @@ const HolderViewer = forwardRef<
             <Focus aria-hidden="true" />
           </button>
         </div>
-        <div className="viewer-pan-pad">
-          <span />
-          <button
-            aria-label="Pan up"
-            onClick={() => panBy(0, 1)}
-            title="Pan up"
-            type="button"
-          >
-            <ArrowUp aria-hidden="true" />
-          </button>
-          <span />
-          <button
-            aria-label="Pan left"
-            onClick={() => panBy(-1, 0)}
-            title="Pan left"
-            type="button"
-          >
-            <ArrowLeft aria-hidden="true" />
-          </button>
-          <button
-            aria-label="Center view"
-            onClick={resetCamera}
-            title="Center view"
-            type="button"
-          >
-            <Focus aria-hidden="true" />
-          </button>
-          <button
-            aria-label="Pan right"
-            onClick={() => panBy(1, 0)}
-            title="Pan right"
-            type="button"
-          >
-            <ArrowRight aria-hidden="true" />
-          </button>
-          <span />
-          <button
-            aria-label="Pan down"
-            onClick={() => panBy(0, -1)}
-            title="Pan down"
-            type="button"
-          >
-            <ArrowDown aria-hidden="true" />
-          </button>
-          <span />
-        </div>
       </div>
-      <button
-        aria-label="Orientation cube top view"
+      <div
+        aria-label="Orientation controls"
         className="orientation-cube-control"
-        onClick={() => setCameraView("top")}
-        title="Top view"
-        type="button"
       >
         <span className="orientation-cube-scene" aria-hidden="true">
-          <span className="orientation-cube">
+          <span
+            className="orientation-cube"
+            style={{ transform: cubeTransform }}
+          >
             <span className="orientation-cube-face orientation-cube-face-top">
               Top
             </span>
@@ -1672,13 +1605,26 @@ const HolderViewer = forwardRef<
             </span>
           </span>
         </span>
-        <span className="orientation-cube-tabs" aria-hidden="true">
-          <span>3D</span>
-          <span>Top</span>
-          <span>X</span>
-          <span>Y</span>
+        <span className="orientation-cube-tabs">
+          {[
+            { label: "3D", preset: "iso", ariaLabel: "Isometric view" },
+            { label: "Top", preset: "top", ariaLabel: "Top view" },
+            { label: "X", preset: "xEdge", ariaLabel: "Align X edge to view" },
+            { label: "Y", preset: "yEdge", ariaLabel: "Align Y edge to view" },
+          ].map((option) => (
+            <button
+              aria-label={option.ariaLabel}
+              aria-pressed={activeViewPreset === option.preset}
+              className={activeViewPreset === option.preset ? "active" : ""}
+              key={option.preset}
+              onClick={() => setCameraView(option.preset as ViewPreset)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
         </span>
-      </button>
+      </div>
     </div>
   );
 });
@@ -1865,27 +1811,6 @@ function AuditList({ items }: { items: AuditItem[] }) {
   );
 }
 
-function ThemeToggle({
-  theme,
-  onChange,
-}: {
-  theme: ThemeMode;
-  onChange: (theme: ThemeMode) => void;
-}) {
-  const isDark = theme === "dark";
-  return (
-    <button
-      aria-label={isDark ? "Use light theme" : "Use dark theme"}
-      className="theme-toggle"
-      onClick={() => onChange(isDark ? "light" : "dark")}
-      title={isDark ? "Use light theme" : "Use dark theme"}
-      type="button"
-    >
-      {isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
-    </button>
-  );
-}
-
 function LoadingShell({ message }: { message: string }) {
   return (
     <main className="app-shell">
@@ -1896,79 +1821,8 @@ function LoadingShell({ message }: { message: string }) {
   );
 }
 
-function StaticDashboard({
-  actions,
-  catalogModels,
-  onOpenModel,
-}: {
-  actions?: ReactNode;
-  catalogModels: CatalogSeedModel[];
-  onOpenModel: (modelId: string) => void;
-}) {
-  const [modelQuery, setModelQuery] = useState("");
-  const filteredModels = useMemo(
-    () => filterDashboardModels(catalogModels, modelQuery),
-    [catalogModels, modelQuery],
-  );
-
-  return (
-    <main className="dashboard-shell">
-      <DashboardSidebar
-        modelCount={catalogModels.length}
-        versionCount="Offline"
-      />
-
-      <section className="dashboard-main">
-        <header className="dashboard-header">
-          <div>
-            <p>3D Prints</p>
-            <h1>Model Library</h1>
-          </div>
-          {actions ? <div className="dashboard-actions">{actions}</div> : null}
-        </header>
-
-        <section className="dashboard-section" aria-labelledby="dashboard-models">
-          <div className="dashboard-section-heading">
-            <h2 id="dashboard-models">Models</h2>
-            <span>{catalogModels.length} available</span>
-          </div>
-          <DashboardToolbar
-            count={filteredModels.length}
-            onQueryChange={setModelQuery}
-            query={modelQuery}
-            total={catalogModels.length}
-          />
-          <div className="dashboard-grid">
-            {filteredModels.map((modelEntry) => (
-              <DashboardModelCard
-                key={modelEntry.key}
-                model={modelEntry}
-                onOpenModel={onOpenModel}
-              />
-            ))}
-          </div>
-        </section>
-
-        <section className="dashboard-section" aria-labelledby="dashboard-forks">
-          <div className="dashboard-section-heading">
-            <h2 id="dashboard-forks">Saved Versions And Forks</h2>
-            <span>Convex not connected</span>
-          </div>
-          <div className="dashboard-list">
-            <LibraryUnavailableMessage />
-          </div>
-        </section>
-      </section>
-    </main>
-  );
-}
-
 function getWorkspaceModelPreviewClass(modelKey: string) {
   return modelKey.includes("tray") ? "tray" : "holder";
-}
-
-function getWorkspaceModelTypeLabel(modelKey: string) {
-  return modelKey.includes("tray") ? "Tray" : "Holder";
 }
 
 function formatWorkspaceVersionDate(timestamp: number) {
@@ -1984,39 +1838,87 @@ type WorkspaceLibrarySidebarProps = {
   activeVersionId: Id<"versions"> | null;
   catalogModels: CatalogSeedModel[];
   convexEnabled: boolean;
+  isCollapsed: boolean;
   selectedModelId: string;
   onOpenModel: (modelId: string) => void;
   onOpenVersion: (version: SavedLibraryVersion) => void;
+  onToggleCollapsed: () => void;
 };
 
 function WorkspaceLibrarySidebar({
   activeVersionId,
   catalogModels,
   convexEnabled,
+  isCollapsed,
   selectedModelId,
   onOpenModel,
   onOpenVersion,
+  onToggleCollapsed,
 }: WorkspaceLibrarySidebarProps) {
   const [activeSection, setActiveSection] = useState<"models" | "versions">(
     "models",
   );
   const [query, setQuery] = useState("");
   const filteredModels = useMemo(
-    () => filterDashboardModels(catalogModels, query),
+    () => filterLibraryModels(catalogModels, query),
     [catalogModels, query],
   );
-  const selectedModel = catalogModels.find((entry) => entry.key === selectedModelId);
+
+  if (isCollapsed) {
+    return (
+      <aside
+        className="workspace-library-sidebar collapsed"
+        aria-label="Workspace model library"
+      >
+        <button
+          aria-label="Expand model library"
+          className="library-collapse-button"
+          onClick={onToggleCollapsed}
+          title="Expand model library"
+          type="button"
+        >
+          <PanelLeftOpen aria-hidden="true" />
+        </button>
+        <button
+          aria-label="Show models"
+          className={activeSection === "models" ? "active" : ""}
+          onClick={() => {
+            setActiveSection("models");
+            onToggleCollapsed();
+          }}
+          title="Model Library"
+          type="button"
+        >
+          <Layers3 aria-hidden="true" />
+        </button>
+        <button
+          aria-label="Show saved versions"
+          className={activeSection === "versions" ? "active" : ""}
+          onClick={() => {
+            setActiveSection("versions");
+            onToggleCollapsed();
+          }}
+          title="Saved Versions"
+          type="button"
+        >
+          <Clock3 aria-hidden="true" />
+        </button>
+      </aside>
+    );
+  }
 
   return (
     <aside className="workspace-library-sidebar" aria-label="Workspace model library">
-      <div className="workspace-library-brand">
-        <span className="workspace-library-brand-mark" aria-hidden="true">
-          <Box />
-        </span>
-        <div>
-          <strong>3D Prints</strong>
-          <span>Parametric STL library</span>
-        </div>
+      <div className="workspace-library-topbar">
+        <button
+          aria-label="Collapse model library"
+          className="library-collapse-button"
+          onClick={onToggleCollapsed}
+          title="Collapse model library"
+          type="button"
+        >
+          <PanelLeftClose aria-hidden="true" />
+        </button>
       </div>
 
       <nav className="workspace-library-nav" aria-label="Workspace library sections">
@@ -2042,7 +1944,6 @@ function WorkspaceLibrarySidebar({
         <div className="workspace-sidebar-section">
           <div className="workspace-sidebar-section-heading">
             <span>Models</span>
-            <strong>{catalogModels.length}</strong>
           </div>
           <label className="workspace-library-search">
             <Search aria-hidden="true" />
@@ -2078,19 +1979,8 @@ function WorkspaceLibrarySidebar({
                     <span>
                       {modelEntry.description ?? "Parametric STL model"}
                     </span>
-                    <span className="workspace-model-meta">
-                      <span>{getWorkspaceModelTypeLabel(modelEntry.key)}</span>
-                      <span>STL</span>
-                      <span>Ready</span>
-                    </span>
                   </span>
-                  {isActive ? (
-                    <span className="workspace-model-check" aria-hidden="true">
-                      <Check />
-                    </span>
-                  ) : (
-                    <ChevronRight aria-hidden="true" />
-                  )}
+                  <ChevronRight aria-hidden="true" />
                 </button>
               );
             })}
@@ -2104,17 +1994,6 @@ function WorkspaceLibrarySidebar({
           onOpenVersion={onOpenVersion}
         />
       )}
-
-      <div className="workspace-library-summary" aria-label="Workspace library summary">
-        <div>
-          <strong>{catalogModels.length}</strong>
-          <span>Models</span>
-        </div>
-        <div>
-          <strong>{selectedModel?.name ?? "Selected"}</strong>
-          <span>Active</span>
-        </div>
-      </div>
     </aside>
   );
 }
@@ -2154,7 +2033,6 @@ function WorkspaceSavedVersions({
       <div className="workspace-sidebar-section">
         <div className="workspace-sidebar-section-heading">
           <span>Saved versions</span>
-          <strong>Offline</strong>
         </div>
         <LibraryUnavailableMessage>
           Connect Convex to browse saved versions for this model.
@@ -2169,7 +2047,6 @@ function WorkspaceSavedVersions({
         <div className="workspace-sidebar-section">
           <div className="workspace-sidebar-section-heading">
             <span>Saved versions</span>
-            <strong>Offline</strong>
           </div>
           <LibraryUnavailableMessage>
             Saved versions could not load. The model is still editable and exportable.
@@ -2212,7 +2089,6 @@ function ConnectedWorkspaceSavedVersions({
     <div className="workspace-sidebar-section">
       <div className="workspace-sidebar-section-heading">
         <span>Saved versions</span>
-        <strong>{library ? versions.length : "..."}</strong>
       </div>
       {hasConnectionIssue ? (
         <LibraryUnavailableMessage>
@@ -2246,12 +2122,116 @@ function ConnectedWorkspaceSavedVersions({
                     {formatWorkspaceVersionDate(version.updatedAt)}
                   </span>
                 </span>
-                {isActive ? <Check aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+                <ChevronRight aria-hidden="true" />
               </button>
             );
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+function WorkspaceActionsMenu({
+  activeVersionId,
+  convexEnabled,
+  exportFileName,
+  model,
+  params,
+  theme,
+  unit,
+  onCreateStlBlob,
+  onExport,
+  onFrame,
+  onReset,
+  onSavedVersion,
+  onThemeChange,
+}: {
+  activeVersionId: Id<"versions"> | null;
+  convexEnabled: boolean;
+  exportFileName: string;
+  model: ModelDefinition;
+  params: ModelParams;
+  theme: ThemeMode;
+  unit: LengthUnit;
+  onCreateStlBlob: () => Blob | null;
+  onExport: () => void;
+  onFrame: () => void;
+  onReset: () => void;
+  onSavedVersion: (versionId: Id<"versions">, title: string) => void;
+  onThemeChange: (theme: ThemeMode) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const isDark = theme === "dark";
+
+  return (
+    <div
+      className="workspace-actions-menu-shell"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          setIsOpen(false);
+        }
+      }}
+    >
+      <button
+        aria-expanded={isOpen}
+        aria-label="Workspace actions"
+        className="workspace-actions-trigger"
+        onClick={() => setIsOpen((current) => !current)}
+        type="button"
+      >
+        <MoreHorizontal aria-hidden="true" />
+        Actions
+        <ChevronDown aria-hidden="true" />
+      </button>
+      {isOpen ? (
+        <div
+          aria-label="Workspace actions"
+          className="workspace-actions-menu"
+          role="dialog"
+        >
+          {convexEnabled ? (
+            <SaveForkControls
+              activeVersionId={activeVersionId}
+              currentModel={{ id: model.id, name: model.name }}
+              exportFileName={exportFileName}
+              mode="inline"
+              onCreateStlBlob={onCreateStlBlob}
+              onSavedVersion={onSavedVersion}
+              params={params}
+              theme={theme}
+              unit={unit}
+            />
+          ) : (
+            <LibraryUnavailableMessage>
+              Library sync is unavailable here. You can still edit, frame, reset,
+              and export; Save/Fork return when Convex reconnects.
+            </LibraryUnavailableMessage>
+          )}
+          <div className="workspace-menu-actions">
+            <button
+              aria-label={isDark ? "Use light theme" : "Use dark theme"}
+              onClick={() => onThemeChange(isDark ? "light" : "dark")}
+              type="button"
+            >
+              {isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+              {isDark ? "Light theme" : "Dark theme"}
+            </button>
+            <button onClick={onFrame} type="button">
+              <Focus aria-hidden="true" />
+              Frame
+            </button>
+            <button onClick={onReset} type="button">
+              <RotateCcw aria-hidden="true" />
+              Reset
+            </button>
+            <button className="primary-action" onClick={onExport} type="button">
+              <Download aria-hidden="true" />
+              Export
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -2266,7 +2246,9 @@ function WorkspaceHeader({
   theme,
   unit,
   onCreateStlBlob,
-  onOpenDashboard,
+  onExport,
+  onFrame,
+  onReset,
   onSavedVersion,
   onThemeChange,
 }: {
@@ -2279,22 +2261,15 @@ function WorkspaceHeader({
   theme: ThemeMode;
   unit: LengthUnit;
   onCreateStlBlob: () => Blob | null;
-  onOpenDashboard: () => void;
+  onExport: () => void;
+  onFrame: () => void;
+  onReset: () => void;
   onSavedVersion: (versionId: Id<"versions">, title: string) => void;
   onThemeChange: (theme: ThemeMode) => void;
 }) {
   return (
     <header className="workspace-header">
       <div className="workspace-title">
-        <button
-          className="dashboard-link"
-          onClick={onOpenDashboard}
-          title="Open dashboard"
-          type="button"
-        >
-          <LayoutDashboard aria-hidden="true" />
-          Dashboard
-        </button>
         <div>
           <p>{model.subtitle}</p>
           <h1>{activeVersionTitle ?? model.name}</h1>
@@ -2304,105 +2279,23 @@ function WorkspaceHeader({
         </div>
       </div>
       <div className="workspace-actions">
-        {convexEnabled ? (
-          <SaveForkControls
-            activeVersionId={activeVersionId}
-            currentModel={{ id: model.id, name: model.name }}
-            exportFileName={exportFileName}
-            onCreateStlBlob={onCreateStlBlob}
-            onSavedVersion={onSavedVersion}
-            params={params}
-            theme={theme}
-            unit={unit}
-          />
-        ) : (
-          <p className="workspace-sync-note" role="status">
-            Local library
-          </p>
-        )}
-        <ThemeToggle onChange={onThemeChange} theme={theme} />
+        <WorkspaceActionsMenu
+          activeVersionId={activeVersionId}
+          convexEnabled={convexEnabled}
+          exportFileName={exportFileName}
+          model={model}
+          onCreateStlBlob={onCreateStlBlob}
+          onExport={onExport}
+          onFrame={onFrame}
+          onReset={onReset}
+          onSavedVersion={onSavedVersion}
+          onThemeChange={onThemeChange}
+          params={params}
+          theme={theme}
+          unit={unit}
+        />
       </div>
     </header>
-  );
-}
-
-function WorkspaceFooter({
-  onExport,
-  onFrame,
-  onReset,
-  onSetView,
-}: {
-  onExport: () => void;
-  onFrame: () => void;
-  onReset: () => void;
-  onSetView: (preset: ViewPreset) => void;
-}) {
-  return (
-    <footer className="workspace-footer" aria-label="Model actions">
-      <div
-        className="footer-control-group"
-        role="group"
-        aria-label="Orientation controls"
-      >
-        <span>Orientation</span>
-        <button
-          aria-label="Isometric view"
-          onClick={() => onSetView("iso")}
-          title="Isometric view"
-          type="button"
-        >
-          3D
-        </button>
-        <button
-          aria-label="Top view"
-          onClick={() => onSetView("top")}
-          title="Top view"
-          type="button"
-        >
-          Top
-        </button>
-        <button
-          aria-label="Align X edge to view"
-          onClick={() => onSetView("xEdge")}
-          title="Align X edge to view"
-          type="button"
-        >
-          X
-        </button>
-        <button
-          aria-label="Align Y edge to view"
-          onClick={() => onSetView("yEdge")}
-          title="Align Y edge to view"
-          type="button"
-        >
-          Y
-        </button>
-      </div>
-
-      <div
-        className="footer-control-group footer-actions"
-        role="group"
-        aria-label="Model file actions"
-      >
-        <button onClick={onReset} title="Reset parameters" type="button">
-          <RotateCcw aria-hidden="true" />
-          Reset
-        </button>
-        <button onClick={onFrame} title="Frame model" type="button">
-          <Focus aria-hidden="true" />
-          Frame
-        </button>
-        <button
-          className="primary-action"
-          onClick={onExport}
-          title="Export adjusted STL"
-          type="button"
-        >
-          <Download aria-hidden="true" />
-          Export
-        </button>
-      </div>
-    </footer>
   );
 }
 
@@ -2422,7 +2315,12 @@ export default function App({
   const [loadError, setLoadError] = useState("");
   const [unit, setUnit] = useState<LengthUnit>(() => getInitialUnit());
   const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme());
-  const [sidebarWidth, setSidebarWidth] = useState(() => getStoredSidebarWidth());
+  const [inspectorWidth, setInspectorWidth] = useState(() => getStoredSidebarWidth());
+  const [librarySidebarWidth, setLibrarySidebarWidth] = useState(() =>
+    getStoredLibrarySidebarWidth(),
+  );
+  const [isLibrarySidebarCollapsed, setIsLibrarySidebarCollapsed] =
+    useState(false);
   const [coreViewMode, setCoreViewMode] = useState<CoreViewMode>("surface");
   const [renderMode, setRenderMode] = useState<RenderMode>("solid");
   const [showOriginal, setShowOriginal] = useState(false);
@@ -2440,8 +2338,15 @@ export default function App({
   }, [theme]);
 
   useEffect(() => {
-    window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
-  }, [sidebarWidth]);
+    window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(inspectorWidth));
+  }, [inspectorWidth]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      LIBRARY_SIDEBAR_WIDTH_KEY,
+      String(librarySidebarWidth),
+    );
+  }, [librarySidebarWidth]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2463,7 +2368,20 @@ export default function App({
           }
           const requestedModelId = getRequestedModelId();
           if (!requestedModelId) {
-            return "";
+            const defaultModel =
+              nextCatalog.models.find((entry) => entry.id === DEFAULT_MODEL_ID) ??
+              nextCatalog.models[0];
+            if (!defaultModel) {
+              setLoadError("No models are available.");
+              return "";
+            }
+            const url = new URL(window.location.href);
+            url.searchParams.set("model", defaultModel.id);
+            for (const key of PARAM_QUERY_KEYS) {
+              url.searchParams.delete(key);
+            }
+            window.history.replaceState(null, "", url);
+            return defaultModel.id;
           }
           const requestedModel = nextCatalog.models.find(
             (entry) => entry.id === requestedModelId,
@@ -2619,21 +2537,8 @@ export default function App({
     setSelectedModelId(modelId);
   };
 
-  const openDashboard = () => {
-    writeDashboardUrlState({ theme, unit });
-    setActiveVersionId(null);
-    setActiveVersionTitle(null);
-    setLoadError("");
-    setModel(null);
-    setParams(null);
-    setSelectedModelId("");
-  };
-
   const updateTheme = (nextTheme: ThemeMode) => {
     setTheme(nextTheme);
-    if (!selectedModelId) {
-      writeDashboardUrlState({ theme: nextTheme, unit });
-    }
   };
 
   const openLibraryVersion = (version: SavedLibraryVersion) => {
@@ -2680,7 +2585,7 @@ export default function App({
   };
 
   const resizeSidebarBy = (delta: number) => {
-    setSidebarWidth((currentWidth) =>
+    setInspectorWidth((currentWidth) =>
       clamp(
         currentWidth + delta,
         SIDEBAR_MIN_WIDTH,
@@ -2689,10 +2594,42 @@ export default function App({
     );
   };
 
+  const resizeLibrarySidebarBy = (delta: number) => {
+    setLibrarySidebarWidth((currentWidth) =>
+      clamp(
+        currentWidth + delta,
+        LIBRARY_SIDEBAR_MIN_WIDTH,
+        LIBRARY_SIDEBAR_MAX_WIDTH,
+      ),
+    );
+  };
+
+  const startLibrarySidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const resize = (pointerEvent: PointerEvent) => {
+      setLibrarySidebarWidth(
+        clamp(
+          pointerEvent.clientX,
+          LIBRARY_SIDEBAR_MIN_WIDTH,
+          LIBRARY_SIDEBAR_MAX_WIDTH,
+        ),
+      );
+    };
+    const stopResize = () => {
+      window.removeEventListener("pointermove", resize);
+      window.removeEventListener("pointerup", stopResize);
+      document.body.classList.remove("is-resizing-sidebar");
+    };
+
+    document.body.classList.add("is-resizing-sidebar");
+    window.addEventListener("pointermove", resize);
+    window.addEventListener("pointerup", stopResize, { once: true });
+  };
+
   const startSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     const resize = (pointerEvent: PointerEvent) => {
-      setSidebarWidth(
+      setInspectorWidth(
         clamp(
           window.innerWidth - pointerEvent.clientX,
           SIDEBAR_MIN_WIDTH,
@@ -2719,27 +2656,6 @@ export default function App({
     return <LoadingShell message="Loading model library" />;
   }
 
-  if (!selectedModelId) {
-    const dashboardActions = (
-      <ThemeToggle onChange={updateTheme} theme={theme} />
-    );
-
-    return convexEnabled ? (
-      <LibraryDashboard
-        actions={dashboardActions}
-        catalogModels={catalogSeedModels}
-        onOpenModel={openModel}
-        onOpenVersion={openLibraryVersion}
-      />
-    ) : (
-      <StaticDashboard
-        actions={dashboardActions}
-        catalogModels={catalogSeedModels}
-        onOpenModel={openModel}
-      />
-    );
-  }
-
   if (!model || !params) {
     return <LoadingShell message="Loading model" />;
   }
@@ -2749,7 +2665,12 @@ export default function App({
       className="workspace-shell"
       style={
         {
-          "--inspector-width": `${sidebarWidth}px`,
+          "--inspector-width": `${inspectorWidth}px`,
+          "--library-sidebar-width": `${
+            isLibrarySidebarCollapsed
+              ? LIBRARY_SIDEBAR_COLLAPSED_WIDTH
+              : librarySidebarWidth
+          }px`,
         } as CSSProperties
       }
     >
@@ -2760,7 +2681,9 @@ export default function App({
         exportFileName={getExportFileName(model, params)}
         model={model}
         onCreateStlBlob={() => viewerRef.current?.getStlBlob() ?? null}
-        onOpenDashboard={openDashboard}
+        onExport={() => viewerRef.current?.exportStl()}
+        onFrame={() => viewerRef.current?.resetCamera()}
+        onReset={resetParams}
         onSavedVersion={handleSavedVersion}
         onThemeChange={updateTheme}
         params={params}
@@ -2773,10 +2696,43 @@ export default function App({
           activeVersionId={activeVersionId}
           catalogModels={catalogSeedModels}
           convexEnabled={convexEnabled}
+          isCollapsed={isLibrarySidebarCollapsed}
           selectedModelId={selectedModelId}
           onOpenModel={openModel}
           onOpenVersion={openLibraryVersion}
+          onToggleCollapsed={() =>
+            setIsLibrarySidebarCollapsed((current) => !current)
+          }
         />
+
+        {!isLibrarySidebarCollapsed ? (
+          <div
+            aria-label="Resize model library"
+            aria-orientation="vertical"
+            aria-valuemax={LIBRARY_SIDEBAR_MAX_WIDTH}
+            aria-valuemin={LIBRARY_SIDEBAR_MIN_WIDTH}
+            aria-valuenow={librarySidebarWidth}
+            className="sidebar-resizer library-resizer"
+            onKeyDown={(event) => {
+              if (event.key === "ArrowLeft") {
+                event.preventDefault();
+                resizeLibrarySidebarBy(-20);
+              } else if (event.key === "ArrowRight") {
+                event.preventDefault();
+                resizeLibrarySidebarBy(20);
+              } else if (event.key === "Home") {
+                event.preventDefault();
+                setLibrarySidebarWidth(LIBRARY_SIDEBAR_MIN_WIDTH);
+              } else if (event.key === "End") {
+                event.preventDefault();
+                setLibrarySidebarWidth(LIBRARY_SIDEBAR_MAX_WIDTH);
+              }
+            }}
+            onPointerDown={startLibrarySidebarResize}
+            role="separator"
+            tabIndex={0}
+          />
+        ) : null}
 
         <section
           className="scene-panel"
@@ -2796,12 +2752,12 @@ export default function App({
         </section>
 
         <div
-          aria-label="Resize sidebar"
+          aria-label="Resize inspector"
           aria-orientation="vertical"
           aria-valuemax={SIDEBAR_MAX_WIDTH}
           aria-valuemin={SIDEBAR_MIN_WIDTH}
-          aria-valuenow={sidebarWidth}
-          className="sidebar-resizer"
+          aria-valuenow={inspectorWidth}
+          className="sidebar-resizer inspector-resizer"
           onKeyDown={(event) => {
             if (event.key === "ArrowLeft") {
               event.preventDefault();
@@ -2811,10 +2767,10 @@ export default function App({
               resizeSidebarBy(-20);
             } else if (event.key === "Home") {
               event.preventDefault();
-              setSidebarWidth(SIDEBAR_MAX_WIDTH);
+              setInspectorWidth(SIDEBAR_MAX_WIDTH);
             } else if (event.key === "End") {
               event.preventDefault();
-              setSidebarWidth(SIDEBAR_MIN_WIDTH);
+              setInspectorWidth(SIDEBAR_MIN_WIDTH);
             }
           }}
           onPointerDown={startSidebarResize}
@@ -2877,13 +2833,6 @@ export default function App({
           </div>
         </aside>
       </div>
-
-      <WorkspaceFooter
-        onExport={() => viewerRef.current?.exportStl()}
-        onFrame={() => viewerRef.current?.resetCamera()}
-        onReset={resetParams}
-        onSetView={(preset) => viewerRef.current?.setView(preset)}
-      />
     </main>
   );
 }

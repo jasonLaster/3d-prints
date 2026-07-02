@@ -22,12 +22,13 @@ Current models:
 The model JSON owns the display name, STL URL, parameter definitions, audit
 checks, dimension invariants, and associated scripts for that print.
 
-## Dashboard And Persistence
+## Workspace And Persistence
 
-The root route is a dashboard for opening catalog models and saved versions or
-forks. Saved versions and forks are backed by Convex through the Vercel
-Marketplace integration. The schema and functions live in `convex/`, and the
-workspace header saves generated STL snapshots plus parameter state.
+The root route opens the default model workspace. Catalog models live in the
+left sidebar, and saved versions or forks are scoped to the selected model.
+Saved versions and forks are backed by Convex through the Vercel Marketplace
+integration. The schema and functions live in `convex/`, and the workspace
+actions menu saves generated STL snapshots plus parameter state.
 
 See `docs/convex-library.md` for the storage model, user flows, local setup, and
 Vercel deployment command.

@@ -4,12 +4,12 @@ This document defines the product and engineering contract for the 3D Prints app
 
 ## Information Architecture
 
-- The root route `/` is the model dashboard.
-- The dashboard lists catalog models plus saved versions and forks.
-- Opening a catalog model moves the app into the workspace route by setting `model=<model-id>` in the URL.
-- The workspace contains a global header, the 3D viewer, a resizable right parameter sidebar, and a global footer.
-- Model selection does not live in the sidebar. Returning to the dashboard is the model switching path.
-- The sidebar is reserved for parameters, rendering options, model-specific controls, and audit output.
+- The root route `/` opens the default model workspace and writes `model=<model-id>` into the URL.
+- The workspace left sidebar lists catalog models and saved versions scoped to the selected model.
+- Opening a catalog model from the sidebar moves the app into that model by setting `model=<model-id>` in the URL.
+- The workspace contains a global header, a collapsible and resizable model sidebar, the 3D viewer, and a resizable right parameter inspector.
+- Model selection lives in the left sidebar; the dashboard route is not part of the default product surface.
+- The inspector is reserved for parameters, rendering options, model-specific controls, and audit output.
 
 ## URL State
 
@@ -17,8 +17,8 @@ This document defines the product and engineering contract for the 3D Prints app
 - `unit` is one of `mm`, `cm`, or `in`.
 - `theme` is one of `light` or `dark`.
 - Parameter query values are always stored in millimeters, regardless of displayed unit.
-- Dashboard state must not preserve stale model parameter keys when no model is selected.
-- Opening a model from the dashboard starts from that model's defaults unless opening a saved version or an explicit model URL with matching parameter keys.
+- Root model selection must not preserve stale parameter keys when no model is selected.
+- Opening a model from the sidebar starts from that model's defaults unless opening a saved version or an explicit model URL with matching parameter keys.
 - Unknown model ids must render an actionable load error instead of a blank viewer.
 
 ## Model Catalog Contract
@@ -69,19 +69,19 @@ Japandi tray:
 ## Viewer Contract
 
 - The primary viewer is a Three.js canvas with OrbitControls.
-- Pan and zoom controls remain available in the viewer.
-- Footer controls own orientation presets, reset, frame, and export.
-- Orientation presets include isometric, top, X-edge, and Y-edge views.
+- Zoom controls remain available in the viewer.
+- The orientation cube owns isometric, top, X-edge, and Y-edge presets and reflects the current camera orientation.
+- The top-right workspace actions menu owns Save, Fork, theme, reset, frame, and export.
 - Rendering modes include Solid, X-Ray, and Wire.
-- The viewer should remain nonblank after parameter edits, render-mode changes, unit changes, pan/zoom, orientation presets, reset, and frame.
+- The viewer should remain nonblank after parameter edits, render-mode changes, unit changes, zoom, orientation presets, reset, and frame.
 
 ## Persistence Contract
 
 - Convex stores catalog model records and saved version/fork records.
-- Save and Fork controls live in the workspace header.
+- Save and Fork controls live in the top-right workspace actions menu.
 - Saves and forks include model id, model name, params, unit, theme, generated STL storage id, and file name when the viewer is loaded.
 - Forking an active saved version records the parent version id.
-- The dashboard opens saved versions and restores model, params, unit, theme, URL state, and active version id.
+- The saved-versions sidebar tab opens versions for the selected model and restores model, params, unit, theme, URL state, and active version id.
 - Arbitrary STL upload is intentionally unsupported until the app has generic model metadata capture, safe validation, parameter schema authoring, and audit setup.
 
 ## Export Contract
@@ -95,9 +95,9 @@ Japandi tray:
 
 - Interactive controls must have accessible names.
 - Icon buttons must expose text labels or `aria-label`.
-- The sidebar resizer is keyboard reachable and supports min/max keyboard commands.
-- The dashboard and workspace must work on desktop and mobile viewports.
-- Mobile hides the sidebar resize rail and stacks the workspace layout.
+- The sidebar resizers are keyboard reachable and support min/max keyboard commands.
+- The workspace must work on desktop and mobile viewports.
+- Mobile hides resize rails and stacks the workspace layout.
 
 ## Non-Goals
 
