@@ -22,7 +22,7 @@ Arbitrary STL upload is intentionally not supported yet. It would require model 
 
 ## Local Development
 
-The React app enables Convex only when `VITE_CONVEX_URL` is present and `VITE_DISABLE_CONVEX` is not `true`. Without a connected runtime the dashboard and workspace header render a persistence-offline note, so local builds and Playwright tests remain deterministic.
+The React app enables Convex only when `VITE_CONVEX_URL` is present and `VITE_DISABLE_CONVEX` is not `true`. Without a connected runtime, or when Convex returns an error, the dashboard and workspace header render a persistence-offline note so the catalog and model viewer stay usable.
 
 For connected local development, run Convex and copy the generated URL into `.env.local`:
 
@@ -41,10 +41,10 @@ npm run build:vercel
 That script runs:
 
 ```bash
-npx convex deploy --cmd 'VITE_DISABLE_CONVEX=true npm run build:app' --cmd-url-env-var-name VITE_CONVEX_URL
+npx convex deploy --cmd 'npm run build:app' --cmd-url-env-var-name VITE_CONVEX_URL
 ```
 
-Convex deploys the backend first, then injects the deployment URL into the Vite build as `VITE_CONVEX_URL`. Production currently forces static library mode with `VITE_DISABLE_CONVEX=true` because the hosted Convex deployment is unavailable.
+Convex deploys the backend first, then injects the deployment URL into the Vite build as `VITE_CONVEX_URL`. Production uses Convex by default; set `VITE_DISABLE_CONVEX=true` only as a temporary kill switch when the hosted deployment is unavailable.
 
 ## Audit Points
 

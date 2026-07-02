@@ -1,8 +1,9 @@
-import { useMutation, useQuery } from "convex/react";
+import { useConvexConnectionState, useMutation, useQuery } from "convex/react";
 import {
   Box,
   ChevronRight,
   Clock3,
+  CloudOff,
   CopyPlus,
   GitFork,
   Layers3,
@@ -84,6 +85,15 @@ type LibraryDashboardErrorBoundaryProps = {
 type LibraryDashboardErrorBoundaryState = {
   hasError: boolean;
 };
+
+const PERSISTENCE_OFFLINE_MESSAGE =
+  "Library sync is temporarily unavailable. You can still open models and export STLs; saved versions will return when sync is healthy.";
+const SAVE_OFFLINE_MESSAGE =
+  "Library sync is temporarily unavailable. Your model is still editable; export an STL or try saving again shortly.";
+const CATALOG_SYNC_MESSAGE =
+  "The catalog loaded, but library sync could not refresh it. Saved versions may be out of date.";
+const CONNECTION_SYNC_MESSAGE =
+  "Library sync is reconnecting. You can keep browsing models; saved versions may be delayed.";
 
 function formatDate(timestamp: number) {
   return new Intl.DateTimeFormat(undefined, {
@@ -249,14 +259,32 @@ class LibraryDashboardErrorBoundary extends Component<
 
 function useCatalogSeed(catalogModels: CatalogSeedModel[]) {
   const upsertCatalogModels = useMutation(api.library.upsertCatalogModels);
+  const [hasSeedError, setHasSeedError] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+
     if (catalogModels.length > 0) {
-      void upsertCatalogModels({ models: catalogModels }).catch((error) => {
-        console.error("Unable to seed catalog models.", error);
-      });
+      void upsertCatalogModels({ models: catalogModels })
+        .then(() => {
+          if (mounted) {
+            setHasSeedError(false);
+          }
+        })
+        .catch((error) => {
+          console.error("Unable to seed catalog models.", error);
+          if (mounted) {
+            setHasSeedError(true);
+          }
+        });
     }
+
+    return () => {
+      mounted = false;
+    };
   }, [catalogModels, upsertCatalogModels]);
+
+  return hasSeedError;
 }
 
 async function uploadBlob(
@@ -276,10 +304,15 @@ async function uploadBlob(
   return result.storageId;
 }
 
-export function LibraryUnavailableMessage() {
+export function LibraryUnavailableMessage({
+  children = PERSISTENCE_OFFLINE_MESSAGE,
+}: {
+  children?: ReactNode;
+}) {
   return (
     <p className="library-note">
-      Saved versions are unavailable while library persistence is offline.
+      <CloudOff aria-hidden="true" />
+      <span>{children}</span>
     </p>
   );
 }
@@ -299,6 +332,7 @@ export function SaveForkControls({
   const forkVersion = useMutation(api.library.forkVersion);
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState("Ready");
+  const [statusTone, setStatusTone] = useState<"neutral" | "error">("neutral");
   const [isSaving, setIsSaving] = useState(false);
   const versionTitle = title.trim() || defaultTitle(currentModel.name);
 
@@ -306,10 +340,12 @@ export function SaveForkControls({
     const blob = onCreateStlBlob();
     if (!blob) {
       setStatus("Model is still loading.");
+      setStatusTone("neutral");
       return;
     }
 
     setIsSaving(true);
+    setStatusTone("neutral");
     setStatus(source === "fork" ? "Forking..." : "Saving...");
     try {
       const stlStorageId = await uploadBlob(generateUploadUrl, blob);
@@ -338,8 +374,11 @@ export function SaveForkControls({
       onSavedVersion(versionId);
       setTitle("");
       setStatus(source === "fork" ? "Fork saved." : "Version saved.");
+      setStatusTone("neutral");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error));
+      console.error(`Unable to ${source} library version.`, error);
+      setStatus(SAVE_OFFLINE_MESSAGE);
+      setStatusTone("error");
     } finally {
       setIsSaving(false);
     }
@@ -373,7 +412,10 @@ export function SaveForkControls({
         <CopyPlus aria-hidden="true" />
         Fork
       </button>
-      <span className="save-status" role="status">
+      <span
+        className={`save-status${statusTone === "error" ? " error" : ""}`}
+        role="status"
+      >
         {status}
       </span>
     </div>
@@ -453,8 +495,17 @@ function ConnectedLibraryDashboard({
   onOpenModel,
   onOpenVersion,
 }: LibraryDashboardProps) {
-  useCatalogSeed(catalogModels);
+  const hasSeedError = useCatalogSeed(catalogModels);
+  const connectionState = useConvexConnectionState();
   const library = useQuery(api.library.listLibrary);
+  const hasConnectionIssue =
+    !connectionState.isWebSocketConnected &&
+    (connectionState.hasEverConnected || connectionState.connectionRetries > 0);
+  const syncMessage = hasSeedError
+    ? CATALOG_SYNC_MESSAGE
+    : hasConnectionIssue
+      ? CONNECTION_SYNC_MESSAGE
+      : null;
   const sourceModels = useMemo<DashboardModelSummary[]>(() => {
     const persistedModels = library?.models.filter((model) => !model.uploaded);
     return persistedModels && persistedModels.length > 0
@@ -489,6 +540,10 @@ function ConnectedLibraryDashboard({
           </div>
           {actions ? <div className="dashboard-actions">{actions}</div> : null}
         </header>
+
+        {syncMessage ? (
+          <LibraryUnavailableMessage>{syncMessage}</LibraryUnavailableMessage>
+        ) : null}
 
         <section className="dashboard-section" aria-labelledby="dashboard-models">
           <div className="dashboard-section-heading">

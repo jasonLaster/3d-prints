@@ -1,6 +1,3 @@
 {
-  "buildCommand": "npm run build:vercel",
-  "env": {
-    "VITE_DISABLE_CONVEX": "true"
-  }
+  "buildCommand": "npm run build:vercel"
 }

@@ -14,6 +14,7 @@
   --accent: #2563eb;
   --accent-soft: #dbeafe;
   --accent-foreground: #ffffff;
+  --danger: #b91c1c;
   --success: #16a34a;
   --warning: #d97706;
   --shadow: rgba(15, 23, 42, 0.08);
@@ -46,6 +47,7 @@ html.dark {
   --accent: #60a5fa;
   --accent-soft: rgba(96, 165, 250, 0.16);
   --accent-foreground: #0f1117;
+  --danger: #f87171;
   --success: #22c55e;
   --warning: #f59e0b;
   --shadow: rgba(0, 0, 0, 0.28);
@@ -672,10 +674,16 @@ button:disabled {
 }
 
 .save-status {
+  max-width: 360px;
   min-width: 78px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 760;
+  line-height: 1.35;
+}
+
+.save-status.error {
+  color: var(--danger);
 }
 
 .library-note {
@@ -684,19 +692,21 @@ button:disabled {
   gap: 8px;
   min-height: 38px;
   margin: 0;
-  padding: 0 10px;
+  padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
 }
 
-.library-note::before {
-  content: "";
+.library-note svg {
   flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--muted);
+  width: 15px;
+  height: 15px;
+  color: var(--muted-strong);
+}
+
+.library-note span {
+  min-width: 0;
 }
 
 .workspace-actions .library-note {
