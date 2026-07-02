@@ -1,6 +1,5 @@
 import { useMutation } from "convex/react";
 import {
-  ChevronDown,
   CloudOff,
   CopyPlus,
   Save,
@@ -52,7 +51,6 @@ type SaveForkControlsProps = {
   activeVersionId: Id<"versions"> | null;
   currentModel: CurrentModel;
   exportFileName: string;
-  mode?: "popover" | "inline";
   params: ModelParams;
   theme: ThemeMode;
   unit: LengthUnit;
@@ -127,7 +125,6 @@ export function SaveForkControls({
   activeVersionId,
   currentModel,
   exportFileName,
-  mode = "popover",
   params,
   theme,
   unit,
@@ -138,12 +135,12 @@ export function SaveForkControls({
   const saveVersion = useMutation(api.library.saveVersion);
   const forkVersion = useMutation(api.library.forkVersion);
   const [title, setTitle] = useState("");
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [status, setStatus] = useState("Ready");
+  const [pendingSource, setPendingSource] = useState<"save" | "fork" | null>(
+    null,
+  );
+  const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState<"neutral" | "error">("neutral");
   const [isSaving, setIsSaving] = useState(false);
-  const versionTitle = title.trim() || defaultTitle(currentModel.name);
-  const menuId = `version-actions-${currentModel.id}`;
 
   const saveCurrent = async (source: "save" | "fork") => {
     const blob = onCreateStlBlob();
@@ -153,6 +150,7 @@ export function SaveForkControls({
       return;
     }
 
+    const versionTitle = title.trim() || defaultTitle(currentModel.name);
     setIsSaving(true);
     setStatusTone("neutral");
     setStatus(source === "fork" ? "Forking..." : "Saving...");
@@ -182,6 +180,7 @@ export function SaveForkControls({
             });
       onSavedVersion(versionId, versionTitle);
       setTitle("");
+      setPendingSource(null);
       setStatus(source === "fork" ? "Fork saved." : "Version saved.");
       setStatusTone("neutral");
     } catch (error) {
@@ -193,28 +192,20 @@ export function SaveForkControls({
     }
   };
 
-  const controlsBody = (
-    <>
-      <div className="version-menu-heading">
-        <strong>Version actions</strong>
-        <span>{currentModel.name}</span>
-      </div>
-      <label className="version-field">
-        <span>Version name</span>
-        <input
-          aria-label="Version name"
-          className="version-name-input"
-          onChange={(event) => setTitle(event.currentTarget.value)}
-          placeholder="Version name"
-          type="text"
-          value={title}
-        />
-      </label>
-      <div className="version-menu-actions">
+  const modalTitle = pendingSource === "fork" ? "Fork version" : "Save version";
+
+  return (
+    <div className="save-fork-controls">
+      <div className="version-command-group">
         <button
           aria-label="Save current version"
           disabled={isSaving}
-          onClick={() => saveCurrent("save")}
+          onClick={() => {
+            setStatus("");
+            setStatusTone("neutral");
+            setTitle("");
+            setPendingSource("save");
+          }}
           type="button"
         >
           <Save aria-hidden="true" />
@@ -223,58 +214,94 @@ export function SaveForkControls({
         <button
           aria-label="Fork current version"
           disabled={isSaving}
-          onClick={() => saveCurrent("fork")}
+          onClick={() => {
+            setStatus("");
+            setStatusTone("neutral");
+            setTitle("");
+            setPendingSource("fork");
+          }}
           type="button"
         >
           <CopyPlus aria-hidden="true" />
           Fork
         </button>
       </div>
-      <span
-        className={`save-status${statusTone === "error" ? " error" : ""}`}
-        role="status"
-      >
-        {status}
-      </span>
-    </>
-  );
-
-  if (mode === "inline") {
-    return (
-      <div className="save-fork-controls inline">
-        {controlsBody}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="save-fork-controls"
-      onKeyDown={(event) => {
-        if (event.key === "Escape") {
-          setIsMenuOpen(false);
-        }
-      }}
-    >
-      <button
-        aria-controls={isMenuOpen ? menuId : undefined}
-        aria-expanded={isMenuOpen}
-        aria-label="Version actions"
-        className="version-menu-trigger"
-        onClick={() => setIsMenuOpen((current) => !current)}
-        type="button"
-      >
-        <CopyPlus aria-hidden="true" />
-        Fork
-        <ChevronDown aria-hidden="true" />
-      </button>
-      <span className={`save-status-indicator${statusTone === "error" ? " error" : ""}`}>
-        {statusTone === "error" ? "Sync issue" : isSaving ? "Saving" : "Ready"}
-      </span>
-      {isMenuOpen ? (
-        <div className="version-menu" id={menuId} role="dialog" aria-label="Version actions">
-          {controlsBody}
-        </div>
+      {status ? (
+        <span
+          className={`save-status${statusTone === "error" ? " error" : ""}`}
+          role="status"
+        >
+          {status}
+        </span>
+      ) : null}
+      {pendingSource ? (
+        <>
+          <div
+            aria-hidden="true"
+            className="version-modal-backdrop"
+            onMouseDown={() => {
+              if (!isSaving) {
+                setPendingSource(null);
+              }
+            }}
+          />
+          <form
+            aria-label={modalTitle}
+            aria-modal="true"
+            className="version-modal"
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !isSaving) {
+                setPendingSource(null);
+              }
+            }}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveCurrent(pendingSource);
+            }}
+            role="dialog"
+          >
+            <div className="version-modal-heading">
+              <strong>{modalTitle}</strong>
+              <span>{currentModel.name}</span>
+            </div>
+            <label className="version-field">
+              <span>Name</span>
+              <input
+                aria-label="Version name"
+                autoFocus
+                className="version-name-input"
+                onChange={(event) => setTitle(event.currentTarget.value)}
+                placeholder={defaultTitle(currentModel.name)}
+                type="text"
+                value={title}
+              />
+            </label>
+            {status && (isSaving || statusTone === "error") ? (
+              <span
+                className={`save-status${statusTone === "error" ? " error" : ""}`}
+                role="status"
+              >
+                {status}
+              </span>
+            ) : null}
+            <div className="version-modal-actions">
+              <button
+                disabled={isSaving}
+                onClick={() => setPendingSource(null)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="primary-action"
+                disabled={isSaving}
+                type="submit"
+              >
+                {pendingSource === "fork" ? "Fork version" : "Save version"}
+              </button>
+            </div>
+          </form>
+        </>
       ) : null}
     </div>
   );

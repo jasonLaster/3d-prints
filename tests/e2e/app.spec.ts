@@ -166,7 +166,7 @@ test.describe("3D print app", () => {
     await holderHeight.blur();
 
     await expect(holderHeight).toHaveValue("30.00");
-    await expect(page).toHaveURL(/height=300/);
+    await expect(page).toHaveURL(/height=30/);
     await expect(page.getByTestId("viewer-status")).toContainText("Holder height 30.00 cm");
   });
 
@@ -220,7 +220,7 @@ test.describe("3D print app", () => {
     await floorThickness.blur();
 
     await expect(floorThickness).toHaveValue("1/8");
-    await expect(page).toHaveURL(/floorThickness=3\.2/);
+    await expect(page).toHaveURL(/floorThickness=0\.126/);
     await expect(page.getByTestId("viewer-status")).toContainText("Floor 1/8 in");
   });
 
@@ -258,6 +258,31 @@ test.describe("3D print app", () => {
     await expect(page.getByTestId("viewer-status")).toContainText("L 8 in");
     await expect(page.getByTestId("viewer-status")).toContainText("Floor 1/8 in");
     await expect(page).toHaveURL(/theme=dark/);
+    await expect(page).toHaveURL(/length=8/);
+    await expect(page).toHaveURL(/width=4/);
+    await expect(page).toHaveURL(/floorThickness=0\.125/);
+  });
+
+  test("normalizes legacy millimeter tray links when centimeters are selected", async ({
+    page,
+  }) => {
+    await openReady(
+      page,
+      "/?model=japandi-tray&unit=cm&theme=dark&length=141&width=300&height=44&floorThickness=4.9&ribRelief=1",
+    );
+
+    await expect(page.getByLabel("Tray length in centimeters")).toHaveValue("14.10");
+    await expect(page.getByLabel("Tray width in centimeters")).toHaveValue("30.00");
+    await expect(page.getByLabel("Wall height in centimeters")).toHaveValue("4.40");
+    await expect(page.getByLabel("Floor thickness in centimeters")).toHaveValue("0.49");
+    await expect(page.getByLabel("Rib relief in centimeters")).toHaveValue("0.10");
+    await expect(page.getByTestId("viewer-status")).toContainText("L 14.10 cm");
+    await expect(page.getByTestId("viewer-status")).toContainText("W 30.00 cm");
+    await expect(page).toHaveURL(/length=14\.1/);
+    await expect(page).toHaveURL(/width=30/);
+    await expect(page).toHaveURL(/height=4\.4/);
+    await expect(page).toHaveURL(/floorThickness=0\.49/);
+    await expect(page).toHaveURL(/ribRelief=0\.1/);
   });
 
   test("toggles dark theme and records the preference in the URL", async ({ page }) => {
@@ -305,15 +330,18 @@ test.describe("3D print app", () => {
       await trayLength.fill("200");
       await trayLength.blur();
       await expect(trayLength).toHaveValue("200.0");
-      await openActions(page);
-      await page.getByRole("button", { name: "Reset" }).click();
+      await page.getByRole("button", { name: "Reset parameters" }).click();
       await expect(trayLength).toHaveValue("166.6");
+
+      await openActions(page);
       await expect(page.getByRole("button", { name: "Export" })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog", { name: "Workspace actions" })).toBeHidden();
 
       for (const label of [
         "Zoom in",
         "Zoom out",
-        "Frame",
+        "Center view",
         "Top view",
         "Align X edge to view",
         "Align Y edge to view",

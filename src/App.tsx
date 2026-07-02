@@ -1,5 +1,4 @@
 import {
-  Box,
   ChevronDown,
   ChevronRight,
   Clock3,
@@ -11,6 +10,8 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
   RotateCcw,
   Search,
   SlidersHorizontal,
@@ -207,6 +208,7 @@ const SIDEBAR_WIDTH_KEY = "3d-prints:sidebar-width";
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 620;
 const SIDEBAR_DEFAULT_WIDTH = 390;
+const INSPECTOR_COLLAPSED_WIDTH = 52;
 const LIBRARY_SIDEBAR_WIDTH_KEY = "3d-prints:library-sidebar-width";
 const LIBRARY_SIDEBAR_MIN_WIDTH = 240;
 const LIBRARY_SIDEBAR_MAX_WIDTH = 460;
@@ -425,9 +427,32 @@ function getDefaultParams(model: ModelDefinition): ModelParams {
   );
 }
 
+function parseUrlParam(
+  rawValue: string,
+  unit: LengthUnit,
+  parameter: ModelParameter,
+) {
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  if (unit === "mm") {
+    return parsed;
+  }
+
+  const displayMax = toUnit(parameter.limits.max, unit);
+  const looksLikeLegacyMillimeters =
+    parsed > displayMax && parsed <= parameter.limits.max;
+
+  return looksLikeLegacyMillimeters ? parsed : fromUnit(parsed, unit);
+}
+
 function getParamsFromUrl(model: ModelDefinition) {
   const searchParams = new URLSearchParams(window.location.search);
   const params = getDefaultParams(model);
+  const requestedUnit = searchParams.get("unit");
+  const unit = isLengthUnit(requestedUnit) ? requestedUnit : "mm";
 
   if (searchParams.get("model") !== model.id) {
     return params;
@@ -438,8 +463,8 @@ function getParamsFromUrl(model: ModelDefinition) {
     if (value === null) {
       continue;
     }
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) {
+    const parsed = parseUrlParam(value, unit, parameter);
+    if (parsed !== null) {
       params[parameter.key] = clamp(
         parsed,
         parameter.limits.min,
@@ -449,6 +474,11 @@ function getParamsFromUrl(model: ModelDefinition) {
   }
 
   return params;
+}
+
+function serializeUrlParam(valueMm: number, unit: LengthUnit) {
+  const value = unit === "mm" ? valueMm : toUnit(valueMm, unit);
+  return Number(value.toFixed(4)).toString();
 }
 
 function writeUrlState({
@@ -473,7 +503,7 @@ function writeUrlState({
 
   for (const [key, value] of Object.entries(params)) {
     if (Number.isFinite(value)) {
-      url.searchParams.set(key, Number(value.toFixed(3)).toString());
+      url.searchParams.set(key, serializeUrlParam(value, unit));
     }
   }
 
@@ -1089,9 +1119,19 @@ const HolderViewer = forwardRef<
     showOriginal: boolean;
     theme: ThemeMode;
     unit: LengthUnit;
+    onResetParams: () => void;
   }
 >(function HolderViewer(
-  { model, params, coreViewMode, renderMode, showOriginal, theme, unit },
+  {
+    model,
+    params,
+    coreViewMode,
+    renderMode,
+    showOriginal,
+    theme,
+    unit,
+    onResetParams,
+  },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -1112,7 +1152,9 @@ const HolderViewer = forwardRef<
   const latestCoreViewModeRef = useRef(coreViewMode);
   const latestRenderModeRef = useRef(renderMode);
   const latestShowOriginalRef = useRef(showOriginal);
-  const [activeViewPreset, setActiveViewPreset] = useState<ViewPreset>("iso");
+  const [activeViewPreset, setActiveViewPreset] = useState<ViewPreset | null>(
+    "iso",
+  );
   const [cubeTransform, setCubeTransform] = useState(
     "rotateX(-28deg) rotateY(34deg)",
   );
@@ -1197,6 +1239,7 @@ const HolderViewer = forwardRef<
     offset.setLength(nextDistance);
     camera.position.copy(controls.target).add(offset);
     camera.updateProjectionMatrix();
+    setActiveViewPreset(null);
     controls.update();
   }, []);
 
@@ -1353,7 +1396,9 @@ const HolderViewer = forwardRef<
     controls.maxDistance = 1400;
     controlsRef.current = controls;
     const handleControlChange = () => updateCubeOrientation();
+    const handleControlStart = () => setActiveViewPreset(null);
     controls.addEventListener("change", handleControlChange);
+    controls.addEventListener("start", handleControlStart);
 
     scene.add(new THREE.HemisphereLight("#ffffff", "#aeb7c4", 2.1));
     const keyLight = new THREE.DirectionalLight("#ffffff", 2.4);
@@ -1531,6 +1576,7 @@ const HolderViewer = forwardRef<
       }
       resizeObserver.disconnect();
       controls.removeEventListener("change", handleControlChange);
+      controls.removeEventListener("start", handleControlStart);
       controls.dispose();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {
@@ -1582,6 +1628,14 @@ const HolderViewer = forwardRef<
             type="button"
           >
             <Focus aria-hidden="true" />
+          </button>
+          <button
+            aria-label="Reset parameters"
+            onClick={onResetParams}
+            title="Reset parameters"
+            type="button"
+          >
+            <RotateCcw aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -2142,8 +2196,6 @@ function WorkspaceActionsMenu({
   unit,
   onCreateStlBlob,
   onExport,
-  onFrame,
-  onReset,
   onSavedVersion,
   onThemeChange,
 }: {
@@ -2156,8 +2208,6 @@ function WorkspaceActionsMenu({
   unit: LengthUnit;
   onCreateStlBlob: () => Blob | null;
   onExport: () => void;
-  onFrame: () => void;
-  onReset: () => void;
   onSavedVersion: (versionId: Id<"versions">, title: string) => void;
   onThemeChange: (theme: ThemeMode) => void;
 }) {
@@ -2178,59 +2228,61 @@ function WorkspaceActionsMenu({
         aria-label="Workspace actions"
         className="workspace-actions-trigger"
         onClick={() => setIsOpen((current) => !current)}
+        title="Workspace actions"
         type="button"
       >
         <MoreHorizontal aria-hidden="true" />
-        Actions
         <ChevronDown aria-hidden="true" />
       </button>
       {isOpen ? (
-        <div
-          aria-label="Workspace actions"
-          className="workspace-actions-menu"
-          role="dialog"
-        >
-          {convexEnabled ? (
-            <SaveForkControls
-              activeVersionId={activeVersionId}
-              currentModel={{ id: model.id, name: model.name }}
-              exportFileName={exportFileName}
-              mode="inline"
-              onCreateStlBlob={onCreateStlBlob}
-              onSavedVersion={onSavedVersion}
-              params={params}
-              theme={theme}
-              unit={unit}
-            />
-          ) : (
-            <LibraryUnavailableMessage>
-              Library sync is unavailable here. You can still edit, frame, reset,
-              and export; Save/Fork return when Convex reconnects.
-            </LibraryUnavailableMessage>
-          )}
-          <div className="workspace-menu-actions">
-            <button
-              aria-label={isDark ? "Use light theme" : "Use dark theme"}
-              onClick={() => onThemeChange(isDark ? "light" : "dark")}
-              type="button"
-            >
-              {isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
-              {isDark ? "Light theme" : "Dark theme"}
-            </button>
-            <button onClick={onFrame} type="button">
-              <Focus aria-hidden="true" />
-              Frame
-            </button>
-            <button onClick={onReset} type="button">
-              <RotateCcw aria-hidden="true" />
-              Reset
-            </button>
-            <button className="primary-action" onClick={onExport} type="button">
-              <Download aria-hidden="true" />
-              Export
-            </button>
+        <>
+          <div
+            aria-hidden="true"
+            className="workspace-actions-mask"
+            onMouseDown={() => setIsOpen(false)}
+          />
+          <div
+            aria-label="Workspace actions"
+            className="workspace-actions-menu"
+            role="dialog"
+          >
+            <div className="workspace-menu-group">
+              {convexEnabled ? (
+                <SaveForkControls
+                  activeVersionId={activeVersionId}
+                  currentModel={{ id: model.id, name: model.name }}
+                  exportFileName={exportFileName}
+                  onCreateStlBlob={onCreateStlBlob}
+                  onSavedVersion={onSavedVersion}
+                  params={params}
+                  theme={theme}
+                  unit={unit}
+                />
+              ) : (
+                <LibraryUnavailableMessage>
+                  Library sync is unavailable here. You can still edit and export;
+                  Save/Fork return when Convex reconnects.
+                </LibraryUnavailableMessage>
+              )}
+            </div>
+            <div className="workspace-menu-group">
+              <button
+                aria-label={isDark ? "Use light theme" : "Use dark theme"}
+                onClick={() => onThemeChange(isDark ? "light" : "dark")}
+                type="button"
+              >
+                {isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+                {isDark ? "Light theme" : "Dark theme"}
+              </button>
+            </div>
+            <div className="workspace-menu-group">
+              <button className="primary-action" onClick={onExport} type="button">
+                <Download aria-hidden="true" />
+                Export
+              </button>
+            </div>
           </div>
-        </div>
+        </>
       ) : null}
     </div>
   );
@@ -2247,8 +2299,6 @@ function WorkspaceHeader({
   unit,
   onCreateStlBlob,
   onExport,
-  onFrame,
-  onReset,
   onSavedVersion,
   onThemeChange,
 }: {
@@ -2262,8 +2312,6 @@ function WorkspaceHeader({
   unit: LengthUnit;
   onCreateStlBlob: () => Blob | null;
   onExport: () => void;
-  onFrame: () => void;
-  onReset: () => void;
   onSavedVersion: (versionId: Id<"versions">, title: string) => void;
   onThemeChange: (theme: ThemeMode) => void;
 }) {
@@ -2286,8 +2334,6 @@ function WorkspaceHeader({
           model={model}
           onCreateStlBlob={onCreateStlBlob}
           onExport={onExport}
-          onFrame={onFrame}
-          onReset={onReset}
           onSavedVersion={onSavedVersion}
           onThemeChange={onThemeChange}
           params={params}
@@ -2321,6 +2367,7 @@ export default function App({
   );
   const [isLibrarySidebarCollapsed, setIsLibrarySidebarCollapsed] =
     useState(false);
+  const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(false);
   const [coreViewMode, setCoreViewMode] = useState<CoreViewMode>("surface");
   const [renderMode, setRenderMode] = useState<RenderMode>("solid");
   const [showOriginal, setShowOriginal] = useState(false);
@@ -2551,7 +2598,7 @@ export default function App({
     }
     for (const [key, value] of Object.entries(version.params)) {
       if (Number.isFinite(value)) {
-        url.searchParams.set(key, Number(value.toFixed(3)).toString());
+        url.searchParams.set(key, serializeUrlParam(value, version.unit));
       }
     }
     window.history.replaceState(null, "", url);
@@ -2666,6 +2713,9 @@ export default function App({
       style={
         {
           "--inspector-width": `${inspectorWidth}px`,
+          "--inspector-panel-width": `${
+            isInspectorCollapsed ? INSPECTOR_COLLAPSED_WIDTH : inspectorWidth
+          }px`,
           "--library-sidebar-width": `${
             isLibrarySidebarCollapsed
               ? LIBRARY_SIDEBAR_COLLAPSED_WIDTH
@@ -2682,8 +2732,6 @@ export default function App({
         model={model}
         onCreateStlBlob={() => viewerRef.current?.getStlBlob() ?? null}
         onExport={() => viewerRef.current?.exportStl()}
-        onFrame={() => viewerRef.current?.resetCamera()}
-        onReset={resetParams}
         onSavedVersion={handleSavedVersion}
         onThemeChange={updateTheme}
         params={params}
@@ -2742,6 +2790,7 @@ export default function App({
             coreViewMode={coreViewMode}
             key={model.id}
             model={model}
+            onResetParams={resetParams}
             params={params}
             ref={viewerRef}
             renderMode={renderMode}
@@ -2751,39 +2800,65 @@ export default function App({
           />
         </section>
 
-        <div
-          aria-label="Resize inspector"
-          aria-orientation="vertical"
-          aria-valuemax={SIDEBAR_MAX_WIDTH}
-          aria-valuemin={SIDEBAR_MIN_WIDTH}
-          aria-valuenow={inspectorWidth}
-          className="sidebar-resizer inspector-resizer"
-          onKeyDown={(event) => {
-            if (event.key === "ArrowLeft") {
-              event.preventDefault();
-              resizeSidebarBy(20);
-            } else if (event.key === "ArrowRight") {
-              event.preventDefault();
-              resizeSidebarBy(-20);
-            } else if (event.key === "Home") {
-              event.preventDefault();
-              setInspectorWidth(SIDEBAR_MAX_WIDTH);
-            } else if (event.key === "End") {
-              event.preventDefault();
-              setInspectorWidth(SIDEBAR_MIN_WIDTH);
-            }
-          }}
-          onPointerDown={startSidebarResize}
-          role="separator"
-          tabIndex={0}
-        />
+        {!isInspectorCollapsed ? (
+          <div
+            aria-label="Resize inspector"
+            aria-orientation="vertical"
+            aria-valuemax={SIDEBAR_MAX_WIDTH}
+            aria-valuemin={SIDEBAR_MIN_WIDTH}
+            aria-valuenow={inspectorWidth}
+            className="sidebar-resizer inspector-resizer"
+            onKeyDown={(event) => {
+              if (event.key === "ArrowLeft") {
+                event.preventDefault();
+                resizeSidebarBy(20);
+              } else if (event.key === "ArrowRight") {
+                event.preventDefault();
+                resizeSidebarBy(-20);
+              } else if (event.key === "Home") {
+                event.preventDefault();
+                setInspectorWidth(SIDEBAR_MAX_WIDTH);
+              } else if (event.key === "End") {
+                event.preventDefault();
+                setInspectorWidth(SIDEBAR_MIN_WIDTH);
+              }
+            }}
+            onPointerDown={startSidebarResize}
+            role="separator"
+            tabIndex={0}
+          />
+        ) : null}
 
-        <aside className="inspector" aria-label="Parameters and audit">
+        <aside
+          className={`inspector${isInspectorCollapsed ? " collapsed" : ""}`}
+          aria-label="Parameters and audit"
+        >
+          {isInspectorCollapsed ? (
+            <button
+              aria-label="Expand inspector"
+              className="inspector-collapse-button"
+              onClick={() => setIsInspectorCollapsed(false)}
+              title="Expand inspector"
+              type="button"
+            >
+              <PanelRightOpen aria-hidden="true" />
+            </button>
+          ) : (
+            <>
           <header className="inspector-header">
             <div>
               <p>Model controls</p>
               <h2>Inspector</h2>
             </div>
+            <button
+              aria-label="Collapse inspector"
+              className="inspector-collapse-button"
+              onClick={() => setIsInspectorCollapsed(true)}
+              title="Collapse inspector"
+              type="button"
+            >
+              <PanelRightClose aria-hidden="true" />
+            </button>
           </header>
 
           <div className="inspector-body">
@@ -2831,6 +2906,8 @@ export default function App({
               <AuditList items={auditItems} />
             </section>
           </div>
+            </>
+          )}
         </aside>
       </div>
     </main>

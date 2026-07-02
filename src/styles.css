@@ -101,7 +101,8 @@ button:disabled {
   display: grid;
   grid-template-columns:
     var(--library-sidebar-width, 320px) 6px minmax(0, 1fr) 6px
-    var(--inspector-width, 390px);
+    var(--inspector-panel-width, var(--inspector-width, 390px));
+  grid-template-areas: "library library-resizer scene inspector-resizer inspector";
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -109,6 +110,7 @@ button:disabled {
 }
 
 .scene-panel {
+  grid-area: scene;
   min-width: 0;
   min-height: 0;
   background: var(--scene-bg);
@@ -123,6 +125,7 @@ button:disabled {
 }
 
 .workspace-library-sidebar {
+  grid-area: library;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -143,7 +146,8 @@ button:disabled {
 }
 
 .workspace-library-sidebar.collapsed button,
-.library-collapse-button {
+.library-collapse-button,
+.inspector-collapse-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -158,7 +162,9 @@ button:disabled {
 .workspace-library-sidebar.collapsed button:hover,
 .workspace-library-sidebar.collapsed button:focus-visible,
 .library-collapse-button:hover,
-.library-collapse-button:focus-visible {
+.library-collapse-button:focus-visible,
+.inspector-collapse-button:hover,
+.inspector-collapse-button:focus-visible {
   border-color: var(--border-strong);
   background: var(--panel-muted);
   color: var(--foreground);
@@ -184,6 +190,7 @@ html.dark .inspector {
 .workspace-library-nav svg,
 .workspace-library-search svg,
 .library-collapse-button svg,
+.inspector-collapse-button svg,
 .workspace-library-sidebar.collapsed svg,
 .workspace-version-icon svg,
 .workspace-version-row > svg {
@@ -559,7 +566,7 @@ html.dark .model-preview.holder span {
 
 .save-fork-controls button,
 .workspace-actions-trigger,
-.workspace-menu-actions button {
+.workspace-menu-group button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -580,33 +587,23 @@ html.dark .model-preview.holder span {
 .save-fork-controls button:focus-visible,
 .workspace-actions-trigger:hover,
 .workspace-actions-trigger:focus-visible,
-.workspace-menu-actions button:hover,
-.workspace-menu-actions button:focus-visible {
+.workspace-menu-group button:hover,
+.workspace-menu-group button:focus-visible {
   background: var(--panel-muted);
   outline: 0;
 }
 
 .save-fork-controls svg,
 .workspace-actions-trigger svg,
-.workspace-menu-actions svg {
+.workspace-menu-group svg {
   width: 15px;
   height: 15px;
 }
 
 .save-fork-controls {
   position: relative;
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 7px;
-}
-
-.save-fork-controls.inline {
   display: grid;
-  gap: 12px;
-  align-items: stretch;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
+  gap: 8px;
 }
 
 .save-fork-controls button:disabled {
@@ -614,71 +611,46 @@ html.dark .model-preview.holder span {
   opacity: 0.62;
 }
 
-.version-menu-trigger {
-  min-width: 92px;
-}
-
-.version-menu-trigger svg:last-child {
-  width: 13px;
-  height: 13px;
-  color: var(--muted);
-}
-
-.save-status-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  color: var(--muted-strong);
-  font-size: 12px;
-  font-weight: 760;
-  white-space: nowrap;
-}
-
-.save-status-indicator::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--success);
-}
-
-.save-status-indicator.error {
-  color: var(--danger);
-}
-
-.save-status-indicator.error::before {
-  background: var(--danger);
-}
-
-.version-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 40;
+.version-command-group {
   display: grid;
-  gap: 12px;
+  gap: 8px;
+}
+
+.version-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(2, 6, 12, 0.46);
+}
+
+.version-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 90;
+  display: grid;
   width: min(360px, calc(100vw - 32px));
-  padding: 12px;
+  gap: 14px;
+  padding: 14px;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   background: var(--surface-popover);
-  box-shadow: 0 22px 60px var(--shadow-strong);
+  box-shadow: 0 28px 80px var(--shadow-strong);
+  transform: translate(-50%, -50%);
 }
 
-.version-menu-heading {
+.version-modal-heading {
   display: grid;
   gap: 3px;
-  min-width: 0;
 }
 
-.version-menu-heading strong {
+.version-modal-heading strong {
   color: var(--foreground);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.2;
 }
 
-.version-menu-heading span {
+.version-modal-heading span {
   overflow: hidden;
   color: var(--muted);
   font-size: 12px;
@@ -715,7 +687,7 @@ html.dark .model-preview.holder span {
   color: var(--muted);
 }
 
-.version-menu-actions {
+.version-modal-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -726,17 +698,34 @@ html.dark .model-preview.holder span {
 }
 
 .workspace-actions-trigger {
-  min-width: 112px;
+  position: relative;
+  z-index: 61;
+  width: 42px;
+  min-width: 42px;
+  padding: 0 8px;
+}
+
+.workspace-actions-trigger svg:last-child {
+  width: 12px;
+  height: 12px;
+  color: var(--muted);
+}
+
+.workspace-actions-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: transparent;
 }
 
 .workspace-actions-menu {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  z-index: 50;
+  z-index: 60;
   display: grid;
-  gap: 12px;
-  width: min(360px, calc(100vw - 32px));
+  gap: 8px;
+  width: min(286px, calc(100vw - 32px));
   padding: 12px;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
@@ -744,20 +733,33 @@ html.dark .model-preview.holder span {
   box-shadow: 0 22px 60px var(--shadow-strong);
 }
 
-.workspace-menu-actions {
+.workspace-menu-group {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
-.workspace-menu-actions .primary-action {
+.workspace-menu-group + .workspace-menu-group {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.workspace-menu-group button {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.workspace-menu-group .primary-action,
+.version-modal-actions .primary-action {
+  justify-content: center;
   border-color: var(--accent);
   background: var(--accent);
   color: var(--accent-foreground);
 }
 
-.workspace-menu-actions .primary-action:hover,
-.workspace-menu-actions .primary-action:focus-visible {
+.workspace-menu-group .primary-action:hover,
+.workspace-menu-group .primary-action:focus-visible,
+.version-modal-actions .primary-action:hover,
+.version-modal-actions .primary-action:focus-visible {
   border-color: var(--accent);
   background: #1d4ed8;
   color: var(--accent-foreground);
@@ -1061,10 +1063,12 @@ html.dark .orientation-cube-control {
 }
 
 .library-resizer {
+  grid-area: library-resizer;
   border-right-color: var(--border);
 }
 
 .inspector-resizer {
+  grid-area: inspector-resizer;
   border-left-color: var(--border);
 }
 
@@ -1082,15 +1086,21 @@ html.dark .orientation-cube-control {
 }
 
 .inspector {
+  grid-area: inspector;
   display: flex;
   flex-direction: column;
-  width: var(--inspector-width, 390px);
+  width: var(--inspector-panel-width, var(--inspector-width, 390px));
   height: 100%;
   min-height: 0;
   overflow: hidden;
   border-left: 1px solid var(--border);
   background: var(--panel);
   color: var(--foreground);
+}
+
+.inspector.collapsed {
+  align-items: center;
+  padding: 12px 8px;
 }
 
 .inspector-body {
@@ -1411,6 +1421,7 @@ html.dark .segmented-control button.active {
 }
 
 .loading-panel {
+  grid-area: 1 / 1 / -1 / -1;
   display: grid;
   min-height: 100vh;
   place-items: center;
@@ -1522,16 +1533,6 @@ html.dark .segmented-control button.active {
   .save-fork-controls {
     width: 100%;
     flex-wrap: wrap;
-  }
-
-  .version-menu {
-    right: auto;
-    left: 0;
-    width: min(360px, calc(100vw - 32px));
-  }
-
-  .save-status-indicator {
-    min-height: 34px;
   }
 
   .scene-panel,
