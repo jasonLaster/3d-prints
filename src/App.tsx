@@ -201,6 +201,14 @@ const SIDEBAR_WIDTH_KEY = "3d-prints:sidebar-width";
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 620;
 const SIDEBAR_DEFAULT_WIDTH = 390;
+const SCENE_BACKGROUND = {
+  light: "#f7f8fb",
+  dark: "#090c11",
+} satisfies Record<ThemeMode, string>;
+const SCENE_GRID_COLORS = {
+  light: { center: "#c7ced8", grid: "#e2e6ec" },
+  dark: { center: "#526073", grid: "#222a36" },
+} satisfies Record<ThemeMode, { center: string; grid: string }>;
 
 const UNIT_OPTIONS: Record<
   LengthUnit,
@@ -1296,9 +1304,7 @@ const HolderViewer = forwardRef<
 
   useEffect(() => {
     if (sceneRef.current) {
-      sceneRef.current.background = new THREE.Color(
-        theme === "dark" ? "#0f1117" : "#f7f8fb",
-      );
+      sceneRef.current.background = new THREE.Color(SCENE_BACKGROUND[theme]);
     }
   }, [theme]);
 
@@ -1309,7 +1315,7 @@ const HolderViewer = forwardRef<
     }
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(theme === "dark" ? "#0f1117" : "#f7f8fb");
+    scene.background = new THREE.Color(SCENE_BACKGROUND[theme]);
     sceneRef.current = scene;
 
     const renderer = new THREE.WebGLRenderer({
@@ -1347,7 +1353,13 @@ const HolderViewer = forwardRef<
       initialDimensions.width * 1.8,
       260,
     );
-    const grid = new THREE.GridHelper(gridSize, 26, "#c7ced8", "#e2e6ec");
+    const gridColors = SCENE_GRID_COLORS[theme];
+    const grid = new THREE.GridHelper(
+      gridSize,
+      26,
+      gridColors.center,
+      gridColors.grid,
+    );
     grid.rotation.x = Math.PI / 2;
     grid.position.z = -0.2;
     scene.add(grid);
@@ -1401,7 +1413,12 @@ const HolderViewer = forwardRef<
         mainBaseRef.current = normalizedMain.basePositions;
 
         const mainMaterial = new THREE.MeshStandardMaterial({
-          color: model.viewer === "japandi-tray-v1" ? "#d8dee9" : "#111318",
+          color:
+            model.viewer === "japandi-tray-v1"
+              ? "#d8dee9"
+              : theme === "dark"
+                ? "#202734"
+                : "#111318",
           roughness: 0.78,
           metalness: 0.08,
           side: THREE.DoubleSide,
