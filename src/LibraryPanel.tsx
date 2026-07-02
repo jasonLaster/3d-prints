@@ -9,7 +9,13 @@ import {
   Save,
   Search,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  Component,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 
@@ -68,6 +74,15 @@ type LibraryDashboardProps = {
   catalogModels: CatalogSeedModel[];
   onOpenModel: (modelId: string) => void;
   onOpenVersion: (version: SavedLibraryVersion) => void;
+};
+
+type LibraryDashboardErrorBoundaryProps = {
+  children: ReactNode;
+  fallback: ReactNode;
+};
+
+type LibraryDashboardErrorBoundaryState = {
+  hasError: boolean;
 };
 
 function formatDate(timestamp: number) {
@@ -213,12 +228,33 @@ export function DashboardModelCard({
   );
 }
 
+class LibraryDashboardErrorBoundary extends Component<
+  LibraryDashboardErrorBoundaryProps,
+  LibraryDashboardErrorBoundaryState
+> {
+  state: LibraryDashboardErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("Unable to render Convex library dashboard.", error);
+  }
+
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
+}
+
 function useCatalogSeed(catalogModels: CatalogSeedModel[]) {
   const upsertCatalogModels = useMutation(api.library.upsertCatalogModels);
 
   useEffect(() => {
     if (catalogModels.length > 0) {
-      void upsertCatalogModels({ models: catalogModels });
+      void upsertCatalogModels({ models: catalogModels }).catch((error) => {
+        console.error("Unable to seed catalog models.", error);
+      });
     }
   }, [catalogModels, upsertCatalogModels]);
 }
@@ -344,7 +380,74 @@ export function SaveForkControls({
   );
 }
 
-export function LibraryDashboard({
+function LibraryFallbackDashboard({
+  actions,
+  catalogModels,
+  onOpenModel,
+}: {
+  actions?: ReactNode;
+  catalogModels: CatalogSeedModel[];
+  onOpenModel: (modelId: string) => void;
+}) {
+  const [modelQuery, setModelQuery] = useState("");
+  const filteredModels = useMemo(
+    () => filterDashboardModels(catalogModels, modelQuery),
+    [catalogModels, modelQuery],
+  );
+
+  return (
+    <main className="dashboard-shell">
+      <DashboardSidebar
+        modelCount={catalogModels.length}
+        versionCount="Offline"
+      />
+
+      <section className="dashboard-main">
+        <header className="dashboard-header">
+          <div>
+            <p>3D Prints</p>
+            <h1>Model Library</h1>
+          </div>
+          {actions ? <div className="dashboard-actions">{actions}</div> : null}
+        </header>
+
+        <section className="dashboard-section" aria-labelledby="dashboard-models">
+          <div className="dashboard-section-heading">
+            <h2 id="dashboard-models">Models</h2>
+            <span>{catalogModels.length} available</span>
+          </div>
+          <DashboardToolbar
+            count={filteredModels.length}
+            onQueryChange={setModelQuery}
+            query={modelQuery}
+            total={catalogModels.length}
+          />
+          <div className="dashboard-grid">
+            {filteredModels.map((model) => (
+              <DashboardModelCard
+                key={model.key}
+                model={model}
+                onOpenModel={onOpenModel}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="dashboard-section" aria-labelledby="dashboard-forks">
+          <div className="dashboard-section-heading">
+            <h2 id="dashboard-forks">Saved Versions And Forks</h2>
+            <span>Persistence offline</span>
+          </div>
+          <div className="dashboard-list">
+            <LibraryUnavailableMessage />
+          </div>
+        </section>
+      </section>
+    </main>
+  );
+}
+
+function ConnectedLibraryDashboard({
   actions,
   catalogModels,
   onOpenModel,
@@ -448,5 +551,21 @@ export function LibraryDashboard({
         </section>
       </section>
     </main>
+  );
+}
+
+export function LibraryDashboard(props: LibraryDashboardProps) {
+  return (
+    <LibraryDashboardErrorBoundary
+      fallback={
+        <LibraryFallbackDashboard
+          actions={props.actions}
+          catalogModels={props.catalogModels}
+          onOpenModel={props.onOpenModel}
+        />
+      }
+    >
+      <ConnectedLibraryDashboard {...props} />
+    </LibraryDashboardErrorBoundary>
   );
 }

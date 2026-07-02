@@ -147,7 +147,7 @@ export const listLibrary = query({
           ...model,
           stlUrl: model.stlStorageId
             ? await ctx.storage.getUrl(model.stlStorageId)
-            : model.publicStlUrl,
+            : (model.publicStlUrl ?? null),
         })),
       ),
       versions: await Promise.all(
