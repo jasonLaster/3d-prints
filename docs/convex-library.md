@@ -41,10 +41,10 @@ npm run build:vercel
 That script runs:
 
 ```bash
-npx convex deploy --cmd 'npm run build:app' --cmd-url-env-var-name VITE_CONVEX_URL
+npx convex deploy --cmd 'VITE_DISABLE_CONVEX=true npm run build:app' --cmd-url-env-var-name VITE_CONVEX_URL
 ```
 
-Convex deploys the backend first, then injects the deployment URL into the Vite build as `VITE_CONVEX_URL`. Production can temporarily force static library mode with `VITE_DISABLE_CONVEX=true` when the hosted Convex deployment is unavailable.
+Convex deploys the backend first, then injects the deployment URL into the Vite build as `VITE_CONVEX_URL`. Production currently forces static library mode with `VITE_DISABLE_CONVEX=true` because the hosted Convex deployment is unavailable.
 
 ## Audit Points
 

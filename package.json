@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "npm run build:app",
     "build:app": "tsc && vite build",
-    "build:vercel": "npx convex deploy --cmd 'npm run build:app' --cmd-url-env-var-name VITE_CONVEX_URL",
+    "build:vercel": "npx convex deploy --cmd 'VITE_DISABLE_CONVEX=true npm run build:app' --cmd-url-env-var-name VITE_CONVEX_URL",
     "preview": "vite preview --host 127.0.0.1",
     "audit": "node scripts/audit-model.mjs",
     "test:e2e": "playwright test",
