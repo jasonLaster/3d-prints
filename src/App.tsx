@@ -3,16 +3,26 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  Box,
+  Check,
+  ChevronRight,
+  Clock3,
   Download,
   Focus,
+  GitFork,
   LayoutDashboard,
+  Layers3,
   Moon,
   RotateCcw,
+  Search,
+  SlidersHorizontal,
   Sun,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import { useConvexConnectionState, useQuery } from "convex/react";
 import {
+  Component,
   forwardRef,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
@@ -28,6 +38,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
+import { api } from "../convex/_generated/api";
 import {
   DashboardModelCard,
   DashboardSidebar,
@@ -1304,9 +1315,18 @@ const HolderViewer = forwardRef<
 
   useEffect(() => {
     if (sceneRef.current) {
-      sceneRef.current.background = new THREE.Color(SCENE_BACKGROUND[theme]);
+      sceneRef.current.background =
+        theme === "dark" ? null : new THREE.Color(SCENE_BACKGROUND[theme]);
     }
-  }, [theme]);
+    if (rendererRef.current) {
+      rendererRef.current.setClearAlpha(theme === "dark" ? 0 : 1);
+    }
+    const mainMaterial = mainMaterialRef.current;
+    if (mainMaterial && model.viewer !== "japandi-tray-v1") {
+      mainMaterial.color.set(theme === "dark" ? "#202734" : "#111318");
+      mainMaterial.needsUpdate = true;
+    }
+  }, [model.viewer, theme]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -1315,14 +1335,16 @@ const HolderViewer = forwardRef<
     }
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(SCENE_BACKGROUND[theme]);
+    scene.background =
+      theme === "dark" ? null : new THREE.Color(SCENE_BACKGROUND[theme]);
     sceneRef.current = scene;
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
-      alpha: false,
+      alpha: true,
       powerPreference: "high-performance",
     });
+    renderer.setClearAlpha(theme === "dark" ? 0 : 1);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     rendererRef.current = renderer;
@@ -1533,6 +1555,7 @@ const HolderViewer = forwardRef<
 
   return (
     <div className="viewer" ref={containerRef}>
+      <div className="viewer-backdrop" aria-hidden="true" />
       <div className="viewer-status" data-testid="viewer-status">
         {getStatusItems(model, params, unit).map((item) => (
           <span key={item}>{item}</span>
@@ -1540,7 +1563,23 @@ const HolderViewer = forwardRef<
         <span>{RENDER_MODE_LABELS[renderMode]}</span>
       </div>
       <div className="viewer-nav" aria-label="3D view controls">
-        <div className="viewer-zoom-controls">
+        <div className="viewer-tool-rail" role="group" aria-label="View tools">
+          <button
+            aria-label="Isometric view"
+            onClick={() => setCameraView("iso")}
+            title="Isometric view"
+            type="button"
+          >
+            <Box aria-hidden="true" />
+          </button>
+          <button
+            aria-label="Top view"
+            onClick={() => setCameraView("top")}
+            title="Top view"
+            type="button"
+          >
+            Top
+          </button>
           <button
             aria-label="Zoom in"
             onClick={() => zoomBy(0.82)}
@@ -1556,6 +1595,14 @@ const HolderViewer = forwardRef<
             type="button"
           >
             <ZoomOut aria-hidden="true" />
+          </button>
+          <button
+            aria-label="Center view"
+            onClick={resetCamera}
+            title="Center view"
+            type="button"
+          >
+            <Focus aria-hidden="true" />
           </button>
         </div>
         <div className="viewer-pan-pad">
@@ -1605,6 +1652,33 @@ const HolderViewer = forwardRef<
           <span />
         </div>
       </div>
+      <button
+        aria-label="Orientation cube top view"
+        className="orientation-cube-control"
+        onClick={() => setCameraView("top")}
+        title="Top view"
+        type="button"
+      >
+        <span className="orientation-cube-scene" aria-hidden="true">
+          <span className="orientation-cube">
+            <span className="orientation-cube-face orientation-cube-face-top">
+              Top
+            </span>
+            <span className="orientation-cube-face orientation-cube-face-front">
+              Front
+            </span>
+            <span className="orientation-cube-face orientation-cube-face-right">
+              Right
+            </span>
+          </span>
+        </span>
+        <span className="orientation-cube-tabs" aria-hidden="true">
+          <span>3D</span>
+          <span>Top</span>
+          <span>X</span>
+          <span>Y</span>
+        </span>
+      </button>
     </div>
   );
 });
@@ -1889,8 +1963,302 @@ function StaticDashboard({
   );
 }
 
+function getWorkspaceModelPreviewClass(modelKey: string) {
+  return modelKey.includes("tray") ? "tray" : "holder";
+}
+
+function getWorkspaceModelTypeLabel(modelKey: string) {
+  return modelKey.includes("tray") ? "Tray" : "Holder";
+}
+
+function formatWorkspaceVersionDate(timestamp: number) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(timestamp);
+}
+
+type WorkspaceLibrarySidebarProps = {
+  activeVersionId: Id<"versions"> | null;
+  catalogModels: CatalogSeedModel[];
+  convexEnabled: boolean;
+  selectedModelId: string;
+  onOpenModel: (modelId: string) => void;
+  onOpenVersion: (version: SavedLibraryVersion) => void;
+};
+
+function WorkspaceLibrarySidebar({
+  activeVersionId,
+  catalogModels,
+  convexEnabled,
+  selectedModelId,
+  onOpenModel,
+  onOpenVersion,
+}: WorkspaceLibrarySidebarProps) {
+  const [activeSection, setActiveSection] = useState<"models" | "versions">(
+    "models",
+  );
+  const [query, setQuery] = useState("");
+  const filteredModels = useMemo(
+    () => filterDashboardModels(catalogModels, query),
+    [catalogModels, query],
+  );
+  const selectedModel = catalogModels.find((entry) => entry.key === selectedModelId);
+
+  return (
+    <aside className="workspace-library-sidebar" aria-label="Workspace model library">
+      <div className="workspace-library-brand">
+        <span className="workspace-library-brand-mark" aria-hidden="true">
+          <Box />
+        </span>
+        <div>
+          <strong>3D Prints</strong>
+          <span>Parametric STL library</span>
+        </div>
+      </div>
+
+      <nav className="workspace-library-nav" aria-label="Workspace library sections">
+        <button
+          className={activeSection === "models" ? "active" : ""}
+          onClick={() => setActiveSection("models")}
+          type="button"
+        >
+          <Layers3 aria-hidden="true" />
+          Model Library
+        </button>
+        <button
+          className={activeSection === "versions" ? "active" : ""}
+          onClick={() => setActiveSection("versions")}
+          type="button"
+        >
+          <Clock3 aria-hidden="true" />
+          Saved Versions
+        </button>
+      </nav>
+
+      {activeSection === "models" ? (
+        <div className="workspace-sidebar-section">
+          <div className="workspace-sidebar-section-heading">
+            <span>Models</span>
+            <strong>{catalogModels.length}</strong>
+          </div>
+          <label className="workspace-library-search">
+            <Search aria-hidden="true" />
+            <input
+              aria-label="Search workspace models"
+              onChange={(event) => setQuery(event.currentTarget.value)}
+              placeholder="Search models..."
+              type="search"
+              value={query}
+            />
+            <SlidersHorizontal aria-hidden="true" />
+          </label>
+          <div className="workspace-model-list">
+            {filteredModels.map((modelEntry) => {
+              const isActive = modelEntry.key === selectedModelId;
+              return (
+                <button
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={`Open ${modelEntry.name}`}
+                  className={`workspace-model-card${isActive ? " active" : ""}`}
+                  key={modelEntry.key}
+                  onClick={() => onOpenModel(modelEntry.key)}
+                  type="button"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`model-preview ${getWorkspaceModelPreviewClass(modelEntry.key)}`}
+                  >
+                    <span />
+                  </span>
+                  <span className="workspace-model-card-copy">
+                    <strong>{modelEntry.name}</strong>
+                    <span>
+                      {modelEntry.description ?? "Parametric STL model"}
+                    </span>
+                    <span className="workspace-model-meta">
+                      <span>{getWorkspaceModelTypeLabel(modelEntry.key)}</span>
+                      <span>STL</span>
+                      <span>Ready</span>
+                    </span>
+                  </span>
+                  {isActive ? (
+                    <span className="workspace-model-check" aria-hidden="true">
+                      <Check />
+                    </span>
+                  ) : (
+                    <ChevronRight aria-hidden="true" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <WorkspaceSavedVersions
+          activeVersionId={activeVersionId}
+          convexEnabled={convexEnabled}
+          selectedModelId={selectedModelId}
+          onOpenVersion={onOpenVersion}
+        />
+      )}
+
+      <div className="workspace-library-summary" aria-label="Workspace library summary">
+        <div>
+          <strong>{catalogModels.length}</strong>
+          <span>Models</span>
+        </div>
+        <div>
+          <strong>{selectedModel?.name ?? "Selected"}</strong>
+          <span>Active</span>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+class WorkspaceVersionsErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("Unable to render workspace saved versions.", error);
+  }
+
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
+}
+
+function WorkspaceSavedVersions({
+  activeVersionId,
+  convexEnabled,
+  selectedModelId,
+  onOpenVersion,
+}: {
+  activeVersionId: Id<"versions"> | null;
+  convexEnabled: boolean;
+  selectedModelId: string;
+  onOpenVersion: (version: SavedLibraryVersion) => void;
+}) {
+  if (!convexEnabled) {
+    return (
+      <div className="workspace-sidebar-section">
+        <div className="workspace-sidebar-section-heading">
+          <span>Saved versions</span>
+          <strong>Offline</strong>
+        </div>
+        <LibraryUnavailableMessage>
+          Connect Convex to browse saved versions for this model.
+        </LibraryUnavailableMessage>
+      </div>
+    );
+  }
+
+  return (
+    <WorkspaceVersionsErrorBoundary
+      fallback={
+        <div className="workspace-sidebar-section">
+          <div className="workspace-sidebar-section-heading">
+            <span>Saved versions</span>
+            <strong>Offline</strong>
+          </div>
+          <LibraryUnavailableMessage>
+            Saved versions could not load. The model is still editable and exportable.
+          </LibraryUnavailableMessage>
+        </div>
+      }
+    >
+      <ConnectedWorkspaceSavedVersions
+        activeVersionId={activeVersionId}
+        selectedModelId={selectedModelId}
+        onOpenVersion={onOpenVersion}
+      />
+    </WorkspaceVersionsErrorBoundary>
+  );
+}
+
+function ConnectedWorkspaceSavedVersions({
+  activeVersionId,
+  selectedModelId,
+  onOpenVersion,
+}: {
+  activeVersionId: Id<"versions"> | null;
+  selectedModelId: string;
+  onOpenVersion: (version: SavedLibraryVersion) => void;
+}) {
+  const connectionState = useConvexConnectionState();
+  const library = useQuery(api.library.listLibrary);
+  const versions = useMemo(
+    () =>
+      ((library?.versions ?? []) as SavedLibraryVersion[]).filter(
+        (version) => version.modelKey === selectedModelId,
+      ),
+    [library, selectedModelId],
+  );
+  const hasConnectionIssue =
+    !connectionState.isWebSocketConnected &&
+    (connectionState.hasEverConnected || connectionState.connectionRetries > 0);
+
+  return (
+    <div className="workspace-sidebar-section">
+      <div className="workspace-sidebar-section-heading">
+        <span>Saved versions</span>
+        <strong>{library ? versions.length : "..."}</strong>
+      </div>
+      {hasConnectionIssue ? (
+        <LibraryUnavailableMessage>
+          Saved versions are reconnecting. You can keep editing the model.
+        </LibraryUnavailableMessage>
+      ) : null}
+      {library === undefined ? (
+        <p className="library-empty">Loading saved versions...</p>
+      ) : versions.length === 0 ? (
+        <p className="library-empty">No saved versions for this model yet.</p>
+      ) : (
+        <div className="workspace-version-list">
+          {versions.map((version) => {
+            const isActive = activeVersionId === version._id;
+            return (
+              <button
+                aria-current={isActive ? "page" : undefined}
+                aria-label={`Open ${version.title}`}
+                className={`workspace-version-row${isActive ? " active" : ""}`}
+                key={version._id}
+                onClick={() => onOpenVersion(version)}
+                type="button"
+              >
+                <span className="workspace-version-icon" aria-hidden="true">
+                  {version.source === "fork" ? <GitFork /> : <Clock3 />}
+                </span>
+                <span className="workspace-version-copy">
+                  <strong>{version.title}</strong>
+                  <span>
+                    {version.source === "fork" ? "Fork" : "Saved"} ·{" "}
+                    {formatWorkspaceVersionDate(version.updatedAt)}
+                  </span>
+                </span>
+                {isActive ? <Check aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WorkspaceHeader({
   activeVersionId,
+  activeVersionTitle,
   convexEnabled,
   exportFileName,
   model,
@@ -1903,6 +2271,7 @@ function WorkspaceHeader({
   onThemeChange,
 }: {
   activeVersionId: Id<"versions"> | null;
+  activeVersionTitle: string | null;
   convexEnabled: boolean;
   exportFileName: string;
   model: ModelDefinition;
@@ -1911,7 +2280,7 @@ function WorkspaceHeader({
   unit: LengthUnit;
   onCreateStlBlob: () => Blob | null;
   onOpenDashboard: () => void;
-  onSavedVersion: (versionId: Id<"versions">) => void;
+  onSavedVersion: (versionId: Id<"versions">, title: string) => void;
   onThemeChange: (theme: ThemeMode) => void;
 }) {
   return (
@@ -1928,7 +2297,10 @@ function WorkspaceHeader({
         </button>
         <div>
           <p>{model.subtitle}</p>
-          <h1>{model.name}</h1>
+          <h1>{activeVersionTitle ?? model.name}</h1>
+          {activeVersionTitle ? (
+            <span className="workspace-title-context">{model.name}</span>
+          ) : null}
         </div>
       </div>
       <div className="workspace-actions">
@@ -2055,6 +2427,9 @@ export default function App({
   const [renderMode, setRenderMode] = useState<RenderMode>("solid");
   const [showOriginal, setShowOriginal] = useState(false);
   const [activeVersionId, setActiveVersionId] = useState<Id<"versions"> | null>(
+    null,
+  );
+  const [activeVersionTitle, setActiveVersionTitle] = useState<string | null>(
     null,
   );
   const viewerRef = useRef<ViewerHandle | null>(null);
@@ -2237,6 +2612,7 @@ export default function App({
     window.history.replaceState(null, "", url);
 
     setActiveVersionId(null);
+    setActiveVersionTitle(null);
     setLoadError("");
     setModel(null);
     setParams(null);
@@ -2246,6 +2622,7 @@ export default function App({
   const openDashboard = () => {
     writeDashboardUrlState({ theme, unit });
     setActiveVersionId(null);
+    setActiveVersionTitle(null);
     setLoadError("");
     setModel(null);
     setParams(null);
@@ -2277,6 +2654,7 @@ export default function App({
     setUnit(version.unit);
     setTheme(version.theme);
     setActiveVersionId(version._id);
+    setActiveVersionTitle(version.title);
 
     if (model?.id === version.modelKey) {
       const nextParams = getDefaultParams(model);
@@ -2294,6 +2672,11 @@ export default function App({
     }
 
     setSelectedModelId(version.modelKey);
+  };
+
+  const handleSavedVersion = (versionId: Id<"versions">, title: string) => {
+    setActiveVersionId(versionId);
+    setActiveVersionTitle(title);
   };
 
   const resizeSidebarBy = (delta: number) => {
@@ -2372,12 +2755,13 @@ export default function App({
     >
       <WorkspaceHeader
         activeVersionId={activeVersionId}
+        activeVersionTitle={activeVersionTitle}
         convexEnabled={convexEnabled}
         exportFileName={getExportFileName(model, params)}
         model={model}
         onCreateStlBlob={() => viewerRef.current?.getStlBlob() ?? null}
         onOpenDashboard={openDashboard}
-        onSavedVersion={setActiveVersionId}
+        onSavedVersion={handleSavedVersion}
         onThemeChange={updateTheme}
         params={params}
         theme={theme}
@@ -2385,6 +2769,15 @@ export default function App({
       />
 
       <div className="app-shell">
+        <WorkspaceLibrarySidebar
+          activeVersionId={activeVersionId}
+          catalogModels={catalogSeedModels}
+          convexEnabled={convexEnabled}
+          selectedModelId={selectedModelId}
+          onOpenModel={openModel}
+          onOpenVersion={openLibraryVersion}
+        />
+
         <section
           className="scene-panel"
           aria-label={`${model.name} model viewer`}

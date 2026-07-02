@@ -1,6 +1,7 @@
 import { useConvexConnectionState, useMutation, useQuery } from "convex/react";
 import {
   Box,
+  ChevronDown,
   ChevronRight,
   Clock3,
   CloudOff,
@@ -67,7 +68,7 @@ type SaveForkControlsProps = {
   theme: ThemeMode;
   unit: LengthUnit;
   onCreateStlBlob: () => Blob | null;
-  onSavedVersion: (versionId: Id<"versions">) => void;
+  onSavedVersion: (versionId: Id<"versions">, title: string) => void;
 };
 
 type LibraryDashboardProps = {
@@ -331,10 +332,12 @@ export function SaveForkControls({
   const saveVersion = useMutation(api.library.saveVersion);
   const forkVersion = useMutation(api.library.forkVersion);
   const [title, setTitle] = useState("");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [status, setStatus] = useState("Ready");
   const [statusTone, setStatusTone] = useState<"neutral" | "error">("neutral");
   const [isSaving, setIsSaving] = useState(false);
   const versionTitle = title.trim() || defaultTitle(currentModel.name);
+  const menuId = `version-actions-${currentModel.id}`;
 
   const saveCurrent = async (source: "save" | "fork") => {
     const blob = onCreateStlBlob();
@@ -371,7 +374,7 @@ export function SaveForkControls({
               fileName: exportFileName,
               source,
             });
-      onSavedVersion(versionId);
+      onSavedVersion(versionId, versionTitle);
       setTitle("");
       setStatus(source === "fork" ? "Fork saved." : "Version saved.");
       setStatusTone("neutral");
@@ -385,39 +388,74 @@ export function SaveForkControls({
   };
 
   return (
-    <div className="save-fork-controls">
-      <input
-        aria-label="Version name"
-        className="version-name-input"
-        onChange={(event) => setTitle(event.currentTarget.value)}
-        placeholder="Version name"
-        type="text"
-        value={title}
-      />
+    <div
+      className="save-fork-controls"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          setIsMenuOpen(false);
+        }
+      }}
+    >
       <button
-        aria-label="Save current version"
-        disabled={isSaving}
-        onClick={() => saveCurrent("save")}
-        type="button"
-      >
-        <Save aria-hidden="true" />
-        Save
-      </button>
-      <button
-        aria-label="Fork current version"
-        disabled={isSaving}
-        onClick={() => saveCurrent("fork")}
+        aria-controls={isMenuOpen ? menuId : undefined}
+        aria-expanded={isMenuOpen}
+        aria-label="Version actions"
+        className="version-menu-trigger"
+        onClick={() => setIsMenuOpen((current) => !current)}
         type="button"
       >
         <CopyPlus aria-hidden="true" />
         Fork
+        <ChevronDown aria-hidden="true" />
       </button>
-      <span
-        className={`save-status${statusTone === "error" ? " error" : ""}`}
-        role="status"
-      >
-        {status}
+      <span className={`save-status-indicator${statusTone === "error" ? " error" : ""}`}>
+        {statusTone === "error" ? "Sync issue" : isSaving ? "Saving" : "Ready"}
       </span>
+      {isMenuOpen ? (
+        <div className="version-menu" id={menuId} role="dialog" aria-label="Version actions">
+          <div className="version-menu-heading">
+            <strong>Version actions</strong>
+            <span>{currentModel.name}</span>
+          </div>
+          <label className="version-field">
+            <span>Version name</span>
+            <input
+              aria-label="Version name"
+              className="version-name-input"
+              onChange={(event) => setTitle(event.currentTarget.value)}
+              placeholder="Version name"
+              type="text"
+              value={title}
+            />
+          </label>
+          <div className="version-menu-actions">
+            <button
+              aria-label="Save current version"
+              disabled={isSaving}
+              onClick={() => saveCurrent("save")}
+              type="button"
+            >
+              <Save aria-hidden="true" />
+              Save
+            </button>
+            <button
+              aria-label="Fork current version"
+              disabled={isSaving}
+              onClick={() => saveCurrent("fork")}
+              type="button"
+            >
+              <CopyPlus aria-hidden="true" />
+              Fork
+            </button>
+          </div>
+          <span
+            className={`save-status${statusTone === "error" ? " error" : ""}`}
+            role="status"
+          >
+            {status}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }

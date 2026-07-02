@@ -406,6 +406,7 @@ test.describe("3D print app", () => {
     await openReady(page, "/?model=japandi-tray&theme=light");
 
     const title = `Playwright ${Date.now()}`;
+    await page.getByRole("button", { name: "Version actions" }).click();
     await page.getByLabel("Version name").fill(title);
     await page.getByRole("button", { name: "Save current version" }).click();
     await expect(page.getByRole("status")).toContainText("Version saved.");
@@ -426,8 +427,10 @@ test.describe("3D print app", () => {
       .filter({ hasText: forkTitle })
       .getByRole("button", { name: "Open" })
       .click();
-    await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: forkTitle })).toBeVisible();
+    await expect(page.getByText("Japandi Tray", { exact: true })).toBeVisible();
     await expect(page).toHaveURL(/model=japandi-tray/);
+    await page.getByRole("button", { name: "Version actions" }).click();
     await expect(page.getByLabel("Version name")).toBeVisible();
   });
 });
