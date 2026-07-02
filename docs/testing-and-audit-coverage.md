@@ -27,7 +27,7 @@ This project has three verification layers:
 | Original inlay/source overlay can be toggled | Model JSON audit invariant for source reference; this coverage document | Playwright toggles Original inlay/STL and verifies the control state survives the interaction |
 | App supports multiple STLs with per-model JSON for parameters, audit, and scripts | README model structure; each model `model.json` | Model audit runner discovers catalog entries and executes each declared model audit script; Playwright opens catalog models from the sidebar |
 | Japandi tray supports width, length, height, floor thickness, and rib relief | `docs/japandi-tray-audit-specifications.md`; Japandi tray model JSON | Model audit script checks all five parameters; Playwright verifies each parameter control and URL state |
-| Dark theme is available | This coverage document | Playwright toggles the theme, verifies `html.dark`, and verifies URL `theme` state |
+| Dark theme is available | This coverage document | Playwright toggles the theme, verifies `html.dark`, verifies localStorage persistence, and verifies model switching keeps the selected theme |
 | Parameter state is saved in the URL | This coverage document | Playwright changes parameters and units, reloads from a URL, and verifies controls rehydrate from query params |
 | Sidebars have collapsible and resizable rails | This coverage document | Playwright drags the model-library and inspector separators, checks width and localStorage, tests keyboard resize, collapses both rails, and verifies the canvas remains visible |
 | Convex library stores saved versions and forks | `docs/convex-library.md`; Convex schema and functions | Static Playwright checks require Convex schema/functions/docs; app tests verify Save/Fork controls and selected-model saved-version sections |
@@ -42,7 +42,7 @@ The Playwright suite should fail if:
 - A parameter edit does not update the URL using millimeter values.
 - Unit selection does not update visible values and URL state.
 - Fractional inches do not parse for inch-mode text inputs.
-- Dark theme does not update the document class and query string.
+- Dark theme does not update the document class, localStorage preference, or remain stable across model changes.
 - The shadcn/Radix select UI regresses to native `select` elements.
 - Rendering, weighted-center, original-overlay, actions menu, viewer camera controls, cube orientation, or zoom controls throw page errors or leave the canvas blank.
 - Sidebar rails cannot be resized or collapsed without preserving the canvas.

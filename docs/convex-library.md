@@ -13,9 +13,9 @@ Generated STL snapshots are stored in Convex File Storage. A saved version conta
 
 ## User Flows
 
-- Save: uploads the current generated STL to Convex Storage and inserts a `versions` record with model id, params, unit, theme, and file name.
+- Save: uploads the current generated STL to Convex Storage and inserts a `versions` record with model id, params, unit, current theme metadata, and file name.
 - Fork: creates a new version with `source: "fork"` and links to the active saved version when one is open.
-- Open: rehydrates a saved version into the viewer by restoring model, unit, theme, params, URL state, and active version id.
+- Open: rehydrates a saved version into the viewer by restoring model, unit, params, URL state, and active version id while preserving the current local theme preference.
 - Selected-model sidebar view: shows saved versions and forks scoped to the active model, plus direct generated-STL links when available.
 
 Arbitrary STL upload is intentionally not supported yet. It would require model metadata capture, viewer routing, parameter schema authoring, audit setup, and safer file validation beyond the current saved-version workflow.

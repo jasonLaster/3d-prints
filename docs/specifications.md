@@ -15,11 +15,15 @@ This document defines the product and engineering contract for the 3D Prints app
 
 - `model` selects the active catalog model.
 - `unit` is one of `mm`, `cm`, or `in`.
-- `theme` is one of `light` or `dark`.
 - Parameter query values are always stored in millimeters, regardless of displayed unit.
 - Root model selection must not preserve stale parameter keys when no model is selected.
 - Opening a model from the sidebar starts from that model's defaults unless opening a saved version or an explicit model URL with matching parameter keys.
 - Unknown model ids must render an actionable load error instead of a blank viewer.
+
+## Preference State
+
+- `theme` is one of `light` or `dark` and is stored in localStorage under `3d-prints:theme`.
+- Theme is not encoded in the URL and must stay unchanged when switching catalog models or opening saved versions.
 
 ## Model Catalog Contract
 
@@ -79,9 +83,9 @@ Japandi tray:
 
 - Convex stores catalog model records and saved version/fork records.
 - Save and Fork controls live in the top-right workspace actions menu.
-- Saves and forks include model id, model name, params, unit, theme, generated STL storage id, and file name when the viewer is loaded.
+- Saves and forks include model id, model name, params, unit, the current theme for compatibility metadata, generated STL storage id, and file name when the viewer is loaded.
 - Forking an active saved version records the parent version id.
-- The saved-versions sidebar tab opens versions for the selected model and restores model, params, unit, theme, URL state, and active version id.
+- The saved-versions sidebar tab opens versions for the selected model and restores model, params, unit, URL state, and active version id while preserving the current local theme preference.
 - Arbitrary STL upload is intentionally unsupported until the app has generic model metadata capture, safe validation, parameter schema authoring, and audit setup.
 
 ## Export Contract
