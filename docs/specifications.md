@@ -7,7 +7,7 @@ This document defines the product and engineering contract for the 3D Prints app
 - The root route `/` opens the default model workspace and writes `model=<model-id>` into the URL.
 - The workspace left sidebar lists catalog models and saved versions scoped to the selected model.
 - Opening a catalog model from the sidebar moves the app into that model by setting `model=<model-id>` in the URL.
-- The workspace contains a global header, a collapsible and resizable model sidebar, the 3D viewer, and a resizable right parameter inspector.
+- The workspace contains a global header, a collapsible and resizable model sidebar, the 3D viewer, and a collapsible and resizable right parameter inspector.
 - Model selection lives in the left sidebar; the dashboard route is not part of the default product surface.
 - The inspector is reserved for parameters, rendering options, model-specific controls, and audit output.
 
@@ -69,11 +69,11 @@ Japandi tray:
 ## Viewer Contract
 
 - The primary viewer is a Three.js canvas with OrbitControls.
-- Zoom controls remain available in the viewer.
-- The orientation cube owns isometric, top, X-edge, and Y-edge presets and reflects the current camera orientation.
-- The top-right workspace actions menu owns Save, Fork, theme, reset, frame, and export.
+- Zoom, center, and parameter-reset controls remain available in the viewer rail.
+- The orientation cube owns isometric, top, X-edge, and Y-edge presets, reflects the current camera orientation, and clears its active preset after free camera movement.
+- The top-right workspace actions menu owns Save, Fork, theme, and export, with Save/Fork name entry handled in a modal.
 - Rendering modes include Solid, X-Ray, and Wire.
-- The viewer should remain nonblank after parameter edits, render-mode changes, unit changes, zoom, orientation presets, reset, and frame.
+- The viewer should remain nonblank after parameter edits, render-mode changes, unit changes, zoom, orientation presets, reset, center view, and sidebar collapse.
 
 ## Persistence Contract
 
@@ -96,6 +96,7 @@ Japandi tray:
 - Interactive controls must have accessible names.
 - Icon buttons must expose text labels or `aria-label`.
 - The sidebar resizers are keyboard reachable and support min/max keyboard commands.
+- Both desktop sidebars can collapse without hiding or displacing the 3D canvas.
 - The workspace must work on desktop and mobile viewports.
 - Mobile hides resize rails and stacks the workspace layout.
 

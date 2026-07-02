@@ -335,7 +335,8 @@ test.describe("3D print app", () => {
 
       await openActions(page);
       await expect(page.getByRole("button", { name: "Export" })).toBeVisible();
-      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog", { name: "Workspace actions" })).toBeVisible();
+      await page.mouse.click(24, 24);
       await expect(page.getByRole("dialog", { name: "Workspace actions" })).toBeHidden();
 
       for (const label of [
@@ -349,6 +350,25 @@ test.describe("3D print app", () => {
       ]) {
         await page.getByRole("button", { name: label }).first().click();
       }
+
+      const topView = page.getByRole("button", { name: "Top view" });
+      await topView.click();
+      await expect(topView).toHaveAttribute("aria-pressed", "true");
+
+      const canvasBox = await page.locator("canvas").first().boundingBox();
+      expect(canvasBox).not.toBeNull();
+      await page.mouse.move(
+        canvasBox!.x + canvasBox!.width / 2,
+        canvasBox!.y + canvasBox!.height / 2,
+      );
+      await page.mouse.down();
+      await page.mouse.move(
+        canvasBox!.x + canvasBox!.width / 2 + 90,
+        canvasBox!.y + canvasBox!.height / 2 + 35,
+        { steps: 6 },
+      );
+      await page.mouse.up();
+      await expect(topView).toHaveAttribute("aria-pressed", "false");
 
       await expectCanvasHasRenderedModel(page);
     });
@@ -375,8 +395,10 @@ test.describe("3D print app", () => {
     await openReady(page, "/?model=japandi-tray&theme=light");
 
     const library = page.getByRole("complementary", { name: "Workspace model library" });
+    const scene = page.getByLabel("Japandi Tray model viewer");
     const librarySeparator = page.getByRole("separator", { name: "Resize model library" });
     const libraryBefore = (await library.boundingBox())?.width ?? 0;
+    const sceneBeforeLibraryCollapse = (await scene.boundingBox())?.width ?? 0;
     const librarySeparatorBox = await librarySeparator.boundingBox();
     expect(librarySeparatorBox).not.toBeNull();
 
@@ -403,6 +425,10 @@ test.describe("3D print app", () => {
     await page.getByRole("button", { name: "Collapse model library" }).click();
     await expect(page.getByRole("button", { name: "Expand model library" })).toBeVisible();
     await expect(page.getByRole("separator", { name: "Resize model library" })).toBeHidden();
+    await expect
+      .poll(async () => (await scene.boundingBox())?.width ?? 0)
+      .toBeGreaterThan(sceneBeforeLibraryCollapse);
+    await expectCanvasHasRenderedModel(page);
     await page.getByRole("button", { name: "Expand model library" }).click();
     await expect(page.getByRole("button", { name: "Collapse model library" })).toBeVisible();
 
@@ -431,6 +457,17 @@ test.describe("3D print app", () => {
     await expect(separator).toHaveAttribute("aria-valuenow", "320");
     await page.keyboard.press("Home");
     await expect(separator).toHaveAttribute("aria-valuenow", "620");
+
+    const sceneBeforeInspectorCollapse = (await scene.boundingBox())?.width ?? 0;
+    await page.getByRole("button", { name: "Collapse inspector" }).click();
+    await expect(page.getByRole("button", { name: "Expand inspector" })).toBeVisible();
+    await expect(page.getByRole("separator", { name: "Resize inspector" })).toBeHidden();
+    await expect
+      .poll(async () => (await scene.boundingBox())?.width ?? 0)
+      .toBeGreaterThan(sceneBeforeInspectorCollapse);
+    await expectCanvasHasRenderedModel(page);
+    await page.getByRole("button", { name: "Expand inspector" }).click();
+    await expect(page.getByRole("button", { name: "Collapse inspector" })).toBeVisible();
   });
 
   test("renders the model viewer and inspector on a mobile viewport", async ({ page }) => {
@@ -457,13 +494,15 @@ test.describe("3D print app", () => {
 
     const title = `Playwright ${Date.now()}`;
     await openActions(page);
-    await page.getByLabel("Version name").fill(title);
     await page.getByRole("button", { name: "Save current version" }).click();
+    await page.getByLabel("Version name").fill(title);
+    await page.getByRole("button", { name: "Save version" }).click();
     await expect(page.getByRole("status")).toContainText("Version saved.");
 
     const forkTitle = `${title} fork`;
-    await page.getByLabel("Version name").fill(forkTitle);
     await page.getByRole("button", { name: "Fork current version" }).click();
+    await page.getByLabel("Version name").fill(forkTitle);
+    await page.getByRole("button", { name: "Fork version" }).click();
     await expect(page.getByRole("status")).toContainText("Fork saved.");
 
     await page.getByRole("button", { name: "Saved Versions" }).click();
@@ -477,9 +516,9 @@ test.describe("3D print app", () => {
     await expect(page.getByRole("heading", { name: forkTitle })).toBeVisible();
     await expect(page.getByText("Japandi Tray", { exact: true })).toBeVisible();
     await expect(page).toHaveURL(/model=japandi-tray/);
-    if (!(await page.getByLabel("Version name").isVisible())) {
+    if (!(await page.getByRole("button", { name: "Save current version" }).isVisible())) {
       await openActions(page);
     }
-    await expect(page.getByLabel("Version name")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save current version" })).toBeVisible();
   });
 });

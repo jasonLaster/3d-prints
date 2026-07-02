@@ -226,7 +226,7 @@ export function SaveForkControls({
           Fork
         </button>
       </div>
-      {status ? (
+      {status && !pendingSource ? (
         <span
           className={`save-status${statusTone === "error" ? " error" : ""}`}
           role="status"

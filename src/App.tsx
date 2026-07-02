@@ -52,15 +52,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./components/ui/select";
+import {
+  applyHolderMorph,
+  applyTrayMorph,
+  buildAuditItems,
+  createRoundedTopGeometry,
+  createSandPreviewGeometry,
+  getDefaultParams,
+  getModelDimensions,
+  getParam,
+  getParameterLimits,
+  getStatusItems,
+  updateHolderGuide,
+  updateTrayGuide,
+  updateWeightedCore,
+  type AuditItem,
+  type LengthUnit,
+  type ModelDefinition,
+  type ModelParameter,
+  type ModelParams,
+  type NumberLimits,
+} from "./models";
+import {
+  UNIT_OPTIONS,
+  formatLengthInput,
+  fromUnit,
+  isLengthUnit,
+  parseLengthInput,
+  toUnit,
+} from "./units";
 import type { Id } from "../convex/_generated/dataModel";
 
-type ModelParams = Record<string, number>;
 type CoreViewMode = "surface" | "fill" | "section";
-type LengthUnit = "mm" | "cm" | "in";
 type RenderMode = "solid" | "xray" | "wire";
 type ThemeMode = "light" | "dark";
 type ViewPreset = "iso" | "top" | "xEdge" | "yEdge";
-type SupportedViewer = "weighted-paper-towel-holder-v1" | "japandi-tray-v1";
 
 type ViewerHandle = {
   exportStl: () => void;
@@ -68,119 +94,6 @@ type ViewerHandle = {
   resetCamera: () => void;
   setView: (preset: ViewPreset) => void;
 };
-
-type AuditStatus = "pass" | "warn";
-
-type AuditItem = {
-  label: string;
-  value: string;
-  status: AuditStatus;
-};
-
-type NumberLimits = {
-  min: number;
-  max: number;
-  step: number;
-};
-
-type ModelParameter = {
-  key: string;
-  label: string;
-  statusLabel?: string;
-  default: number;
-  limits: NumberLimits;
-};
-
-type AuditCheckDefinition = {
-  key: string;
-  label: string;
-  minMiddleHeightMm?: number;
-  minSandMassKg?: number;
-  minSandVolumeCc?: number;
-};
-
-type ModelScript = {
-  name: string;
-  path: string;
-  command: string;
-  description?: string;
-};
-
-type HolderGeometry = {
-  originalHeight: number;
-  originalDiameter: number;
-  mainAxis: {
-    x: number;
-    y: number;
-    z?: number;
-  };
-  fixedCoreRadius: number;
-  outerMoveStartRadius: number;
-  bottomLockedHeight: number;
-  topLockedHeight: number;
-  centerTubeOuterDiameter: number;
-  centerTubeInnerDiameter: number;
-  tubeToHolderDiameterClearance: number;
-  centerTubeOriginalTop: number;
-  centerTubeTopClearance: number;
-  sandBottomHeight: number;
-  sandHeadspace: number;
-  sandDensityGramsPerCc: number;
-};
-
-type TrayGeometry = {
-  originalLength: number;
-  originalWidth: number;
-  originalHeight: number;
-  mainAxis: {
-    x: number;
-    y: number;
-    z: number;
-  };
-  originalFloorThickness: number;
-  originalRibRelief: number;
-  minimumWallHeight: number;
-  minimumFloorThickness: number;
-  minimumRibRelief: number;
-  maximumRibRelief: number;
-};
-
-type BaseModelDefinition = {
-  id: string;
-  name: string;
-  subtitle: string;
-  description: string;
-  viewer: SupportedViewer;
-  stl: {
-    fileName: string;
-    sourceName: string;
-    units: "mm";
-    url: string;
-  };
-  export: {
-    filePrefix: string;
-  };
-  parameters: ModelParameter[];
-  audit: {
-    toleranceMm: number;
-    dimensionTargets: string[];
-    invariants: string[];
-    checks: AuditCheckDefinition[];
-  };
-  scripts: ModelScript[];
-};
-
-type HolderModelDefinition = BaseModelDefinition & {
-  viewer: "weighted-paper-towel-holder-v1";
-  geometry: HolderGeometry;
-};
-
-type TrayModelDefinition = BaseModelDefinition & {
-  viewer: "japandi-tray-v1";
-  geometry: TrayGeometry;
-};
-
-type ModelDefinition = HolderModelDefinition | TrayModelDefinition;
 
 type ModelCatalogEntry = {
   id: string;
@@ -223,20 +136,6 @@ const SCENE_GRID_COLORS = {
   dark: { center: "#526073", grid: "#222a36" },
 } satisfies Record<ThemeMode, { center: string; grid: string }>;
 
-const UNIT_OPTIONS: Record<
-  LengthUnit,
-  {
-    label: string;
-    name: string;
-    mmPerUnit: number;
-    digits: number;
-  }
-> = {
-  mm: { label: "mm", name: "millimeters", mmPerUnit: 1, digits: 1 },
-  cm: { label: "cm", name: "centimeters", mmPerUnit: 10, digits: 2 },
-  in: { label: "in", name: "inches", mmPerUnit: 25.4, digits: 2 },
-};
-
 const RENDER_MODE_LABELS: Record<RenderMode, string> = {
   solid: "Solid",
   xray: "X-Ray",
@@ -245,10 +144,6 @@ const RENDER_MODE_LABELS: Record<RenderMode, string> = {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
-}
-
-function isLengthUnit(value: string | null): value is LengthUnit {
-  return value === "mm" || value === "cm" || value === "in";
 }
 
 function isThemeMode(value: string | null): value is ThemeMode {
@@ -289,141 +184,6 @@ function getStoredLibrarySidebarWidth() {
     storedWidth,
     LIBRARY_SIDEBAR_MIN_WIDTH,
     LIBRARY_SIDEBAR_MAX_WIDTH,
-  );
-}
-
-function smoothStep(edge0: number, edge1: number, value: number) {
-  const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
-  return t * t * (3 - 2 * t);
-}
-
-function toUnit(valueMm: number, unit: LengthUnit) {
-  return valueMm / UNIT_OPTIONS[unit].mmPerUnit;
-}
-
-function fromUnit(value: number, unit: LengthUnit) {
-  return value * UNIT_OPTIONS[unit].mmPerUnit;
-}
-
-function formatLength(valueMm: number, unit: LengthUnit, digits?: number) {
-  const option = UNIT_OPTIONS[unit];
-  if (unit === "in") {
-    return `${formatFractionalInches(toUnit(valueMm, unit))} ${option.label}`;
-  }
-  return `${toUnit(valueMm, unit).toFixed(digits ?? option.digits)} ${
-    option.label
-  }`;
-}
-
-function formatSignedLength(valueMm: number, unit: LengthUnit) {
-  const normalized = Math.abs(valueMm) < 0.05 ? 0 : valueMm;
-  const sign = normalized > 0 ? "+" : "";
-  return `${sign}${formatLength(normalized, unit)}`;
-}
-
-function greatestCommonDivisor(a: number, b: number): number {
-  return b === 0 ? a : greatestCommonDivisor(b, a % b);
-}
-
-function formatFractionalInches(valueIn: number, denominator = 8) {
-  const sign = valueIn < 0 ? "-" : "";
-  const absoluteValue = Math.abs(valueIn);
-  let whole = Math.floor(absoluteValue);
-  let numerator = Math.round((absoluteValue - whole) * denominator);
-
-  if (numerator === denominator) {
-    whole += 1;
-    numerator = 0;
-  }
-
-  if (numerator === 0) {
-    return `${sign}${whole}`;
-  }
-
-  const divisor = greatestCommonDivisor(numerator, denominator);
-  const fraction = `${numerator / divisor}/${denominator / divisor}`;
-  return whole > 0 ? `${sign}${whole} ${fraction}` : `${sign}${fraction}`;
-}
-
-function formatLengthInput(valueMm: number, unit: LengthUnit) {
-  if (unit === "in") {
-    return formatFractionalInches(toUnit(valueMm, unit));
-  }
-
-  return toUnit(valueMm, unit).toFixed(UNIT_OPTIONS[unit].digits);
-}
-
-function parseFractionalNumber(rawValue: string) {
-  const cleaned = rawValue
-    .toLowerCase()
-    .replace(/inches|inch|in|cm|mm|["']/g, "")
-    .replace(/(\d+)(st|nd|rd|th)\b/g, "$1")
-    .replace(/\bths?\b/g, "")
-    .replace(/-/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!cleaned) {
-    return null;
-  }
-
-  let total = 0;
-  for (const part of cleaned.split(" ")) {
-    if (!part) {
-      continue;
-    }
-    if (part.includes("/")) {
-      const [numerator, denominator] = part.split("/").map(Number);
-      if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) {
-        return null;
-      }
-      total += numerator / denominator;
-    } else {
-      const parsed = Number(part);
-      if (!Number.isFinite(parsed)) {
-        return null;
-      }
-      total += parsed;
-    }
-  }
-
-  return total;
-}
-
-function parseLengthInput(rawValue: string, unit: LengthUnit) {
-  const cleaned = rawValue
-    .toLowerCase()
-    .replace(/inches|inch|in|cm|mm|["']/g, "")
-    .trim();
-  const parsed = unit === "in" ? parseFractionalNumber(rawValue) : Number(cleaned);
-  if (!cleaned) {
-    return null;
-  }
-  if (parsed === null || !Number.isFinite(parsed)) {
-    return null;
-  }
-  return fromUnit(parsed, unit);
-}
-
-function getParameter(model: ModelDefinition, key: string) {
-  const parameter = model.parameters.find((entry) => entry.key === key);
-  if (!parameter) {
-    throw new Error(`${model.id} is missing parameter "${key}"`);
-  }
-  return parameter;
-}
-
-function getParam(params: ModelParams, key: string) {
-  const value = params[key];
-  if (!Number.isFinite(value)) {
-    throw new Error(`Missing parameter value "${key}"`);
-  }
-  return value;
-}
-
-function getDefaultParams(model: ModelDefinition): ModelParams {
-  return Object.fromEntries(
-    model.parameters.map((parameter) => [parameter.key, parameter.default]),
   );
 }
 
@@ -510,30 +270,6 @@ function writeUrlState({
   window.history.replaceState(null, "", url);
 }
 
-function getParameterLimits(
-  model: ModelDefinition,
-  params: ModelParams,
-  key: string,
-) {
-  const limits = { ...getParameter(model, key).limits };
-
-  if (model.viewer === "weighted-paper-towel-holder-v1" && key === "diameter") {
-    const clearance = model.geometry.tubeToHolderDiameterClearance;
-    limits.min = Math.max(limits.min, params.tubeDiameter + clearance);
-  }
-
-  if (model.viewer === "weighted-paper-towel-holder-v1" && key === "tubeDiameter") {
-    const clearance = model.geometry.tubeToHolderDiameterClearance;
-    limits.max = Math.min(limits.max, params.diameter - clearance);
-  }
-
-  if (model.viewer === "japandi-tray-v1" && key === "floorThickness") {
-    limits.max = Math.min(limits.max, getParam(params, "height") - 1);
-  }
-
-  return limits;
-}
-
 function normalizeGeometry(
   geometry: THREE.BufferGeometry,
   axis: { x: number; y: number; z?: number },
@@ -557,246 +293,6 @@ function normalizeGeometry(
     geometry: source,
     basePositions: normalized,
   };
-}
-
-function applyHolderMorph(
-  geometry: THREE.BufferGeometry,
-  basePositions: Float32Array,
-  params: ModelParams,
-  model: HolderModelDefinition,
-) {
-  const settings = model.geometry;
-  const position = geometry.getAttribute("position") as THREE.BufferAttribute;
-  const target = position.array as Float32Array;
-  const height = getParam(params, "height");
-  const diameter = getParam(params, "diameter");
-  const tubeDiameter = getParam(params, "tubeDiameter");
-  const radiusDelta = diameter / 2 - settings.originalDiameter / 2;
-  const originalTubeRadius = settings.centerTubeOuterDiameter / 2;
-  const targetTubeRadius = tubeDiameter / 2;
-  const tubeRadiusScale = targetTubeRadius / originalTubeRadius;
-  const originalDomeBase =
-    settings.centerTubeOriginalTop - originalTubeRadius;
-  const currentDomeBase = getDomeBase(params, model);
-  const originalTopStart = settings.originalHeight - settings.topLockedHeight;
-  const sourceMiddleHeight = originalTopStart - settings.bottomLockedHeight;
-  const targetMiddleHeight =
-    height - settings.bottomLockedHeight - settings.topLockedHeight;
-  const heightScale = targetMiddleHeight / sourceMiddleHeight;
-
-  for (let index = 0; index < position.count; index += 1) {
-    const x = basePositions[index * 3];
-    const y = basePositions[index * 3 + 1];
-    const z = basePositions[index * 3 + 2];
-    const radius = Math.hypot(x, y);
-    let nextRadius = radius;
-    let nextZ = z;
-
-    if (radius <= originalTubeRadius + 0.1) {
-      nextRadius = radius * tubeRadiusScale;
-      if (z >= originalDomeBase) {
-        nextZ = currentDomeBase;
-      } else if (z > settings.bottomLockedHeight) {
-        nextZ =
-          settings.bottomLockedHeight +
-          ((z - settings.bottomLockedHeight) /
-            (originalDomeBase - settings.bottomLockedHeight)) *
-            (currentDomeBase - settings.bottomLockedHeight);
-      }
-    } else {
-      const blend = smoothStep(
-        settings.fixedCoreRadius,
-        settings.outerMoveStartRadius,
-        radius,
-      );
-      nextRadius = Math.max(0, radius + radiusDelta * blend);
-
-      if (z >= originalTopStart) {
-        nextZ = height - (settings.originalHeight - z);
-      } else if (z > settings.bottomLockedHeight) {
-        nextZ =
-          settings.bottomLockedHeight +
-          (z - settings.bottomLockedHeight) * heightScale;
-      }
-    }
-
-    const radiusScale = radius > 0.0001 ? nextRadius / radius : 1;
-    target[index * 3] = x * radiusScale;
-    target[index * 3 + 1] = y * radiusScale;
-    target[index * 3 + 2] = nextZ;
-  }
-
-  position.needsUpdate = true;
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-}
-
-function applyTrayMorph(
-  geometry: THREE.BufferGeometry,
-  basePositions: Float32Array,
-  params: ModelParams,
-  model: TrayModelDefinition,
-) {
-  const settings = model.geometry;
-  const position = geometry.getAttribute("position") as THREE.BufferAttribute;
-  const target = position.array as Float32Array;
-  const length = getParam(params, "length");
-  const width = getParam(params, "width");
-  const height = getParam(params, "height");
-  const floorThickness = Math.min(
-    getParam(params, "floorThickness"),
-    height - 1,
-  );
-  const ribRelief = getParam(params, "ribRelief");
-  const lengthScale = length / settings.originalLength;
-  const widthScale = width / settings.originalWidth;
-  const originalFloor = settings.originalFloorThickness;
-  const wallSourceHeight = settings.originalHeight - originalFloor;
-  const wallTargetHeight = height - floorThickness;
-  const halfLength = settings.originalLength / 2;
-  const halfWidth = settings.originalWidth / 2;
-  const reliefScale = ribRelief / settings.originalRibRelief;
-
-  for (let index = 0; index < position.count; index += 1) {
-    const x = basePositions[index * 3];
-    const y = basePositions[index * 3 + 1];
-    const z = basePositions[index * 3 + 2];
-    const edgeRatio = Math.max(Math.abs(x) / halfLength, Math.abs(y) / halfWidth);
-    const wallBlend =
-      smoothStep(0.52, 0.92, edgeRatio) *
-      smoothStep(0.08, 0.36, z / settings.originalHeight) *
-      (1 - smoothStep(0.98, 1, edgeRatio));
-    const reliefOffset =
-      (reliefScale - 1) * wallBlend * Math.min(1.4, Math.max(0, 1 - edgeRatio) * 18);
-
-    let nextZ = z;
-    if (z <= originalFloor) {
-      nextZ = (z / originalFloor) * floorThickness;
-    } else {
-      nextZ =
-        floorThickness +
-        ((z - originalFloor) / wallSourceHeight) * wallTargetHeight;
-    }
-
-    target[index * 3] = (x + Math.sign(x) * reliefOffset) * lengthScale;
-    target[index * 3 + 1] = (y + Math.sign(y) * reliefOffset) * widthScale;
-    target[index * 3 + 2] = nextZ;
-  }
-
-  position.needsUpdate = true;
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-}
-
-function updateHolderGuide(mesh: THREE.Mesh, params: ModelParams) {
-  const height = getParam(params, "height");
-  const diameter = getParam(params, "diameter");
-  mesh.geometry.dispose();
-  mesh.geometry = new THREE.CylinderGeometry(
-    diameter / 2,
-    diameter / 2,
-    height,
-    128,
-    1,
-    true,
-  );
-  mesh.rotation.x = Math.PI / 2;
-  mesh.position.set(0, 0, height / 2);
-}
-
-function updateTrayGuide(mesh: THREE.Mesh, params: ModelParams) {
-  const length = getParam(params, "length");
-  const width = getParam(params, "width");
-  const height = getParam(params, "height");
-  mesh.geometry.dispose();
-  mesh.geometry = new THREE.BoxGeometry(length, width, height);
-  mesh.rotation.set(0, 0, 0);
-  mesh.position.set(0, 0, height / 2);
-}
-
-function getCenterTubeTop(params: ModelParams, model: HolderModelDefinition) {
-  return getParam(params, "height") - model.geometry.centerTubeTopClearance;
-}
-
-function getDomeBase(params: ModelParams, model: HolderModelDefinition) {
-  return getCenterTubeTop(params, model) - getParam(params, "tubeDiameter") / 2;
-}
-
-function getTubeWallThickness(model: HolderModelDefinition) {
-  return (
-    (model.geometry.centerTubeOuterDiameter -
-      model.geometry.centerTubeInnerDiameter) /
-    2
-  );
-}
-
-function getSandChamberDiameter(params: ModelParams, model: HolderModelDefinition) {
-  return Math.max(0, getParam(params, "tubeDiameter") - getTubeWallThickness(model) * 2);
-}
-
-function getSandHeight(params: ModelParams, model: HolderModelDefinition) {
-  return Math.max(
-    0,
-    getDomeBase(params, model) -
-      model.geometry.sandBottomHeight -
-      model.geometry.sandHeadspace,
-  );
-}
-
-function getSandVolumeCc(params: ModelParams, model: HolderModelDefinition) {
-  const radius = getSandChamberDiameter(params, model) / 2;
-  return (Math.PI * radius * radius * getSandHeight(params, model)) / 1000;
-}
-
-function createRoundedTopGeometry(
-  params: ModelParams,
-  model: HolderModelDefinition,
-) {
-  const radius = getParam(params, "tubeDiameter") / 2;
-  const geometry = new THREE.SphereGeometry(
-    radius,
-    64,
-    24,
-    0,
-    Math.PI * 2,
-    0,
-    Math.PI / 2,
-  );
-  geometry.rotateX(Math.PI / 2);
-  geometry.translate(0, 0, getDomeBase(params, model));
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  return geometry;
-}
-
-function createSandPreviewGeometry(
-  params: ModelParams,
-  model: HolderModelDefinition,
-) {
-  const radius = getSandChamberDiameter(params, model) / 2;
-  const height = getSandHeight(params, model);
-  const geometry = new THREE.CylinderGeometry(radius, radius, height, 56, 1, false);
-  geometry.rotateX(Math.PI / 2);
-  geometry.translate(0, 0, model.geometry.sandBottomHeight + height / 2);
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  return geometry;
-}
-
-function updateWeightedCore(
-  domeMesh: THREE.Mesh,
-  sandMesh: THREE.Mesh,
-  params: ModelParams,
-  model: HolderModelDefinition,
-) {
-  domeMesh.geometry.dispose();
-  domeMesh.geometry = createRoundedTopGeometry(params, model);
-  sandMesh.geometry.dispose();
-  sandMesh.geometry = createSandPreviewGeometry(params, model);
 }
 
 function applyRenderOptions(
@@ -851,253 +347,6 @@ function downloadBlob(blob: Blob, name: string) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
-}
-
-function getAuditValue(
-  check: AuditCheckDefinition,
-  params: ModelParams,
-  unit: LengthUnit,
-  model: ModelDefinition,
-): AuditItem {
-  if (model.viewer === "japandi-tray-v1") {
-    return getTrayAuditValue(check, params, unit, model);
-  }
-
-  return getHolderAuditValue(check, params, unit, model);
-}
-
-function getHolderAuditValue(
-  check: AuditCheckDefinition,
-  params: ModelParams,
-  unit: LengthUnit,
-  model: HolderModelDefinition,
-): AuditItem {
-  const settings = model.geometry;
-  const height = getParam(params, "height");
-  const diameter = getParam(params, "diameter");
-  const tubeDiameter = getParam(params, "tubeDiameter");
-  const heightChanged = Math.abs(height - settings.originalHeight) > 0.05;
-  const diameterChanged =
-    Math.abs(diameter - settings.originalDiameter) > 0.05;
-  const tubeChanged =
-    Math.abs(tubeDiameter - settings.centerTubeOuterDiameter) > 0.05;
-  const radiusDelta = diameter / 2 - settings.originalDiameter / 2;
-  const tubeRadiusDelta =
-    tubeDiameter / 2 - settings.centerTubeOuterDiameter / 2;
-  const tubeToHolderClearance = (diameter - tubeDiameter) / 2;
-  const targetMiddle =
-    height - settings.bottomLockedHeight - settings.topLockedHeight;
-  const sandVolume = getSandVolumeCc(params, model);
-  const sandMass = (sandVolume * settings.sandDensityGramsPerCc) / 1000;
-
-  switch (check.key) {
-    case "holderHeightTarget":
-      return {
-        label: check.label,
-        value: formatLength(height, unit),
-        status: targetMiddle > (check.minMiddleHeightMm ?? 80) ? "pass" : "warn",
-      };
-    case "holderDiameterTarget":
-      return {
-        label: check.label,
-        value: formatLength(diameter, unit),
-        status:
-          diameter >= tubeDiameter + settings.tubeToHolderDiameterClearance
-            ? "pass"
-            : "warn",
-      };
-    case "centerTubeOuterDiameter":
-      return {
-        label: check.label,
-        value: formatLength(tubeDiameter, unit),
-        status: tubeDiameter >= getParameter(model, "tubeDiameter").limits.min ? "pass" : "warn",
-      };
-    case "sandChamber":
-      return {
-        label: check.label,
-        value: `${formatLength(
-          getSandChamberDiameter(params, model),
-          unit,
-        )} ID, ${sandVolume.toFixed(0)} cc`,
-        status: sandVolume > (check.minSandVolumeCc ?? 60) ? "pass" : "warn",
-      };
-    case "estimatedSandMass":
-      return {
-        label: check.label,
-        value: `${sandMass.toFixed(2)} kg`,
-        status: sandMass > (check.minSandMassKg ?? 0.1) ? "pass" : "warn",
-      };
-    case "roundedTop":
-      return {
-        label: check.label,
-        value: `${formatLength(tubeDiameter / 2, unit)} radius`,
-        status: "pass",
-      };
-    case "tubeToHolderClearance":
-      return {
-        label: check.label,
-        value: formatLength(tubeToHolderClearance, unit),
-        status:
-          tubeToHolderClearance >= settings.tubeToHolderDiameterClearance / 2
-            ? "pass"
-            : "warn",
-      };
-    case "tubeRadialMove":
-      return {
-        label: check.label,
-        value: formatSignedLength(tubeRadiusDelta, unit),
-        status: tubeChanged ? "pass" : "pass",
-      };
-    case "roundedTopHeight":
-      return {
-        label: check.label,
-        value: `${formatLength(getCenterTubeTop(params, model), unit)} high`,
-        status: "pass",
-      };
-    case "bottomTopLockBands":
-      return {
-        label: check.label,
-        value: `${formatLength(
-          settings.bottomLockedHeight,
-          unit,
-        )} + ${formatLength(settings.topLockedHeight, unit)}`,
-        status: "pass",
-      };
-    case "outerWallRadialMove":
-      return {
-        label: check.label,
-        value: formatSignedLength(radiusDelta, unit),
-        status: diameterChanged || heightChanged ? "pass" : "pass",
-      };
-    default:
-      return {
-        label: check.label,
-        value: "Configured",
-        status: "warn",
-      };
-  }
-}
-
-function getTrayAuditValue(
-  check: AuditCheckDefinition,
-  params: ModelParams,
-  unit: LengthUnit,
-  model: TrayModelDefinition,
-): AuditItem {
-  const settings = model.geometry;
-  const length = getParam(params, "length");
-  const width = getParam(params, "width");
-  const height = getParam(params, "height");
-  const floorThickness = getParam(params, "floorThickness");
-  const ribRelief = getParam(params, "ribRelief");
-  const interiorDepth = Math.max(0, height - floorThickness);
-  const aspectRatio = length / width;
-
-  switch (check.key) {
-    case "trayLengthTarget":
-      return {
-        label: check.label,
-        value: formatLength(length, unit),
-        status: length >= getParameter(model, "length").limits.min ? "pass" : "warn",
-      };
-    case "trayWidthTarget":
-      return {
-        label: check.label,
-        value: formatLength(width, unit),
-        status: width >= getParameter(model, "width").limits.min ? "pass" : "warn",
-      };
-    case "trayHeightTarget":
-      return {
-        label: check.label,
-        value: formatLength(height, unit),
-        status: height >= settings.minimumWallHeight ? "pass" : "warn",
-      };
-    case "trayFloorThickness":
-      return {
-        label: check.label,
-        value: formatLength(floorThickness, unit),
-        status:
-          floorThickness >= settings.minimumFloorThickness &&
-          floorThickness < height
-            ? "pass"
-            : "warn",
-      };
-    case "trayRibRelief":
-      return {
-        label: check.label,
-        value: formatLength(ribRelief, unit),
-        status:
-          ribRelief >= settings.minimumRibRelief &&
-          ribRelief <= settings.maximumRibRelief
-            ? "pass"
-            : "warn",
-      };
-    case "trayAspectRatio":
-      return {
-        label: check.label,
-        value: `${aspectRatio.toFixed(2)}:1`,
-        status: aspectRatio >= 0.35 && aspectRatio <= 3.2 ? "pass" : "warn",
-      };
-    case "trayInteriorDepth":
-      return {
-        label: check.label,
-        value: formatLength(interiorDepth, unit),
-        status: interiorDepth >= settings.minimumWallHeight / 2 ? "pass" : "warn",
-      };
-    case "trayOriginalReference":
-      return {
-        label: check.label,
-        value: `${formatLength(settings.originalLength, unit)} x ${formatLength(
-          settings.originalWidth,
-          unit,
-        )}`,
-        status: "pass",
-      };
-    default:
-      return {
-        label: check.label,
-        value: "Configured",
-        status: "warn",
-      };
-  }
-}
-
-function buildAuditItems(
-  params: ModelParams,
-  unit: LengthUnit,
-  model: ModelDefinition,
-): AuditItem[] {
-  return model.audit.checks.map((check) =>
-    getAuditValue(check, params, unit, model),
-  );
-}
-
-function getModelDimensions(model: ModelDefinition, params: ModelParams) {
-  if (model.viewer === "weighted-paper-towel-holder-v1") {
-    const diameter = getParam(params, "diameter");
-    return {
-      length: diameter,
-      width: diameter,
-      height: getParam(params, "height"),
-    };
-  }
-
-  return {
-    length: getParam(params, "length"),
-    width: getParam(params, "width"),
-    height: getParam(params, "height"),
-  };
-}
-
-function getStatusItems(
-  model: ModelDefinition,
-  params: ModelParams,
-  unit: LengthUnit,
-) {
-  return model.parameters.slice(0, 4).map((parameter) => {
-    const label = parameter.statusLabel ?? parameter.label;
-    return `${label} ${formatLength(getParam(params, parameter.key), unit)}`;
-  });
 }
 
 function getExportFileName(model: ModelDefinition, params: ModelParams) {
@@ -2845,67 +2094,67 @@ export default function App({
             </button>
           ) : (
             <>
-          <header className="inspector-header">
-            <div>
-              <p>Model controls</p>
-              <h2>Inspector</h2>
-            </div>
-            <button
-              aria-label="Collapse inspector"
-              className="inspector-collapse-button"
-              onClick={() => setIsInspectorCollapsed(true)}
-              title="Collapse inspector"
-              type="button"
-            >
-              <PanelRightClose aria-hidden="true" />
-            </button>
-          </header>
+              <header className="inspector-header">
+                <div>
+                  <p>Model controls</p>
+                  <h2>Inspector</h2>
+                </div>
+                <button
+                  aria-label="Collapse inspector"
+                  className="inspector-collapse-button"
+                  onClick={() => setIsInspectorCollapsed(true)}
+                  title="Collapse inspector"
+                  type="button"
+                >
+                  <PanelRightClose aria-hidden="true" />
+                </button>
+              </header>
 
-          <div className="inspector-body">
-            <section className="panel-section">
-              <h2>Parameters</h2>
-              {model.parameters.map((parameter) => (
-                <NumberControl
-                  key={parameter.key}
-                  label={parameter.label}
-                  limits={getParameterLimits(model, params, parameter.key)}
-                  onChange={(value) => updateParam(parameter.key, value)}
-                  onUnitChange={setUnit}
-                  unit={unit}
-                  valueMm={params[parameter.key]}
-                />
-              ))}
-            </section>
+              <div className="inspector-body">
+                <section className="panel-section">
+                  <h2>Parameters</h2>
+                  {model.parameters.map((parameter) => (
+                    <NumberControl
+                      key={parameter.key}
+                      label={parameter.label}
+                      limits={getParameterLimits(model, params, parameter.key)}
+                      onChange={(value) => updateParam(parameter.key, value)}
+                      onUnitChange={setUnit}
+                      unit={unit}
+                      valueMm={params[parameter.key]}
+                    />
+                  ))}
+                </section>
 
-            {model.viewer === "weighted-paper-towel-holder-v1" ? (
-              <section className="panel-section">
-                <h2>Weighted Center</h2>
-                <CoreViewControl
-                  onChange={setCoreViewMode}
-                  value={coreViewMode}
-                />
-              </section>
-            ) : null}
+                {model.viewer === "weighted-paper-towel-holder-v1" ? (
+                  <section className="panel-section">
+                    <h2>Weighted Center</h2>
+                    <CoreViewControl
+                      onChange={setCoreViewMode}
+                      value={coreViewMode}
+                    />
+                  </section>
+                ) : null}
 
-            <section className="panel-section">
-              <h2>Rendering</h2>
-              <RenderModeControl onChange={setRenderMode} value={renderMode} />
-              <OriginalOverlayToggle
-                checked={showOriginal}
-                label={
-                  model.viewer === "weighted-paper-towel-holder-v1"
-                    ? "Original inlay"
-                    : "Original STL"
-                }
-                onChange={setShowOriginal}
-              />
-            </section>
+                <section className="panel-section">
+                  <h2>Rendering</h2>
+                  <RenderModeControl onChange={setRenderMode} value={renderMode} />
+                  <OriginalOverlayToggle
+                    checked={showOriginal}
+                    label={
+                      model.viewer === "weighted-paper-towel-holder-v1"
+                        ? "Original inlay"
+                        : "Original STL"
+                    }
+                    onChange={setShowOriginal}
+                  />
+                </section>
 
-            <section className="panel-section">
-              <h2>Audit</h2>
-              <AuditList items={auditItems} />
-            </section>
-          </div>
+                <section className="panel-section">
+                  <h2>Audit</h2>
+                  <AuditList items={auditItems} />
+                </section>
+              </div>
             </>
           )}
         </aside>
