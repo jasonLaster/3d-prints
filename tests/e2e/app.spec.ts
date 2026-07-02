@@ -1,6 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
 import { PNG } from "pngjs";
 
+const THEME_STORAGE_KEY = "3d-prints:theme";
+
 async function expectCanvasHasRenderedModel(page: Page) {
   const canvas = page.locator("canvas").first();
   await expect(canvas).toBeVisible();
@@ -43,10 +45,20 @@ async function expectNoPageErrors(page: Page, run: () => Promise<void>) {
 }
 
 async function openReady(page: Page, path = "/") {
+  await setStoredTheme(page, "light");
   await page.goto(path);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByTestId("viewer-status")).toContainText(/Solid|X-Ray|Wire/);
   await expectCanvasHasRenderedModel(page);
+}
+
+async function setStoredTheme(page: Page, theme: "light" | "dark") {
+  await page.addInitScript(
+    ({ key, themeMode }) => {
+      window.localStorage.setItem(key, themeMode);
+    },
+    { key: THEME_STORAGE_KEY, themeMode: theme },
+  );
 }
 
 async function chooseSelectOption(page: Page, label: string, option: string) {
@@ -66,10 +78,12 @@ test.describe("3D print app", () => {
   test("opens the default workspace with model navigation in the sidebar", async ({
     page,
   }) => {
-    await page.goto("/?theme=light");
+    await setStoredTheme(page, "light");
+    await page.goto("/");
 
     await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
     await expect(page).toHaveURL(/model=japandi-tray/);
+    await expect(page).not.toHaveURL(/theme=/);
     await expect(page.getByRole("button", { name: "Dashboard" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Open Paper Towel Holder" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Open Japandi Tray" })).toBeVisible();
@@ -78,13 +92,15 @@ test.describe("3D print app", () => {
   });
 
   test("root model opening clears stale parameter query values", async ({ page }) => {
+    await setStoredTheme(page, "dark");
     await page.goto(
-      "/?unit=mm&theme=dark&length=360&width=300&height=80&floorThickness=8&ribRelief=1.8",
+      "/?unit=mm&length=360&width=300&height=80&floorThickness=8&ribRelief=1.8",
     );
 
     await expect(page.locator("html")).toHaveClass(/dark/);
     await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
     await expect(page).toHaveURL(/model=japandi-tray/);
+    await expect(page).not.toHaveURL(/theme=/);
     await expect(page).not.toHaveURL(/length=360/);
     await expect(page).not.toHaveURL(/floorThickness=8/);
     await expect(page.getByLabel("Tray length in millimeters")).toHaveValue("166.6");
@@ -96,7 +112,8 @@ test.describe("3D print app", () => {
   test("unknown model ids render a load error instead of a blank workspace", async ({
     page,
   }) => {
-    await page.goto("/?model=missing-model&theme=light");
+    await setStoredTheme(page, "light");
+    await page.goto("/?model=missing-model");
 
     await expect(page.getByText('Unknown model "missing-model"')).toBeVisible();
     await expect(page.locator("canvas")).toHaveCount(0);
@@ -106,7 +123,7 @@ test.describe("3D print app", () => {
     page,
   }) => {
     await expectNoPageErrors(page, async () => {
-      await openReady(page, "/?model=paper-towel-holder&theme=light");
+      await openReady(page, "/?model=paper-towel-holder");
 
       await expect(page.getByRole("heading", { name: "Paper Towel Holder" })).toBeVisible();
       await expect(page.getByLabel("Paper Towel Holder model viewer")).toBeVisible();
@@ -132,7 +149,7 @@ test.describe("3D print app", () => {
   test("edits center tube diameter independently and saves millimeter params in the URL", async ({
     page,
   }) => {
-    await openReady(page, "/?model=paper-towel-holder&unit=mm&theme=light");
+    await openReady(page, "/?model=paper-towel-holder&unit=mm");
 
     const holderDiameter = page.getByLabel("Holder diameter in millimeters");
     const tubeDiameter = page.getByLabel("Center tube diameter in millimeters");
@@ -152,7 +169,7 @@ test.describe("3D print app", () => {
   test("uses one contextual unit dropdown to switch all parameter rows", async ({
     page,
   }) => {
-    await openReady(page, "/?model=paper-towel-holder&unit=mm&theme=light");
+    await openReady(page, "/?model=paper-towel-holder&unit=mm");
 
     await chooseSelectOption(page, "Holder height units", "cm");
 
@@ -173,7 +190,7 @@ test.describe("3D print app", () => {
   test("clamps dependent holder diameter and tube diameter limits", async ({
     page,
   }) => {
-    await openReady(page, "/?model=paper-towel-holder&unit=mm&theme=light");
+    await openReady(page, "/?model=paper-towel-holder&unit=mm");
 
     const holderDiameter = page.getByLabel("Holder diameter in millimeters");
     const tubeDiameter = page.getByLabel("Center tube diameter in millimeters");
@@ -191,11 +208,18 @@ test.describe("3D print app", () => {
   test("opens catalog models from the sidebar and exposes tray parameters", async ({
     page,
   }) => {
-    await openReady(page, "/?model=paper-towel-holder&theme=light");
+    await setStoredTheme(page, "dark");
+    await page.goto("/?model=paper-towel-holder");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByTestId("viewer-status")).toContainText(/Solid|X-Ray|Wire/);
+    await expectCanvasHasRenderedModel(page);
+    await expect(page.locator("html")).toHaveClass(/dark/);
 
     await openSidebarModel(page, "Japandi Tray");
 
     await expect(page).toHaveURL(/model=japandi-tray/);
+    await expect(page).not.toHaveURL(/theme=/);
+    await expect(page.locator("html")).toHaveClass(/dark/);
     await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
     await expect(page.getByLabel("Japandi Tray model viewer")).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Model" })).toHaveCount(0);
@@ -209,7 +233,7 @@ test.describe("3D print app", () => {
   });
 
   test("accepts contextual unit changes and fractional inch input", async ({ page }) => {
-    await openReady(page, "/?model=japandi-tray&theme=light");
+    await openReady(page, "/?model=japandi-tray");
 
     await chooseSelectOption(page, "Floor thickness units", "in");
     await expect(page).toHaveURL(/unit=in/);
@@ -227,7 +251,7 @@ test.describe("3D print app", () => {
   test("clamps tray floor thickness below the selected wall height", async ({
     page,
   }) => {
-    await openReady(page, "/?model=japandi-tray&unit=mm&theme=light");
+    await openReady(page, "/?model=japandi-tray&unit=mm");
 
     const wallHeight = page.getByLabel("Wall height in millimeters");
     const floorThickness = page.getByLabel("Floor thickness in millimeters");
@@ -243,11 +267,14 @@ test.describe("3D print app", () => {
     await expect(page).toHaveURL(/floorThickness=8/);
   });
 
-  test("rehydrates model, unit, theme, and parameter values from the URL", async ({ page }) => {
-    await openReady(
-      page,
-      "/?model=japandi-tray&unit=in&theme=dark&length=203.2&width=101.6&height=25.4&floorThickness=3.175&ribRelief=1.4",
+  test("rehydrates model, unit, parameters, and stored theme separately", async ({ page }) => {
+    await setStoredTheme(page, "dark");
+    await page.goto(
+      "/?model=japandi-tray&unit=in&length=203.2&width=101.6&height=25.4&floorThickness=3.175&ribRelief=1.4",
     );
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByTestId("viewer-status")).toContainText(/Solid|X-Ray|Wire/);
+    await expectCanvasHasRenderedModel(page);
 
     await expect(page.locator("html")).toHaveClass(/dark/);
     await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
@@ -257,7 +284,7 @@ test.describe("3D print app", () => {
     await expect(page.getByLabel("Floor thickness in inches")).toHaveValue("1/8");
     await expect(page.getByTestId("viewer-status")).toContainText("L 8 in");
     await expect(page.getByTestId("viewer-status")).toContainText("Floor 1/8 in");
-    await expect(page).toHaveURL(/theme=dark/);
+    await expect(page).not.toHaveURL(/theme=/);
     await expect(page).toHaveURL(/length=8/);
     await expect(page).toHaveURL(/width=4/);
     await expect(page).toHaveURL(/floorThickness=0\.125/);
@@ -268,7 +295,7 @@ test.describe("3D print app", () => {
   }) => {
     await openReady(
       page,
-      "/?model=japandi-tray&unit=cm&theme=dark&length=141&width=300&height=44&floorThickness=4.9&ribRelief=1",
+      "/?model=japandi-tray&unit=cm&length=141&width=300&height=44&floorThickness=4.9&ribRelief=1",
     );
 
     await expect(page.getByLabel("Tray length in centimeters")).toHaveValue("14.10");
@@ -285,22 +312,29 @@ test.describe("3D print app", () => {
     await expect(page).toHaveURL(/ribRelief=0\.1/);
   });
 
-  test("toggles dark theme and records the preference in the URL", async ({ page }) => {
-    await openReady(page, "/?model=paper-towel-holder&theme=light");
+  test("toggles dark theme and records the preference in localStorage", async ({ page }) => {
+    await openReady(page, "/?model=paper-towel-holder");
 
     await expect(page.locator("html")).not.toHaveClass(/dark/);
+    await expect(page).not.toHaveURL(/theme=/);
     await openActions(page);
     await page.getByRole("button", { name: "Use dark theme" }).click();
     await expect(page.locator("html")).toHaveClass(/dark/);
-    await expect(page).toHaveURL(/theme=dark/);
+    await expect(page).not.toHaveURL(/theme=/);
+    await expect
+      .poll(() => page.evaluate((key) => window.localStorage.getItem(key), THEME_STORAGE_KEY))
+      .toBe("dark");
 
     await page.getByRole("button", { name: "Use light theme" }).click();
     await expect(page.locator("html")).not.toHaveClass(/dark/);
-    await expect(page).toHaveURL(/theme=light/);
+    await expect(page).not.toHaveURL(/theme=/);
+    await expect
+      .poll(() => page.evaluate((key) => window.localStorage.getItem(key), THEME_STORAGE_KEY))
+      .toBe("light");
   });
 
   test("supports rendering modes and original overlay toggles", async ({ page }) => {
-    await openReady(page, "/?model=paper-towel-holder&theme=light");
+    await openReady(page, "/?model=paper-towel-holder");
 
     await page.getByRole("button", { name: "Fill" }).click();
     await expect(page.getByRole("button", { name: "Fill" })).toHaveClass(/active/);
@@ -324,7 +358,7 @@ test.describe("3D print app", () => {
     page,
   }) => {
     await expectNoPageErrors(page, async () => {
-      await openReady(page, "/?model=japandi-tray&theme=light");
+      await openReady(page, "/?model=japandi-tray");
 
       const trayLength = page.getByLabel("Tray length in millimeters");
       await trayLength.fill("200");
@@ -350,6 +384,15 @@ test.describe("3D print app", () => {
       ]) {
         await page.getByRole("button", { name: label }).first().click();
       }
+
+      await expect(page.locator(".orientation-cube-face")).toHaveText([
+        "Top",
+        "Front",
+        "Right",
+        "Bottom",
+        "Back",
+        "Left",
+      ]);
 
       const topView = page.getByRole("button", { name: "Top view" });
       await topView.click();
@@ -377,7 +420,7 @@ test.describe("3D print app", () => {
   test("exports the active generated STL with a parameterized file name", async ({
     page,
   }) => {
-    await openReady(page, "/?model=japandi-tray&theme=light&length=210&width=120&height=28");
+    await openReady(page, "/?model=japandi-tray&length=210&width=120&height=28");
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
@@ -392,7 +435,7 @@ test.describe("3D print app", () => {
   });
 
   test("resizes and collapses the model library and inspector sidebars", async ({ page }) => {
-    await openReady(page, "/?model=japandi-tray&theme=light");
+    await openReady(page, "/?model=japandi-tray");
 
     const library = page.getByRole("complementary", { name: "Workspace model library" });
     const scene = page.getByLabel("Japandi Tray model viewer");
@@ -472,9 +515,14 @@ test.describe("3D print app", () => {
 
   test("renders the model viewer and inspector on a mobile viewport", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await openReady(page, "/?model=japandi-tray&unit=in&theme=dark");
+    await setStoredTheme(page, "dark");
+    await page.goto("/?model=japandi-tray&unit=in");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByTestId("viewer-status")).toContainText(/Solid|X-Ray|Wire/);
+    await expectCanvasHasRenderedModel(page);
 
     await expect(page.locator("html")).toHaveClass(/dark/);
+    await expect(page).not.toHaveURL(/theme=/);
     await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
     await expect(page.getByLabel("Tray length in inches")).toBeVisible();
     await expect(page.getByRole("separator", { name: "Resize model library" })).toBeHidden();
@@ -490,7 +538,7 @@ test.describe("3D print app", () => {
       "Set VITE_CONVEX_URL to run live Convex persistence coverage.",
     );
 
-    await openReady(page, "/?model=japandi-tray&theme=light");
+    await openReady(page, "/?model=japandi-tray");
 
     const title = `Playwright ${Date.now()}`;
     await openActions(page);

@@ -123,10 +123,12 @@ const SIDEBAR_MAX_WIDTH = 620;
 const SIDEBAR_DEFAULT_WIDTH = 390;
 const INSPECTOR_COLLAPSED_WIDTH = 52;
 const LIBRARY_SIDEBAR_WIDTH_KEY = "3d-prints:library-sidebar-width";
+const THEME_STORAGE_KEY = "3d-prints:theme";
 const LIBRARY_SIDEBAR_MIN_WIDTH = 240;
 const LIBRARY_SIDEBAR_MAX_WIDTH = 460;
 const LIBRARY_SIDEBAR_DEFAULT_WIDTH = 320;
 const LIBRARY_SIDEBAR_COLLAPSED_WIDTH = 52;
+const PLAYWRIGHT_TEST_VERSION_TITLE_PREFIX = "Playwright ";
 const SCENE_BACKGROUND = {
   light: "#f7f8fb",
   dark: "#090c11",
@@ -156,9 +158,9 @@ function getInitialUnit(): LengthUnit {
 }
 
 function getInitialTheme(): ThemeMode {
-  const theme = new URLSearchParams(window.location.search).get("theme");
-  if (isThemeMode(theme)) {
-    return theme;
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  if (isThemeMode(storedTheme)) {
+    return storedTheme;
   }
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches
     ? "dark"
@@ -244,18 +246,16 @@ function serializeUrlParam(valueMm: number, unit: LengthUnit) {
 function writeUrlState({
   modelId,
   params,
-  theme,
   unit,
 }: {
   modelId: string;
   params: ModelParams;
-  theme: ThemeMode;
   unit: LengthUnit;
 }) {
   const url = new URL(window.location.href);
   url.searchParams.set("model", modelId);
   url.searchParams.set("unit", unit);
-  url.searchParams.set("theme", theme);
+  url.searchParams.delete("theme");
 
   for (const key of PARAM_QUERY_KEYS) {
     url.searchParams.delete(key);
@@ -906,6 +906,15 @@ const HolderViewer = forwardRef<
             <span className="orientation-cube-face orientation-cube-face-right">
               Right
             </span>
+            <span className="orientation-cube-face orientation-cube-face-bottom">
+              Bottom
+            </span>
+            <span className="orientation-cube-face orientation-cube-face-back">
+              Back
+            </span>
+            <span className="orientation-cube-face orientation-cube-face-left">
+              Left
+            </span>
           </span>
         </span>
         <span className="orientation-cube-tabs">
@@ -1135,6 +1144,10 @@ function formatWorkspaceVersionDate(timestamp: number) {
     hour: "numeric",
     minute: "2-digit",
   }).format(timestamp);
+}
+
+function isVisibleSavedVersion(version: SavedLibraryVersion) {
+  return !version.title.startsWith(PLAYWRIGHT_TEST_VERSION_TITLE_PREFIX);
 }
 
 type WorkspaceLibrarySidebarProps = {
@@ -1380,7 +1393,8 @@ function ConnectedWorkspaceSavedVersions({
   const versions = useMemo(
     () =>
       ((library?.versions ?? []) as SavedLibraryVersion[]).filter(
-        (version) => version.modelKey === selectedModelId,
+        (version) =>
+          version.modelKey === selectedModelId && isVisibleSavedVersion(version),
       ),
     [library, selectedModelId],
   );
@@ -1570,9 +1584,6 @@ function WorkspaceHeader({
         <div>
           <p>{model.subtitle}</p>
           <h1>{activeVersionTitle ?? model.name}</h1>
-          {activeVersionTitle ? (
-            <span className="workspace-title-context">{model.name}</span>
-          ) : null}
         </div>
       </div>
       <div className="workspace-actions">
@@ -1631,6 +1642,7 @@ export default function App({
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
   useEffect(() => {
@@ -1673,6 +1685,7 @@ export default function App({
             }
             const url = new URL(window.location.href);
             url.searchParams.set("model", defaultModel.id);
+            url.searchParams.delete("theme");
             for (const key of PARAM_QUERY_KEYS) {
               url.searchParams.delete(key);
             }
@@ -1788,10 +1801,9 @@ export default function App({
     writeUrlState({
       modelId: selectedModelId,
       params,
-      theme,
       unit,
     });
-  }, [model, params, selectedModelId, theme, unit]);
+  }, [model, params, selectedModelId, unit]);
 
   const updateParam = (key: string, value: number) => {
     if (!model) {
@@ -1819,7 +1831,7 @@ export default function App({
     const url = new URL(window.location.href);
     url.searchParams.set("model", modelId);
     url.searchParams.set("unit", unit);
-    url.searchParams.set("theme", theme);
+    url.searchParams.delete("theme");
     for (const key of PARAM_QUERY_KEYS) {
       url.searchParams.delete(key);
     }
@@ -1841,7 +1853,7 @@ export default function App({
     const url = new URL(window.location.href);
     url.searchParams.set("model", version.modelKey);
     url.searchParams.set("unit", version.unit);
-    url.searchParams.set("theme", version.theme);
+    url.searchParams.delete("theme");
     for (const key of PARAM_QUERY_KEYS) {
       url.searchParams.delete(key);
     }
@@ -1853,7 +1865,6 @@ export default function App({
     window.history.replaceState(null, "", url);
 
     setUnit(version.unit);
-    setTheme(version.theme);
     setActiveVersionId(version._id);
     setActiveVersionTitle(version.title);
 
