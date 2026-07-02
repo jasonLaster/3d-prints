@@ -4,6 +4,7 @@ import { mutation, query } from "./_generated/server";
 const lengthUnit = v.union(v.literal("mm"), v.literal("cm"), v.literal("in"));
 const themeMode = v.union(v.literal("light"), v.literal("dark"));
 const params = v.record(v.string(), v.number());
+const PLAYWRIGHT_TEST_TITLE_PREFIX = "Playwright ";
 
 export const generateUploadUrl = mutation({
   args: {},
@@ -132,6 +133,38 @@ export const forkVersion = mutation({
       createdAt: now,
       updatedAt: now,
     });
+  },
+});
+
+export const deletePlaywrightTestVersions = mutation({
+  args: {
+    titles: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const titles = new Set(
+      args.titles.filter((title) =>
+        title.startsWith(PLAYWRIGHT_TEST_TITLE_PREFIX),
+      ),
+    );
+    if (titles.size === 0) {
+      return { deleted: 0 };
+    }
+
+    const versions = await ctx.db.query("versions").collect();
+    let deleted = 0;
+    for (const version of versions) {
+      if (!titles.has(version.title)) {
+        continue;
+      }
+
+      if (version.stlStorageId) {
+        await ctx.storage.delete(version.stlStorageId);
+      }
+      await ctx.db.delete(version._id);
+      deleted += 1;
+    }
+
+    return { deleted };
   },
 });
 

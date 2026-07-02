@@ -1,7 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
+import { ConvexHttpClient } from "convex/browser";
 import { PNG } from "pngjs";
+import { api } from "../../convex/_generated/api";
 
 const THEME_STORAGE_KEY = "3d-prints:theme";
+const PLAYWRIGHT_TEST_VERSION_PREFIX = "Playwright ";
 
 async function expectCanvasHasRenderedModel(page: Page) {
   const canvas = page.locator("canvas").first();
@@ -72,6 +75,16 @@ async function openSidebarModel(page: Page, modelName: string) {
 
 async function openActions(page: Page) {
   await page.getByRole("button", { name: "Workspace actions" }).click();
+}
+
+async function cleanupPlaywrightVersions(titles: string[]) {
+  const convexUrl = process.env.VITE_CONVEX_URL;
+  if (!convexUrl || titles.length === 0) {
+    return;
+  }
+
+  const client = new ConvexHttpClient(convexUrl);
+  await client.mutation(api.library.deletePlaywrightTestVersions, { titles });
 }
 
 test.describe("3D print app", () => {
@@ -429,7 +442,7 @@ test.describe("3D print app", () => {
     const [download] = await Promise.all([
       page.waitForEvent("download"),
       openActions(page).then(() =>
-      page.getByRole("button", { name: "Export" }).click(),
+        page.getByRole("button", { name: "Export" }).click(),
       ),
     ]);
 
@@ -544,33 +557,38 @@ test.describe("3D print app", () => {
 
     await openReady(page, "/?model=japandi-tray");
 
-    const title = `Playwright ${Date.now()}`;
-    await openActions(page);
-    await page.getByRole("button", { name: "Save current version" }).click();
-    await page.getByLabel("Version name").fill(title);
-    await page.getByRole("button", { name: "Save version" }).click();
-    await expect(page.getByRole("status")).toContainText("Version saved.");
-
+    const title = `${PLAYWRIGHT_TEST_VERSION_PREFIX}${Date.now()}`;
     const forkTitle = `${title} fork`;
-    await page.getByRole("button", { name: "Fork current version" }).click();
-    await page.getByLabel("Version name").fill(forkTitle);
-    await page.getByRole("button", { name: "Fork version" }).click();
-    await expect(page.getByRole("status")).toContainText("Fork saved.");
-
-    await page.getByRole("button", { name: "Saved Versions" }).click();
-    await expect(page.getByText(title, { exact: true })).toBeVisible();
-    await expect(page.getByText(forkTitle, { exact: true })).toBeVisible();
-    await expect(page.getByLabel("Upload STL")).toHaveCount(0);
-
-    await page
-      .getByRole("button", { name: `Open ${forkTitle}` })
-      .click();
-    await expect(page.getByRole("heading", { name: forkTitle })).toBeVisible();
-    await expect(page.getByText("Japandi Tray", { exact: true })).toBeVisible();
-    await expect(page).toHaveURL(/model=japandi-tray/);
-    if (!(await page.getByRole("button", { name: "Save current version" }).isVisible())) {
+    try {
       await openActions(page);
+      await page.getByRole("button", { name: "Save current version" }).click();
+      await page.getByLabel("Version name").fill(title);
+      await page.getByRole("button", { name: "Save version" }).click();
+      await expect(page.getByRole("status")).toContainText("Version saved.");
+
+      await page.getByRole("button", { name: "Fork current version" }).click();
+      await page.getByLabel("Version name").fill(forkTitle);
+      await page.getByRole("button", { name: "Fork version" }).click();
+      await expect(page.getByRole("status")).toContainText("Fork saved.");
+
+      await page.getByRole("button", { name: "Saved Versions" }).click();
+      await expect(page.getByRole("button", { name: `Open ${title}` })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: `Open ${forkTitle}` })).toHaveCount(0);
+      await expect(page.getByLabel("Upload STL")).toHaveCount(0);
+
+      await expect(page.getByRole("heading", { name: forkTitle })).toBeVisible();
+      await expect(page.locator(".workspace-title-context")).toHaveCount(0);
+      await expect(page).toHaveURL(/model=japandi-tray/);
+      if (
+        !(await page
+          .getByRole("button", { name: "Save current version" })
+          .isVisible())
+      ) {
+        await openActions(page);
+      }
+      await expect(page.getByRole("button", { name: "Save current version" })).toBeVisible();
+    } finally {
+      await cleanupPlaywrightVersions([title, forkTitle]);
     }
-    await expect(page.getByRole("button", { name: "Save current version" })).toBeVisible();
   });
 });
