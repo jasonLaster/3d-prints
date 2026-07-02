@@ -416,9 +416,16 @@ const HolderViewer = forwardRef<
     }
 
     const offset = camera.position.clone().sub(controls.target);
-    const spherical = new THREE.Spherical().setFromVector3(offset);
-    const pitch = clamp(THREE.MathUtils.radToDeg(spherical.phi) - 90, -82, 82);
-    const yaw = -THREE.MathUtils.radToDeg(spherical.theta);
+    const horizontalDistance = Math.hypot(offset.x, offset.y);
+    const pitch = clamp(
+      -THREE.MathUtils.radToDeg(Math.atan2(offset.z, horizontalDistance)),
+      -82,
+      82,
+    );
+    const yaw =
+      horizontalDistance < 0.001
+        ? 0
+        : -THREE.MathUtils.radToDeg(Math.atan2(offset.x, -offset.y));
     setCubeTransform(`rotateX(${pitch.toFixed(1)}deg) rotateY(${yaw.toFixed(1)}deg)`);
   }, []);
 

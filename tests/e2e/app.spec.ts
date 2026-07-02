@@ -397,6 +397,10 @@ test.describe("3D print app", () => {
       const topView = page.getByRole("button", { name: "Top view" });
       await topView.click();
       await expect(topView).toHaveAttribute("aria-pressed", "true");
+      await expect(page.locator(".orientation-cube")).toHaveAttribute(
+        "style",
+        /rotateX\(-82(?:\.0)?deg\) rotateY\(0(?:\.0)?deg\)/,
+      );
 
       const canvasBox = await page.locator("canvas").first().boundingBox();
       expect(canvasBox).not.toBeNull();

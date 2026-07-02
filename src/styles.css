@@ -956,17 +956,18 @@ html.dark .viewer-tool-rail {
   width: 126px;
   min-height: 116px;
   padding: 10px;
-  border: 1px solid rgba(203, 211, 223, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.55);
   border-radius: 8px;
-  background: var(--surface-glass);
+  background: rgba(255, 255, 255, 0.76);
   color: var(--foreground);
-  box-shadow: 0 16px 42px var(--shadow);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
   backdrop-filter: blur(14px);
 }
 
 html.dark .orientation-cube-control {
   border-color: rgba(132, 146, 166, 0.36);
   background: rgba(19, 24, 33, 0.84);
+  box-shadow: 0 16px 42px var(--shadow);
 }
 
 .orientation-cube-control:hover,
@@ -977,8 +978,8 @@ html.dark .orientation-cube-control {
 
 .orientation-cube-scene {
   display: grid;
-  width: 68px;
-  height: 62px;
+  width: 72px;
+  height: 66px;
   justify-self: center;
   perspective: 340px;
   place-items: center;
@@ -986,9 +987,9 @@ html.dark .orientation-cube-control {
 
 .orientation-cube {
   position: relative;
-  --orientation-cube-depth: 19px;
-  width: 38px;
-  height: 38px;
+  --orientation-cube-depth: 21px;
+  width: 42px;
+  height: 42px;
   transform: rotateX(-28deg) rotateY(34deg);
   transform-style: preserve-3d;
 }
@@ -998,19 +999,21 @@ html.dark .orientation-cube-control {
   inset: 0;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(203, 211, 223, 0.42);
-  background: linear-gradient(145deg, #2f3948, #171d27);
-  color: #d8e0eb;
-  font-size: 8px;
+  border: 1px solid rgba(30, 41, 59, 0.4);
+  background: linear-gradient(145deg, #738197, #334155);
+  color: #f8fafc;
+  font-size: 9px;
   font-weight: 820;
   line-height: 1;
   text-transform: uppercase;
   backface-visibility: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  text-shadow: 0 1px 1px rgba(15, 23, 42, 0.5);
 }
 
 .orientation-cube-face-top {
   transform: rotateX(90deg) translateZ(var(--orientation-cube-depth));
-  background: linear-gradient(145deg, #4f5d70, #263141);
+  background: linear-gradient(145deg, #a5b4c6, #64748b);
 }
 
 .orientation-cube-face-front {
@@ -1019,21 +1022,49 @@ html.dark .orientation-cube-control {
 
 .orientation-cube-face-right {
   transform: rotateY(90deg) translateZ(var(--orientation-cube-depth));
-  background: linear-gradient(145deg, #273242, #111721);
+  background: linear-gradient(145deg, #607086, #253244);
 }
 
 .orientation-cube-face-bottom {
   transform: rotateX(-90deg) translateZ(var(--orientation-cube-depth));
-  background: linear-gradient(145deg, #202938, #0f151f);
+  background: linear-gradient(145deg, #526074, #1f2a39);
 }
 
 .orientation-cube-face-back {
   transform: rotateY(180deg) translateZ(var(--orientation-cube-depth));
-  background: linear-gradient(145deg, #222c3b, #111720);
+  background: linear-gradient(145deg, #64748b, #2f3d50);
 }
 
 .orientation-cube-face-left {
   transform: rotateY(-90deg) translateZ(var(--orientation-cube-depth));
+  background: linear-gradient(145deg, #8290a4, #44546a);
+}
+
+html.dark .orientation-cube-face {
+  border-color: rgba(203, 211, 223, 0.42);
+  background: linear-gradient(145deg, #2f3948, #171d27);
+  color: #d8e0eb;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+html.dark .orientation-cube-face-top {
+  background: linear-gradient(145deg, #4f5d70, #263141);
+}
+
+html.dark .orientation-cube-face-right {
+  background: linear-gradient(145deg, #273242, #111721);
+}
+
+html.dark .orientation-cube-face-bottom {
+  background: linear-gradient(145deg, #202938, #0f151f);
+}
+
+html.dark .orientation-cube-face-back {
+  background: linear-gradient(145deg, #222c3b, #111720);
+}
+
+html.dark .orientation-cube-face-left {
   background: linear-gradient(145deg, #374252, #19212d);
 }
 
