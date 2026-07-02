@@ -279,7 +279,7 @@ async function uploadBlob(
 export function LibraryUnavailableMessage() {
   return (
     <p className="library-note">
-      Saved versions are unavailable in local library mode.
+      Saved versions are unavailable while library persistence is offline.
     </p>
   );
 }
