@@ -561,22 +561,36 @@ test.describe("3D print app", () => {
     const forkTitle = `${title} fork`;
     try {
       await openActions(page);
-      await page.getByRole("button", { name: "Save current version" }).click();
-      await page.getByLabel("Version name").fill(title);
-      await page.getByRole("button", { name: "Save version" }).click();
-      await expect(page.getByRole("status")).toContainText("Version saved.");
+      await expect(
+        page.getByRole("button", { name: "Save current version" }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: "Fork current version" }),
+      ).toBeVisible();
 
       await page.getByRole("button", { name: "Fork current version" }).click();
       await page.getByLabel("Version name").fill(forkTitle);
       await page.getByRole("button", { name: "Fork version" }).click();
       await expect(page.getByRole("status")).toContainText("Fork saved.");
+      await expect(page.getByRole("heading", { name: forkTitle })).toBeVisible();
+
+      await expect(
+        page.getByRole("button", { name: "Save current version" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Fork current version" }),
+      ).toBeVisible();
+      await page.getByRole("button", { name: "Save current version" }).click();
+      await page.getByLabel("Version name").fill(title);
+      await page.getByRole("button", { name: "Save version" }).click();
+      await expect(page.getByRole("status")).toContainText("Version saved.");
 
       await page.getByRole("button", { name: "Saved Versions" }).click();
       await expect(page.getByRole("button", { name: `Open ${title}` })).toHaveCount(0);
       await expect(page.getByRole("button", { name: `Open ${forkTitle}` })).toHaveCount(0);
       await expect(page.getByLabel("Upload STL")).toHaveCount(0);
 
-      await expect(page.getByRole("heading", { name: forkTitle })).toBeVisible();
+      await expect(page.getByRole("heading", { name: title })).toBeVisible();
       await expect(page.locator(".workspace-title-context")).toHaveCount(0);
       await expect(page).toHaveURL(/model=japandi-tray/);
       if (

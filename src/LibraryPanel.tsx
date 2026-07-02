@@ -197,20 +197,22 @@ export function SaveForkControls({
   return (
     <div className="save-fork-controls">
       <div className="version-command-group">
-        <button
-          aria-label="Save current version"
-          disabled={isSaving}
-          onClick={() => {
-            setStatus("");
-            setStatusTone("neutral");
-            setTitle("");
-            setPendingSource("save");
-          }}
-          type="button"
-        >
-          <Save aria-hidden="true" />
-          Save
-        </button>
+        {activeVersionId ? (
+          <button
+            aria-label="Save current version"
+            disabled={isSaving}
+            onClick={() => {
+              setStatus("");
+              setStatusTone("neutral");
+              setTitle("");
+              setPendingSource("save");
+            }}
+            type="button"
+          >
+            <Save aria-hidden="true" />
+            Save
+          </button>
+        ) : null}
         <button
           aria-label="Fork current version"
           disabled={isSaving}
