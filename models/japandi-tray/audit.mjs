@@ -114,13 +114,14 @@ assert(
   "audit script path points to this model",
 );
 
-["length", "width", "height", "floorThickness", "ribRelief"].forEach((key) =>
-  validateParameter(model, key),
+["length", "width", "height", "floorThickness", "ribRelief", "rotation"].forEach(
+  (key) => validateParameter(model, key),
 );
 
 const height = parameter(model, "height");
 const floorThickness = parameter(model, "floorThickness");
 const ribRelief = parameter(model, "ribRelief");
+const rotation = parameter(model, "rotation");
 const configuredAuditKeys = new Set(model.audit.checks.map((check) => check.key));
 const requiredAuditKeys = [
   "trayLengthTarget",
@@ -145,6 +146,11 @@ assert(
 assert(
   Number.isFinite(geometry.footprintRotationDegrees),
   "tray footprint rotation is configured",
+);
+assert(rotation.default === 0, "default tray rotation is X-axis aligned");
+assert(
+  rotation.limits.max === geometry.footprintRotationDegrees,
+  "maximum tray rotation matches the source footprint angle",
 );
 assert(
   requiredAuditKeys.every((key) => configuredAuditKeys.has(key)),

@@ -946,6 +946,34 @@ html.dark .viewer-tool-rail {
   height: 17px;
 }
 
+.tray-orientation-snap-control {
+  display: grid;
+  grid-template-columns: 38px;
+  gap: 1px;
+  border-top: 1px solid rgba(203, 211, 223, 0.74);
+}
+
+.tray-orientation-snap-control button {
+  width: 38px;
+  height: 34px;
+  border-radius: 0;
+}
+
+html.dark .tray-orientation-snap-control {
+  border-color: rgba(132, 146, 166, 0.36);
+}
+
+.tray-orientation-snap-control button.active {
+  background: var(--accent);
+  color: white;
+}
+
+.tray-orientation-snap-control button.active:hover,
+.tray-orientation-snap-control button.active:focus-visible {
+  background: var(--accent);
+  color: white;
+}
+
 .orientation-cube-control {
   position: absolute;
   bottom: 18px;
@@ -1611,6 +1639,15 @@ html.dark .segmented-control button.active {
   .viewer-nav button {
     width: 34px;
     height: 34px;
+  }
+
+  .tray-orientation-snap-control {
+    grid-template-columns: 34px;
+  }
+
+  .tray-orientation-snap-control button {
+    width: 34px;
+    height: 32px;
   }
 
   .orientation-cube-control {

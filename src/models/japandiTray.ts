@@ -55,6 +55,9 @@ export function applyTrayMorph(
     height - 1,
   );
   const ribRelief = getParam(params, "ribRelief");
+  const outputRotation = THREE.MathUtils.degToRad(-getParam(params, "rotation"));
+  const outputRotationCos = Math.cos(outputRotation);
+  const outputRotationSin = Math.sin(outputRotation);
   const lengthScale = length / settings.originalLength;
   const widthScale = width / settings.originalWidth;
   const originalFloor = settings.originalFloorThickness;
@@ -96,9 +99,9 @@ export function applyTrayMorph(
       (widthCoord + Math.sign(widthCoord) * reliefOffset) * widthScale;
 
     target[index * 3] =
-      nextWidthCoord * rotationCos - nextLengthCoord * rotationSin;
+      nextLengthCoord * outputRotationCos - nextWidthCoord * outputRotationSin;
     target[index * 3 + 1] =
-      nextWidthCoord * rotationSin + nextLengthCoord * rotationCos;
+      nextLengthCoord * outputRotationSin + nextWidthCoord * outputRotationCos;
     target[index * 3 + 2] = nextZ;
   }
 
@@ -111,18 +114,14 @@ export function applyTrayMorph(
 export function updateTrayGuide(
   mesh: THREE.Mesh,
   params: ModelParams,
-  model: TrayModelDefinition,
 ) {
   const length = getParam(params, "length");
   const width = getParam(params, "width");
   const height = getParam(params, "height");
+  const rotation = getParam(params, "rotation");
   mesh.geometry.dispose();
-  mesh.geometry = new THREE.BoxGeometry(width, length, height);
-  mesh.rotation.set(
-    0,
-    0,
-    THREE.MathUtils.degToRad(model.geometry.footprintRotationDegrees),
-  );
+  mesh.geometry = new THREE.BoxGeometry(length, width, height);
+  mesh.rotation.set(0, 0, THREE.MathUtils.degToRad(-rotation));
   mesh.position.set(0, 0, height / 2);
 }
 

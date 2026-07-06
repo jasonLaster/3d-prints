@@ -2,7 +2,7 @@
   "id": "japandi-tray",
   "name": "Japandi Tray",
   "subtitle": "Parametric STL",
-  "description": "Rounded Japandi tray with adjustable length, width, wall height, floor thickness, and rib relief.",
+  "description": "Rounded Japandi tray with adjustable length, width, wall height, floor thickness, rib relief, and rotation.",
   "viewer": "japandi-tray-v1",
   "stl": {
     "fileName": "japandi-tray.stl",
@@ -85,6 +85,17 @@
         "max": 1.8,
         "step": 0.05
       }
+    },
+    {
+      "key": "rotation",
+      "label": "Rotation",
+      "statusLabel": "Rot",
+      "default": 0,
+      "limits": {
+        "min": 0,
+        "max": 45,
+        "step": 1
+      }
     }
   ],
   "audit": {
@@ -93,13 +104,14 @@
       "Default tray length is 190.057 mm, measured on the source STL rotated footprint long axis.",
       "Default tray width is 110.057 mm, measured on the source STL rotated footprint short axis.",
       "Default tray wall height is 20.000 mm, measured on the source STL Z axis.",
-      "Length and width are independently adjustable so the square source tray can become an oblong tray.",
+      "Length and width are independently adjustable so the square source tray can become an oblong tray before the selected orientation is applied.",
       "Floor thickness remaps the lower floor band independently from wall height.",
-      "Rib relief scales the existing vertical side texture without changing target footprint length, width, or height."
+      "Rib relief scales the existing vertical side texture without changing target footprint length, width, or height.",
+      "Rotation adjusts the generated tray between X-axis aligned and source-angle orientation."
     ],
     "invariants": [
       "Keep the tray centered on its source axis while changing dimensions.",
-      "Change tray length and width on the source tray footprint axes independently.",
+      "Scale source footprint axes independently, then orient generated tray length between the X axis and the configured source angle.",
       "Change tray wall height on the Z axis without changing selected length or width.",
       "Keep selected floor thickness below selected wall height.",
       "Keep rib relief within the configured range so side texture remains printable.",

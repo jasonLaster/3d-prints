@@ -241,8 +241,26 @@ test.describe("3D print app", () => {
     await expect(page.getByLabel("Wall height in millimeters")).toHaveValue("20.0");
     await expect(page.getByLabel("Floor thickness in millimeters")).toHaveValue("2.6");
     await expect(page.getByLabel("Rib relief in millimeters")).toHaveValue("1.0");
+    await expect(page.getByRole("heading", { name: "Orientation" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Align tray to X axis" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Use tray source angle" })).toHaveCount(0);
+    await expect(page).toHaveURL(/rotation=0/);
     await expect(page.getByText("Weighted Center")).toHaveCount(0);
     await expectCanvasHasRenderedModel(page);
+  });
+
+  test("keeps tray orientation controls flagged off by default", async ({
+    page,
+  }) => {
+    await openReady(page, "/?model=japandi-tray&unit=in&rotation=30");
+
+    await expect(page).toHaveURL(/rotation=30/);
+    await expect(page.getByLabel("Tray length in inches")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Align tray to X axis" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Use tray source angle" })).toHaveCount(0);
+    await chooseSelectOption(page, "Tray length units", "cm");
+    await expect(page).toHaveURL(/unit=cm/);
+    await expect(page).toHaveURL(/rotation=30/);
   });
 
   test("accepts contextual unit changes and fractional inch input", async ({ page }) => {
@@ -447,7 +465,7 @@ test.describe("3D print app", () => {
     ]);
 
     expect(download.suggestedFilename()).toMatch(
-      /^japandi-tray-length-210\.0-width-120\.0-height-28\.0-floorThickness-2\.6-ribRelief-1\.0\.stl$/,
+      /^japandi-tray-length-210\.0-width-120\.0-height-28\.0-floorThickness-2\.6-ribRelief-1\.0-rotation-0\.0\.stl$/,
     );
   });
 

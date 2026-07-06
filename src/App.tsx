@@ -116,7 +116,9 @@ const PARAM_QUERY_KEYS = [
   "width",
   "floorThickness",
   "ribRelief",
+  "rotation",
 ];
+const ANGLE_PARAM_KEYS = new Set(["rotation"]);
 const SIDEBAR_WIDTH_KEY = "3d-prints:sidebar-width";
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 620;
@@ -124,6 +126,8 @@ const SIDEBAR_DEFAULT_WIDTH = 390;
 const INSPECTOR_COLLAPSED_WIDTH = 52;
 const LIBRARY_SIDEBAR_WIDTH_KEY = "3d-prints:library-sidebar-width";
 const THEME_STORAGE_KEY = "3d-prints:theme";
+const ENABLE_TRAY_ORIENTATION_CONTROLS =
+  import.meta.env.VITE_ENABLE_TRAY_ORIENTATION_CONTROLS === "true";
 const LIBRARY_SIDEBAR_MIN_WIDTH = 240;
 const LIBRARY_SIDEBAR_MAX_WIDTH = 460;
 const LIBRARY_SIDEBAR_DEFAULT_WIDTH = 320;
@@ -199,6 +203,10 @@ function parseUrlParam(
     return null;
   }
 
+  if (ANGLE_PARAM_KEYS.has(parameter.key)) {
+    return parsed;
+  }
+
   if (unit === "mm") {
     return parsed;
   }
@@ -238,7 +246,11 @@ function getParamsFromUrl(model: ModelDefinition) {
   return params;
 }
 
-function serializeUrlParam(valueMm: number, unit: LengthUnit) {
+function serializeUrlParam(key: string, valueMm: number, unit: LengthUnit) {
+  if (ANGLE_PARAM_KEYS.has(key)) {
+    return Number(valueMm.toFixed(1)).toString();
+  }
+
   const value = unit === "mm" ? valueMm : toUnit(valueMm, unit);
   return Number(value.toFixed(4)).toString();
 }
@@ -263,7 +275,7 @@ function writeUrlState({
 
   for (const [key, value] of Object.entries(params)) {
     if (Number.isFinite(value)) {
-      url.searchParams.set(key, serializeUrlParam(value, unit));
+      url.searchParams.set(key, serializeUrlParam(key, value, unit));
     }
   }
 
@@ -351,8 +363,10 @@ function downloadBlob(blob: Blob, name: string) {
 
 function getExportFileName(model: ModelDefinition, params: ModelParams) {
   const suffix = model.parameters
-    .slice(0, 5)
-    .map((parameter) => `${parameter.key}-${getParam(params, parameter.key).toFixed(1)}`)
+    .map(
+      (parameter) =>
+        `${parameter.key}-${getParam(params, parameter.key).toFixed(1)}`,
+    )
     .join("-");
 
   return `${model.export.filePrefix}-${suffix}.stl`;
@@ -369,17 +383,19 @@ const HolderViewer = forwardRef<
     theme: ThemeMode;
     unit: LengthUnit;
     onResetParams: () => void;
+    onTrayRotationChange: (value: number) => void;
   }
 >(function HolderViewer(
   {
     model,
+    onTrayRotationChange,
+    onResetParams,
     params,
     coreViewMode,
     renderMode,
     showOriginal,
     theme,
     unit,
-    onResetParams,
   },
   ref,
 ) {
@@ -527,7 +543,7 @@ const HolderViewer = forwardRef<
       updateWeightedCore(domeMesh, sandMesh, latestParamsRef.current, model);
     } else {
       applyTrayMorph(mainMesh.geometry, base, latestParamsRef.current, model);
-      updateTrayGuide(guideMesh, latestParamsRef.current, model);
+      updateTrayGuide(guideMesh, latestParamsRef.current);
     }
 
     applyRenderOptions(
@@ -693,8 +709,8 @@ const HolderViewer = forwardRef<
             true,
           )
         : new THREE.BoxGeometry(
-            getParam(initialParams, "width"),
             getParam(initialParams, "length"),
+            getParam(initialParams, "width"),
             getParam(initialParams, "height"),
           );
     const guide = new THREE.Mesh(
@@ -708,10 +724,6 @@ const HolderViewer = forwardRef<
     );
     if (model.viewer === "weighted-paper-towel-holder-v1") {
       guide.rotation.x = Math.PI / 2;
-    } else {
-      guide.rotation.z = THREE.MathUtils.degToRad(
-        model.geometry.footprintRotationDegrees,
-      );
     }
     guideMeshRef.current = guide;
     scene.add(guide);
@@ -897,6 +909,14 @@ const HolderViewer = forwardRef<
           >
             <RotateCcw aria-hidden="true" />
           </button>
+          {ENABLE_TRAY_ORIENTATION_CONTROLS &&
+          model.viewer === "japandi-tray-v1" ? (
+            <TrayOrientationSnapControl
+              maxRotation={model.geometry.footprintRotationDegrees}
+              onChange={onTrayRotationChange}
+              value={getParam(params, "rotation")}
+            />
+          ) : null}
         </div>
       </div>
       <div
@@ -1117,6 +1137,45 @@ function OriginalOverlayToggle({
         <span />
       </span>
     </label>
+  );
+}
+
+function TrayOrientationSnapControl({
+  maxRotation,
+  onChange,
+  value,
+}: {
+  maxRotation: number;
+  onChange: (value: number) => void;
+  value: number;
+}) {
+  const clampedValue = clamp(value, 0, maxRotation);
+  const displayValue = Number(clampedValue.toFixed(1));
+  const sourceLabel = `${Number(maxRotation.toFixed(1))}\u00b0`;
+
+  return (
+    <div className="tray-orientation-snap-control" aria-label="Tray orientation">
+      <button
+        aria-label="Align tray to X axis"
+        aria-pressed={displayValue === 0}
+        className={displayValue === 0 ? "active" : ""}
+        onClick={() => onChange(0)}
+        title="Align tray to X axis"
+        type="button"
+      >
+        X
+      </button>
+      <button
+        aria-label="Use tray source angle"
+        aria-pressed={displayValue === maxRotation}
+        className={displayValue === maxRotation ? "active" : ""}
+        onClick={() => onChange(maxRotation)}
+        title="Use tray source angle"
+        type="button"
+      >
+        {sourceLabel}
+      </button>
+    </div>
   );
 }
 
@@ -1870,7 +1929,7 @@ export default function App({
     }
     for (const [key, value] of Object.entries(version.params)) {
       if (Number.isFinite(value)) {
-        url.searchParams.set(key, serializeUrlParam(value, version.unit));
+        url.searchParams.set(key, serializeUrlParam(key, value, version.unit));
       }
     }
     window.history.replaceState(null, "", url);
@@ -2062,6 +2121,7 @@ export default function App({
             key={model.id}
             model={model}
             onResetParams={resetParams}
+            onTrayRotationChange={(value) => updateParam("rotation", value)}
             params={params}
             ref={viewerRef}
             renderMode={renderMode}
@@ -2135,17 +2195,19 @@ export default function App({
               <div className="inspector-body">
                 <section className="panel-section">
                   <h2>Parameters</h2>
-                  {model.parameters.map((parameter) => (
-                    <NumberControl
-                      key={parameter.key}
-                      label={parameter.label}
-                      limits={getParameterLimits(model, params, parameter.key)}
-                      onChange={(value) => updateParam(parameter.key, value)}
-                      onUnitChange={setUnit}
-                      unit={unit}
-                      valueMm={params[parameter.key]}
-                    />
-                  ))}
+                  {model.parameters
+                    .filter((parameter) => !ANGLE_PARAM_KEYS.has(parameter.key))
+                    .map((parameter) => (
+                      <NumberControl
+                        key={parameter.key}
+                        label={parameter.label}
+                        limits={getParameterLimits(model, params, parameter.key)}
+                        onChange={(value) => updateParam(parameter.key, value)}
+                        onUnitChange={setUnit}
+                        unit={unit}
+                        valueMm={params[parameter.key]}
+                      />
+                    ))}
                 </section>
 
                 {model.viewer === "weighted-paper-towel-holder-v1" ? (

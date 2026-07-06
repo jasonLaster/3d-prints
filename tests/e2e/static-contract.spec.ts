@@ -165,6 +165,7 @@ test("model-specific parameter dependencies are declared auditable", () => {
       minimumFloorThickness: number;
       minimumWallHeight: number;
       maximumRibRelief: number;
+      footprintRotationDegrees: number;
     };
   };
 
@@ -192,6 +193,10 @@ test("model-specific parameter dependencies are declared auditable", () => {
     tray.geometry.minimumFloorThickness,
   );
   expect(tray.geometry.maximumRibRelief).toBeLessThan(2);
+  expect(trayParams.rotation.default).toBe(0);
+  expect(trayParams.rotation.limits.max).toBe(
+    tray.geometry.footprintRotationDegrees,
+  );
   expect(tray.audit.invariants.join(" ")).toContain("Preserve the source STL");
 });
 
@@ -210,7 +215,7 @@ test("request coverage document tracks the app behaviors under Playwright", () =
     "Rendering options include a solid view",
     "Original inlay/source overlay can be toggled",
     "per-model JSON for parameters, audit, and scripts",
-    "Japandi tray supports width, length, height, floor thickness, and rib relief",
+    "Japandi tray supports width, length, height, floor thickness, rib relief, and rotation",
     "Dark theme is available",
     "Parameter state is saved in the URL",
     "Sidebars have collapsible and resizable rails",
@@ -268,7 +273,7 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   }
 
   for (const phrase of [
-    "length, width, wall height, floor thickness, and rib relief",
+    "length, width, wall height, floor thickness, rib relief, and rotation",
     "Keep the original STL available as an overlay reference",
     "Do not let floor thickness equal or exceed total wall height",
     "Runtime audit checks include tray length",
