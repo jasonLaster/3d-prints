@@ -527,7 +527,7 @@ const HolderViewer = forwardRef<
       updateWeightedCore(domeMesh, sandMesh, latestParamsRef.current, model);
     } else {
       applyTrayMorph(mainMesh.geometry, base, latestParamsRef.current, model);
-      updateTrayGuide(guideMesh, latestParamsRef.current);
+      updateTrayGuide(guideMesh, latestParamsRef.current, model);
     }
 
     applyRenderOptions(
@@ -693,8 +693,8 @@ const HolderViewer = forwardRef<
             true,
           )
         : new THREE.BoxGeometry(
-            getParam(initialParams, "length"),
             getParam(initialParams, "width"),
+            getParam(initialParams, "length"),
             getParam(initialParams, "height"),
           );
     const guide = new THREE.Mesh(
@@ -708,6 +708,10 @@ const HolderViewer = forwardRef<
     );
     if (model.viewer === "weighted-paper-towel-holder-v1") {
       guide.rotation.x = Math.PI / 2;
+    } else {
+      guide.rotation.z = THREE.MathUtils.degToRad(
+        model.geometry.footprintRotationDegrees,
+      );
     }
     guideMeshRef.current = guide;
     scene.add(guide);

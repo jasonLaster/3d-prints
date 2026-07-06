@@ -49,7 +49,7 @@ function validateParameter(model, key) {
   assert(entry.limits.step > 0, `${key} step is positive`);
 }
 
-function measureStl(stlPath) {
+function measureStl(stlPath, geometryConfig) {
   const loader = new STLLoader();
   const buffer = fs.readFileSync(stlPath);
   const arrayBuffer = buffer.buffer.slice(
@@ -61,8 +61,32 @@ function measureStl(stlPath) {
   const box = geometry.boundingBox;
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
+  const position = geometry.getAttribute("position");
+  const angle = THREE.MathUtils.degToRad(geometryConfig.footprintRotationDegrees);
+  const rotationCos = Math.cos(angle);
+  const rotationSin = Math.sin(angle);
+  let minFootprintWidth = Infinity;
+  let maxFootprintWidth = -Infinity;
+  let minFootprintLength = Infinity;
+  let maxFootprintLength = -Infinity;
+
+  for (let index = 0; index < position.count; index += 1) {
+    const x = position.getX(index) - geometryConfig.mainAxis.x;
+    const y = position.getY(index) - geometryConfig.mainAxis.y;
+    const footprintWidth = x * rotationCos + y * rotationSin;
+    const footprintLength = -x * rotationSin + y * rotationCos;
+    minFootprintWidth = Math.min(minFootprintWidth, footprintWidth);
+    maxFootprintWidth = Math.max(maxFootprintWidth, footprintWidth);
+    minFootprintLength = Math.min(minFootprintLength, footprintLength);
+    maxFootprintLength = Math.max(maxFootprintLength, footprintLength);
+  }
+
+  const footprint = {
+    length: maxFootprintLength - minFootprintLength,
+    width: maxFootprintWidth - minFootprintWidth,
+  };
   geometry.dispose();
-  return { size, center, minZ: box.min.z };
+  return { size, center, footprint, minZ: box.min.z };
 }
 
 if (!process.argv[2]) {
@@ -119,19 +143,23 @@ assert(
   "default rib relief is inside the printable relief range",
 );
 assert(
+  Number.isFinite(geometry.footprintRotationDegrees),
+  "tray footprint rotation is configured",
+);
+assert(
   requiredAuditKeys.every((key) => configuredAuditKeys.has(key)),
   "all runtime audit checks are configured",
 );
 
 if (fs.existsSync(stlPath)) {
-  const measurements = measureStl(stlPath);
+  const measurements = measureStl(stlPath, geometry);
   assert(
-    nearlyEqual(measurements.size.x, geometry.originalLength, tolerance),
-    `STL length ${measurements.size.x.toFixed(3)} mm matches declared length`,
+    nearlyEqual(measurements.footprint.length, geometry.originalLength, tolerance),
+    `STL footprint length ${measurements.footprint.length.toFixed(3)} mm matches declared length`,
   );
   assert(
-    nearlyEqual(measurements.size.y, geometry.originalWidth, tolerance),
-    `STL width ${measurements.size.y.toFixed(3)} mm matches declared width`,
+    nearlyEqual(measurements.footprint.width, geometry.originalWidth, tolerance),
+    `STL footprint width ${measurements.footprint.width.toFixed(3)} mm matches declared width`,
   );
   assert(
     nearlyEqual(measurements.size.z, geometry.originalHeight, tolerance),

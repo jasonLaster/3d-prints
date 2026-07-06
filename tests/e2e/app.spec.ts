@@ -116,8 +116,8 @@ test.describe("3D print app", () => {
     await expect(page).not.toHaveURL(/theme=/);
     await expect(page).not.toHaveURL(/length=360/);
     await expect(page).not.toHaveURL(/floorThickness=8/);
-    await expect(page.getByLabel("Tray length in millimeters")).toHaveValue("166.6");
-    await expect(page.getByLabel("Tray width in millimeters")).toHaveValue("166.6");
+    await expect(page.getByLabel("Tray length in millimeters")).toHaveValue("190.1");
+    await expect(page.getByLabel("Tray width in millimeters")).toHaveValue("110.1");
     await expect(page.getByLabel("Wall height in millimeters")).toHaveValue("20.0");
     await expect(page.getByLabel("Floor thickness in millimeters")).toHaveValue("2.6");
   });
@@ -236,8 +236,8 @@ test.describe("3D print app", () => {
     await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
     await expect(page.getByLabel("Japandi Tray model viewer")).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Model" })).toHaveCount(0);
-    await expect(page.getByLabel("Tray length in millimeters")).toHaveValue("166.6");
-    await expect(page.getByLabel("Tray width in millimeters")).toHaveValue("166.6");
+    await expect(page.getByLabel("Tray length in millimeters")).toHaveValue("190.1");
+    await expect(page.getByLabel("Tray width in millimeters")).toHaveValue("110.1");
     await expect(page.getByLabel("Wall height in millimeters")).toHaveValue("20.0");
     await expect(page.getByLabel("Floor thickness in millimeters")).toHaveValue("2.6");
     await expect(page.getByLabel("Rib relief in millimeters")).toHaveValue("1.0");
@@ -378,7 +378,7 @@ test.describe("3D print app", () => {
       await trayLength.blur();
       await expect(trayLength).toHaveValue("200.0");
       await page.getByRole("button", { name: "Reset parameters" }).click();
-      await expect(trayLength).toHaveValue("166.6");
+      await expect(trayLength).toHaveValue("190.1");
 
       await openActions(page);
       await expect(page.getByRole("button", { name: "Export" })).toBeVisible();

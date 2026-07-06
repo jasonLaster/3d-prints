@@ -65,6 +65,7 @@ export type TrayGeometry = {
   originalLength: number;
   originalWidth: number;
   originalHeight: number;
+  footprintRotationDegrees: number;
   mainAxis: {
     x: number;
     y: number;

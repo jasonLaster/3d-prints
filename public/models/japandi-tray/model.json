@@ -14,9 +14,10 @@
     "filePrefix": "japandi-tray"
   },
   "geometry": {
-    "originalLength": 166.62370109558105,
-    "originalWidth": 166.62236261367798,
+    "originalLength": 190.05651718942815,
+    "originalWidth": 110.05654688125205,
     "originalHeight": 20,
+    "footprintRotationDegrees": 45,
     "mainAxis": {
       "x": 89.96045780181885,
       "y": 90.01605868339539,
@@ -34,7 +35,7 @@
       "key": "length",
       "label": "Tray length",
       "statusLabel": "L",
-      "default": 166.6,
+      "default": 190.1,
       "limits": {
         "min": 90,
         "max": 360,
@@ -45,7 +46,7 @@
       "key": "width",
       "label": "Tray width",
       "statusLabel": "W",
-      "default": 166.6,
+      "default": 110.1,
       "limits": {
         "min": 70,
         "max": 300,
@@ -89,16 +90,16 @@
   "audit": {
     "toleranceMm": 0.6,
     "dimensionTargets": [
-      "Default tray length is 166.624 mm, measured on the source STL X axis.",
-      "Default tray width is 166.622 mm, measured on the source STL Y axis.",
+      "Default tray length is 190.057 mm, measured on the source STL rotated footprint long axis.",
+      "Default tray width is 110.057 mm, measured on the source STL rotated footprint short axis.",
       "Default tray wall height is 20.000 mm, measured on the source STL Z axis.",
       "Length and width are independently adjustable so the square source tray can become an oblong tray.",
       "Floor thickness remaps the lower floor band independently from wall height.",
-      "Rib relief scales the existing vertical side texture without changing target bounding length, width, or height."
+      "Rib relief scales the existing vertical side texture without changing target footprint length, width, or height."
     ],
     "invariants": [
       "Keep the tray centered on its source axis while changing dimensions.",
-      "Change tray length on the X axis and tray width on the Y axis independently.",
+      "Change tray length and width on the source tray footprint axes independently.",
       "Change tray wall height on the Z axis without changing selected length or width.",
       "Keep selected floor thickness below selected wall height.",
       "Keep rib relief within the configured range so side texture remains printable.",

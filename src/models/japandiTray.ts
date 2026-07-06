@@ -42,6 +42,11 @@ export function applyTrayMorph(
   const settings = model.geometry;
   const position = geometry.getAttribute("position") as THREE.BufferAttribute;
   const target = position.array as Float32Array;
+  const footprintRotation = THREE.MathUtils.degToRad(
+    settings.footprintRotationDegrees,
+  );
+  const rotationCos = Math.cos(footprintRotation);
+  const rotationSin = Math.sin(footprintRotation);
   const length = getParam(params, "length");
   const width = getParam(params, "width");
   const height = getParam(params, "height");
@@ -63,7 +68,12 @@ export function applyTrayMorph(
     const x = basePositions[index * 3];
     const y = basePositions[index * 3 + 1];
     const z = basePositions[index * 3 + 2];
-    const edgeRatio = Math.max(Math.abs(x) / halfLength, Math.abs(y) / halfWidth);
+    const widthCoord = x * rotationCos + y * rotationSin;
+    const lengthCoord = -x * rotationSin + y * rotationCos;
+    const edgeRatio = Math.max(
+      Math.abs(lengthCoord) / halfLength,
+      Math.abs(widthCoord) / halfWidth,
+    );
     const wallBlend =
       smoothStep(0.52, 0.92, edgeRatio) *
       smoothStep(0.08, 0.36, z / settings.originalHeight) *
@@ -80,8 +90,15 @@ export function applyTrayMorph(
         ((z - originalFloor) / wallSourceHeight) * wallTargetHeight;
     }
 
-    target[index * 3] = (x + Math.sign(x) * reliefOffset) * lengthScale;
-    target[index * 3 + 1] = (y + Math.sign(y) * reliefOffset) * widthScale;
+    const nextLengthCoord =
+      (lengthCoord + Math.sign(lengthCoord) * reliefOffset) * lengthScale;
+    const nextWidthCoord =
+      (widthCoord + Math.sign(widthCoord) * reliefOffset) * widthScale;
+
+    target[index * 3] =
+      nextWidthCoord * rotationCos - nextLengthCoord * rotationSin;
+    target[index * 3 + 1] =
+      nextWidthCoord * rotationSin + nextLengthCoord * rotationCos;
     target[index * 3 + 2] = nextZ;
   }
 
@@ -91,13 +108,21 @@ export function applyTrayMorph(
   geometry.computeBoundingSphere();
 }
 
-export function updateTrayGuide(mesh: THREE.Mesh, params: ModelParams) {
+export function updateTrayGuide(
+  mesh: THREE.Mesh,
+  params: ModelParams,
+  model: TrayModelDefinition,
+) {
   const length = getParam(params, "length");
   const width = getParam(params, "width");
   const height = getParam(params, "height");
   mesh.geometry.dispose();
-  mesh.geometry = new THREE.BoxGeometry(length, width, height);
-  mesh.rotation.set(0, 0, 0);
+  mesh.geometry = new THREE.BoxGeometry(width, length, height);
+  mesh.rotation.set(
+    0,
+    0,
+    THREE.MathUtils.degToRad(model.geometry.footprintRotationDegrees),
+  );
   mesh.position.set(0, 0, height / 2);
 }
 
