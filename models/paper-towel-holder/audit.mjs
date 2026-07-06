@@ -123,6 +123,7 @@ const requiredAuditKeys = [
   "centerTubeOuterDiameter",
   "sandChamber",
   "estimatedSandMass",
+  "flushSandChamberFloor",
   "roundedTop",
   "tubeToHolderClearance",
   "tubeRadialMove",
@@ -144,6 +145,10 @@ assert(
 assert(
   geometry.bottomLockedHeight > 0 && geometry.topLockedHeight > 0,
   "locked holder bands are configured",
+);
+assert(
+  geometry.sandBottomHeight > 0,
+  "flush sand floor has positive thickness",
 );
 assert(
   requiredAuditKeys.every((key) => configuredAuditKeys.has(key)),

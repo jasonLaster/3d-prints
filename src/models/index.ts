@@ -23,6 +23,7 @@ import type {
 export {
   applyHolderMorph,
   createRoundedTopGeometry,
+  createSandChamberFloorGeometry,
   createSandPreviewGeometry,
   updateHolderGuide,
   updateWeightedCore,

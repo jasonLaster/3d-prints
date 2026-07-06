@@ -57,6 +57,7 @@ import {
   applyTrayMorph,
   buildAuditItems,
   createRoundedTopGeometry,
+  createSandChamberFloorGeometry,
   createSandPreviewGeometry,
   getDefaultParams,
   getModelDimensions,
@@ -407,6 +408,7 @@ const HolderViewer = forwardRef<
   const mainMeshRef = useRef<THREE.Mesh | null>(null);
   const domeMeshRef = useRef<THREE.Mesh | null>(null);
   const sandMeshRef = useRef<THREE.Mesh | null>(null);
+  const sandFloorMeshRef = useRef<THREE.Mesh | null>(null);
   const ghostMeshRef = useRef<THREE.Mesh | null>(null);
   const guideMeshRef = useRef<THREE.Mesh | null>(null);
   const mainMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
@@ -519,6 +521,7 @@ const HolderViewer = forwardRef<
     const mainMesh = mainMeshRef.current;
     const domeMesh = domeMeshRef.current;
     const sandMesh = sandMeshRef.current;
+    const sandFloorMesh = sandFloorMeshRef.current;
     const ghostMesh = ghostMeshRef.current;
     const guideMesh = guideMeshRef.current;
     const holderMaterial = mainMaterialRef.current;
@@ -535,12 +538,18 @@ const HolderViewer = forwardRef<
     }
 
     if (model.viewer === "weighted-paper-towel-holder-v1") {
-      if (!domeMesh || !sandMesh || !domeMaterial) {
+      if (!domeMesh || !sandMesh || !sandFloorMesh || !domeMaterial) {
         return;
       }
       applyHolderMorph(mainMesh.geometry, base, latestParamsRef.current, model);
       updateHolderGuide(guideMesh, latestParamsRef.current);
-      updateWeightedCore(domeMesh, sandMesh, latestParamsRef.current, model);
+      updateWeightedCore(
+        domeMesh,
+        sandMesh,
+        sandFloorMesh,
+        latestParamsRef.current,
+        model,
+      );
     } else {
       applyTrayMorph(mainMesh.geometry, base, latestParamsRef.current, model);
       updateTrayGuide(guideMesh, latestParamsRef.current);
@@ -562,6 +571,7 @@ const HolderViewer = forwardRef<
   const createStlBlob = useCallback(() => {
     const mainMesh = mainMeshRef.current;
     const domeMesh = domeMeshRef.current;
+    const sandFloorMesh = sandFloorMeshRef.current;
     if (!mainMesh) {
       return null;
     }
@@ -572,10 +582,16 @@ const HolderViewer = forwardRef<
     group.add(holder);
 
     let roundedTop: THREE.Mesh | null = null;
+    let sandFloor: THREE.Mesh | null = null;
     if (model.viewer === "weighted-paper-towel-holder-v1" && domeMesh) {
       roundedTop = new THREE.Mesh(domeMesh.geometry.clone());
       roundedTop.name = `${model.id}-rounded-weighted-center-tube-top`;
       group.add(roundedTop);
+    }
+    if (model.viewer === "weighted-paper-towel-holder-v1" && sandFloorMesh) {
+      sandFloor = new THREE.Mesh(sandFloorMesh.geometry.clone());
+      sandFloor.name = `${model.id}-flush-sand-chamber-floor`;
+      group.add(sandFloor);
     }
     group.updateMatrixWorld(true);
 
@@ -585,6 +601,7 @@ const HolderViewer = forwardRef<
 
     holder.geometry.dispose();
     roundedTop?.geometry.dispose();
+    sandFloor?.geometry.dispose();
 
     return blob;
   }, [model]);
@@ -791,6 +808,14 @@ const HolderViewer = forwardRef<
           domeMesh.name = `${model.id}-rounded-weighted-center-tube-top`;
           scene.add(domeMesh);
           domeMeshRef.current = domeMesh;
+
+          const sandFloorMesh = new THREE.Mesh(
+            createSandChamberFloorGeometry(latestParamsRef.current, model),
+            domeMaterial,
+          );
+          sandFloorMesh.name = `${model.id}-flush-sand-chamber-floor`;
+          scene.add(sandFloorMesh);
+          sandFloorMeshRef.current = sandFloorMesh;
 
           const sandMesh = new THREE.Mesh(
             createSandPreviewGeometry(latestParamsRef.current, model),

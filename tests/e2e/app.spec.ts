@@ -154,6 +154,7 @@ test.describe("3D print app", () => {
 
       await expect(page.getByText("Sand chamber")).toBeVisible();
       await expect(page.getByText("Estimated sand mass")).toBeVisible();
+      await expect(page.getByText("Flush sand floor")).toBeVisible();
       await expect(page.getByText("Rounded top", { exact: true })).toBeVisible();
       await expect(page.getByText("Tube-to-holder clearance")).toBeVisible();
     });

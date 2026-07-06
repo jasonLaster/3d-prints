@@ -82,6 +82,7 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "centerTubeOuterDiameter",
       "sandChamber",
       "estimatedSandMass",
+      "flushSandChamberFloor",
       "roundedTop",
       "tubeToHolderClearance",
       "tubeRadialMove",
@@ -153,6 +154,7 @@ test("model-specific parameter dependencies are declared auditable", () => {
       centerTubeInnerDiameter: number;
       centerTubeOuterDiameter: number;
       tubeToHolderDiameterClearance: number;
+      sandBottomHeight: number;
       sandHeadspace: number;
       sandDensityGramsPerCc: number;
     };
@@ -179,6 +181,7 @@ test("model-specific parameter dependencies are declared auditable", () => {
     holder.geometry.centerTubeOuterDiameter,
   );
   expect(holder.geometry.sandHeadspace).toBeGreaterThan(0);
+  expect(holder.geometry.sandBottomHeight).toBeGreaterThan(0);
   expect(holder.geometry.sandDensityGramsPerCc).toBeGreaterThan(1);
   expect(holder.audit.invariants.join(" ")).toContain("Do not apply uniform XYZ scaling");
 
@@ -204,7 +207,7 @@ test("request coverage document tracks the app behaviors under Playwright", () =
   const coverage = readText(path.join(root, "docs/testing-and-audit-coverage.md"));
   const requiredPhrases = [
     "View STL models in a Vite React app",
-    "center tube holds sand and has a rounded top",
+    "center tube holds sand with a flush base floor and rounded top",
     "Tube diameter is independently parameterized",
     "Imperial fractions such as `1/8th in` are accepted",
     "Unit control appears as contextual text with a caret",
@@ -264,6 +267,7 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
 
   for (const phrase of [
     "weighted sand chamber",
+    "flush base floor",
     "rounded top",
     "Center tube diameter is adjustable independently",
     "Do not apply uniform XYZ scaling",

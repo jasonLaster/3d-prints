@@ -214,9 +214,26 @@ export function createSandPreviewGeometry(
   return geometry;
 }
 
+export function createSandChamberFloorGeometry(
+  params: ModelParams,
+  model: HolderModelDefinition,
+) {
+  const wallOverlap = 0.35;
+  const radius = getSandChamberDiameter(params, model) / 2 + wallOverlap;
+  const height = model.geometry.sandBottomHeight;
+  const geometry = new THREE.CylinderGeometry(radius, radius, height, 56, 1, false);
+  geometry.rotateX(Math.PI / 2);
+  geometry.translate(0, 0, height / 2);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
 export function updateWeightedCore(
   domeMesh: THREE.Mesh,
   sandMesh: THREE.Mesh,
+  floorMesh: THREE.Mesh,
   params: ModelParams,
   model: HolderModelDefinition,
 ) {
@@ -224,6 +241,8 @@ export function updateWeightedCore(
   domeMesh.geometry = createRoundedTopGeometry(params, model);
   sandMesh.geometry.dispose();
   sandMesh.geometry = createSandPreviewGeometry(params, model);
+  floorMesh.geometry.dispose();
+  floorMesh.geometry = createSandChamberFloorGeometry(params, model);
 }
 
 export function getHolderAuditValue(
@@ -286,6 +305,15 @@ export function getHolderAuditValue(
         label: check.label,
         value: `${sandMass.toFixed(2)} kg`,
         status: sandMass > (check.minSandMassKg ?? 0.1) ? "pass" : "warn",
+      };
+    case "flushSandChamberFloor":
+      return {
+        label: check.label,
+        value: `${formatLength(0, unit)} base, ${formatLength(
+          settings.sandBottomHeight,
+          unit,
+        )} floor`,
+        status: settings.sandBottomHeight > 0 ? "pass" : "warn",
       };
     case "roundedTop":
       return {

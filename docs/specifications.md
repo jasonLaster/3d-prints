@@ -43,6 +43,7 @@ Each catalog model has a `public/models/<model-id>/model.json` file with:
 - Unit controls are contextual text dropdowns inside each parameter row, not a separate toggle group.
 - Changing one parameter row's unit changes the global unit display for the workspace.
 - Inch inputs accept fractional values such as `1/8th in`, `1/4"`, and `2 1/2`.
+- Up and Down arrow keys step inch inputs on a magnitude-aware fractional grid: `1/32"` below half an inch, `1/16"` below one inch, and `1/8"` at one inch and above.
 - Values clamp to the active parameter limits.
 - Dependent limits update immediately:
   - Paper towel holder diameter must stay at least `tubeDiameter + tubeToHolderDiameterClearance`.
@@ -58,7 +59,7 @@ Paper towel holder:
 - Holder height changes remap the middle body span between fixed bottom and top bands.
 - Holder diameter changes move the outer holder annulus radially.
 - Center tube diameter changes remap the center tube radius independently.
-- The center tube is designed as a sand-filled weight chamber.
+- The center tube is designed as a bottom-closed sand-filled weight chamber, with the chamber floor flush to the holder base.
 - The top is rounded and remains tied to holder height and tube diameter.
 - The original inlay overlay can be toggled for visual comparison.
 
@@ -92,7 +93,7 @@ Japandi tray:
 
 - Export downloads the current generated STL, not the untouched source STL.
 - Export file names include the model export prefix and active parameter values.
-- The paper towel export includes the rounded weighted center tube top.
+- The paper towel export includes the flush weighted center tube floor and rounded weighted center tube top.
 - The generated STL snapshot used by Save/Fork follows the same geometry as Export.
 
 ## Accessibility And Responsiveness

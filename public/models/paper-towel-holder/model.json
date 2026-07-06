@@ -2,7 +2,7 @@
   "id": "paper-towel-holder",
   "name": "Paper Towel Holder",
   "subtitle": "Parametric STL",
-  "description": "Adjustable paper towel holder with independent holder height, holder diameter, and weighted center tube diameter controls.",
+  "description": "Adjustable paper towel holder with independent holder height, holder diameter, and a flush-bottom sand-weighted center tube.",
   "viewer": "weighted-paper-towel-holder-v1",
   "stl": {
     "fileName": "paper-towel-holder.stl",
@@ -72,6 +72,7 @@
       "Default holder outer diameter is 123.800 mm, measured across the original holder body.",
       "Default center tube outer diameter is 36.000 mm.",
       "Default center tube sand chamber diameter is 25.000 mm.",
+      "Default center tube sand floor is flush with the holder base and rises 8.000 mm to support fill.",
       "The rounded weighted top reaches 5.738 mm below the selected holder height."
     ],
     "invariants": [
@@ -84,6 +85,7 @@
       "Change holder diameter by moving the outer holder annulus radially, not by changing Z height or center tube dimensions.",
       "Change holder height by remapping the middle holder span between fixed bottom and top bands.",
       "Change center tube diameter by remapping the center post radius only.",
+      "Keep the center tube bottom closed by a sand floor whose underside is flush with the holder base.",
       "Keep the rounded center tube top tied to holder height and selected tube diameter."
     ],
     "checks": [
@@ -109,6 +111,10 @@
         "key": "estimatedSandMass",
         "label": "Estimated sand mass",
         "minSandMassKg": 0.1
+      },
+      {
+        "key": "flushSandChamberFloor",
+        "label": "Flush sand floor"
       },
       {
         "key": "roundedTop",
