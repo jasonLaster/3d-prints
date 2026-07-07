@@ -26,6 +26,34 @@ export function fromUnit(value: number, unit: LengthUnit) {
   return value * UNIT_OPTIONS[unit].mmPerUnit;
 }
 
+const FRACTIONAL_INCH_DENOMINATORS = [1, 2, 4, 8, 16, 32] as const;
+const FRACTIONAL_INCH_EPSILON = 1e-6;
+
+function getFractionalInchStepDenominator(valueIn: number) {
+  const absoluteValue = Math.abs(valueIn);
+  if (absoluteValue < 0.5) {
+    return 32;
+  }
+  if (absoluteValue < 1) {
+    return 16;
+  }
+  return 8;
+}
+
+function getFractionalInchFormatDenominator(valueIn: number) {
+  const absoluteValue = Math.abs(valueIn);
+  const fraction = absoluteValue - Math.floor(absoluteValue);
+
+  for (const denominator of FRACTIONAL_INCH_DENOMINATORS) {
+    const rounded = Math.round(fraction * denominator) / denominator;
+    if (Math.abs(rounded - fraction) < FRACTIONAL_INCH_EPSILON) {
+      return denominator;
+    }
+  }
+
+  return getFractionalInchStepDenominator(valueIn);
+}
+
 export function formatLength(valueMm: number, unit: LengthUnit, digits?: number) {
   const option = UNIT_OPTIONS[unit];
   if (unit === "in") {
@@ -46,7 +74,10 @@ function greatestCommonDivisor(a: number, b: number): number {
   return b === 0 ? a : greatestCommonDivisor(b, a % b);
 }
 
-function formatFractionalInches(valueIn: number, denominator = 8) {
+function formatFractionalInches(
+  valueIn: number,
+  denominator = getFractionalInchFormatDenominator(valueIn),
+) {
   const sign = valueIn < 0 ? "-" : "";
   const absoluteValue = Math.abs(valueIn);
   let whole = Math.floor(absoluteValue);
@@ -74,13 +105,42 @@ export function formatLengthInput(valueMm: number, unit: LengthUnit) {
   return toUnit(valueMm, unit).toFixed(UNIT_OPTIONS[unit].digits);
 }
 
+const UNICODE_FRACTIONS: Record<string, string> = {
+  "¼": " 1/4",
+  "½": " 1/2",
+  "¾": " 3/4",
+  "⅐": " 1/7",
+  "⅑": " 1/9",
+  "⅒": " 1/10",
+  "⅓": " 1/3",
+  "⅔": " 2/3",
+  "⅕": " 1/5",
+  "⅖": " 2/5",
+  "⅗": " 3/5",
+  "⅘": " 4/5",
+  "⅙": " 1/6",
+  "⅚": " 5/6",
+  "⅛": " 1/8",
+  "⅜": " 3/8",
+  "⅝": " 5/8",
+  "⅞": " 7/8",
+};
+
+function normalizeFractionText(rawValue: string) {
+  return rawValue
+    .replace(/[¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]/g, (match) => {
+      return UNICODE_FRACTIONS[match] ?? match;
+    })
+    .replace(/\u2044/g, "/");
+}
+
 function parseFractionalNumber(rawValue: string) {
-  const cleaned = rawValue
+  const cleaned = normalizeFractionText(rawValue)
     .toLowerCase()
     .replace(/inches|inch|in|cm|mm|["']/g, "")
     .replace(/(\d+)(st|nd|rd|th)\b/g, "$1")
     .replace(/\bths?\b/g, "")
-    .replace(/-/g, " ")
+    .replace(/[+-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -109,6 +169,31 @@ function parseFractionalNumber(rawValue: string) {
   }
 
   return total;
+}
+
+export function stepLengthInput(
+  valueMm: number,
+  unit: LengthUnit,
+  fallbackStepMm: number,
+  direction: -1 | 1,
+) {
+  const value = toUnit(valueMm, unit);
+  const step =
+    unit === "in"
+      ? 1 / getFractionalInchStepDenominator(value)
+      : toUnit(fallbackStepMm, unit);
+
+  if (!Number.isFinite(value) || !Number.isFinite(step) || step <= 0) {
+    return valueMm;
+  }
+
+  const ratio = value / step;
+  const index =
+    direction > 0
+      ? Math.floor(ratio + FRACTIONAL_INCH_EPSILON) + 1
+      : Math.ceil(ratio - FRACTIONAL_INCH_EPSILON) - 1;
+
+  return fromUnit(Number((index * step).toFixed(6)), unit);
 }
 
 export function parseLengthInput(rawValue: string, unit: LengthUnit) {

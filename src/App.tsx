@@ -80,6 +80,7 @@ import {
   fromUnit,
   isLengthUnit,
   parseLengthInput,
+  stepLengthInput,
   toUnit,
 } from "./units";
 import type { Id } from "../convex/_generated/dataModel";
@@ -1022,12 +1023,23 @@ function NumberControl({
   const displayMin = Number(toUnit(limits.min, unit).toFixed(4));
   const displayMax = Number(toUnit(limits.max, unit).toFixed(4));
   const displayStep = Number(toUnit(limits.step, unit).toFixed(4));
+  const clampValue = (nextMm: number) =>
+    Math.min(limits.max, Math.max(limits.min, nextMm));
   const updateValue = (rawValue: string) => {
     const nextMm = parseLengthInput(rawValue, unit);
     if (nextMm === null) {
       return;
     }
-    onChange(Math.min(limits.max, Math.max(limits.min, nextMm)));
+    onChange(clampValue(nextMm));
+  };
+  const stepValue = (direction: -1 | 1) => {
+    const parsedMm = parseLengthInput(draftValue, unit);
+    const sourceMm = clampValue(parsedMm ?? valueMm);
+    const nextMm = clampValue(
+      stepLengthInput(sourceMm, unit, limits.step, direction),
+    );
+    setDraftValue(formatLengthInput(nextMm, unit));
+    onChange(nextMm);
   };
 
   useEffect(() => {
@@ -1056,6 +1068,13 @@ function NumberControl({
           onChange={(event) => {
             setDraftValue(event.currentTarget.value);
             updateValue(event.currentTarget.value);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
+              return;
+            }
+            event.preventDefault();
+            stepValue(event.key === "ArrowUp" ? 1 : -1);
           }}
         />
         <Select

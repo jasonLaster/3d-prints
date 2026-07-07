@@ -269,7 +269,7 @@ test.describe("3D print app", () => {
 
     await chooseSelectOption(page, "Floor thickness units", "in");
     await expect(page).toHaveURL(/unit=in/);
-    await expect(page.getByLabel("Floor thickness in inches")).toHaveValue("1/8");
+    await expect(page.getByLabel("Floor thickness in inches")).toHaveValue("3/32");
 
     const floorThickness = page.getByLabel("Floor thickness in inches");
     await floorThickness.fill("1/8th in");
@@ -278,6 +278,22 @@ test.describe("3D print app", () => {
     await expect(floorThickness).toHaveValue("1/8");
     await expect(page).toHaveURL(/floorThickness=0\.126/);
     await expect(page.getByTestId("viewer-status")).toContainText("Floor 1/8 in");
+
+    await floorThickness.press("ArrowUp");
+    await expect(floorThickness).toHaveValue("5/32");
+
+    const wallHeight = page.getByLabel("Wall height in inches");
+    await wallHeight.fill('1 1/8"');
+    await expect(wallHeight).toHaveValue("1 1/8");
+    await wallHeight.press("ArrowUp");
+    await expect(wallHeight).toHaveValue("1 1/4");
+    await wallHeight.press("ArrowDown");
+    await expect(wallHeight).toHaveValue("1 1/8");
+
+    await wallHeight.fill("3/4");
+    await expect(wallHeight).toHaveValue("3/4");
+    await wallHeight.press("ArrowUp");
+    await expect(wallHeight).toHaveValue("13/16");
   });
 
   test("clamps tray floor thickness below the selected wall height", async ({
