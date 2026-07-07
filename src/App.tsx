@@ -143,6 +143,7 @@ const SCENE_GRID_COLORS = {
   light: { center: "#c7ced8", grid: "#e2e6ec" },
   dark: { center: "#526073", grid: "#222a36" },
 } satisfies Record<ThemeMode, { center: string; grid: string }>;
+const STL_EXPORT_MIN_AREA_SQUARED = 1e-12;
 
 const RENDER_MODE_LABELS: Record<RenderMode, string> = {
   solid: "Solid",
@@ -374,6 +375,46 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
   return `${model.export.filePrefix}-${suffix}.stl`;
 }
 
+function createCleanExportGeometry(geometry: THREE.BufferGeometry) {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry.clone();
+  const position = source.getAttribute("position") as THREE.BufferAttribute;
+  const cleanPositions: number[] = [];
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const ab = new THREE.Vector3();
+  const ac = new THREE.Vector3();
+
+  for (let index = 0; index < position.count; index += 3) {
+    a.fromBufferAttribute(position, index);
+    b.fromBufferAttribute(position, index + 1);
+    c.fromBufferAttribute(position, index + 2);
+
+    const areaSquared = ab
+      .subVectors(b, a)
+      .cross(ac.subVectors(c, a))
+      .lengthSq();
+    if (areaSquared <= STL_EXPORT_MIN_AREA_SQUARED) {
+      continue;
+    }
+
+    cleanPositions.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+  }
+
+  source.dispose();
+
+  const cleanGeometry = new THREE.BufferGeometry();
+  cleanGeometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(cleanPositions, 3),
+  );
+  cleanGeometry.computeVertexNormals();
+  cleanGeometry.computeBoundingBox();
+  cleanGeometry.computeBoundingSphere();
+
+  return cleanGeometry;
+}
+
 const HolderViewer = forwardRef<
   ViewerHandle,
   {
@@ -578,19 +619,19 @@ const HolderViewer = forwardRef<
     }
 
     const group = new THREE.Group();
-    const holder = new THREE.Mesh(mainMesh.geometry.clone());
+    const holder = new THREE.Mesh(createCleanExportGeometry(mainMesh.geometry));
     holder.name = `${model.id}-body`;
     group.add(holder);
 
     let roundedTop: THREE.Mesh | null = null;
     let sandFloor: THREE.Mesh | null = null;
     if (model.viewer === "weighted-paper-towel-holder-v1" && domeMesh) {
-      roundedTop = new THREE.Mesh(domeMesh.geometry.clone());
+      roundedTop = new THREE.Mesh(createCleanExportGeometry(domeMesh.geometry));
       roundedTop.name = `${model.id}-rounded-weighted-center-tube-top`;
       group.add(roundedTop);
     }
     if (model.viewer === "weighted-paper-towel-holder-v1" && sandFloorMesh) {
-      sandFloor = new THREE.Mesh(sandFloorMesh.geometry.clone());
+      sandFloor = new THREE.Mesh(createCleanExportGeometry(sandFloorMesh.geometry));
       sandFloor.name = `${model.id}-flush-sand-chamber-floor`;
       group.add(sandFloor);
     }
@@ -812,7 +853,7 @@ const HolderViewer = forwardRef<
 
           const sandFloorMesh = new THREE.Mesh(
             createSandChamberFloorGeometry(latestParamsRef.current, model),
-            domeMaterial,
+            mainMaterial,
           );
           sandFloorMesh.name = `${model.id}-flush-sand-chamber-floor`;
           scene.add(sandFloorMesh);

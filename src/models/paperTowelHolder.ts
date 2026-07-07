@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { formatLength, formatSignedLength } from "../units";
 import { getParam, getParameter, smoothStep } from "./shared";
 import type {
@@ -182,7 +183,8 @@ export function createRoundedTopGeometry(
   model: HolderModelDefinition,
 ) {
   const radius = getParam(params, "tubeDiameter") / 2;
-  const geometry = new THREE.SphereGeometry(
+  const domeBase = getDomeBase(params, model);
+  const domeGeometry = new THREE.SphereGeometry(
     radius,
     64,
     24,
@@ -191,8 +193,20 @@ export function createRoundedTopGeometry(
     0,
     Math.PI / 2,
   );
-  geometry.rotateX(Math.PI / 2);
-  geometry.translate(0, 0, getDomeBase(params, model));
+  domeGeometry.rotateX(Math.PI / 2);
+  domeGeometry.translate(0, 0, domeBase);
+
+  const capGeometry = new THREE.CircleGeometry(radius, 64);
+  capGeometry.rotateY(Math.PI);
+  capGeometry.translate(0, 0, domeBase);
+
+  const geometry = mergeGeometries([domeGeometry, capGeometry], false);
+  domeGeometry.dispose();
+  capGeometry.dispose();
+  if (!geometry) {
+    throw new Error("Unable to create rounded top geometry");
+  }
+
   geometry.computeVertexNormals();
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();

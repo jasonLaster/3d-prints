@@ -1,6 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
 import { ConvexHttpClient } from "convex/browser";
+import fs from "node:fs";
 import { PNG } from "pngjs";
+import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { api } from "../../convex/_generated/api";
 
 const THEME_STORAGE_KEY = "3d-prints:theme";
@@ -85,6 +87,68 @@ async function cleanupPlaywrightVersions(titles: string[]) {
 
   const client = new ConvexHttpClient(convexUrl);
   await client.mutation(api.library.deletePlaywrightTestVersions, { titles });
+}
+
+function analyzeStlTopology(filePath: string) {
+  const buffer = fs.readFileSync(filePath);
+  const arrayBuffer = buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength,
+  );
+  const geometry = new STLLoader().parse(arrayBuffer);
+  const position = geometry.getAttribute("position");
+  const precision = 100000;
+  const vertexKeys: string[] = [];
+  const edges = new Map<string, number>();
+  let degenerateTriangles = 0;
+
+  for (let index = 0; index < position.count; index += 1) {
+    vertexKeys[index] = [
+      Math.round(position.getX(index) * precision) / precision,
+      Math.round(position.getY(index) * precision) / precision,
+      Math.round(position.getZ(index) * precision) / precision,
+    ].join(",");
+  }
+
+  for (let index = 0; index < position.count; index += 3) {
+    const triangle = [
+      vertexKeys[index],
+      vertexKeys[index + 1],
+      vertexKeys[index + 2],
+    ];
+    if (
+      triangle[0] === triangle[1] ||
+      triangle[1] === triangle[2] ||
+      triangle[2] === triangle[0]
+    ) {
+      degenerateTriangles += 1;
+      continue;
+    }
+
+    for (const [start, end] of [
+      [triangle[0], triangle[1]],
+      [triangle[1], triangle[2]],
+      [triangle[2], triangle[0]],
+    ]) {
+      const key = start < end ? `${start}|${end}` : `${end}|${start}`;
+      edges.set(key, (edges.get(key) ?? 0) + 1);
+    }
+  }
+
+  let nonManifoldEdges = 0;
+  for (const count of edges.values()) {
+    if (count !== 2) {
+      nonManifoldEdges += 1;
+    }
+  }
+
+  geometry.dispose();
+
+  return {
+    degenerateTriangles,
+    nonManifoldEdges,
+    triangles: position.count / 3,
+  };
 }
 
 test.describe("3D print app", () => {
@@ -484,6 +548,33 @@ test.describe("3D print app", () => {
     expect(download.suggestedFilename()).toMatch(
       /^japandi-tray-length-210\.0-width-120\.0-height-28\.0-floorThickness-2\.6-ribRelief-1\.0-rotation-0\.0\.stl$/,
     );
+  });
+
+  test("exports a manifold paper towel holder STL for slicers", async ({
+    page,
+  }) => {
+    await openReady(
+      page,
+      "/?model=paper-towel-holder&height=254&diameter=152.4&tubeDiameter=28.6",
+    );
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      openActions(page).then(() =>
+        page.getByRole("button", { name: "Export" }).click(),
+      ),
+    ]);
+
+    expect(download.suggestedFilename()).toBe(
+      "paper-towel-holder-height-254.0-diameter-152.4-tubeDiameter-28.6.stl",
+    );
+
+    const downloadPath = await download.path();
+    expect(downloadPath).not.toBeNull();
+    const topology = analyzeStlTopology(downloadPath!);
+
+    expect(topology.degenerateTriangles).toBe(0);
+    expect(topology.nonManifoldEdges).toBe(0);
   });
 
   test("resizes and collapses the model library and inspector sidebars", async ({ page }) => {
