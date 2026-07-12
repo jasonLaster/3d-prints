@@ -12,10 +12,12 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Plus,
   RotateCcw,
   Search,
   SlidersHorizontal,
   Sun,
+  Trash2,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -59,6 +61,10 @@ import {
   createRoundedTopGeometry,
   createSandChamberFloorGeometry,
   createSandPreviewGeometry,
+  createSimpleBoxLidGeometries,
+  createSimpleBoxLidPrintGeometries,
+  createTrayDividerGeometries,
+  createTrayStackingLipGeometry,
   getDefaultParams,
   getModelDimensions,
   getParam,
@@ -89,9 +95,12 @@ type CoreViewMode = "surface" | "fill" | "section";
 type RenderMode = "solid" | "xray" | "wire";
 type ThemeMode = "light" | "dark";
 type ViewPreset = "iso" | "top" | "xEdge" | "yEdge";
+type AssemblyMode = "box" | "stacked" | "lid" | "print-layout";
 
 type ViewerHandle = {
   exportStl: () => void;
+  exportLidStl: () => void;
+  exportBoxAndLidStl: () => void;
   getStlBlob: () => Blob | null;
   resetCamera: () => void;
   setView: (preset: ViewPreset) => void;
@@ -121,6 +130,14 @@ const PARAM_QUERY_KEYS = [
   "rotation",
 ];
 const ANGLE_PARAM_KEYS = new Set(["rotation"]);
+const SCALAR_PARAM_KEYS = new Set(["dividerCount"]);
+const DIVIDER_PARAM_KEYS = new Set([
+  "dividerCount",
+  "dividerPosition1",
+  "dividerPosition2",
+  "dividerPosition3",
+  "dividerPosition4",
+]);
 const SIDEBAR_WIDTH_KEY = "3d-prints:sidebar-width";
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 620;
@@ -206,7 +223,7 @@ function parseUrlParam(
     return null;
   }
 
-  if (ANGLE_PARAM_KEYS.has(parameter.key)) {
+  if (ANGLE_PARAM_KEYS.has(parameter.key) || SCALAR_PARAM_KEYS.has(parameter.key)) {
     return parsed;
   }
 
@@ -250,7 +267,7 @@ function getParamsFromUrl(model: ModelDefinition) {
 }
 
 function serializeUrlParam(key: string, valueMm: number, unit: LengthUnit) {
-  if (ANGLE_PARAM_KEYS.has(key)) {
+  if (ANGLE_PARAM_KEYS.has(key) || SCALAR_PARAM_KEYS.has(key)) {
     return Number(valueMm.toFixed(1)).toString();
   }
 
@@ -425,12 +442,14 @@ const HolderViewer = forwardRef<
     showOriginal: boolean;
     theme: ThemeMode;
     unit: LengthUnit;
+    assemblyMode: AssemblyMode;
     onResetParams: () => void;
     onTrayRotationChange: (value: number) => void;
   }
 >(function HolderViewer(
   {
     model,
+    assemblyMode,
     onTrayRotationChange,
     onResetParams,
     params,
@@ -451,6 +470,9 @@ const HolderViewer = forwardRef<
   const domeMeshRef = useRef<THREE.Mesh | null>(null);
   const sandMeshRef = useRef<THREE.Mesh | null>(null);
   const sandFloorMeshRef = useRef<THREE.Mesh | null>(null);
+  const trayLipMeshRef = useRef<THREE.Mesh | null>(null);
+  const trayDividerGroupRef = useRef<THREE.Group | null>(null);
+  const assemblyPreviewGroupRef = useRef<THREE.Group | null>(null);
   const ghostMeshRef = useRef<THREE.Mesh | null>(null);
   const guideMeshRef = useRef<THREE.Mesh | null>(null);
   const mainMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
@@ -461,6 +483,7 @@ const HolderViewer = forwardRef<
   const latestCoreViewModeRef = useRef(coreViewMode);
   const latestRenderModeRef = useRef(renderMode);
   const latestShowOriginalRef = useRef(showOriginal);
+  const latestAssemblyModeRef = useRef(assemblyMode);
   const [activeViewPreset, setActiveViewPreset] = useState<ViewPreset | null>(
     "iso",
   );
@@ -506,7 +529,7 @@ const HolderViewer = forwardRef<
     const target = new THREE.Vector3(
       0,
       0,
-      model.viewer === "japandi-tray-v1"
+      model.viewer !== "weighted-paper-towel-holder-v1"
         ? dimensions.height * 0.25
         : dimensions.height * 0.42,
     );
@@ -520,7 +543,7 @@ const HolderViewer = forwardRef<
       camera.position.set(0, -distance, edgeViewZ);
     } else if (preset === "yEdge") {
       camera.position.set(distance, 0, edgeViewZ);
-    } else if (model.viewer === "japandi-tray-v1") {
+    } else if (model.viewer !== "weighted-paper-towel-holder-v1") {
       camera.position.set(distance * 0.7, -distance * 0.78, distance * 0.52);
     } else {
       camera.position.set(distance * 0.72, -distance, dimensions.height * 1.25);
@@ -564,6 +587,9 @@ const HolderViewer = forwardRef<
     const domeMesh = domeMeshRef.current;
     const sandMesh = sandMeshRef.current;
     const sandFloorMesh = sandFloorMeshRef.current;
+    const trayLipMesh = trayLipMeshRef.current;
+    const trayDividerGroup = trayDividerGroupRef.current;
+    const assemblyPreviewGroup = assemblyPreviewGroupRef.current;
     const ghostMesh = ghostMeshRef.current;
     const guideMesh = guideMeshRef.current;
     const holderMaterial = mainMaterialRef.current;
@@ -595,6 +621,67 @@ const HolderViewer = forwardRef<
     } else {
       applyTrayMorph(mainMesh.geometry, base, latestParamsRef.current, model);
       updateTrayGuide(guideMesh, latestParamsRef.current);
+      if (model.viewer === "simple-box-v1" && trayLipMesh) {
+        trayLipMesh.geometry.dispose();
+        trayLipMesh.geometry = createTrayStackingLipGeometry(
+          latestParamsRef.current,
+          model,
+        );
+      }
+      if (model.viewer === "simple-box-v1" && trayDividerGroup) {
+        trayDividerGroup.children.forEach((child) => {
+          if (child instanceof THREE.Mesh) child.geometry.dispose();
+        });
+        trayDividerGroup.clear();
+        for (const geometry of createTrayDividerGeometries(latestParamsRef.current, model)) {
+          trayDividerGroup.add(new THREE.Mesh(geometry, holderMaterial));
+        }
+      }
+      if (model.viewer === "simple-box-v1" && assemblyPreviewGroup) {
+        assemblyPreviewGroup.children.forEach((child) => {
+          if (child instanceof THREE.Mesh) child.geometry.dispose();
+        });
+        assemblyPreviewGroup.clear();
+        const previewMaterial = holderMaterial;
+        if (latestAssemblyModeRef.current === "stacked") {
+          const offsetZ = getParam(latestParamsRef.current, "height");
+          const upperBody = new THREE.Mesh(mainMesh.geometry.clone(), previewMaterial);
+          upperBody.position.z = offsetZ;
+          assemblyPreviewGroup.add(upperBody);
+          if (trayLipMesh) {
+            const upperLip = new THREE.Mesh(trayLipMesh.geometry.clone(), previewMaterial);
+            upperLip.position.z = offsetZ;
+            assemblyPreviewGroup.add(upperLip);
+          }
+          trayDividerGroup?.children.forEach((child) => {
+            if (child instanceof THREE.Mesh) {
+              const divider = new THREE.Mesh(child.geometry.clone(), previewMaterial);
+              divider.position.z = offsetZ;
+              assemblyPreviewGroup.add(divider);
+            }
+          });
+        } else if (latestAssemblyModeRef.current === "lid") {
+          const offsetZ = getParam(latestParamsRef.current, "height");
+          for (const geometry of createSimpleBoxLidGeometries(
+            latestParamsRef.current,
+            model,
+          )) {
+            const lidPart = new THREE.Mesh(geometry, previewMaterial);
+            lidPart.position.z = offsetZ;
+            assemblyPreviewGroup.add(lidPart);
+          }
+        } else if (latestAssemblyModeRef.current === "print-layout") {
+          const offsetY = -(getParam(latestParamsRef.current, "width") + 10);
+          for (const geometry of createSimpleBoxLidPrintGeometries(
+            latestParamsRef.current,
+            model,
+          )) {
+            const lidPart = new THREE.Mesh(geometry, previewMaterial);
+            lidPart.position.y = offsetY;
+            assemblyPreviewGroup.add(lidPart);
+          }
+        }
+      }
     }
 
     applyRenderOptions(
@@ -614,6 +701,8 @@ const HolderViewer = forwardRef<
     const mainMesh = mainMeshRef.current;
     const domeMesh = domeMeshRef.current;
     const sandFloorMesh = sandFloorMeshRef.current;
+    const trayLipMesh = trayLipMeshRef.current;
+    const trayDividerGroup = trayDividerGroupRef.current;
     if (!mainMesh) {
       return null;
     }
@@ -635,6 +724,23 @@ const HolderViewer = forwardRef<
       sandFloor.name = `${model.id}-flush-sand-chamber-floor`;
       group.add(sandFloor);
     }
+    let trayLip: THREE.Mesh | null = null;
+    if (model.viewer === "simple-box-v1" && trayLipMesh) {
+      trayLip = new THREE.Mesh(createCleanExportGeometry(trayLipMesh.geometry));
+      trayLip.name = `${model.id}-stacking-lip`;
+      group.add(trayLip);
+    }
+    const exportDividers: THREE.Mesh[] = [];
+    if (model.viewer === "simple-box-v1" && trayDividerGroup) {
+      trayDividerGroup.children.forEach((child, index) => {
+        if (child instanceof THREE.Mesh) {
+          const divider = new THREE.Mesh(createCleanExportGeometry(child.geometry));
+          divider.name = `${model.id}-divider-${index + 1}`;
+          exportDividers.push(divider);
+          group.add(divider);
+        }
+      });
+    }
     group.updateMatrixWorld(true);
 
     const exporter = new STLExporter();
@@ -644,6 +750,8 @@ const HolderViewer = forwardRef<
     holder.geometry.dispose();
     roundedTop?.geometry.dispose();
     sandFloor?.geometry.dispose();
+    trayLip?.geometry.dispose();
+    exportDividers.forEach((divider) => divider.geometry.dispose());
 
     return blob;
   }, [model]);
@@ -656,15 +764,80 @@ const HolderViewer = forwardRef<
     downloadBlob(blob, getExportFileName(model, latestParamsRef.current));
   }, [createStlBlob, model]);
 
+  const exportLidStl = useCallback(() => {
+    if (model.viewer !== "simple-box-v1") return;
+    const group = new THREE.Group();
+    const meshes = createSimpleBoxLidPrintGeometries(latestParamsRef.current, model).map(
+      (geometry, index) => {
+        const mesh = new THREE.Mesh(createCleanExportGeometry(geometry));
+        mesh.name = `${model.id}-lid-${index === 0 ? "plate" : "registration-skirt"}`;
+        geometry.dispose();
+        group.add(mesh);
+        return mesh;
+      },
+    );
+    group.updateMatrixWorld(true);
+    const result = new STLExporter().parse(group, { binary: true });
+    downloadBlob(
+      new Blob([result], { type: "model/stl" }),
+      `${model.id}-lid-length-${getParam(latestParamsRef.current, "length").toFixed(1)}-width-${getParam(latestParamsRef.current, "width").toFixed(1)}.stl`,
+    );
+    meshes.forEach((mesh) => mesh.geometry.dispose());
+  }, [model]);
+
+  const exportBoxAndLidStl = useCallback(() => {
+    if (model.viewer !== "simple-box-v1") return;
+    const mainMesh = mainMeshRef.current;
+    const trayLipMesh = trayLipMeshRef.current;
+    const trayDividerGroup = trayDividerGroupRef.current;
+    if (!mainMesh || !trayLipMesh || !trayDividerGroup) return;
+    const group = new THREE.Group();
+    const meshes: THREE.Mesh[] = [];
+    const addMesh = (geometry: THREE.BufferGeometry, name: string) => {
+      const mesh = new THREE.Mesh(createCleanExportGeometry(geometry));
+      mesh.name = name;
+      meshes.push(mesh);
+      group.add(mesh);
+      return mesh;
+    };
+    addMesh(mainMesh.geometry, `${model.id}-body`);
+    addMesh(trayLipMesh.geometry, `${model.id}-stacking-lip`);
+    trayDividerGroup.children.forEach((child, index) => {
+      if (child instanceof THREE.Mesh) {
+        addMesh(child.geometry, `${model.id}-divider-${index + 1}`);
+      }
+    });
+    const offsetY = -(getParam(latestParamsRef.current, "width") + 10);
+    createSimpleBoxLidPrintGeometries(latestParamsRef.current, model).forEach(
+      (geometry, index) => {
+        const mesh = addMesh(
+          geometry,
+          `${model.id}-lid-${index === 0 ? "plate" : "registration-skirt"}`,
+        );
+        mesh.position.y = offsetY;
+        geometry.dispose();
+      },
+    );
+    group.updateMatrixWorld(true);
+    const result = new STLExporter().parse(group, { binary: true });
+    downloadBlob(
+      new Blob([result], { type: "model/stl" }),
+      `${model.id}-box-and-lid-length-${getParam(latestParamsRef.current, "length").toFixed(1)}-width-${getParam(latestParamsRef.current, "width").toFixed(1)}.stl`,
+    );
+    meshes.forEach((mesh) => mesh.geometry.dispose());
+  }, [model]);
+
   useImperativeHandle(
     ref,
     () => ({
       exportStl,
+      exportLidStl,
+      exportBoxAndLidStl,
       getStlBlob: createStlBlob,
       resetCamera,
       setView: setCameraView,
     }),
-    [createStlBlob, exportStl, resetCamera, setCameraView],
+    [createStlBlob, exportBoxAndLidStl, exportLidStl, exportStl, resetCamera, setCameraView],
   );
 
   useEffect(() => {
@@ -672,8 +845,9 @@ const HolderViewer = forwardRef<
     latestCoreViewModeRef.current = coreViewMode;
     latestRenderModeRef.current = renderMode;
     latestShowOriginalRef.current = showOriginal;
+    latestAssemblyModeRef.current = assemblyMode;
     updateMeshes();
-  }, [params, coreViewMode, renderMode, showOriginal, updateMeshes]);
+  }, [params, coreViewMode, renderMode, showOriginal, assemblyMode, updateMeshes]);
 
   useEffect(() => {
     resetCamera();
@@ -688,7 +862,7 @@ const HolderViewer = forwardRef<
       rendererRef.current.setClearAlpha(theme === "dark" ? 0 : 1);
     }
     const mainMaterial = mainMaterialRef.current;
-    if (mainMaterial && model.viewer !== "japandi-tray-v1") {
+    if (mainMaterial && model.viewer === "weighted-paper-towel-holder-v1") {
       mainMaterial.color.set(theme === "dark" ? "#202734" : "#111318");
       mainMaterial.needsUpdate = true;
     }
@@ -806,7 +980,7 @@ const HolderViewer = forwardRef<
 
         const mainMaterial = new THREE.MeshStandardMaterial({
           color:
-            model.viewer === "japandi-tray-v1"
+            model.viewer !== "weighted-paper-towel-holder-v1"
               ? "#d8dee9"
               : theme === "dark"
                 ? "#202734"
@@ -867,6 +1041,28 @@ const HolderViewer = forwardRef<
           sandMesh.visible = latestCoreViewModeRef.current !== "surface";
           scene.add(sandMesh);
           sandMeshRef.current = sandMesh;
+        } else if (model.viewer === "simple-box-v1") {
+          const trayLipMesh = new THREE.Mesh(
+            createTrayStackingLipGeometry(latestParamsRef.current, model),
+            mainMaterial,
+          );
+          trayLipMesh.name = `${model.id}-stacking-lip`;
+          scene.add(trayLipMesh);
+          trayLipMeshRef.current = trayLipMesh;
+
+          const dividerGroup = new THREE.Group();
+          dividerGroup.name = `${model.id}-dividers`;
+          for (const geometry of createTrayDividerGeometries(latestParamsRef.current, model)) {
+            dividerGroup.add(new THREE.Mesh(geometry, mainMaterial));
+          }
+          scene.add(dividerGroup);
+          trayDividerGroupRef.current = dividerGroup;
+
+          const assemblyPreviewGroup = new THREE.Group();
+          assemblyPreviewGroup.name = `${model.id}-assembly-preview`;
+          scene.add(assemblyPreviewGroup);
+          assemblyPreviewGroupRef.current = assemblyPreviewGroup;
+
         }
 
         const ghostMesh = new THREE.Mesh(
@@ -1046,6 +1242,7 @@ function NumberControl({
   unit,
   onChange,
   onUnitChange,
+  preferFineStep = false,
 }: {
   label: string;
   valueMm: number;
@@ -1053,6 +1250,7 @@ function NumberControl({
   unit: LengthUnit;
   onChange: (valueMm: number) => void;
   onUnitChange: (unit: LengthUnit) => void;
+  preferFineStep?: boolean;
 }) {
   const id = label.toLowerCase().replace(/\s+/g, "-");
   const unitId = `${id}-unit`;
@@ -1077,7 +1275,7 @@ function NumberControl({
     const parsedMm = parseLengthInput(draftValue, unit);
     const sourceMm = clampValue(parsedMm ?? valueMm);
     const nextMm = clampValue(
-      stepLengthInput(sourceMm, unit, limits.step, direction),
+      stepLengthInput(sourceMm, unit, limits.step, direction, preferFineStep),
     );
     setDraftValue(formatLengthInput(nextMm, unit));
     onChange(nextMm);
@@ -1139,6 +1337,87 @@ function NumberControl({
           </SelectContent>
         </Select>
       </div>
+    </div>
+  );
+}
+
+function DividerControls({
+  model,
+  params,
+  unit,
+  onAdd,
+  onRemove,
+  onPositionChange,
+  onUnitChange,
+}: {
+  model: ModelDefinition;
+  params: ModelParams;
+  unit: LengthUnit;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+  onPositionChange: (index: number, value: number) => void;
+  onUnitChange: (unit: LengthUnit) => void;
+}) {
+  const count = Math.round(getParam(params, "dividerCount"));
+  return (
+    <div className="divider-controls">
+      <div className="divider-controls-heading">
+        <p>{count === 0 ? "No dividers" : `${count} divider${count === 1 ? "" : "s"}`}</p>
+        <button disabled={count >= 4} onClick={onAdd} type="button">
+          <Plus aria-hidden="true" /> Add divider
+        </button>
+      </div>
+      {Array.from({ length: count }, (_, index) => (
+        <div className="divider-control" key={index}>
+          <NumberControl
+            label={`Divider ${index + 1} position`}
+            limits={getParameterLimits(model, params, `dividerPosition${index + 1}`)}
+            onChange={(value) => onPositionChange(index, value)}
+            onUnitChange={onUnitChange}
+            unit={unit}
+            valueMm={getParam(params, `dividerPosition${index + 1}`)}
+          />
+          <button
+            aria-label={`Remove divider ${index + 1}`}
+            className="divider-remove-button"
+            onClick={() => onRemove(index)}
+            title={`Remove divider ${index + 1}`}
+            type="button"
+          >
+            <Trash2 aria-hidden="true" />
+          </button>
+        </div>
+      ))}
+      <small>Positions are measured from the left end of the box.</small>
+    </div>
+  );
+}
+
+function AssemblyPreviewControl({
+  value,
+  onChange,
+}: {
+  value: AssemblyMode;
+  onChange: (value: AssemblyMode) => void;
+}) {
+  return (
+    <div className="segmented-control assembly-preview-control" aria-label="Assembly preview">
+      {([
+        ["box", "Box"],
+        ["stacked", "Stacked pair"],
+        ["lid", "Fitted lid"],
+        ["print-layout", "Print layout"],
+      ] as const).map(([mode, label]) => (
+        <button
+          aria-pressed={value === mode}
+          className={value === mode ? "active" : ""}
+          key={mode}
+          onClick={() => onChange(mode)}
+          type="button"
+        >
+          {label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -1614,6 +1893,8 @@ function WorkspaceActionsMenu({
   unit,
   onCreateStlBlob,
   onExport,
+  onExportLid,
+  onExportBoxAndLid,
   onSavedVersion,
   onThemeChange,
 }: {
@@ -1626,6 +1907,8 @@ function WorkspaceActionsMenu({
   unit: LengthUnit;
   onCreateStlBlob: () => Blob | null;
   onExport: () => void;
+  onExportLid: () => void;
+  onExportBoxAndLid: () => void;
   onSavedVersion: (versionId: Id<"versions">, title: string) => void;
   onThemeChange: (theme: ThemeMode) => void;
 }) {
@@ -1698,6 +1981,18 @@ function WorkspaceActionsMenu({
                 <Download aria-hidden="true" />
                 Export
               </button>
+              {model.viewer === "simple-box-v1" ? (
+                <>
+                  <button onClick={onExportLid} type="button">
+                    <Download aria-hidden="true" />
+                    Export lid
+                  </button>
+                  <button onClick={onExportBoxAndLid} type="button">
+                    <Download aria-hidden="true" />
+                    Export box + lid
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
         </>
@@ -1717,6 +2012,8 @@ function WorkspaceHeader({
   unit,
   onCreateStlBlob,
   onExport,
+  onExportLid,
+  onExportBoxAndLid,
   onSavedVersion,
   onThemeChange,
 }: {
@@ -1730,6 +2027,8 @@ function WorkspaceHeader({
   unit: LengthUnit;
   onCreateStlBlob: () => Blob | null;
   onExport: () => void;
+  onExportLid: () => void;
+  onExportBoxAndLid: () => void;
   onSavedVersion: (versionId: Id<"versions">, title: string) => void;
   onThemeChange: (theme: ThemeMode) => void;
 }) {
@@ -1749,6 +2048,8 @@ function WorkspaceHeader({
           model={model}
           onCreateStlBlob={onCreateStlBlob}
           onExport={onExport}
+          onExportLid={onExportLid}
+          onExportBoxAndLid={onExportBoxAndLid}
           onSavedVersion={onSavedVersion}
           onThemeChange={onThemeChange}
           params={params}
@@ -1776,6 +2077,7 @@ export default function App({
   const [loadError, setLoadError] = useState("");
   const [unit, setUnit] = useState<LengthUnit>(() => getInitialUnit());
   const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme());
+  const [assemblyMode, setAssemblyMode] = useState<AssemblyMode>("box");
   const [inspectorWidth, setInspectorWidth] = useState(() => getStoredSidebarWidth());
   const [librarySidebarWidth, setLibrarySidebarWidth] = useState(() =>
     getStoredLibrarySidebarWidth(),
@@ -1907,6 +2209,7 @@ export default function App({
         setShowOriginal(false);
         setCoreViewMode("surface");
         setRenderMode("solid");
+        setAssemblyMode("box");
       } catch (error) {
         if (!cancelled) {
           setLoadError(error instanceof Error ? error.message : String(error));
@@ -1973,6 +2276,39 @@ export default function App({
         ...current,
         [key]: Number(Math.min(limits.max, Math.max(limits.min, value)).toFixed(1)),
       };
+    });
+  };
+
+  const addDivider = () => {
+    setParams((current) => {
+      if (!current) return current;
+      const count = Math.min(4, Math.round(current.dividerCount ?? 0));
+      if (count >= 4) return current;
+      const previousPosition = count > 0 ? current[`dividerPosition${count}`] : 0;
+      const suggestedPosition = Math.min(
+        current.length - 5,
+        Math.max(5, previousPosition + (count > 0 ? 25.4 : current.length / 2)),
+      );
+      return {
+        ...current,
+        dividerCount: count + 1,
+        [`dividerPosition${count + 1}`]: Number(suggestedPosition.toFixed(1)),
+      };
+    });
+  };
+
+  const removeDivider = (index: number) => {
+    setParams((current) => {
+      if (!current) return current;
+      const count = Math.round(current.dividerCount ?? 0);
+      const next: ModelParams = {
+        ...current,
+        dividerCount: Math.max(0, count - 1),
+      };
+      for (let slot = index + 1; slot < count; slot += 1) {
+        next[`dividerPosition${slot}`] = current[`dividerPosition${slot + 1}`];
+      }
+      return next;
     });
   };
 
@@ -2147,6 +2483,8 @@ export default function App({
         model={model}
         onCreateStlBlob={() => viewerRef.current?.getStlBlob() ?? null}
         onExport={() => viewerRef.current?.exportStl()}
+        onExportLid={() => viewerRef.current?.exportLidStl()}
+        onExportBoxAndLid={() => viewerRef.current?.exportBoxAndLidStl()}
         onSavedVersion={handleSavedVersion}
         onThemeChange={updateTheme}
         params={params}
@@ -2202,6 +2540,7 @@ export default function App({
           aria-label={`${model.name} model viewer`}
         >
           <HolderViewer
+            assemblyMode={assemblyMode}
             coreViewMode={coreViewMode}
             key={model.id}
             model={model}
@@ -2281,7 +2620,11 @@ export default function App({
                 <section className="panel-section">
                   <h2>Parameters</h2>
                   {model.parameters
-                    .filter((parameter) => !ANGLE_PARAM_KEYS.has(parameter.key))
+                    .filter(
+                      (parameter) =>
+                        !ANGLE_PARAM_KEYS.has(parameter.key) &&
+                        !DIVIDER_PARAM_KEYS.has(parameter.key),
+                    )
                     .map((parameter) => (
                       <NumberControl
                         key={parameter.key}
@@ -2289,11 +2632,39 @@ export default function App({
                         limits={getParameterLimits(model, params, parameter.key)}
                         onChange={(value) => updateParam(parameter.key, value)}
                         onUnitChange={setUnit}
+                        preferFineStep={parameter.key.endsWith("Clearance")}
                         unit={unit}
                         valueMm={params[parameter.key]}
                       />
                     ))}
                 </section>
+
+                {model.viewer === "simple-box-v1" ? (
+                  <section className="panel-section">
+                    <h2>Assembly proof</h2>
+                    <AssemblyPreviewControl
+                      onChange={setAssemblyMode}
+                      value={assemblyMode}
+                    />
+                  </section>
+                ) : null}
+
+                {model.viewer === "simple-box-v1" ? (
+                  <section className="panel-section">
+                    <h2>Dividers</h2>
+                    <DividerControls
+                      model={model}
+                      onAdd={addDivider}
+                      onPositionChange={(index, value) =>
+                        updateParam(`dividerPosition${index + 1}`, value)
+                      }
+                      onRemove={removeDivider}
+                      onUnitChange={setUnit}
+                      params={params}
+                      unit={unit}
+                    />
+                  </section>
+                ) : null}
 
                 {model.viewer === "weighted-paper-towel-holder-v1" ? (
                   <section className="panel-section">

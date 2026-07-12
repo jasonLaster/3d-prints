@@ -101,8 +101,21 @@ function analyzeStlTopology(filePath: string) {
   const vertexKeys: string[] = [];
   const edges = new Map<string, number>();
   let degenerateTriangles = 0;
+  let finiteCoordinates = true;
+
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox!;
+  const size = {
+    x: bounds.max.x - bounds.min.x,
+    y: bounds.max.y - bounds.min.y,
+    z: bounds.max.z - bounds.min.z,
+  };
 
   for (let index = 0; index < position.count; index += 1) {
+    finiteCoordinates &&=
+      Number.isFinite(position.getX(index)) &&
+      Number.isFinite(position.getY(index)) &&
+      Number.isFinite(position.getZ(index));
     vertexKeys[index] = [
       Math.round(position.getX(index) * precision) / precision,
       Math.round(position.getY(index) * precision) / precision,
@@ -146,7 +159,9 @@ function analyzeStlTopology(filePath: string) {
 
   return {
     degenerateTriangles,
+    finiteCoordinates,
     nonManifoldEdges,
+    size,
     triangles: position.count / 3,
   };
 }
@@ -575,6 +590,102 @@ test.describe("3D print app", () => {
 
     expect(topology.degenerateTriangles).toBe(0);
     expect(topology.nonManifoldEdges).toBe(0);
+  });
+
+  test("renders and exports a finite manifold simple box with editable dividers", async ({
+    page,
+  }) => {
+    await expectNoPageErrors(page, async () => {
+      await openReady(page, "/?model=simple-box&unit=in");
+
+      await expect(page.getByRole("heading", { name: "Simple Box" })).toBeVisible();
+      await expect(page.getByLabel("Box length in inches")).toHaveValue("13");
+      await expect(page.getByLabel("Box width in inches")).toHaveValue("3");
+      await expect(page.getByLabel("Box height in inches")).toHaveValue("3 1/2");
+      await expect(page.getByLabel("Stacking fit clearance in inches")).toHaveValue("0.014");
+      await expect(page.getByLabel("Rib relief in inches")).toHaveCount(0);
+      await expect(page.getByLabel("Divider 1 position in inches")).toHaveValue("5 3/4");
+      await expect(page.getByLabel("Divider 2 position in inches")).toHaveValue("9");
+      await expect(page.getByRole("button", { name: "Stacked pair" })).toBeVisible();
+      await page.getByRole("button", { name: "Stacked pair" }).click();
+      await expect(page.getByRole("button", { name: "Stacked pair" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      await expectCanvasHasRenderedModel(page);
+      await page.getByRole("button", { name: "Fitted lid" }).click();
+      await expect(page.getByRole("button", { name: "Fitted lid" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      await expectCanvasHasRenderedModel(page);
+      await page.getByRole("button", { name: "Print layout" }).click();
+      await expect(page.getByRole("button", { name: "Print layout" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      await expectCanvasHasRenderedModel(page);
+
+      await page.getByRole("button", { name: "Remove divider 1" }).click();
+      await expect(page.getByLabel("Divider 1 position in inches")).toHaveValue("9");
+      await page.getByRole("button", { name: "Add divider" }).click();
+      await expect(page.getByLabel("Divider 2 position in inches")).toHaveValue("10");
+
+      await page.getByRole("button", { name: "Reset parameters" }).click();
+      const [download] = await Promise.all([
+        page.waitForEvent("download"),
+        openActions(page).then(() =>
+          page.getByRole("button", { name: "Export", exact: true }).click(),
+        ),
+      ]);
+      expect(download.suggestedFilename()).toMatch(/^simple-box-/);
+      const downloadPath = await download.path();
+      expect(downloadPath).not.toBeNull();
+      const topology = analyzeStlTopology(downloadPath!);
+      expect(topology.finiteCoordinates).toBe(true);
+      expect(topology.degenerateTriangles).toBe(0);
+      expect(topology.nonManifoldEdges).toBe(0);
+      expect(topology.triangles).toBeGreaterThan(40);
+      expect(topology.size.x).toBeCloseTo(330.2, 1);
+      expect(topology.size.y).toBeCloseTo(76.2, 1);
+      expect(topology.size.z).toBeGreaterThan(91.5);
+      expect(topology.size.z).toBeLessThan(92);
+
+      const [lidDownload] = await Promise.all([
+        page.waitForEvent("download"),
+        page.getByRole("button", { name: "Export lid" }).click(),
+      ]);
+      expect(lidDownload.suggestedFilename()).toBe(
+        "simple-box-lid-length-330.2-width-76.2.stl",
+      );
+      const lidPath = await lidDownload.path();
+      expect(lidPath).not.toBeNull();
+      const lidTopology = analyzeStlTopology(lidPath!);
+      expect(lidTopology.finiteCoordinates).toBe(true);
+      expect(lidTopology.degenerateTriangles).toBe(0);
+      expect(lidTopology.nonManifoldEdges).toBe(0);
+      expect(lidTopology.size.x).toBeCloseTo(330.2, 1);
+      expect(lidTopology.size.y).toBeCloseTo(76.2, 1);
+      expect(lidTopology.size.z).toBeCloseTo(5.2, 1);
+
+      const [combinedDownload] = await Promise.all([
+        page.waitForEvent("download"),
+        page.getByRole("button", { name: "Export box + lid" }).click(),
+      ]);
+      expect(combinedDownload.suggestedFilename()).toBe(
+        "simple-box-box-and-lid-length-330.2-width-76.2.stl",
+      );
+      const combinedPath = await combinedDownload.path();
+      expect(combinedPath).not.toBeNull();
+      const combinedTopology = analyzeStlTopology(combinedPath!);
+      expect(combinedTopology.finiteCoordinates).toBe(true);
+      expect(combinedTopology.degenerateTriangles).toBe(0);
+      expect(combinedTopology.nonManifoldEdges).toBe(0);
+      expect(combinedTopology.size.x).toBeCloseTo(330.2, 1);
+      expect(combinedTopology.size.y).toBeCloseTo(162.4, 1);
+      expect(combinedTopology.size.z).toBeGreaterThan(91.5);
+      expect(combinedTopology.size.z).toBeLessThan(92);
+    });
   });
 
   test("resizes and collapses the model library and inspector sidebars", async ({ page }) => {

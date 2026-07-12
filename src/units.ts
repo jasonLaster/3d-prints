@@ -78,6 +78,9 @@ function formatFractionalInches(
   valueIn: number,
   denominator = getFractionalInchFormatDenominator(valueIn),
 ) {
+  if (valueIn !== 0 && Math.abs(valueIn) < 1 / 32) {
+    return Number(valueIn.toFixed(3)).toString();
+  }
   const sign = valueIn < 0 ? "-" : "";
   const absoluteValue = Math.abs(valueIn);
   let whole = Math.floor(absoluteValue);
@@ -176,12 +179,14 @@ export function stepLengthInput(
   unit: LengthUnit,
   fallbackStepMm: number,
   direction: -1 | 1,
+  preferFineStep = false,
 ) {
   const value = toUnit(valueMm, unit);
+  const fallbackStep = toUnit(fallbackStepMm, unit);
   const step =
-    unit === "in"
+    unit === "in" && !preferFineStep
       ? 1 / getFractionalInchStepDenominator(value)
-      : toUnit(fallbackStepMm, unit);
+      : fallbackStep;
 
   if (!Number.isFinite(value) || !Number.isFinite(step) || step <= 0) {
     return valueMm;

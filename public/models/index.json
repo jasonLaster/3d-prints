@@ -10,6 +10,11 @@
       "id": "japandi-tray",
       "name": "Japandi Tray",
       "configUrl": "/models/japandi-tray/model.json"
+    },
+    {
+      "id": "simple-box",
+      "name": "Simple Box",
+      "configUrl": "/models/simple-box/model.json"
     }
   ]
 }

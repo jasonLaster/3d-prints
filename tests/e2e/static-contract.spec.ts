@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(2);
+  expect(catalog.models).toHaveLength(3);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -99,6 +99,19 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "trayAspectRatio",
       "trayInteriorDepth",
       "trayOriginalReference",
+    ],
+    "simple-box-v1": [
+      "trayLengthTarget",
+      "trayWidthTarget",
+      "trayHeightTarget",
+      "trayFloorThickness",
+      "trayAspectRatio",
+      "trayInteriorDepth",
+      "trayOriginalReference",
+      "trayStackingLip",
+      "trayDividers",
+      "trayStackingFit",
+      "trayLidFit",
     ],
   };
 
@@ -170,6 +183,17 @@ test("model-specific parameter dependencies are declared auditable", () => {
       footprintRotationDegrees: number;
     };
   };
+  const simpleBox = readJson(
+    path.join(root, "public/models/simple-box/model.json"),
+  ) as ModelJson & {
+    geometry: {
+      originalFloorThickness: number;
+      stackingLipWallInset: number;
+      stackingLipFloorOverlap: number;
+      dividerWallInset: number;
+      dividerFloorOverlap: number;
+    };
+  };
 
   const holderParams = Object.fromEntries(
     holder.parameters.map((parameter) => [parameter.key, parameter]),
@@ -201,6 +225,25 @@ test("model-specific parameter dependencies are declared auditable", () => {
     tray.geometry.footprintRotationDegrees,
   );
   expect(tray.audit.invariants.join(" ")).toContain("Preserve the source STL");
+
+  const simpleBoxParams = Object.fromEntries(
+    simpleBox.parameters.map((parameter) => [parameter.key, parameter]),
+  );
+  expect(simpleBoxParams.ribRelief).toBeUndefined();
+  expect(simpleBoxParams.length.default).toBe(330.2);
+  expect(simpleBoxParams.width.default).toBe(76.2);
+  expect(simpleBoxParams.height.default).toBe(88.9);
+  expect(simpleBoxParams.dividerCount.default).toBe(2);
+  expect(simpleBoxParams.dividerPosition1.default).toBe(146.05);
+  expect(simpleBoxParams.dividerPosition2.default).toBe(228.6);
+  expect(simpleBox.geometry.stackingLipWallInset).toBe(
+    simpleBox.geometry.originalFloorThickness,
+  );
+  expect(simpleBox.geometry.stackingLipFloorOverlap).toBeGreaterThan(0);
+  expect(simpleBox.geometry.dividerWallInset).toBeLessThan(
+    simpleBox.geometry.originalFloorThickness,
+  );
+  expect(simpleBox.geometry.dividerFloorOverlap).toBeGreaterThan(0);
 });
 
 test("request coverage document tracks the app behaviors under Playwright", () => {

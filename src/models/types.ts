@@ -79,7 +79,21 @@ export type TrayGeometry = {
   maximumRibRelief: number;
 };
 
-export type SupportedViewer = "weighted-paper-towel-holder-v1" | "japandi-tray-v1";
+export type SimpleBoxGeometry = TrayGeometry & {
+  stackingLipThickness: number;
+  stackingLipWallInset: number;
+  stackingLipCornerRadius: number;
+  stackingLipFloorOverlap: number;
+  dividerThickness: number;
+  dividerWallInset: number;
+  dividerTopClearance: number;
+  dividerFloorOverlap: number;
+};
+
+export type SupportedViewer =
+  | "weighted-paper-towel-holder-v1"
+  | "japandi-tray-v1"
+  | "simple-box-v1";
 
 export type BaseModelDefinition = {
   id: string;
@@ -116,7 +130,15 @@ export type TrayModelDefinition = BaseModelDefinition & {
   geometry: TrayGeometry;
 };
 
-export type ModelDefinition = HolderModelDefinition | TrayModelDefinition;
+export type SimpleBoxModelDefinition = BaseModelDefinition & {
+  viewer: "simple-box-v1";
+  geometry: SimpleBoxGeometry;
+};
+
+export type ModelDefinition =
+  | HolderModelDefinition
+  | TrayModelDefinition
+  | SimpleBoxModelDefinition;
 
 export type ModelDimensions = {
   length: number;

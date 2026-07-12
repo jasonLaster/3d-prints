@@ -28,7 +28,14 @@ export {
   updateHolderGuide,
   updateWeightedCore,
 } from "./paperTowelHolder";
-export { applyTrayMorph, updateTrayGuide } from "./japandiTray";
+export {
+  applyTrayMorph,
+  createTrayDividerGeometries,
+  createTrayStackingLipGeometry,
+  createSimpleBoxLidGeometries,
+  createSimpleBoxLidPrintGeometries,
+  updateTrayGuide,
+} from "./japandiTray";
 export { getDefaultParams, getParam, getParameter } from "./shared";
 export type {
   AuditItem,
@@ -45,7 +52,7 @@ function getAuditValue(
   unit: LengthUnit,
   model: ModelDefinition,
 ): AuditItem {
-  if (model.viewer === "japandi-tray-v1") {
+  if (model.viewer !== "weighted-paper-towel-holder-v1") {
     return getTrayAuditValue(check, params, unit, model);
   }
 

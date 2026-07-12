@@ -69,6 +69,16 @@ Japandi tray:
 - Wall height changes on the Z axis without changing selected length or width.
 - Floor thickness remaps the lower floor band independently from wall height.
 - Rib relief scales the side texture within configured printable limits.
+
+Simple box:
+
+- The simple box is a separate catalog model with its own smooth rectangular source STL and `simple-box-v1` viewer contract.
+- It has no rib texture or rib-relief parameter.
+- It defaults to `13 x 3 x 3.5 in`, dividers at `5.75 in` and `9 in`, and the same adjustable stacking/lid-registration lip behavior.
+- Divider positions can be edited, added, and removed independently of the Japandi tray model.
+- Assembly proof views show a seated stacked pair and a fitted lid.
+- The lid is a separate printable STL with an adjustable plate thickness, engagement depth, and per-side fit clearance.
+- A combined box-and-lid STL places the two disconnected print shapes beside each other with a `10 mm` gap.
 - The original STL overlay can be toggled for visual comparison.
 
 ## Viewer Contract
@@ -95,6 +105,7 @@ Japandi tray:
 - Export file names include the model export prefix and active parameter values.
 - The paper towel export includes the flush weighted center tube floor and rounded weighted center tube top.
 - The generated STL snapshot used by Save/Fork follows the same geometry as Export.
+- Simple Box provides a separate lid export whose registration skirt uses the same wall-derived clearance contract as stacking.
 
 ## Accessibility And Responsiveness
 

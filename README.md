@@ -18,6 +18,11 @@ Current models:
   - STL: `public/models/japandi-tray/japandi-tray.stl`
   - Config: `public/models/japandi-tray/model.json`
   - Audit script: `models/japandi-tray/audit.mjs`
+- `simple-box`
+  - STL: `public/models/simple-box/simple-box.stl`
+  - Config: `public/models/simple-box/model.json`
+  - Audit script: `models/simple-box/audit.mjs`
+  - Source generator: `models/simple-box/generate-source.mjs`
 
 The model JSON owns the display name, STL URL, parameter definitions, audit
 checks, dimension invariants, and associated scripts for that print.
@@ -46,6 +51,7 @@ npm run dev
 npm run build
 npm run audit
 npm run audit -- japandi-tray
+npm run audit -- simple-box
 npm run test:e2e
 npm run verify
 npm run build:vercel

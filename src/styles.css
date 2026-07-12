@@ -1362,6 +1362,70 @@ html.dark .panel-section:nth-child(even) {
   font-size: 13px;
 }
 
+.divider-controls-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.divider-controls-heading p {
+  margin: 0;
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.divider-controls-heading button,
+.divider-remove-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--foreground);
+  font-weight: 720;
+}
+
+.divider-controls-heading button {
+  padding: 0 10px;
+}
+
+.divider-controls-heading svg,
+.divider-remove-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.divider-control {
+  position: relative;
+  padding-right: 38px;
+}
+
+.divider-control + .divider-control {
+  margin-top: 14px;
+}
+
+.divider-remove-button {
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  width: 32px;
+  padding: 0;
+  color: var(--muted-strong);
+}
+
+.divider-controls small {
+  display: block;
+  margin-top: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .segmented-control {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1369,6 +1433,10 @@ html.dark .panel-section:nth-child(even) {
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   background: var(--panel-muted);
+}
+
+.assembly-preview-control {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .segmented-control button {

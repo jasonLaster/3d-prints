@@ -8,11 +8,14 @@ import type {
   ModelDimensions,
   ModelParams,
   NumberLimits,
+  SimpleBoxModelDefinition,
   TrayModelDefinition,
 } from "./types";
 
+type ContainerModelDefinition = TrayModelDefinition | SimpleBoxModelDefinition;
+
 export function getTrayParameterLimits(
-  model: TrayModelDefinition,
+  model: ContainerModelDefinition,
   params: ModelParams,
   key: string,
 ): NumberLimits {
@@ -20,6 +23,8 @@ export function getTrayParameterLimits(
 
   if (key === "floorThickness") {
     limits.max = Math.min(limits.max, getParam(params, "height") - 1);
+  } else if (key.startsWith("dividerPosition")) {
+    limits.max = Math.max(limits.min, getParam(params, "length") - 5);
   }
 
   return limits;
@@ -37,7 +42,7 @@ export function applyTrayMorph(
   geometry: THREE.BufferGeometry,
   basePositions: Float32Array,
   params: ModelParams,
-  model: TrayModelDefinition,
+  model: ContainerModelDefinition,
 ) {
   const settings = model.geometry;
   const position = geometry.getAttribute("position") as THREE.BufferAttribute;
@@ -54,7 +59,7 @@ export function applyTrayMorph(
     getParam(params, "floorThickness"),
     height - 1,
   );
-  const ribRelief = getParam(params, "ribRelief");
+  const ribRelief = params.ribRelief ?? settings.originalRibRelief;
   const outputRotation = THREE.MathUtils.degToRad(-getParam(params, "rotation"));
   const outputRotationCos = Math.cos(outputRotation);
   const outputRotationSin = Math.sin(outputRotation);
@@ -65,14 +70,23 @@ export function applyTrayMorph(
   const wallTargetHeight = height - floorThickness;
   const halfLength = settings.originalLength / 2;
   const halfWidth = settings.originalWidth / 2;
-  const reliefScale = ribRelief / settings.originalRibRelief;
+  const reliefScale =
+    settings.originalRibRelief === 0
+      ? 1
+      : ribRelief / settings.originalRibRelief;
 
   for (let index = 0; index < position.count; index += 1) {
     const x = basePositions[index * 3];
     const y = basePositions[index * 3 + 1];
     const z = basePositions[index * 3 + 2];
-    const widthCoord = x * rotationCos + y * rotationSin;
-    const lengthCoord = -x * rotationSin + y * rotationCos;
+    const widthCoord =
+      model.viewer === "simple-box-v1"
+        ? y
+        : x * rotationCos + y * rotationSin;
+    const lengthCoord =
+      model.viewer === "simple-box-v1"
+        ? x
+        : -x * rotationSin + y * rotationCos;
     const edgeRatio = Math.max(
       Math.abs(lengthCoord) / halfLength,
       Math.abs(widthCoord) / halfWidth,
@@ -125,18 +139,176 @@ export function updateTrayGuide(
   mesh.position.set(0, 0, height / 2);
 }
 
+function roundedRectanglePath(
+  path: THREE.Shape | THREE.Path,
+  length: number,
+  width: number,
+  radius: number,
+) {
+  const halfLength = length / 2;
+  const halfWidth = width / 2;
+  const cornerRadius = Math.min(radius, halfLength, halfWidth);
+
+  path.moveTo(-halfLength + cornerRadius, -halfWidth);
+  path.lineTo(halfLength - cornerRadius, -halfWidth);
+  path.quadraticCurveTo(halfLength, -halfWidth, halfLength, -halfWidth + cornerRadius);
+  path.lineTo(halfLength, halfWidth - cornerRadius);
+  path.quadraticCurveTo(halfLength, halfWidth, halfLength - cornerRadius, halfWidth);
+  path.lineTo(-halfLength + cornerRadius, halfWidth);
+  path.quadraticCurveTo(-halfLength, halfWidth, -halfLength, halfWidth - cornerRadius);
+  path.lineTo(-halfLength, -halfWidth + cornerRadius);
+  path.quadraticCurveTo(-halfLength, -halfWidth, -halfLength + cornerRadius, -halfWidth);
+}
+
+function createRegistrationRingGeometry(
+  length: number,
+  width: number,
+  height: number,
+  thickness: number,
+  wallInset: number,
+  clearance: number,
+  cornerRadius: number,
+  attachmentOverlap: number,
+) {
+  const outerLength = Math.max(
+    thickness * 2 + 1,
+    length - 2 * (wallInset + clearance),
+  );
+  const outerWidth = Math.max(
+    thickness * 2 + 1,
+    width - 2 * (wallInset + clearance),
+  );
+  const innerLength = outerLength - thickness * 2;
+  const innerWidth = outerWidth - thickness * 2;
+  const shape = new THREE.Shape();
+  roundedRectanglePath(shape, outerLength, outerWidth, cornerRadius);
+  const hole = new THREE.Path();
+  roundedRectanglePath(
+    hole,
+    innerLength,
+    innerWidth,
+    Math.max(0.5, cornerRadius - thickness),
+  );
+  shape.holes.push(hole);
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: height,
+    bevelEnabled: false,
+    curveSegments: 8,
+    steps: 1,
+  });
+  geometry.translate(0, 0, -height + attachmentOverlap);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+export function createTrayStackingLipGeometry(
+  params: ModelParams,
+  model: SimpleBoxModelDefinition,
+) {
+  const settings = model.geometry;
+  const clearance = getParam(params, "lipClearance");
+  const lipHeight = getParam(params, "lipHeight");
+  const geometry = createRegistrationRingGeometry(
+    getParam(params, "length"),
+    getParam(params, "width"),
+    lipHeight,
+    settings.stackingLipThickness,
+    settings.stackingLipWallInset,
+    clearance,
+    settings.stackingLipCornerRadius,
+    settings.stackingLipFloorOverlap,
+  );
+  geometry.rotateZ(THREE.MathUtils.degToRad(-getParam(params, "rotation")));
+  return geometry;
+}
+
+export function createSimpleBoxLidGeometries(
+  params: ModelParams,
+  model: SimpleBoxModelDefinition,
+) {
+  const length = getParam(params, "length");
+  const width = getParam(params, "width");
+  const thickness = getParam(params, "lidThickness");
+  const skirtHeight = getParam(params, "lidSkirtHeight");
+  const clearance = getParam(params, "lidClearance");
+  const plate = new THREE.BoxGeometry(length, width, thickness);
+  plate.translate(0, 0, thickness / 2);
+  const skirt = createRegistrationRingGeometry(
+    length,
+    width,
+    skirtHeight,
+    model.geometry.stackingLipThickness,
+    model.geometry.stackingLipWallInset,
+    clearance,
+    model.geometry.stackingLipCornerRadius,
+    model.geometry.stackingLipFloorOverlap,
+  );
+  return [plate, skirt];
+}
+
+export function createSimpleBoxLidPrintGeometries(
+  params: ModelParams,
+  model: SimpleBoxModelDefinition,
+) {
+  const thickness = getParam(params, "lidThickness");
+  return createSimpleBoxLidGeometries(params, model).map((geometry) => {
+    geometry.rotateX(Math.PI);
+    geometry.translate(0, 0, thickness);
+    geometry.computeVertexNormals();
+    return geometry;
+  });
+}
+
+export function createTrayDividerGeometries(
+  params: ModelParams,
+  model: SimpleBoxModelDefinition,
+) {
+  const settings = model.geometry;
+  const count = Math.round(getParam(params, "dividerCount"));
+  const length = getParam(params, "length");
+  const width = getParam(params, "width");
+  const height = getParam(params, "height");
+  const floorThickness = getParam(params, "floorThickness");
+  const dividerBottom = floorThickness - settings.dividerFloorOverlap;
+  const dividerHeight = Math.max(
+    1,
+    height - dividerBottom - settings.dividerTopClearance,
+  );
+  const dividerWidth = Math.max(1, width - settings.dividerWallInset * 2);
+  const rotation = THREE.MathUtils.degToRad(-getParam(params, "rotation"));
+
+  return Array.from({ length: count }, (_, index) => {
+    const position = Math.min(
+      length - 5,
+      Math.max(5, getParam(params, `dividerPosition${index + 1}`)),
+    );
+    const geometry = new THREE.BoxGeometry(
+      settings.dividerThickness,
+      dividerWidth,
+      dividerHeight,
+    );
+    geometry.translate(
+      -length / 2 + position,
+      0,
+      dividerBottom + dividerHeight / 2,
+    );
+    geometry.rotateZ(rotation);
+    return geometry;
+  });
+}
+
 export function getTrayAuditValue(
   check: AuditCheckDefinition,
   params: ModelParams,
   unit: LengthUnit,
-  model: TrayModelDefinition,
+  model: ContainerModelDefinition,
 ): AuditItem {
   const settings = model.geometry;
   const length = getParam(params, "length");
   const width = getParam(params, "width");
   const height = getParam(params, "height");
   const floorThickness = getParam(params, "floorThickness");
-  const ribRelief = getParam(params, "ribRelief");
+  const ribRelief = params.ribRelief ?? settings.originalRibRelief;
   const interiorDepth = Math.max(0, height - floorThickness);
   const aspectRatio = length / width;
 
@@ -200,6 +372,71 @@ export function getTrayAuditValue(
         )}`,
         status: "pass",
       };
+    case "trayStackingLip": {
+      if (model.viewer !== "simple-box-v1") {
+        return { label: check.label, value: "Not applicable", status: "warn" };
+      }
+      const lipHeight = getParam(params, "lipHeight");
+      const lipClearance = getParam(params, "lipClearance");
+      return {
+        label: check.label,
+        value: `${formatLength(lipHeight, unit)} high · ${formatLength(lipClearance, unit)} clearance`,
+        status:
+          lipHeight >= 1 &&
+          lipClearance >= 0.15 &&
+          model.geometry.stackingLipThickness >= 1.2
+            ? "pass"
+            : "warn",
+      };
+    }
+    case "trayDividers": {
+      if (model.viewer !== "simple-box-v1") {
+        return { label: check.label, value: "Not applicable", status: "warn" };
+      }
+      const dividerCount = Math.round(getParam(params, "dividerCount"));
+      return {
+        label: check.label,
+        value: `${dividerCount} divider${dividerCount === 1 ? "" : "s"}`,
+        status:
+          dividerCount >= 0 &&
+          dividerCount <= 4 &&
+          model.geometry.dividerThickness >= 1.2
+            ? "pass"
+            : "warn",
+      };
+    }
+    case "trayStackingFit": {
+      if (model.viewer !== "simple-box-v1") {
+        return { label: check.label, value: "Not applicable", status: "warn" };
+      }
+      const clearance = getParam(params, "lipClearance");
+      const engagement =
+        getParam(params, "lipHeight") - model.geometry.stackingLipFloorOverlap;
+      return {
+        label: check.label,
+        value: `${formatLength(clearance, unit)} / side · ${formatLength(engagement, unit)} engaged`,
+        status: clearance > 0 && engagement >= 1 ? "pass" : "warn",
+      };
+    }
+    case "trayLidFit": {
+      if (model.viewer !== "simple-box-v1") {
+        return { label: check.label, value: "Not applicable", status: "warn" };
+      }
+      const clearance = getParam(params, "lidClearance");
+      const engagement =
+        getParam(params, "lidSkirtHeight") -
+        model.geometry.stackingLipFloorOverlap;
+      return {
+        label: check.label,
+        value: `${formatLength(clearance, unit)} / side · ${formatLength(engagement, unit)} engaged`,
+        status:
+          clearance > 0 &&
+          engagement >= 1 &&
+          getParam(params, "lidThickness") >= 1.2
+            ? "pass"
+            : "warn",
+      };
+    }
     default:
       return {
         label: check.label,
