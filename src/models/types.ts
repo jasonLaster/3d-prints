@@ -102,10 +102,21 @@ export type SimpleBoxGeometry = TrayGeometry & {
   gridfinityLipSupportHeight: number;
 };
 
+export type DoorLockAdapterGeometry = {
+  mainAxis: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  radialSegments: number;
+  minimumWallThickness: number;
+};
+
 export type SupportedViewer =
   | "weighted-paper-towel-holder-v1"
   | "japandi-tray-v1"
-  | "simple-box-v1";
+  | "simple-box-v1"
+  | "door-lock-adapter-v1";
 
 export type BaseModelDefinition = {
   id: string;
@@ -147,10 +158,16 @@ export type SimpleBoxModelDefinition = BaseModelDefinition & {
   geometry: SimpleBoxGeometry;
 };
 
+export type DoorLockAdapterModelDefinition = BaseModelDefinition & {
+  viewer: "door-lock-adapter-v1";
+  geometry: DoorLockAdapterGeometry;
+};
+
 export type ModelDefinition =
   | HolderModelDefinition
   | TrayModelDefinition
-  | SimpleBoxModelDefinition;
+  | SimpleBoxModelDefinition
+  | DoorLockAdapterModelDefinition;
 
 export type ModelDimensions = {
   length: number;

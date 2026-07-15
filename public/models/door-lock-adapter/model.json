@@ -1,0 +1,191 @@
+{
+  "id": "door-lock-adapter",
+  "name": "Door Lock Adapter",
+  "subtitle": "Parametric replacement part",
+  "description": "Compact tubular door-lock adapter with a centered square collar, triangular key ridge, and angle-adjustable rectangular through-slot.",
+  "viewer": "door-lock-adapter-v1",
+  "stl": {
+    "fileName": "door-lock-adapter.stl",
+    "sourceName": "reference-photo-derived-procedural.stl",
+    "units": "mm",
+    "url": "/models/door-lock-adapter/door-lock-adapter.stl"
+  },
+  "export": {
+    "filePrefix": "door-lock-adapter"
+  },
+  "geometry": {
+    "mainAxis": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "radialSegments": 64,
+    "minimumWallThickness": 0.6
+  },
+  "parameters": [
+    {
+      "key": "tubeDiameter",
+      "label": "Tube diameter",
+      "statusLabel": "Tube Ø",
+      "default": 9.3,
+      "limits": {
+        "min": 5,
+        "max": 20,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "tubeLength",
+      "label": "Tube length",
+      "statusLabel": "Tube L",
+      "default": 23,
+      "limits": {
+        "min": 10,
+        "max": 50,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "boxWidth",
+      "label": "Box width",
+      "statusLabel": "Box W",
+      "default": 10.3,
+      "limits": {
+        "min": 5,
+        "max": 25,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "boxLength",
+      "label": "Box length",
+      "statusLabel": "Box L",
+      "default": 10.9,
+      "limits": {
+        "min": 2,
+        "max": 40,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "notchHeight",
+      "label": "Triangle notch height",
+      "statusLabel": "Notch H",
+      "default": 1.5,
+      "limits": {
+        "min": 0.2,
+        "max": 6,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "notchWidth",
+      "label": "Triangle notch width",
+      "statusLabel": "Notch W",
+      "default": 4,
+      "limits": {
+        "min": 0.5,
+        "max": 20,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "notchLength",
+      "label": "Triangle notch length",
+      "statusLabel": "Notch L",
+      "default": 10.9,
+      "limits": {
+        "min": 1,
+        "max": 40,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "cutoutWidth",
+      "label": "Inner cutout width",
+      "statusLabel": "Slot W",
+      "default": 3,
+      "limits": {
+        "min": 1,
+        "max": 18,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "cutoutLength",
+      "label": "Inner cutout length",
+      "statusLabel": "Slot L",
+      "default": 7.3,
+      "limits": {
+        "min": 1,
+        "max": 18,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "cutoutRotation",
+      "label": "Inner cutout rotation",
+      "statusLabel": "Slot angle",
+      "default": 90,
+      "limits": {
+        "min": 0,
+        "max": 180,
+        "step": 1
+      }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.1,
+    "dimensionTargets": [
+      "The default tube is 9.3 mm in diameter and 23 mm long.",
+      "The centered collar is 10.3 mm square in cross-section and 10.9 mm long along the tube axis.",
+      "The centered triangular key ridge is 4 mm wide, extends 1.5 mm from one collar face, and is 10.9 mm long.",
+      "The centered rectangular through-slot is 3 mm wide by 7.3 mm long.",
+      "The slot long axis defaults to 90 degrees and perpendicular to the collar face carrying the triangular ridge."
+    ],
+    "invariants": [
+      "Keep the tube, collar, triangular ridge, and rectangular slot on a common center axis.",
+      "Use the box width on both collar cross-sectional axes because only one box width is specified.",
+      "Keep the box length at or below the tube length.",
+      "Keep the triangular ridge length at or below the box length.",
+      "Keep the triangular ridge width at or below the box width.",
+      "Keep the rectangular cutout inside the tube with at least the configured corner-to-wall thickness at every rotation.",
+      "Allow the rectangular cutout angle to vary from parallel at 0 degrees through perpendicular at 90 degrees.",
+      "Preserve a single closed printable shell with the rectangular slot open through both tube ends."
+    ],
+    "checks": [
+      {
+        "key": "adapterTube",
+        "label": "Tube envelope"
+      },
+      {
+        "key": "adapterCollar",
+        "label": "Box collar"
+      },
+      {
+        "key": "adapterNotch",
+        "label": "Triangle notch"
+      },
+      {
+        "key": "adapterCutout",
+        "label": "Inner cutout"
+      },
+      {
+        "key": "adapterWallThickness",
+        "label": "Minimum radial wall"
+      },
+      {
+        "key": "adapterCentering",
+        "label": "Feature alignment"
+      }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/door-lock-adapter/audit.mjs",
+      "command": "npm run audit -- door-lock-adapter",
+      "description": "Validates dimensions, parameter relationships, and printable STL topology for the adapter."
+    }
+  ]
+}

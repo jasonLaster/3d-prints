@@ -81,6 +81,15 @@ Simple box:
 - A combined box-and-lid STL places the two disconnected print shapes beside each other with a `10 mm` gap.
 - The original STL overlay can be toggled for visual comparison.
 
+Door lock adapter:
+
+- The adapter is a separate procedural catalog model with a 9.3 mm diameter by 23 mm tube.
+- A centered 10.3 mm square collar runs 10.9 mm along the tube axis. The single supplied box width controls both collar cross-sectional axes.
+- A centered triangular key ridge defaults to 4 mm wide, extends 1.5 mm from one collar face, and runs 10.9 mm along the tube axis.
+- A centered 3 mm by 7.3 mm rectangular slot passes through the tube. Its angle is adjustable from 0 to 180 degrees and defaults to 90 degrees, perpendicular to the keyed collar face.
+- Tube, collar, ridge, and cutout dimensions are independently editable in the inspector while dynamic limits preserve the collar fit and minimum tube wall.
+- Generated and exported geometry must remain one closed manifold shell.
+
 ## Viewer Contract
 
 - The primary viewer is a Three.js canvas with OrbitControls.

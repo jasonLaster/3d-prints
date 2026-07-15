@@ -10,6 +10,11 @@ import {
   getTrayDimensions,
   getTrayParameterLimits,
 } from "./japandiTray";
+import {
+  getDoorLockAdapterAuditValue,
+  getDoorLockAdapterDimensions,
+  getDoorLockAdapterParameterLimits,
+} from "./doorLockAdapter";
 import type {
   AuditCheckDefinition,
   AuditItem,
@@ -39,6 +44,10 @@ export {
   getGridfinityUnitCount,
   snapGridfinityDimension,
 } from "./japandiTray";
+export {
+  createDoorLockAdapterGeometry,
+  updateDoorLockAdapterGuide,
+} from "./doorLockAdapter";
 export { getDefaultParams, getParam, getParameter } from "./shared";
 export type {
   AuditItem,
@@ -55,6 +64,10 @@ function getAuditValue(
   unit: LengthUnit,
   model: ModelDefinition,
 ): AuditItem {
+  if (model.viewer === "door-lock-adapter-v1") {
+    return getDoorLockAdapterAuditValue(check, params, unit, model);
+  }
+
   if (model.viewer !== "weighted-paper-towel-holder-v1") {
     return getTrayAuditValue(check, params, unit, model);
   }
@@ -77,6 +90,10 @@ export function getParameterLimits(
   params: ModelParams,
   key: string,
 ): NumberLimits {
+  if (model.viewer === "door-lock-adapter-v1") {
+    return getDoorLockAdapterParameterLimits(model, params, key);
+  }
+
   if (model.viewer === "weighted-paper-towel-holder-v1") {
     return getHolderParameterLimits(model, params, key);
   }
@@ -88,6 +105,10 @@ export function getModelDimensions(
   model: ModelDefinition,
   params: ModelParams,
 ): ModelDimensions {
+  if (model.viewer === "door-lock-adapter-v1") {
+    return getDoorLockAdapterDimensions(params);
+  }
+
   if (model.viewer === "weighted-paper-towel-holder-v1") {
     return getHolderDimensions(params);
   }

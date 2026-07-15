@@ -1362,6 +1362,13 @@ html.dark .panel-section:nth-child(even) {
   font-size: 13px;
 }
 
+.angle-unit {
+  padding-left: 7px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 760;
+}
+
 .divider-controls-heading {
   display: flex;
   align-items: center;

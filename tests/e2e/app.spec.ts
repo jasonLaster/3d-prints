@@ -610,6 +610,65 @@ test.describe("3D print app", () => {
     expect(topology.nonManifoldEdges).toBe(0);
   });
 
+  test("renders and exports the parametric door lock adapter", async ({ page }) => {
+    await expectNoPageErrors(page, async () => {
+      await openReady(page, "/?model=door-lock-adapter");
+
+      await expect(
+        page.getByRole("heading", { name: "Door Lock Adapter" }),
+      ).toBeVisible();
+      for (const [label, value] of [
+        ["Tube diameter in millimeters", "9.3"],
+        ["Tube length in millimeters", "23.0"],
+        ["Box width in millimeters", "10.3"],
+        ["Box length in millimeters", "10.9"],
+        ["Triangle notch height in millimeters", "1.5"],
+        ["Triangle notch width in millimeters", "4.0"],
+        ["Triangle notch length in millimeters", "10.9"],
+        ["Inner cutout width in millimeters", "3.0"],
+        ["Inner cutout length in millimeters", "7.3"],
+      ]) {
+        await expect(page.getByLabel(label)).toHaveValue(value);
+      }
+      const cutoutRotation = page.getByLabel(
+        "Inner cutout rotation in degrees",
+      );
+      await expect(cutoutRotation).toHaveValue("90");
+
+      const notchHeight = page.getByLabel(
+        "Triangle notch height in millimeters",
+      );
+      await notchHeight.fill("2");
+      await notchHeight.blur();
+      await expect(notchHeight).toHaveValue("2.0");
+      await expect(page).toHaveURL(/notchHeight=2/);
+      await cutoutRotation.fill("45");
+      await cutoutRotation.blur();
+      await expect(cutoutRotation).toHaveValue("45");
+      await expect(page).toHaveURL(/cutoutRotation=45/);
+      await expectCanvasHasRenderedModel(page);
+
+      const [download] = await Promise.all([
+        page.waitForEvent("download"),
+        openActions(page).then(() =>
+          page.getByRole("button", { name: "Export", exact: true }).click(),
+        ),
+      ]);
+      expect(download.suggestedFilename()).toMatch(
+        /^door-lock-adapter-tubeDiameter-9\.3-tubeLength-23\.0-boxWidth-10\.3-boxLength-10\.9-notchHeight-2\.0-notchWidth-4\.0-notchLength-10\.9-cutoutWidth-3\.0-cutoutLength-7\.3-cutoutRotation-45\.0\.stl$/,
+      );
+      const downloadPath = await download.path();
+      expect(downloadPath).not.toBeNull();
+      const topology = analyzeStlTopology(downloadPath!);
+      expect(topology.finiteCoordinates).toBe(true);
+      expect(topology.degenerateTriangles).toBe(0);
+      expect(topology.nonManifoldEdges).toBe(0);
+      expect(topology.size.x).toBeCloseTo(10.3, 1);
+      expect(topology.size.y).toBeCloseTo(12.3, 1);
+      expect(topology.size.z).toBeCloseTo(23, 1);
+    });
+  });
+
   test("renders and exports a finite manifold simple box with editable dividers", async ({
     page,
   }) => {

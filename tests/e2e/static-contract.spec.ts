@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(3);
+  expect(catalog.models).toHaveLength(4);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -112,6 +112,14 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "trayDividers",
       "trayStackingFit",
       "trayLidFit",
+    ],
+    "door-lock-adapter-v1": [
+      "adapterTube",
+      "adapterCollar",
+      "adapterNotch",
+      "adapterCutout",
+      "adapterWallThickness",
+      "adapterCentering",
     ],
   };
 
@@ -203,6 +211,14 @@ test("model-specific parameter dependencies are declared auditable", () => {
       gridfinityLipOuterChamfer: number;
     };
   };
+  const adapter = readJson(
+    path.join(root, "public/models/door-lock-adapter/model.json"),
+  ) as ModelJson & {
+    geometry: {
+      radialSegments: number;
+      minimumWallThickness: number;
+    };
+  };
 
   const holderParams = Object.fromEntries(
     holder.parameters.map((parameter) => [parameter.key, parameter]),
@@ -267,6 +283,39 @@ test("model-specific parameter dependencies are declared auditable", () => {
     simpleBox.geometry.originalFloorThickness,
   );
   expect(simpleBox.geometry.dividerFloorOverlap).toBeGreaterThan(0);
+
+  const adapterParams = Object.fromEntries(
+    adapter.parameters.map((parameter) => [parameter.key, parameter]),
+  );
+  expect(adapterParams.tubeDiameter.default).toBe(9.3);
+  expect(adapterParams.tubeLength.default).toBe(23);
+  expect(adapterParams.boxWidth.default).toBe(10.3);
+  expect(adapterParams.boxLength.default).toBe(10.9);
+  expect(adapterParams.notchHeight.default).toBe(1.5);
+  expect(adapterParams.notchWidth.default).toBe(4);
+  expect(adapterParams.notchWidth.default).toBeLessThan(
+    adapterParams.boxWidth.default,
+  );
+  expect(adapterParams.notchLength.default).toBe(10.9);
+  expect(adapterParams.cutoutWidth.default).toBe(3);
+  expect(adapterParams.cutoutLength.default).toBe(7.3);
+  expect(adapterParams.cutoutRotation.default).toBe(90);
+  expect(adapterParams.cutoutRotation.limits).toMatchObject({
+    min: 0,
+    max: 180,
+    step: 1,
+  });
+  expect(adapter.geometry.radialSegments).toBeGreaterThanOrEqual(32);
+  expect(
+    adapterParams.tubeDiameter.default / 2 -
+      Math.hypot(
+        adapterParams.cutoutWidth.default / 2,
+        adapterParams.cutoutLength.default / 2,
+      ),
+  ).toBeGreaterThanOrEqual(adapter.geometry.minimumWallThickness);
+  expect(adapter.audit.invariants.join(" ")).toContain(
+    "rectangular slot open through both tube ends",
+  );
 });
 
 test("request coverage document tracks the app behaviors under Playwright", () => {
@@ -330,6 +379,9 @@ test("product specifications and test plan describe the release contract", () =>
 test("model-specific audit docs mention their JSON-owned runtime checks", () => {
   const paperDoc = readText(path.join(root, "docs/audit-specifications.md"));
   const trayDoc = readText(path.join(root, "docs/japandi-tray-audit-specifications.md"));
+  const adapterDoc = readText(
+    path.join(root, "docs/door-lock-adapter-audit-specifications.md"),
+  );
 
   for (const phrase of [
     "weighted sand chamber",
@@ -349,6 +401,19 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "Runtime audit checks include tray length",
   ]) {
     expect(trayDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "9.3 mm in diameter and 23 mm",
+    "10.3 mm square cross-section",
+    "triangular key ridge",
+    "defaults to 4 mm wide",
+    "3 mm by 7.3 mm",
+    "perpendicular to the collar face",
+    "adjustable from 0 to 180 degrees",
+    "Every mesh edge belongs to exactly two triangles",
+  ]) {
+    expect(adapterDoc).toContain(phrase);
   }
 });
 

@@ -58,6 +58,7 @@ import {
   applyHolderMorph,
   applyTrayMorph,
   buildAuditItems,
+  createDoorLockAdapterGeometry,
   createRoundedTopGeometry,
   createSandChamberFloorGeometry,
   createSandPreviewGeometry,
@@ -72,6 +73,7 @@ import {
   getParameterLimits,
   getStatusItems,
   snapGridfinityDimension,
+  updateDoorLockAdapterGuide,
   updateHolderGuide,
   updateTrayGuide,
   updateWeightedCore,
@@ -125,13 +127,22 @@ const PARAM_QUERY_KEYS = [
   "height",
   "diameter",
   "tubeDiameter",
+  "tubeLength",
+  "boxWidth",
+  "boxLength",
+  "notchHeight",
+  "notchWidth",
+  "notchLength",
+  "cutoutWidth",
+  "cutoutLength",
+  "cutoutRotation",
   "length",
   "width",
   "floorThickness",
   "ribRelief",
   "rotation",
 ];
-const ANGLE_PARAM_KEYS = new Set(["rotation"]);
+const ANGLE_PARAM_KEYS = new Set(["rotation", "cutoutRotation"]);
 const SCALAR_PARAM_KEYS = new Set(["dividerCount", "gridfinityCompatible"]);
 const OPTION_PARAM_KEYS = new Set(["gridfinityCompatible"]);
 const DIVIDER_PARAM_KEYS = new Set([
@@ -277,6 +288,17 @@ function getParamsFromUrl(model: ModelDefinition) {
         limits.min,
         limits.max,
         model.geometry.gridfinityGridSize,
+      );
+    }
+  }
+
+  if (model.viewer === "door-lock-adapter-v1") {
+    for (const parameter of model.parameters) {
+      const limits = getParameterLimits(model, params, parameter.key);
+      params[parameter.key] = clamp(
+        params[parameter.key],
+        limits.min,
+        limits.max,
       );
     }
   }
@@ -556,7 +578,11 @@ const HolderViewer = forwardRef<
     camera.up.set(0, 0, 1);
     if (preset === "top") {
       camera.up.set(0, 1, 0);
-      camera.position.set(0, 0, target.z + Math.max(distance, dimensions.height * 10));
+      const topDistance =
+        model.viewer === "door-lock-adapter-v1"
+          ? distance
+          : Math.max(distance, dimensions.height * 10);
+      camera.position.set(0, 0, target.z + topDistance);
     } else if (preset === "xEdge") {
       camera.position.set(0, -distance, edgeViewZ);
     } else if (preset === "yEdge") {
@@ -636,6 +662,13 @@ const HolderViewer = forwardRef<
         latestParamsRef.current,
         model,
       );
+    } else if (model.viewer === "door-lock-adapter-v1") {
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createDoorLockAdapterGeometry(
+        latestParamsRef.current,
+        model,
+      );
+      updateDoorLockAdapterGuide(guideMesh, latestParamsRef.current);
     } else {
       applyTrayMorph(mainMesh.geometry, base, latestParamsRef.current, model);
       updateTrayGuide(guideMesh, latestParamsRef.current);
@@ -936,7 +969,8 @@ const HolderViewer = forwardRef<
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.minDistance = 80;
+    controls.minDistance =
+      model.viewer === "door-lock-adapter-v1" ? 18 : 80;
     controls.maxDistance = 1400;
     controlsRef.current = controls;
     const handleControlChange = () => updateCubeOrientation();
@@ -981,9 +1015,9 @@ const HolderViewer = forwardRef<
             true,
           )
         : new THREE.BoxGeometry(
-            getParam(initialParams, "length"),
-            getParam(initialParams, "width"),
-            getParam(initialParams, "height"),
+            initialDimensions.length,
+            initialDimensions.width,
+            initialDimensions.height,
           );
     const guide = new THREE.Mesh(
       guideGeometry,
@@ -1050,7 +1084,11 @@ const HolderViewer = forwardRef<
           wireframe: true,
         });
 
-        const mainMesh = new THREE.Mesh(normalizedMain.geometry, mainMaterial);
+        const displayedGeometry =
+          model.viewer === "door-lock-adapter-v1"
+            ? createDoorLockAdapterGeometry(latestParamsRef.current, model)
+            : normalizedMain.geometry;
+        const mainMesh = new THREE.Mesh(displayedGeometry, mainMaterial);
         mainMesh.name = `${model.id}-adjustable-body`;
         scene.add(mainMesh);
         mainMeshRef.current = mainMesh;
@@ -1112,6 +1150,10 @@ const HolderViewer = forwardRef<
         ghostMesh.visible = latestShowOriginalRef.current;
         scene.add(ghostMesh);
         ghostMeshRef.current = ghostMesh;
+
+        if (model.viewer === "door-lock-adapter-v1") {
+          normalizedMain.geometry.dispose();
+        }
 
         updateMeshes();
         resetCamera();
@@ -1375,6 +1417,70 @@ function NumberControl({
             ))}
           </SelectContent>
         </Select>
+      </div>
+    </div>
+  );
+}
+
+function AngleControl({
+  label,
+  limits,
+  onChange,
+  value,
+}: {
+  label: string;
+  limits: NumberLimits;
+  onChange: (value: number) => void;
+  value: number;
+}) {
+  const id = label.toLowerCase().replace(/\s+/g, "-");
+  const [draftValue, setDraftValue] = useState(() => value.toFixed(0));
+  const clampAngle = (nextValue: number) =>
+    Math.min(limits.max, Math.max(limits.min, nextValue));
+  const updateValue = (rawValue: string) => {
+    const parsed = Number(rawValue);
+    if (Number.isFinite(parsed)) onChange(clampAngle(parsed));
+  };
+
+  useEffect(() => {
+    setDraftValue(value.toFixed(0));
+  }, [value]);
+
+  return (
+    <div className="number-control">
+      <label htmlFor={id}>{label}</label>
+      <div className="number-row angle-number-row">
+        <input
+          id={id}
+          max={limits.max}
+          min={limits.min}
+          onChange={(event) => updateValue(event.currentTarget.value)}
+          step={limits.step}
+          type="range"
+          value={value}
+        />
+        <input
+          aria-label={`${label} in degrees`}
+          inputMode="decimal"
+          onBlur={() => setDraftValue(value.toFixed(0))}
+          onChange={(event) => {
+            setDraftValue(event.currentTarget.value);
+            updateValue(event.currentTarget.value);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+            event.preventDefault();
+            const direction = event.key === "ArrowUp" ? 1 : -1;
+            const nextValue = clampAngle(value + direction * limits.step);
+            setDraftValue(nextValue.toFixed(0));
+            onChange(nextValue);
+          }}
+          type="text"
+          value={draftValue}
+        />
+        <span aria-hidden="true" className="angle-unit">
+          °
+        </span>
       </div>
     </div>
   );
@@ -2761,6 +2867,18 @@ export default function App({
                         getParameterLimits(model, params, "width").max,
                         model.geometry.gridfinityGridSize,
                       )}
+                    />
+                  ) : null}
+                  {model.viewer === "door-lock-adapter-v1" ? (
+                    <AngleControl
+                      label="Inner cutout rotation"
+                      limits={getParameterLimits(
+                        model,
+                        params,
+                        "cutoutRotation",
+                      )}
+                      onChange={(value) => updateParam("cutoutRotation", value)}
+                      value={getParam(params, "cutoutRotation")}
                     />
                   ) : null}
                 </section>

@@ -23,6 +23,11 @@ Current models:
   - Config: `public/models/simple-box/model.json`
   - Audit script: `models/simple-box/audit.mjs`
   - Source generator: `models/simple-box/generate-source.mjs`
+- `door-lock-adapter`
+  - STL: `public/models/door-lock-adapter/door-lock-adapter.stl`
+  - Config: `public/models/door-lock-adapter/model.json`
+  - Audit script: `models/door-lock-adapter/audit.mjs`
+  - Source generator: `models/door-lock-adapter/generate-source.mjs`
 
 The model JSON owns the display name, STL URL, parameter definitions, audit
 checks, dimension invariants, and associated scripts for that print.
@@ -52,6 +57,7 @@ npm run build
 npm run audit
 npm run audit -- japandi-tray
 npm run audit -- simple-box
+npm run audit -- door-lock-adapter
 npm run test:e2e
 npm run verify
 npm run build:vercel

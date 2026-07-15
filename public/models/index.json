@@ -15,6 +15,11 @@
       "id": "simple-box",
       "name": "Simple Box",
       "configUrl": "/models/simple-box/model.json"
+    },
+    {
+      "id": "door-lock-adapter",
+      "name": "Door Lock Adapter",
+      "configUrl": "/models/door-lock-adapter/model.json"
     }
   ]
 }
