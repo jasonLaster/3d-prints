@@ -84,10 +84,22 @@ export type SimpleBoxGeometry = TrayGeometry & {
   stackingLipWallInset: number;
   stackingLipCornerRadius: number;
   stackingLipFloorOverlap: number;
+  stackingLipChamferHeight: number;
   dividerThickness: number;
   dividerWallInset: number;
   dividerTopClearance: number;
   dividerFloorOverlap: number;
+  gridfinityGridSize: number;
+  gridfinityFootTopSize: number;
+  gridfinityFootCornerRadius: number;
+  gridfinityBottomChamfer: number;
+  gridfinityStraightHeight: number;
+  gridfinityTopChamfer: number;
+  gridfinityFootOverlap: number;
+  gridfinityLipInnerChamfer: number;
+  gridfinityLipStraightHeight: number;
+  gridfinityLipOuterChamfer: number;
+  gridfinityLipSupportHeight: number;
 };
 
 export type SupportedViewer =

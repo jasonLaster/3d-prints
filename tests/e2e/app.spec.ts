@@ -102,6 +102,7 @@ function analyzeStlTopology(filePath: string) {
   const edges = new Map<string, number>();
   let degenerateTriangles = 0;
   let finiteCoordinates = true;
+  let buildPlateContactArea = 0;
 
   geometry.computeBoundingBox();
   const bounds = geometry.boundingBox!;
@@ -129,6 +130,21 @@ function analyzeStlTopology(filePath: string) {
       vertexKeys[index + 1],
       vertexKeys[index + 2],
     ];
+    const zValues = [
+      position.getZ(index),
+      position.getZ(index + 1),
+      position.getZ(index + 2),
+    ];
+    if (zValues.every((value) => Math.abs(value - bounds.min.z) < 1e-4)) {
+      const ax = position.getX(index);
+      const ay = position.getY(index);
+      const bx = position.getX(index + 1);
+      const by = position.getY(index + 1);
+      const cx = position.getX(index + 2);
+      const cy = position.getY(index + 2);
+      buildPlateContactArea +=
+        Math.abs(ax * (by - cy) + bx * (cy - ay) + cx * (ay - by)) / 2;
+    }
     if (
       triangle[0] === triangle[1] ||
       triangle[1] === triangle[2] ||
@@ -159,8 +175,10 @@ function analyzeStlTopology(filePath: string) {
 
   return {
     degenerateTriangles,
+    buildPlateContactArea,
     finiteCoordinates,
     nonManifoldEdges,
+    minZ: bounds.min.z,
     size,
     triangles: position.count / 3,
   };
@@ -606,6 +624,32 @@ test.describe("3D print app", () => {
       await expect(page.getByLabel("Rib relief in inches")).toHaveCount(0);
       await expect(page.getByLabel("Divider 1 position in inches")).toHaveValue("5 3/4");
       await expect(page.getByLabel("Divider 2 position in inches")).toHaveValue("9");
+      await expect(page.getByLabel("Gridfinity compatibility")).not.toBeChecked();
+      await page
+        .locator("label.toggle-control", { hasText: "Gridfinity compatibility" })
+        .click();
+      await expect(page.getByLabel("Gridfinity compatibility")).toBeChecked();
+      await expect(
+        page.getByText("8 × 2 units · 42 mm pitch · standard base + stacking rim"),
+      ).toBeVisible();
+      await expect(page.getByLabel("Box length in inches")).toHaveValue("13 1/4");
+      await expect(page.getByLabel("Box width in inches")).toHaveValue("3 1/4");
+      const [gridfinityDownload] = await Promise.all([
+        page.waitForEvent("download"),
+        openActions(page).then(() =>
+          page.getByRole("button", { name: "Export", exact: true }).click(),
+        ),
+      ]);
+      const gridfinityPath = await gridfinityDownload.path();
+      expect(gridfinityPath).not.toBeNull();
+      const gridfinityTopology = analyzeStlTopology(gridfinityPath!);
+      expect(gridfinityTopology.finiteCoordinates).toBe(true);
+      expect(gridfinityTopology.degenerateTriangles).toBe(0);
+      expect(gridfinityTopology.nonManifoldEdges).toBe(0);
+      expect(gridfinityTopology.size.x).toBeCloseTo(335.5, 1);
+      expect(gridfinityTopology.size.y).toBeCloseTo(83.5, 1);
+      expect(gridfinityTopology.size.z).toBeCloseTo(98.05, 1);
+      await page.keyboard.press("Escape");
       await expect(page.getByRole("button", { name: "Stacked pair" })).toBeVisible();
       await page.getByRole("button", { name: "Stacked pair" }).click();
       await expect(page.getByRole("button", { name: "Stacked pair" })).toHaveAttribute(
@@ -645,6 +689,7 @@ test.describe("3D print app", () => {
       expect(topology.finiteCoordinates).toBe(true);
       expect(topology.degenerateTriangles).toBe(0);
       expect(topology.nonManifoldEdges).toBe(0);
+      expect(topology.buildPlateContactArea).toBeGreaterThan(20_000);
       expect(topology.triangles).toBeGreaterThan(40);
       expect(topology.size.x).toBeCloseTo(330.2, 1);
       expect(topology.size.y).toBeCloseTo(76.2, 1);
@@ -667,6 +712,7 @@ test.describe("3D print app", () => {
       expect(lidTopology.size.x).toBeCloseTo(330.2, 1);
       expect(lidTopology.size.y).toBeCloseTo(76.2, 1);
       expect(lidTopology.size.z).toBeCloseTo(5.2, 1);
+      expect(lidTopology.minZ).toBeCloseTo(0, 3);
 
       const [combinedDownload] = await Promise.all([
         page.waitForEvent("download"),
@@ -681,10 +727,12 @@ test.describe("3D print app", () => {
       expect(combinedTopology.finiteCoordinates).toBe(true);
       expect(combinedTopology.degenerateTriangles).toBe(0);
       expect(combinedTopology.nonManifoldEdges).toBe(0);
+      expect(combinedTopology.buildPlateContactArea).toBeGreaterThan(20_000);
       expect(combinedTopology.size.x).toBeCloseTo(330.2, 1);
       expect(combinedTopology.size.y).toBeCloseTo(162.4, 1);
       expect(combinedTopology.size.z).toBeGreaterThan(91.5);
       expect(combinedTopology.size.z).toBeLessThan(92);
+      expect(combinedTopology.minZ).toBeCloseTo(0, 3);
     });
   });
 

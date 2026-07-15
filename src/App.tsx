@@ -66,10 +66,12 @@ import {
   createTrayDividerGeometries,
   createTrayStackingLipGeometry,
   getDefaultParams,
+  getGridfinityUnitCount,
   getModelDimensions,
   getParam,
   getParameterLimits,
   getStatusItems,
+  snapGridfinityDimension,
   updateHolderGuide,
   updateTrayGuide,
   updateWeightedCore,
@@ -130,7 +132,8 @@ const PARAM_QUERY_KEYS = [
   "rotation",
 ];
 const ANGLE_PARAM_KEYS = new Set(["rotation"]);
-const SCALAR_PARAM_KEYS = new Set(["dividerCount"]);
+const SCALAR_PARAM_KEYS = new Set(["dividerCount", "gridfinityCompatible"]);
+const OPTION_PARAM_KEYS = new Set(["gridfinityCompatible"]);
 const DIVIDER_PARAM_KEYS = new Set([
   "dividerCount",
   "dividerPosition1",
@@ -259,6 +262,21 @@ function getParamsFromUrl(model: ModelDefinition) {
         parsed,
         parameter.limits.min,
         parameter.limits.max,
+      );
+    }
+  }
+
+  if (
+    model.viewer === "simple-box-v1" &&
+    params.gridfinityCompatible >= 0.5
+  ) {
+    for (const key of ["length", "width"] as const) {
+      const limits = getParameterLimits(model, params, key);
+      params[key] = snapGridfinityDimension(
+        params[key],
+        limits.min,
+        limits.max,
+        model.geometry.gridfinityGridSize,
       );
     }
   }
@@ -637,6 +655,16 @@ const HolderViewer = forwardRef<
           trayDividerGroup.add(new THREE.Mesh(geometry, holderMaterial));
         }
       }
+      if (model.viewer === "simple-box-v1") {
+        const printBedOffset =
+          latestAssemblyModeRef.current === "print-layout"
+            ? getParam(latestParamsRef.current, "lipHeight") -
+              model.geometry.stackingLipFloorOverlap
+            : 0;
+        mainMesh.position.z = printBedOffset;
+        if (trayLipMesh) trayLipMesh.position.z = printBedOffset;
+        if (trayDividerGroup) trayDividerGroup.position.z = printBedOffset;
+      }
       if (model.viewer === "simple-box-v1" && assemblyPreviewGroup) {
         assemblyPreviewGroup.children.forEach((child) => {
           if (child instanceof THREE.Mesh) child.geometry.dispose();
@@ -644,7 +672,13 @@ const HolderViewer = forwardRef<
         assemblyPreviewGroup.clear();
         const previewMaterial = holderMaterial;
         if (latestAssemblyModeRef.current === "stacked") {
-          const offsetZ = getParam(latestParamsRef.current, "height");
+          const offsetZ =
+            getParam(latestParamsRef.current, "height") +
+            (getParam(latestParamsRef.current, "gridfinityCompatible") >= 0.5
+              ? model.geometry.gridfinityBottomChamfer +
+                model.geometry.gridfinityStraightHeight +
+                model.geometry.gridfinityTopChamfer
+              : 0);
           const upperBody = new THREE.Mesh(mainMesh.geometry.clone(), previewMaterial);
           upperBody.position.z = offsetZ;
           assemblyPreviewGroup.add(upperBody);
@@ -800,11 +834,16 @@ const HolderViewer = forwardRef<
       group.add(mesh);
       return mesh;
     };
-    addMesh(mainMesh.geometry, `${model.id}-body`);
-    addMesh(trayLipMesh.geometry, `${model.id}-stacking-lip`);
+    const boxPrintBedOffset =
+      getParam(latestParamsRef.current, "lipHeight") -
+      model.geometry.stackingLipFloorOverlap;
+    addMesh(mainMesh.geometry, `${model.id}-body`).position.z = boxPrintBedOffset;
+    addMesh(trayLipMesh.geometry, `${model.id}-stacking-lip`).position.z =
+      boxPrintBedOffset;
     trayDividerGroup.children.forEach((child, index) => {
       if (child instanceof THREE.Mesh) {
-        addMesh(child.geometry, `${model.id}-divider-${index + 1}`);
+        addMesh(child.geometry, `${model.id}-divider-${index + 1}`).position.z =
+          boxPrintBedOffset;
       }
     });
     const offsetY = -(getParam(latestParamsRef.current, "width") + 10);
@@ -1501,6 +1540,33 @@ function OriginalOverlayToggle({
         <span />
       </span>
     </label>
+  );
+}
+
+function GridfinityToggle({
+  checked,
+  lengthUnits,
+  onChange,
+  widthUnits,
+}: {
+  checked: boolean;
+  lengthUnits: number;
+  onChange: (checked: boolean) => void;
+  widthUnits: number;
+}) {
+  return (
+    <div className="gridfinity-option">
+      <OriginalOverlayToggle
+        checked={checked}
+        label="Gridfinity compatibility"
+        onChange={onChange}
+      />
+      <small>
+        {checked
+          ? `${lengthUnits} × ${widthUnits} units · 42 mm pitch · standard base + stacking rim`
+          : "Snap the footprint to whole grid units and add standard mating feet and rim."}
+      </small>
+    </div>
   );
 }
 
@@ -2272,9 +2338,50 @@ export default function App({
         return current;
       }
       const limits = getParameterLimits(model, current, key);
+      let nextValue = Math.min(limits.max, Math.max(limits.min, value));
+      if (
+        model.viewer === "simple-box-v1" &&
+        current.gridfinityCompatible >= 0.5 &&
+        (key === "length" || key === "width")
+      ) {
+        nextValue = snapGridfinityDimension(
+          nextValue,
+          limits.min,
+          limits.max,
+          model.geometry.gridfinityGridSize,
+        );
+      }
       return {
         ...current,
-        [key]: Number(Math.min(limits.max, Math.max(limits.min, value)).toFixed(1)),
+        [key]: Number(nextValue.toFixed(1)),
+      };
+    });
+  };
+
+  const setGridfinityCompatible = (checked: boolean) => {
+    if (!model || model.viewer !== "simple-box-v1") return;
+    setParams((current) => {
+      if (!current) return current;
+      if (!checked) {
+        return { ...current, gridfinityCompatible: 0 };
+      }
+      const lengthLimits = getParameterLimits(model, current, "length");
+      const widthLimits = getParameterLimits(model, current, "width");
+      return {
+        ...current,
+        gridfinityCompatible: 1,
+        length: snapGridfinityDimension(
+          current.length,
+          lengthLimits.min,
+          lengthLimits.max,
+          model.geometry.gridfinityGridSize,
+        ),
+        width: snapGridfinityDimension(
+          current.width,
+          widthLimits.min,
+          widthLimits.max,
+          model.geometry.gridfinityGridSize,
+        ),
       };
     });
   };
@@ -2623,7 +2730,8 @@ export default function App({
                     .filter(
                       (parameter) =>
                         !ANGLE_PARAM_KEYS.has(parameter.key) &&
-                        !DIVIDER_PARAM_KEYS.has(parameter.key),
+                        !DIVIDER_PARAM_KEYS.has(parameter.key) &&
+                        !OPTION_PARAM_KEYS.has(parameter.key),
                     )
                     .map((parameter) => (
                       <NumberControl
@@ -2637,6 +2745,24 @@ export default function App({
                         valueMm={params[parameter.key]}
                       />
                     ))}
+                  {model.viewer === "simple-box-v1" ? (
+                    <GridfinityToggle
+                      checked={params.gridfinityCompatible >= 0.5}
+                      lengthUnits={getGridfinityUnitCount(
+                        params.length,
+                        getParameterLimits(model, params, "length").min,
+                        getParameterLimits(model, params, "length").max,
+                        model.geometry.gridfinityGridSize,
+                      )}
+                      onChange={setGridfinityCompatible}
+                      widthUnits={getGridfinityUnitCount(
+                        params.width,
+                        getParameterLimits(model, params, "width").min,
+                        getParameterLimits(model, params, "width").max,
+                        model.geometry.gridfinityGridSize,
+                      )}
+                    />
+                  ) : null}
                 </section>
 
                 {model.viewer === "simple-box-v1" ? (

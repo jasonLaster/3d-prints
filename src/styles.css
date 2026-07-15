@@ -1522,6 +1522,20 @@ html.dark .segmented-control button.active {
   outline-offset: 3px;
 }
 
+.gridfinity-option {
+  margin-top: 18px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.gridfinity-option small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .audit-list {
   display: grid;
   gap: 2px;

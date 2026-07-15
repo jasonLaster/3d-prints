@@ -107,6 +107,27 @@ assert(parameter("dividerCount").default === 2, "model defaults to two dividers"
 assert(parameter("dividerPosition1").default === 146.05, "first divider is at 5.75 inches");
 assert(parameter("dividerPosition2").default === 228.6, "second divider is at 9 inches");
 assert(parameter("dividerPosition1").default < parameter("dividerPosition2").default, "default dividers are ordered");
+assert(parameter("gridfinityCompatible").default === 0, "Gridfinity base is opt-in");
+assert(model.geometry.gridfinityGridSize === 42, "Gridfinity grid pitch is 42 mm");
+assert(model.geometry.gridfinityFootTopSize === 41.5, "Gridfinity foot top is 41.5 mm");
+assert(
+  nearlyEqual(
+    model.geometry.gridfinityBottomChamfer +
+      model.geometry.gridfinityStraightHeight +
+      model.geometry.gridfinityTopChamfer,
+    4.75,
+  ),
+  "Gridfinity foot profile is 4.75 mm high",
+);
+assert(
+  nearlyEqual(
+    model.geometry.gridfinityLipInnerChamfer +
+      model.geometry.gridfinityLipStraightHeight +
+      model.geometry.gridfinityLipOuterChamfer,
+    4.4,
+  ),
+  "Gridfinity stacking lip profile is 4.4 mm high",
+);
 assert(model.geometry.dividerThickness >= 1.2, "divider thickness is printable");
 assert(model.geometry.dividerFloorOverlap > 0, "dividers overlap the floor for slicing");
 assert(model.geometry.dividerWallInset < model.geometry.originalFloorThickness, "dividers overlap side walls for slicing");
@@ -128,7 +149,14 @@ const stackingLipWidth =
 assert(nearlyEqual(openingLength - stackingLipLength, parameter("lipClearance").default * 2), "stacking lip length has exact two-sided clearance");
 assert(nearlyEqual(openingWidth - stackingLipWidth, parameter("lipClearance").default * 2), "stacking lip width has exact two-sided clearance");
 assert(stackingLipLength < openingLength && stackingLipWidth < openingWidth, "stacking lip cannot collide with receiving walls");
-assert(parameter("lipHeight").default - model.geometry.stackingLipFloorOverlap >= 1, "stacking lip has positive engagement depth");
+assert(model.geometry.stackingLipChamferHeight > 0, "stacking foot has a printable transition shoulder");
+assert(
+  parameter("lipHeight").default -
+    model.geometry.stackingLipFloorOverlap -
+    model.geometry.stackingLipChamferHeight >=
+    1,
+  "stacking foot has positive straight engagement depth",
+);
 assert(parameter("lidThickness").default >= 1.2, "lid plate thickness is printable");
 assert(parameter("lidSkirtHeight").default >= 1, "lid skirt has positive engagement depth");
 assert(parameter("lidClearance").default > 0, "lid has positive per-side clearance");

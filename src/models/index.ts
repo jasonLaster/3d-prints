@@ -30,11 +30,14 @@ export {
 } from "./paperTowelHolder";
 export {
   applyTrayMorph,
+  createGridfinityBaseGeometry,
   createTrayDividerGeometries,
   createTrayStackingLipGeometry,
   createSimpleBoxLidGeometries,
   createSimpleBoxLidPrintGeometries,
   updateTrayGuide,
+  getGridfinityUnitCount,
+  snapGridfinityDimension,
 } from "./japandiTray";
 export { getDefaultParams, getParam, getParameter } from "./shared";
 export type {

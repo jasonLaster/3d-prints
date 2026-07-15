@@ -27,10 +27,22 @@
     "stackingLipWallInset": 2.6,
     "stackingLipCornerRadius": 4,
     "stackingLipFloorOverlap": 0.2,
+    "stackingLipChamferHeight": 0.8,
     "dividerThickness": 1.6,
     "dividerWallInset": 2.4,
     "dividerTopClearance": 1,
-    "dividerFloorOverlap": 0.2
+    "dividerFloorOverlap": 0.2,
+    "gridfinityGridSize": 42,
+    "gridfinityFootTopSize": 41.5,
+    "gridfinityFootCornerRadius": 3.75,
+    "gridfinityBottomChamfer": 0.8,
+    "gridfinityStraightHeight": 1.8,
+    "gridfinityTopChamfer": 2.15,
+    "gridfinityFootOverlap": 0.2,
+    "gridfinityLipInnerChamfer": 0.7,
+    "gridfinityLipStraightHeight": 1.8,
+    "gridfinityLipOuterChamfer": 1.9,
+    "gridfinityLipSupportHeight": 1.2
   },
   "parameters": [
     { "key": "length", "label": "Box length", "statusLabel": "L", "default": 330.2, "limits": { "min": 90, "max": 500, "step": 0.5 } },
@@ -43,6 +55,7 @@
     { "key": "lidThickness", "label": "Lid thickness", "statusLabel": "Lid", "default": 2.4, "limits": { "min": 1.2, "max": 6, "step": 0.1 } },
     { "key": "lidSkirtHeight", "label": "Lid engagement depth", "statusLabel": "Depth", "default": 3, "limits": { "min": 1, "max": 8, "step": 0.1 } },
     { "key": "lidClearance", "label": "Lid fit clearance", "statusLabel": "Lid fit", "default": 0.35, "limits": { "min": 0.15, "max": 1.2, "step": 0.05 } },
+    { "key": "gridfinityCompatible", "label": "Gridfinity compatibility", "default": 0, "limits": { "min": 0, "max": 1, "step": 1 } },
     { "key": "dividerCount", "label": "Divider count", "default": 2, "limits": { "min": 0, "max": 4, "step": 1 } },
     { "key": "dividerPosition1", "label": "Divider 1 position", "default": 146.05, "limits": { "min": 5, "max": 495, "step": 0.5 } },
     { "key": "dividerPosition2", "label": "Divider 2 position", "default": 228.6, "limits": { "min": 5, "max": 495, "step": 0.5 } },
@@ -55,14 +68,16 @@
       "Default box length is 13 inches.",
       "Default box width is 3 inches.",
       "Default box height is 3.5 inches.",
-      "Default dividers are 5.75 and 9 inches from the left end."
+      "Default dividers are 5.75 and 9 inches from the left end.",
+      "Gridfinity mode uses a 42 mm grid and 7 mm vertical module."
     ],
     "invariants": [
       "Keep all box walls smooth and free of decorative ribs.",
       "Keep length, width, and height independently adjustable.",
       "Keep floor thickness below box height.",
       "Keep divider plates inside the box footprint.",
-      "Keep the underside lip inset for stacking or lid registration."
+      "Keep the underside lip inset for stacking or lid registration.",
+      "Gridfinity mode snaps the footprint to 42n - 0.5 mm and uses the standard stepped base and stacking-lip profiles."
     ],
     "checks": [
       { "key": "trayLengthTarget", "label": "Box length target" },

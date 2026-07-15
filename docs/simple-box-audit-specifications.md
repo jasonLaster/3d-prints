@@ -17,10 +17,12 @@ The Simple Box is a smooth-wall organizer model that is independent from the Jap
 - The stacking lip must overlap the floor and use the wall thickness plus configured clearance for its mating dimensions.
 - The receiving opening minus the registration lip must equal exactly twice the configured clearance in both axes.
 - The default stacking lip must engage at least `1 mm` inside the receiving box without touching its walls.
+- The box registration feature must be a solid stacking foot with a transition shoulder so the floor is continuously supported during printing.
 - Divider plates must overlap the floor and side walls, remain ordered, and stay inside the box length.
 - The exported Z span must include the box height and the underside lip.
 - The separately exported lid must be finite and manifold, match the box footprint, and use the same proven clearance allowance.
 - The combined print-layout STL must keep the box and print-oriented lid disconnected with a `10 mm` XY gap.
+- The combined layout must independently bed both shapes at `Z=0`; the box is lifted by its stacking-foot depth so the lid cannot float relative to a negative-Z box.
 
 ## UI Gates
 

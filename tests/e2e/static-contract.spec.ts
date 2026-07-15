@@ -190,8 +190,17 @@ test("model-specific parameter dependencies are declared auditable", () => {
       originalFloorThickness: number;
       stackingLipWallInset: number;
       stackingLipFloorOverlap: number;
+      stackingLipChamferHeight: number;
       dividerWallInset: number;
       dividerFloorOverlap: number;
+      gridfinityGridSize: number;
+      gridfinityFootTopSize: number;
+      gridfinityBottomChamfer: number;
+      gridfinityStraightHeight: number;
+      gridfinityTopChamfer: number;
+      gridfinityLipInnerChamfer: number;
+      gridfinityLipStraightHeight: number;
+      gridfinityLipOuterChamfer: number;
     };
   };
 
@@ -236,10 +245,24 @@ test("model-specific parameter dependencies are declared auditable", () => {
   expect(simpleBoxParams.dividerCount.default).toBe(2);
   expect(simpleBoxParams.dividerPosition1.default).toBe(146.05);
   expect(simpleBoxParams.dividerPosition2.default).toBe(228.6);
+  expect(simpleBoxParams.gridfinityCompatible.default).toBe(0);
+  expect(simpleBox.geometry.gridfinityGridSize).toBe(42);
+  expect(simpleBox.geometry.gridfinityFootTopSize).toBe(41.5);
+  expect(
+    simpleBox.geometry.gridfinityBottomChamfer +
+      simpleBox.geometry.gridfinityStraightHeight +
+      simpleBox.geometry.gridfinityTopChamfer,
+  ).toBeCloseTo(4.75, 5);
+  expect(
+    simpleBox.geometry.gridfinityLipInnerChamfer +
+      simpleBox.geometry.gridfinityLipStraightHeight +
+      simpleBox.geometry.gridfinityLipOuterChamfer,
+  ).toBeCloseTo(4.4, 5);
   expect(simpleBox.geometry.stackingLipWallInset).toBe(
     simpleBox.geometry.originalFloorThickness,
   );
   expect(simpleBox.geometry.stackingLipFloorOverlap).toBeGreaterThan(0);
+  expect(simpleBox.geometry.stackingLipChamferHeight).toBeGreaterThan(0);
   expect(simpleBox.geometry.dividerWallInset).toBeLessThan(
     simpleBox.geometry.originalFloorThickness,
   );
