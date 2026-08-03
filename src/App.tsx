@@ -149,6 +149,7 @@ const PARAM_QUERY_KEYS = [
   "bottomRoundoverRadius",
   "legSize",
   "legCornerRadius",
+  "legOuterCornerRadius",
   "legEdgeInset",
   "legGrooveEnabled",
   "legGrooveHeight",

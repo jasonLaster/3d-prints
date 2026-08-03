@@ -80,7 +80,13 @@
     },
     {
       "key": "legCornerRadius",
-      "label": "Leg corner radius",
+      "label": "Other three post corner radii",
+      "default": 25.4,
+      "limits": { "min": 3.175, "max": 50.8, "step": 3.175 }
+    },
+    {
+      "key": "legOuterCornerRadius",
+      "label": "Outer post corner radius",
       "default": 25.4,
       "limits": { "min": 3.175, "max": 50.8, "step": 3.175 }
     },
@@ -179,7 +185,7 @@
     "toleranceMm": 0.5,
     "dimensionTargets": [
       "The full-size tabletop is 76 in long by 38 in wide by 1 1/2 in thick, and the finished table is 30 in high.",
-      "Four 4 in square posts use 1 in vertical corner radii and meet a tabletop with 1 in plan-view corner radii.",
+      "Four 4 in square posts use a separately adjustable outside corner radius and one shared radius for the other three vertical corners; both default to 1 in and meet a tabletop with 1 in plan-view corner radii.",
       "The tabletop has 1/2 in top and bottom roundovers, leaving a 1/2 in flat vertical edge band.",
       "Each post has an optional 1/4 in high by 1/8 in deep groove immediately below the tabletop; when enabled, the 1/4 in top roundover forms the lower shoulder of that groove.",
       "Each post has a 1/4 in bottom roundover; disabling the groove restores the 1/4 in roundover to the post's top edge.",
@@ -194,6 +200,7 @@
       "Keep all four steel plate faces and three C-channel faces coplanar with the tabletop underside.",
       "Keep every plate edge set back from the tabletop side and end so no steel is visible in a normal side elevation.",
       "Keep the leg outer faces aligned to the tabletop edges when leg edge inset is zero.",
+      "Mirror the independently adjustable outside post corner to the matching outside corner at each of the four table positions.",
       "Keep the three C-channel positions ordered from the first end of the table.",
       "Keep top and bottom roundover radii within half the tabletop thickness.",
       "Treat oak grain and steel finish as render materials; dimensions come only from procedural geometry."

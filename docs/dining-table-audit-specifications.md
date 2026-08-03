@@ -6,7 +6,7 @@ The Oak Dining Table model is a parametric construction mock, not an image-deriv
 
 - 76 × 38 × 1 1/2 in solid-oak tabletop
 - 30 in finished height
-- Four 4 × 4 in corner posts with 1 in vertical radii
+- Four 4 × 4 in corner posts with an independently adjustable outside vertical radius and one shared radius for the other three corners; both default to 1 in
 - 1 in tabletop plan radii
 - 1/2 in top and bottom edge roundovers, leaving a 1/2 in flat edge band
 - An optional post-top groove/rabbet, enabled by default at 1/4 in high × 1/8 in deep
@@ -20,7 +20,7 @@ The default 1:10 mock is approximately 193 × 97 × 76 mm.
 
 ## Source-of-truth boundary
 
-The procedural geometry controls dimensions, counts, and placement. The post-top groove is part of the solid geometry and can be switched off without changing the overall table height. Oak grain and blackened steel are render materials only and must never change the model geometry. The plate and channel meshes visualize their flush underside footprints; the primary STL represents the printable wood mock.
+The procedural geometry controls dimensions, counts, and placement. The independent post corner is mirrored to face outward at all four table corners. The post-top groove is part of the solid geometry and can be switched off without changing the overall table height. Oak grain and blackened steel are render materials only and must never change the model geometry. The plate and channel meshes visualize their flush underside footprints; the primary STL represents the printable wood mock.
 
 ## Print caveat
 

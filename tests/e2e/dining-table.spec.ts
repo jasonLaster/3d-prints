@@ -70,7 +70,14 @@ test("renders the dimension-driven oak table and exports the 1:10 wood mock", as
   await expect(page.getByLabel("Table width in inches")).toHaveValue("38");
   await expect(page.getByLabel("Overall height in inches")).toHaveValue("30");
   await expect(page.getByLabel("Leg post size in inches")).toHaveValue("4");
-  await expect(page.getByLabel("Leg corner radius in inches")).toHaveValue("1");
+  const otherCornerRadii = page.getByLabel("Other three post corner radii in inches");
+  const outerCornerRadius = page.getByLabel("Outer post corner radius in inches");
+  await expect(otherCornerRadii).toHaveValue("1");
+  await expect(outerCornerRadius).toHaveValue("1");
+  await outerCornerRadius.fill("1/2");
+  await expect(outerCornerRadius).toHaveValue("1/2");
+  await expect(otherCornerRadii).toHaveValue("1");
+  await expect(page.getByText("1/2 in outer · 1 in other three")).toBeVisible();
   const grooveToggle = page.getByLabel("Post-top groove / rabbet");
   await expect(grooveToggle).toBeChecked();
   await expect(page.getByLabel("Post groove height in inches")).toHaveValue("1/4");

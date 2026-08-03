@@ -20,7 +20,8 @@ close(params.topThickness, 1.5 * inch, "top thickness");
 close(params.overallHeight, 30 * inch, "overall height");
 close(params.legSize, 4 * inch, "leg size");
 close(params.tabletopCornerRadius, inch, "tabletop corner radius");
-close(params.legCornerRadius, inch, "leg corner radius");
+close(params.legCornerRadius, inch, "other three post corner radii");
+close(params.legOuterCornerRadius, inch, "outer post corner radius");
 close(params.topRoundoverRadius, 0.5 * inch, "top roundover");
 close(params.bottomRoundoverRadius, 0.5 * inch, "bottom roundover");
 close(params.topThickness - params.topRoundoverRadius - params.bottomRoundoverRadius, 0.5 * inch, "flat edge band");
@@ -66,6 +67,7 @@ for (const required of [
   "createDiningTableHardwareGeometries",
   "createRoundedLoft",
   "legLayers",
+  "outerCornerIndex",
   "channelPosition${index}",
 ]) {
   assert.ok(source.includes(required), `procedural source is missing ${required}`);
