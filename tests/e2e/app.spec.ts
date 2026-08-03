@@ -193,11 +193,13 @@ test.describe("3D print app", () => {
 
     await expect(page.getByRole("heading", { name: "Japandi Tray" })).toBeVisible();
     await expect(page).toHaveURL(/model=japandi-tray/);
+    await expect(page).toHaveURL(/unit=in/);
     await expect(page).not.toHaveURL(/theme=/);
     await expect(page.getByRole("button", { name: "Dashboard" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Open Paper Towel Holder" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Open Japandi Tray" })).toBeVisible();
     await expect(page.getByLabel("Japandi Tray model viewer")).toBeVisible();
+    await expect(page.getByLabel("Tray length in inches")).toBeVisible();
     await expectCanvasHasRenderedModel(page);
   });
 
@@ -233,7 +235,7 @@ test.describe("3D print app", () => {
     page,
   }) => {
     await expectNoPageErrors(page, async () => {
-      await openReady(page, "/?model=paper-towel-holder");
+      await openReady(page, "/?model=paper-towel-holder&unit=mm");
 
       await expect(page.getByRole("heading", { name: "Paper Towel Holder" })).toBeVisible();
       await expect(page.getByLabel("Paper Towel Holder model viewer")).toBeVisible();
@@ -320,7 +322,7 @@ test.describe("3D print app", () => {
     page,
   }) => {
     await setStoredTheme(page, "dark");
-    await page.goto("/?model=paper-towel-holder");
+    await page.goto("/?model=paper-towel-holder&unit=mm");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByTestId("viewer-status")).toContainText(/Solid|X-Ray|Wire/);
     await expectCanvasHasRenderedModel(page);
@@ -503,7 +505,7 @@ test.describe("3D print app", () => {
     page,
   }) => {
     await expectNoPageErrors(page, async () => {
-      await openReady(page, "/?model=japandi-tray");
+      await openReady(page, "/?model=japandi-tray&unit=mm");
 
       const trayLength = page.getByLabel("Tray length in millimeters");
       await trayLength.fill("200");
@@ -630,7 +632,7 @@ test.describe("3D print app", () => {
 
   test("renders and exports the parametric door lock adapter", async ({ page }) => {
     await expectNoPageErrors(page, async () => {
-      await openReady(page, "/?model=door-lock-adapter");
+      await openReady(page, "/?model=door-lock-adapter&unit=mm");
 
       await expect(
         page.getByRole("heading", { name: "Door Lock Adapter" }),

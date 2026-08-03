@@ -20,8 +20,8 @@ The default 1:10 mock is approximately 193 × 97 × 76 mm.
 
 ## Source-of-truth boundary
 
-The procedural geometry controls dimensions, counts, and placement. The independent post corner is mirrored to face outward at all four table corners. The post-top groove is part of the solid geometry and can be switched off without changing the overall table height. Oak grain and blackened steel are render materials only and must never change the model geometry. The plate and channel meshes visualize their flush underside footprints; the primary STL represents the printable wood mock.
+The procedural geometry controls dimensions, counts, and placement. The independent post corner is mirrored to face outward at all four table corners. The post-top groove is part of the solid geometry and can be switched off without changing the overall table height. Oak grain and blackened steel are render materials only and must never change the model geometry. The two-color export produces a wood STL for color 1 and a registered hardware STL containing all four plates and three C-channels for color 2.
 
 ## Print caveat
 
-The assembled mock requires supports beneath the tabletop. A future split-part export can place the tabletop and four legs separately if a support-free fit mock is preferred.
+The assembled mock requires supports beneath the tabletop. Import both STL files simultaneously as parts of one multipart object so the slicer preserves their shared origin; assign the hardware part to the second filament. Importing the hardware independently may cause a slicer to drop it to the build plate and lose registration. A future split-part export can place the tabletop and four legs separately if a support-free fit mock is preferred.

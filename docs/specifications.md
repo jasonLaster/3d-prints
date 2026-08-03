@@ -21,7 +21,7 @@ This document defines the product and engineering contract for the 3D Prints app
 ## URL State
 
 - `model` selects the active catalog model.
-- `unit` is one of `mm`, `cm`, or `in`.
+- `unit` is one of `mm`, `cm`, or `in`; new URLs default to `in` when it is omitted.
 - Parameter query values are always stored in millimeters, regardless of displayed unit.
 - Root model selection must not preserve stale parameter keys when no model is selected.
 - Opening a model from the sidebar starts from that model's defaults unless opening a saved version or an explicit model URL with matching parameter keys.
@@ -47,6 +47,7 @@ Each catalog model has a `public/models/<model-id>/model.json` file with:
 ## Parameter Contract
 
 - Numeric inputs and sliders operate on the same millimeter source value.
+- Workspaces display inches by default while retaining millimeters as the geometry source of truth.
 - Unit controls are contextual text dropdowns inside each parameter row, not a separate toggle group.
 - Changing one parameter row's unit changes the global unit display for the workspace.
 - Inch inputs accept fractional values such as `1/8th in`, `1/4"`, and `2 1/2`.
@@ -119,6 +120,7 @@ Door lock adapter:
 
 - Export downloads the current generated STL, not the untouched source STL.
 - Export file names include the model export prefix and active parameter values.
+- Dining Table export downloads same-origin `wood-color-1` and `hardware-color-2` STL files; the hardware file contains all four plates and three C-channels for multipart slicer import.
 - The paper towel export includes the flush weighted center tube floor and rounded weighted center tube top.
 - The generated STL snapshot used by Save/Fork follows the same geometry as Export.
 - Simple Box provides a separate lid export whose registration skirt uses the same wall-derived clearance contract as stacking.

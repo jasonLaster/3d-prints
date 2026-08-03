@@ -126,6 +126,7 @@ type ModelCatalog = {
 
 const CATALOG_URL = "/models/index.json";
 const DEFAULT_MODEL_ID = "japandi-tray";
+const DEFAULT_LENGTH_UNIT: LengthUnit = "in";
 const PARAM_QUERY_KEYS = [
   "height",
   "diameter",
@@ -291,7 +292,7 @@ function isThemeMode(value: string | null): value is ThemeMode {
 
 function getInitialUnit(): LengthUnit {
   const unit = new URLSearchParams(window.location.search).get("unit");
-  return isLengthUnit(unit) ? unit : "mm";
+  return isLengthUnit(unit) ? unit : DEFAULT_LENGTH_UNIT;
 }
 
 function getInitialTheme(): ThemeMode {
@@ -355,7 +356,9 @@ function getParamsFromUrl(model: ModelDefinition) {
   const searchParams = new URLSearchParams(window.location.search);
   const params = getDefaultParams(model);
   const requestedUnit = searchParams.get("unit");
-  const unit = isLengthUnit(requestedUnit) ? requestedUnit : "mm";
+  const unit = isLengthUnit(requestedUnit)
+    ? requestedUnit
+    : DEFAULT_LENGTH_UNIT;
 
   if (searchParams.get("model") !== model.id) {
     return params;
@@ -968,13 +971,53 @@ const HolderViewer = forwardRef<
     return blob;
   }, [model]);
 
+  const createDiningTableHardwareStlBlob = useCallback(() => {
+    if (model.viewer !== "dining-table-v1") {
+      return null;
+    }
+    const hardware = createDiningTableHardwareGeometries(
+      latestParamsRef.current,
+    );
+    const sourceGeometries = [...hardware.plates, ...hardware.channels];
+    const group = new THREE.Group();
+    const meshes = sourceGeometries.map((geometry, index) => {
+      const mesh = new THREE.Mesh(createCleanExportGeometry(geometry));
+      mesh.name =
+        index < hardware.plates.length
+          ? `${model.id}-plate-${index + 1}`
+          : `${model.id}-c-channel-${index - hardware.plates.length + 1}`;
+      group.add(mesh);
+      return mesh;
+    });
+    group.updateMatrixWorld(true);
+    const result = new STLExporter().parse(group, { binary: true });
+    sourceGeometries.forEach((geometry) => geometry.dispose());
+    meshes.forEach((mesh) => mesh.geometry.dispose());
+    return new Blob([result], { type: "model/stl" });
+  }, [model]);
+
   const exportStl = useCallback(() => {
     const blob = createStlBlob();
     if (!blob) {
       return;
     }
-    downloadBlob(blob, getExportFileName(model, latestParamsRef.current));
-  }, [createStlBlob, model]);
+    const fileName = getExportFileName(model, latestParamsRef.current);
+    if (model.viewer === "dining-table-v1") {
+      const hardwareBlob = createDiningTableHardwareStlBlob();
+      downloadBlob(
+        blob,
+        fileName.replace(/\.stl$/, "-wood-color-1.stl"),
+      );
+      if (hardwareBlob) {
+        downloadBlob(
+          hardwareBlob,
+          fileName.replace(/\.stl$/, "-hardware-color-2.stl"),
+        );
+      }
+      return;
+    }
+    downloadBlob(blob, fileName);
+  }, [createDiningTableHardwareStlBlob, createStlBlob, model]);
 
   const exportLidStl = useCallback(() => {
     if (model.viewer !== "simple-box-v1") return;
@@ -2393,7 +2436,9 @@ function WorkspaceActionsMenu({
             <div className="workspace-menu-group">
               <button className="primary-action" onClick={onExport} type="button">
                 <Download aria-hidden="true" />
-                Export
+                {model.viewer === "dining-table-v1"
+                  ? "Export two-color STLs"
+                  : "Export"}
               </button>
               {model.viewer === "simple-box-v1" ? (
                 <>

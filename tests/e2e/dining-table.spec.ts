@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Download } from "@playwright/test";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 
 function inspectStl(buffer: Buffer) {
@@ -44,6 +44,11 @@ function inspectStl(buffer: Buffer) {
   return {
     finite,
     degenerateTriangles,
+    min: {
+      x: bounds.min.x,
+      y: bounds.min.y,
+      z: bounds.min.z,
+    },
     size: {
       x: bounds.max.x - bounds.min.x,
       y: bounds.max.y - bounds.min.y,
@@ -52,7 +57,7 @@ function inspectStl(buffer: Buffer) {
   };
 }
 
-test("renders the dimension-driven oak table and exports the 1:10 wood mock", async ({
+test("renders the oak table and exports the registered two-color 1:10 mock", async ({
   page,
 }) => {
   const pageErrors: string[] = [];
@@ -99,20 +104,40 @@ test("renders the dimension-driven oak table and exports the 1:10 wood mock", as
   await expect(page.getByLabel("Post groove height in inches")).toBeVisible();
 
   await page.getByRole("button", { name: "Workspace actions" }).click();
-  const [download] = await Promise.all([
-    page.waitForEvent("download"),
-    page.getByRole("button", { name: "Export", exact: true }).click(),
-  ]);
-  expect(download.suggestedFilename()).toBe(
-    "dining-table-scale-1-10-length-1930.4-width-965.2.stl",
+  const downloads: Download[] = [];
+  page.on("download", (download) => downloads.push(download));
+  await page.getByRole("button", { name: "Export two-color STLs" }).click();
+  await expect.poll(() => downloads.length).toBe(2);
+  const woodDownload = downloads.find((download) =>
+    download.suggestedFilename().endsWith("-wood-color-1.stl"),
   );
-  const downloadPath = await download.path();
-  expect(downloadPath).not.toBeNull();
-  const stl = inspectStl(await import("node:fs").then((fs) => fs.readFileSync(downloadPath!)));
-  expect(stl.finite).toBe(true);
-  expect(stl.degenerateTriangles).toBe(0);
-  expect(stl.size.x).toBeCloseTo(193.04, 1);
-  expect(stl.size.y).toBeCloseTo(96.52, 1);
-  expect(stl.size.z).toBeCloseTo(76.2, 1);
+  const hardwareDownload = downloads.find((download) =>
+    download.suggestedFilename().endsWith("-hardware-color-2.stl"),
+  );
+  expect(woodDownload?.suggestedFilename()).toBe(
+    "dining-table-scale-1-10-length-1930.4-width-965.2-wood-color-1.stl",
+  );
+  expect(hardwareDownload?.suggestedFilename()).toBe(
+    "dining-table-scale-1-10-length-1930.4-width-965.2-hardware-color-2.stl",
+  );
+  const woodPath = await woodDownload?.path();
+  const hardwarePath = await hardwareDownload?.path();
+  expect(woodPath).not.toBeNull();
+  expect(hardwarePath).not.toBeNull();
+  const fs = await import("node:fs");
+  const woodStl = inspectStl(fs.readFileSync(woodPath!));
+  const hardwareStl = inspectStl(fs.readFileSync(hardwarePath!));
+  expect(woodStl.finite).toBe(true);
+  expect(woodStl.degenerateTriangles).toBe(0);
+  expect(woodStl.min.z).toBeCloseTo(0, 3);
+  expect(woodStl.size.x).toBeCloseTo(193.04, 1);
+  expect(woodStl.size.y).toBeCloseTo(96.52, 1);
+  expect(woodStl.size.z).toBeCloseTo(76.2, 1);
+  expect(hardwareStl.finite).toBe(true);
+  expect(hardwareStl.degenerateTriangles).toBe(0);
+  expect(hardwareStl.min.z).toBeCloseTo(72.39, 1);
+  expect(hardwareStl.size.x).toBeCloseTo(190.5, 1);
+  expect(hardwareStl.size.y).toBeCloseTo(93.98, 1);
+  expect(hardwareStl.size.z).toBeCloseTo(1.27, 1);
   expect(pageErrors).toEqual([]);
 });
