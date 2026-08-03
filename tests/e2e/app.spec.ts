@@ -547,6 +547,24 @@ test.describe("3D print app", () => {
         /rotateX\(-82(?:\.0)?deg\) rotateY\(0(?:\.0)?deg\)/,
       );
 
+      await trayLength.fill("200");
+      await trayLength.blur();
+      await expect(topView).toHaveAttribute("aria-pressed", "true");
+      await expect(page.locator(".orientation-cube")).toHaveAttribute(
+        "style",
+        /rotateX\(-82(?:\.0)?deg\) rotateY\(0(?:\.0)?deg\)/,
+      );
+
+      await page.getByRole("button", { name: "Zoom in" }).click();
+      await expect(topView).toHaveAttribute("aria-pressed", "false");
+      await trayLength.fill("210");
+      await trayLength.blur();
+      await expect(topView).toHaveAttribute("aria-pressed", "false");
+      await expect(page.getByRole("button", { name: "Isometric view" })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+
       const canvasBox = await page.locator("canvas").first().boundingBox();
       expect(canvasBox).not.toBeNull();
       await page.mouse.move(

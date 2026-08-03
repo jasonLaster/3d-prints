@@ -1055,10 +1055,6 @@ const HolderViewer = forwardRef<
   }, [params, coreViewMode, renderMode, showOriginal, assemblyMode, updateMeshes]);
 
   useEffect(() => {
-    resetCamera();
-  }, [params, resetCamera]);
-
-  useEffect(() => {
     if (sceneRef.current) {
       sceneRef.current.background =
         theme === "dark" ? null : new THREE.Color(SCENE_BACKGROUND[theme]);
