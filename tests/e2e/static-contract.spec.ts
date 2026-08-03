@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(4);
+  expect(catalog.models).toHaveLength(5);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -120,6 +120,16 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "adapterCutout",
       "adapterWallThickness",
       "adapterCentering",
+    ],
+    "dining-table-v1": [
+      "tableEnvelope",
+      "tabletopProfile",
+      "legGeometry",
+      "legEndRoundovers",
+      "cornerPlates",
+      "channelLayout",
+      "printEnvelope",
+      "minimumMockFeature",
     ],
   };
 
@@ -382,6 +392,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   const adapterDoc = readText(
     path.join(root, "docs/door-lock-adapter-audit-specifications.md"),
   );
+  const diningTableDoc = readText(
+    path.join(root, "docs/dining-table-audit-specifications.md"),
+  );
 
   for (const phrase of [
     "weighted sand chamber",
@@ -414,6 +427,16 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "Every mesh edge belongs to exactly two triangles",
   ]) {
     expect(adapterDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "76 × 38 × 1 1/2 in",
+    "Four 4 × 4 in corner posts",
+    "Three flush C-channels",
+    "default 1:10 mock",
+    "render materials only",
+  ]) {
+    expect(diningTableDoc).toContain(phrase);
   }
 });
 

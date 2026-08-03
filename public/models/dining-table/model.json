@@ -1,0 +1,200 @@
+{
+  "id": "dining-table",
+  "name": "Oak Dining Table",
+  "subtitle": "Parametric 1:10 construction mock",
+  "description": "A dimension-driven apronless oak dining table with rounded tabletop and posts, softened post ends, flush inset 6-inch corner plates, and three recessed C-channels.",
+  "viewer": "dining-table-v1",
+  "stl": {
+    "fileName": "dining-table.stl",
+    "sourceName": "procedural-dining-table-seed.stl",
+    "units": "mm",
+    "url": "/models/dining-table/dining-table.stl"
+  },
+  "export": {
+    "filePrefix": "dining-table"
+  },
+  "geometry": {
+    "mainAxis": { "x": 0, "y": 0, "z": 0 },
+    "cornerSegments": 12,
+    "edgeProfileSegments": 8,
+    "channelCount": 3
+  },
+  "parameters": [
+    {
+      "key": "mockScale",
+      "label": "Mock scale denominator",
+      "statusLabel": "Scale 1:",
+      "default": 10,
+      "limits": { "min": 6, "max": 24, "step": 1 }
+    },
+    {
+      "key": "tableLength",
+      "label": "Table length",
+      "statusLabel": "Length",
+      "default": 1930.4,
+      "limits": { "min": 1219.2, "max": 2438.4, "step": 25.4 }
+    },
+    {
+      "key": "tableWidth",
+      "label": "Table width",
+      "statusLabel": "Width",
+      "default": 965.2,
+      "limits": { "min": 762, "max": 1219.2, "step": 25.4 }
+    },
+    {
+      "key": "overallHeight",
+      "label": "Overall height",
+      "statusLabel": "Height",
+      "default": 762,
+      "limits": { "min": 635, "max": 914.4, "step": 12.7 }
+    },
+    {
+      "key": "topThickness",
+      "label": "Tabletop thickness",
+      "default": 38.1,
+      "limits": { "min": 25.4, "max": 76.2, "step": 3.175 }
+    },
+    {
+      "key": "tabletopCornerRadius",
+      "label": "Tabletop corner radius",
+      "default": 25.4,
+      "limits": { "min": 6.35, "max": 152.4, "step": 3.175 }
+    },
+    {
+      "key": "topRoundoverRadius",
+      "label": "Top edge roundover radius",
+      "default": 12.7,
+      "limits": { "min": 1.5875, "max": 38.1, "step": 1.5875 }
+    },
+    {
+      "key": "bottomRoundoverRadius",
+      "label": "Bottom edge roundover radius",
+      "default": 12.7,
+      "limits": { "min": 1.5875, "max": 38.1, "step": 1.5875 }
+    },
+    {
+      "key": "legSize",
+      "label": "Leg post size",
+      "default": 101.6,
+      "limits": { "min": 63.5, "max": 152.4, "step": 6.35 }
+    },
+    {
+      "key": "legCornerRadius",
+      "label": "Leg corner radius",
+      "default": 25.4,
+      "limits": { "min": 3.175, "max": 50.8, "step": 3.175 }
+    },
+    {
+      "key": "legEdgeInset",
+      "label": "Leg edge inset",
+      "default": 0,
+      "limits": { "min": 0, "max": 152.4, "step": 3.175 }
+    },
+    {
+      "key": "legTopRoundoverRadius",
+      "label": "Leg top roundover radius",
+      "default": 6.35,
+      "limits": { "min": 1.5875, "max": 25.4, "step": 1.5875 }
+    },
+    {
+      "key": "legBottomRoundoverRadius",
+      "label": "Leg bottom roundover radius",
+      "default": 6.35,
+      "limits": { "min": 1.5875, "max": 25.4, "step": 1.5875 }
+    },
+    {
+      "key": "plateSize",
+      "label": "Corner plate size",
+      "default": 152.4,
+      "limits": { "min": 101.6, "max": 254, "step": 6.35 }
+    },
+    {
+      "key": "plateThickness",
+      "label": "Corner plate thickness",
+      "default": 6.35,
+      "limits": { "min": 3.175, "max": 12.7, "step": 1.5875 }
+    },
+    {
+      "key": "plateEdgeInset",
+      "label": "Plate edge setback",
+      "default": 12.7,
+      "limits": { "min": 3.175, "max": 50.8, "step": 3.175 }
+    },
+    {
+      "key": "channelPosition1",
+      "label": "C-channel 1 position from end",
+      "default": 406.4,
+      "limits": { "min": 152.4, "max": 914.4, "step": 25.4 }
+    },
+    {
+      "key": "channelPosition2",
+      "label": "C-channel 2 position from end",
+      "default": 965.2,
+      "limits": { "min": 304.8, "max": 1524, "step": 25.4 }
+    },
+    {
+      "key": "channelPosition3",
+      "label": "C-channel 3 position from end",
+      "default": 1524,
+      "limits": { "min": 914.4, "max": 2133.6, "step": 25.4 }
+    },
+    {
+      "key": "channelLength",
+      "label": "C-channel length",
+      "default": 812.8,
+      "limits": { "min": 609.6, "max": 1117.6, "step": 25.4 }
+    },
+    {
+      "key": "channelWidth",
+      "label": "C-channel visible width",
+      "default": 50.8,
+      "limits": { "min": 25.4, "max": 101.6, "step": 6.35 }
+    },
+    {
+      "key": "channelDepth",
+      "label": "C-channel mortise depth",
+      "default": 12.7,
+      "limits": { "min": 6.35, "max": 25.4, "step": 3.175 }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.5,
+    "dimensionTargets": [
+      "The full-size tabletop is 76 in long by 38 in wide by 1 1/2 in thick, and the finished table is 30 in high.",
+      "Four 4 in square posts use 1 in vertical corner radii and meet a tabletop with 1 in plan-view corner radii.",
+      "The tabletop has 1/2 in top and bottom roundovers, leaving a 1/2 in flat vertical edge band.",
+      "Each post has a 1/4 in horizontal edge roundover at both its top and bottom ends, with no routed reveal or rabbet.",
+      "Four 6 in square by 1/4 in steel plates are set 1/2 in back from both tabletop edges, and exactly three widthwise C-channels are flush with the tabletop underside.",
+      "The default 1:10 mock fits inside a 256 mm square printer bed footprint."
+    ],
+    "invariants": [
+      "Keep the real furniture dimensions independent from the mock scale denominator.",
+      "Keep the tabletop and all four leg solids closed and printable.",
+      "Keep each post continuous and groove-free, using top and bottom end roundovers for the shadow transition and softened foot.",
+      "Keep all four steel plate faces and three C-channel faces coplanar with the tabletop underside.",
+      "Keep every plate edge set back from the tabletop side and end so no steel is visible in a normal side elevation.",
+      "Keep the leg outer faces aligned to the tabletop edges when leg edge inset is zero.",
+      "Keep the three C-channel positions ordered from the first end of the table.",
+      "Keep top and bottom roundover radii within half the tabletop thickness.",
+      "Treat oak grain and steel finish as render materials; dimensions come only from procedural geometry."
+    ],
+    "checks": [
+      { "key": "tableEnvelope", "label": "Full-size envelope" },
+      { "key": "tabletopProfile", "label": "Tabletop edge profile" },
+      { "key": "legGeometry", "label": "Leg geometry" },
+      { "key": "legEndRoundovers", "label": "Leg end roundovers" },
+      { "key": "cornerPlates", "label": "Corner plates" },
+      { "key": "channelLayout", "label": "Three C-channels" },
+      { "key": "printEnvelope", "label": "Mock print envelope" },
+      { "key": "minimumMockFeature", "label": "Smallest mock feature" }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/dining-table/audit.mjs",
+      "command": "npm run audit -- dining-table",
+      "description": "Validates the furniture dimensions, scale mock, hardware layout, and procedural model contract."
+    }
+  ]
+}

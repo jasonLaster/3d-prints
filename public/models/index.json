@@ -20,6 +20,11 @@
       "id": "door-lock-adapter",
       "name": "Door Lock Adapter",
       "configUrl": "/models/door-lock-adapter/model.json"
+    },
+    {
+      "id": "dining-table",
+      "name": "Oak Dining Table",
+      "configUrl": "/models/dining-table/model.json"
     }
   ]
 }

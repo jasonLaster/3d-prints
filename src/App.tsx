@@ -58,6 +58,8 @@ import {
   applyHolderMorph,
   applyTrayMorph,
   buildAuditItems,
+  createDiningTableHardwareGeometries,
+  createDiningTableWoodGeometry,
   createDoorLockAdapterGeometry,
   createRoundedTopGeometry,
   createSandChamberFloorGeometry,
@@ -74,6 +76,7 @@ import {
   getStatusItems,
   snapGridfinityDimension,
   updateDoorLockAdapterGuide,
+  updateDiningTableGuide,
   updateHolderGuide,
   updateTrayGuide,
   updateWeightedCore,
@@ -98,7 +101,7 @@ import type { Id } from "../convex/_generated/dataModel";
 type CoreViewMode = "surface" | "fill" | "section";
 type RenderMode = "solid" | "xray" | "wire";
 type ThemeMode = "light" | "dark";
-type ViewPreset = "iso" | "top" | "xEdge" | "yEdge";
+type ViewPreset = "iso" | "top" | "bottom" | "xEdge" | "yEdge";
 type AssemblyMode = "box" | "stacked" | "lid" | "print-layout";
 
 type ViewerHandle = {
@@ -136,6 +139,31 @@ const PARAM_QUERY_KEYS = [
   "cutoutWidth",
   "cutoutLength",
   "cutoutRotation",
+  "mockScale",
+  "tableLength",
+  "tableWidth",
+  "overallHeight",
+  "topThickness",
+  "tabletopCornerRadius",
+  "topRoundoverRadius",
+  "bottomRoundoverRadius",
+  "legSize",
+  "legCornerRadius",
+  "legEdgeInset",
+  "revealOffset",
+  "revealHeight",
+  "revealDepth",
+  "legTopRoundoverRadius",
+  "legBottomRoundoverRadius",
+  "plateSize",
+  "plateThickness",
+  "plateEdgeInset",
+  "channelPosition1",
+  "channelPosition2",
+  "channelPosition3",
+  "channelLength",
+  "channelWidth",
+  "channelDepth",
   "length",
   "width",
   "floorThickness",
@@ -143,7 +171,11 @@ const PARAM_QUERY_KEYS = [
   "rotation",
 ];
 const ANGLE_PARAM_KEYS = new Set(["rotation", "cutoutRotation"]);
-const SCALAR_PARAM_KEYS = new Set(["dividerCount", "gridfinityCompatible"]);
+const SCALAR_PARAM_KEYS = new Set([
+  "dividerCount",
+  "gridfinityCompatible",
+  "mockScale",
+]);
 const OPTION_PARAM_KEYS = new Set(["gridfinityCompatible"]);
 const DIVIDER_PARAM_KEYS = new Set([
   "dividerCount",
@@ -184,6 +216,61 @@ const RENDER_MODE_LABELS: Record<RenderMode, string> = {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function createOakTexture(renderer: THREE.WebGLRenderer) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 256;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+
+  const image = context.createImageData(canvas.width, canvas.height);
+  let seed = 0x5f3759df;
+  for (let y = 0; y < canvas.height; y += 1) {
+    const broad = Math.sin(y * 0.072) * 5 + Math.sin(y * 0.019) * 7;
+    for (let x = 0; x < canvas.width; x += 1) {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const noise = ((seed & 255) / 255 - 0.5) * 7;
+      const offset = (y * canvas.width + x) * 4;
+      image.data[offset] = 205 + broad + noise;
+      image.data[offset + 1] = 181 + broad * 0.72 + noise;
+      image.data[offset + 2] = 145 + broad * 0.45 + noise;
+      image.data[offset + 3] = 255;
+    }
+  }
+  context.putImageData(image, 0, 0);
+  for (let y = 0; y < canvas.height; y += 1) {
+    const broad = Math.sin(y * 0.115) * 0.5 + Math.sin(y * 0.031) * 0.5;
+    const lightness = 145 + Math.round(broad * 12);
+    context.strokeStyle = `rgba(${lightness + 24}, ${lightness + 4}, ${Math.max(70, lightness - 28)}, 0.13)`;
+    context.lineWidth = y % 23 === 0 ? 1.1 : 0.42;
+    context.beginPath();
+    for (let x = 0; x <= canvas.width; x += 8) {
+      const wave = Math.sin(x * 0.018 + y * 0.15) * 1.7 + Math.sin(x * 0.005) * 1.2;
+      if (x === 0) context.moveTo(x, y + wave);
+      else context.lineTo(x, y + wave);
+    }
+    context.stroke();
+  }
+  for (let index = 0; index < 38; index += 1) {
+    const y = (index * 71) % canvas.height;
+    context.strokeStyle = "rgba(80, 50, 26, 0.09)";
+    context.lineWidth = 0.65;
+    context.beginPath();
+    context.moveTo(0, y);
+    context.bezierCurveTo(280, y + 12, 700, y - 9, canvas.width, y + 3);
+    context.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(2.5, 1.35);
+  texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  texture.needsUpdate = true;
+  return texture;
 }
 
 function isThemeMode(value: string | null): value is ThemeMode {
@@ -422,10 +509,15 @@ function downloadBlob(blob: Blob, name: string) {
 }
 
 function getExportFileName(model: ModelDefinition, params: ModelParams) {
+  if (model.viewer === "dining-table-v1") {
+    return `${model.export.filePrefix}-scale-1-${getParam(params, "mockScale").toFixed(0)}-length-${getParam(params, "tableLength").toFixed(1)}-width-${getParam(params, "tableWidth").toFixed(1)}.stl`;
+  }
   const suffix = model.parameters
     .map(
-      (parameter) =>
-        `${parameter.key}-${getParam(params, parameter.key).toFixed(1)}`,
+      (parameter) => {
+        const value = getParam(params, parameter.key);
+        return `${parameter.key}-${value.toFixed(1)}`;
+      },
     )
     .join("-");
 
@@ -513,10 +605,12 @@ const HolderViewer = forwardRef<
   const trayLipMeshRef = useRef<THREE.Mesh | null>(null);
   const trayDividerGroupRef = useRef<THREE.Group | null>(null);
   const assemblyPreviewGroupRef = useRef<THREE.Group | null>(null);
+  const diningHardwareGroupRef = useRef<THREE.Group | null>(null);
   const ghostMeshRef = useRef<THREE.Mesh | null>(null);
   const guideMeshRef = useRef<THREE.Mesh | null>(null);
   const mainMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const domeMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const diningMetalMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const mainBaseRef = useRef<Float32Array | null>(null);
   const animationRef = useRef<number | null>(null);
   const latestParamsRef = useRef(params);
@@ -581,8 +675,17 @@ const HolderViewer = forwardRef<
       const topDistance =
         model.viewer === "door-lock-adapter-v1"
           ? distance
+          : model.viewer === "dining-table-v1"
+            ? distance * 1.05
           : Math.max(distance, dimensions.height * 10);
       camera.position.set(0, 0, target.z + topDistance);
+    } else if (preset === "bottom") {
+      camera.up.set(0, -1, 0);
+      const bottomDistance =
+        model.viewer === "dining-table-v1"
+          ? distance * 1.05
+          : Math.max(distance, dimensions.height * 10);
+      camera.position.set(0, 0, target.z - bottomDistance);
     } else if (preset === "xEdge") {
       camera.position.set(0, -distance, edgeViewZ);
     } else if (preset === "yEdge") {
@@ -634,10 +737,12 @@ const HolderViewer = forwardRef<
     const trayLipMesh = trayLipMeshRef.current;
     const trayDividerGroup = trayDividerGroupRef.current;
     const assemblyPreviewGroup = assemblyPreviewGroupRef.current;
+    const diningHardwareGroup = diningHardwareGroupRef.current;
     const ghostMesh = ghostMeshRef.current;
     const guideMesh = guideMeshRef.current;
     const holderMaterial = mainMaterialRef.current;
     const domeMaterial = domeMaterialRef.current;
+    const diningMetalMaterial = diningMetalMaterialRef.current;
     const base = mainBaseRef.current;
     if (
       !mainMesh ||
@@ -669,6 +774,31 @@ const HolderViewer = forwardRef<
         model,
       );
       updateDoorLockAdapterGuide(guideMesh, latestParamsRef.current);
+    } else if (model.viewer === "dining-table-v1") {
+      if (!diningHardwareGroup || !diningMetalMaterial) return;
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createDiningTableWoodGeometry(
+        latestParamsRef.current,
+        model,
+      );
+      diningHardwareGroup.children.forEach((child) => {
+        if (child instanceof THREE.Mesh) child.geometry.dispose();
+      });
+      diningHardwareGroup.clear();
+      const hardware = createDiningTableHardwareGeometries(
+        latestParamsRef.current,
+      );
+      hardware.plates.forEach((geometry, index) => {
+        const mesh = new THREE.Mesh(geometry, diningMetalMaterial);
+        mesh.name = `${model.id}-plate-${index + 1}`;
+        diningHardwareGroup.add(mesh);
+      });
+      hardware.channels.forEach((geometry, index) => {
+        const mesh = new THREE.Mesh(geometry, diningMetalMaterial);
+        mesh.name = `${model.id}-channel-${index + 1}`;
+        diningHardwareGroup.add(mesh);
+      });
+      updateDiningTableGuide(guideMesh, latestParamsRef.current);
     } else {
       applyTrayMorph(mainMesh.geometry, base, latestParamsRef.current, model);
       updateTrayGuide(guideMesh, latestParamsRef.current);
@@ -753,7 +883,9 @@ const HolderViewer = forwardRef<
 
     applyRenderOptions(
       holderMaterial,
-      domeMaterial,
+      model.viewer === "dining-table-v1"
+        ? diningMetalMaterial
+        : domeMaterial,
       sandMesh,
       guideMesh,
       latestCoreViewModeRef.current,
@@ -761,7 +893,8 @@ const HolderViewer = forwardRef<
       model,
     );
 
-    ghostMesh.visible = latestShowOriginalRef.current;
+    ghostMesh.visible =
+      model.viewer !== "dining-table-v1" && latestShowOriginalRef.current;
   }, [model]);
 
   const createStlBlob = useCallback(() => {
@@ -969,8 +1102,7 @@ const HolderViewer = forwardRef<
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.minDistance =
-      model.viewer === "door-lock-adapter-v1" ? 18 : 80;
+    controls.minDistance = model.viewer === "door-lock-adapter-v1" ? 18 : 80;
     controls.maxDistance = 1400;
     controlsRef.current = controls;
     const handleControlChange = () => updateCubeOrientation();
@@ -1051,15 +1183,20 @@ const HolderViewer = forwardRef<
         );
         mainBaseRef.current = normalizedMain.basePositions;
 
+        const oakTexture =
+          model.viewer === "dining-table-v1" ? createOakTexture(renderer) : null;
         const mainMaterial = new THREE.MeshStandardMaterial({
           color:
-            model.viewer !== "weighted-paper-towel-holder-v1"
-              ? "#d8dee9"
-              : theme === "dark"
-                ? "#202734"
-                : "#111318",
-          roughness: 0.78,
-          metalness: 0.08,
+            model.viewer === "dining-table-v1"
+              ? "#ffffff"
+              : model.viewer !== "weighted-paper-towel-holder-v1"
+                ? "#d8dee9"
+                : theme === "dark"
+                  ? "#202734"
+                  : "#111318",
+          map: oakTexture,
+          roughness: model.viewer === "dining-table-v1" ? 0.72 : 0.78,
+          metalness: model.viewer === "dining-table-v1" ? 0 : 0.08,
           side: THREE.DoubleSide,
         });
         mainMaterialRef.current = mainMaterial;
@@ -1070,6 +1207,16 @@ const HolderViewer = forwardRef<
           side: THREE.DoubleSide,
         });
         domeMaterialRef.current = domeMaterial;
+        const diningMetalMaterial = new THREE.MeshStandardMaterial({
+          color: "#16191d",
+          roughness: 0.48,
+          metalness: 0.82,
+          side: THREE.DoubleSide,
+          polygonOffset: true,
+          polygonOffsetFactor: -2,
+          polygonOffsetUnits: -2,
+        });
+        diningMetalMaterialRef.current = diningMetalMaterial;
         const sandMaterial = new THREE.MeshStandardMaterial({
           color: "#c7a45d",
           roughness: 0.86,
@@ -1084,9 +1231,10 @@ const HolderViewer = forwardRef<
           wireframe: true,
         });
 
-        const displayedGeometry =
-          model.viewer === "door-lock-adapter-v1"
-            ? createDoorLockAdapterGeometry(latestParamsRef.current, model)
+        const displayedGeometry = model.viewer === "door-lock-adapter-v1"
+          ? createDoorLockAdapterGeometry(latestParamsRef.current, model)
+          : model.viewer === "dining-table-v1"
+            ? createDiningTableWoodGeometry(latestParamsRef.current, model)
             : normalizedMain.geometry;
         const mainMesh = new THREE.Mesh(displayedGeometry, mainMaterial);
         mainMesh.name = `${model.id}-adjustable-body`;
@@ -1139,7 +1287,24 @@ const HolderViewer = forwardRef<
           assemblyPreviewGroup.name = `${model.id}-assembly-preview`;
           scene.add(assemblyPreviewGroup);
           assemblyPreviewGroupRef.current = assemblyPreviewGroup;
-
+        } else if (model.viewer === "dining-table-v1") {
+          const hardwareGroup = new THREE.Group();
+          hardwareGroup.name = `${model.id}-hardware`;
+          const hardware = createDiningTableHardwareGeometries(
+            latestParamsRef.current,
+          );
+          hardware.plates.forEach((geometry, index) => {
+            const mesh = new THREE.Mesh(geometry, diningMetalMaterial);
+            mesh.name = `${model.id}-plate-${index + 1}`;
+            hardwareGroup.add(mesh);
+          });
+          hardware.channels.forEach((geometry, index) => {
+            const mesh = new THREE.Mesh(geometry, diningMetalMaterial);
+            mesh.name = `${model.id}-channel-${index + 1}`;
+            hardwareGroup.add(mesh);
+          });
+          scene.add(hardwareGroup);
+          diningHardwareGroupRef.current = hardwareGroup;
         }
 
         const ghostMesh = new THREE.Mesh(
@@ -1151,7 +1316,10 @@ const HolderViewer = forwardRef<
         scene.add(ghostMesh);
         ghostMeshRef.current = ghostMesh;
 
-        if (model.viewer === "door-lock-adapter-v1") {
+        if (
+          model.viewer === "door-lock-adapter-v1" ||
+          model.viewer === "dining-table-v1"
+        ) {
           normalizedMain.geometry.dispose();
         }
 
@@ -1296,6 +1464,9 @@ const HolderViewer = forwardRef<
           {[
             { label: "3D", preset: "iso", ariaLabel: "Isometric view" },
             { label: "Top", preset: "top", ariaLabel: "Top view" },
+            ...(model.viewer === "dining-table-v1"
+              ? [{ label: "Bottom", preset: "bottom", ariaLabel: "Bottom view" }]
+              : []),
             { label: "X", preset: "xEdge", ariaLabel: "Align X edge to view" },
             { label: "Y", preset: "yEdge", ariaLabel: "Align Y edge to view" },
           ].map((option) => (
@@ -1417,6 +1588,46 @@ function NumberControl({
             ))}
           </SelectContent>
         </Select>
+      </div>
+    </div>
+  );
+}
+
+function ScaleControl({
+  limits,
+  onChange,
+  value,
+}: {
+  limits: NumberLimits;
+  onChange: (value: number) => void;
+  value: number;
+}) {
+  const update = (raw: string) => {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return;
+    onChange(Math.round(clamp(parsed, limits.min, limits.max)));
+  };
+  return (
+    <div className="number-control">
+      <label htmlFor="mock-scale-denominator">Mock scale</label>
+      <div className="number-row angle-number-row">
+        <input
+          id="mock-scale-denominator"
+          max={limits.max}
+          min={limits.min}
+          onChange={(event) => update(event.currentTarget.value)}
+          step={limits.step}
+          type="range"
+          value={value}
+        />
+        <input
+          aria-label="Mock scale denominator"
+          inputMode="numeric"
+          onChange={(event) => update(event.currentTarget.value)}
+          type="number"
+          value={value}
+        />
+        <span aria-label={`Scale 1 to ${value}`}>1:{value}</span>
       </div>
     </div>
   );
@@ -2832,9 +3043,17 @@ export default function App({
               <div className="inspector-body">
                 <section className="panel-section">
                   <h2>Parameters</h2>
+                  {model.viewer === "dining-table-v1" ? (
+                    <ScaleControl
+                      limits={getParameterLimits(model, params, "mockScale")}
+                      onChange={(value) => updateParam("mockScale", value)}
+                      value={getParam(params, "mockScale")}
+                    />
+                  ) : null}
                   {model.parameters
                     .filter(
                       (parameter) =>
+                        parameter.key !== "mockScale" &&
                         !ANGLE_PARAM_KEYS.has(parameter.key) &&
                         !DIVIDER_PARAM_KEYS.has(parameter.key) &&
                         !OPTION_PARAM_KEYS.has(parameter.key),
@@ -2923,15 +3142,17 @@ export default function App({
                 <section className="panel-section">
                   <h2>Rendering</h2>
                   <RenderModeControl onChange={setRenderMode} value={renderMode} />
-                  <OriginalOverlayToggle
-                    checked={showOriginal}
-                    label={
-                      model.viewer === "weighted-paper-towel-holder-v1"
-                        ? "Original inlay"
-                        : "Original STL"
-                    }
-                    onChange={setShowOriginal}
-                  />
+                  {model.viewer !== "dining-table-v1" ? (
+                    <OriginalOverlayToggle
+                      checked={showOriginal}
+                      label={
+                        model.viewer === "weighted-paper-towel-holder-v1"
+                          ? "Original inlay"
+                          : "Original STL"
+                      }
+                      onChange={setShowOriginal}
+                    />
+                  ) : null}
                 </section>
 
                 <section className="panel-section">

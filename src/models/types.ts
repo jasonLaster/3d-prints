@@ -112,11 +112,19 @@ export type DoorLockAdapterGeometry = {
   minimumWallThickness: number;
 };
 
+export type DiningTableGeometry = {
+  mainAxis: { x: number; y: number; z: number };
+  cornerSegments: number;
+  edgeProfileSegments: number;
+  channelCount: 3;
+};
+
 export type SupportedViewer =
   | "weighted-paper-towel-holder-v1"
   | "japandi-tray-v1"
   | "simple-box-v1"
-  | "door-lock-adapter-v1";
+  | "door-lock-adapter-v1"
+  | "dining-table-v1";
 
 export type BaseModelDefinition = {
   id: string;
@@ -163,11 +171,17 @@ export type DoorLockAdapterModelDefinition = BaseModelDefinition & {
   geometry: DoorLockAdapterGeometry;
 };
 
+export type DiningTableModelDefinition = BaseModelDefinition & {
+  viewer: "dining-table-v1";
+  geometry: DiningTableGeometry;
+};
+
 export type ModelDefinition =
   | HolderModelDefinition
   | TrayModelDefinition
   | SimpleBoxModelDefinition
-  | DoorLockAdapterModelDefinition;
+  | DoorLockAdapterModelDefinition
+  | DiningTableModelDefinition;
 
 export type ModelDimensions = {
   length: number;

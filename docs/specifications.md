@@ -2,6 +2,13 @@
 
 This document defines the product and engineering contract for the 3D Prints app. Tests should fail when an implementation drifts from these expectations.
 
+## Oak Dining Table
+
+- Fully parametric 76 × 38 × 30 in apronless table with a separate print-scale denominator.
+- Rounded tabletop and leg geometry, separate top and bottom post roundovers, four inset corner plates, and exactly three recessed C-channels are generated from numeric parameters.
+- The default 1:10 mock is approximately 193 × 97 × 76 mm.
+- See `docs/dining-table-audit-specifications.md` for the construction and audit contract.
+
 ## Information Architecture
 
 - The root route `/` opens the default model workspace and writes `model=<model-id>` into the URL.
