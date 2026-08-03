@@ -150,6 +150,9 @@ const PARAM_QUERY_KEYS = [
   "legSize",
   "legCornerRadius",
   "legEdgeInset",
+  "legGrooveEnabled",
+  "legGrooveHeight",
+  "legGrooveDepth",
   "revealOffset",
   "revealHeight",
   "revealDepth",
@@ -174,9 +177,17 @@ const ANGLE_PARAM_KEYS = new Set(["rotation", "cutoutRotation"]);
 const SCALAR_PARAM_KEYS = new Set([
   "dividerCount",
   "gridfinityCompatible",
+  "legGrooveEnabled",
   "mockScale",
 ]);
-const OPTION_PARAM_KEYS = new Set(["gridfinityCompatible"]);
+const OPTION_PARAM_KEYS = new Set([
+  "gridfinityCompatible",
+  "legGrooveEnabled",
+]);
+const LEG_GROOVE_PARAM_KEYS = new Set([
+  "legGrooveHeight",
+  "legGrooveDepth",
+]);
 const DIVIDER_PARAM_KEYS = new Set([
   "dividerCount",
   "dividerPosition1",
@@ -1883,6 +1894,29 @@ function GridfinityToggle({
   );
 }
 
+function PostGrooveToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="gridfinity-option">
+      <OriginalOverlayToggle
+        checked={checked}
+        label="Post-top groove / rabbet"
+        onChange={onChange}
+      />
+      <small>
+        {checked
+          ? "The recessed band meets a rounded lower shoulder below the tabletop."
+          : "The top roundover returns to the post edge with no recessed band."}
+      </small>
+    </div>
+  );
+}
+
 function TrayOrientationSnapControl({
   maxRotation,
   onChange,
@@ -3040,20 +3074,36 @@ export default function App({
                 <section className="panel-section">
                   <h2>Parameters</h2>
                   {model.viewer === "dining-table-v1" ? (
-                    <ScaleControl
-                      limits={getParameterLimits(model, params, "mockScale")}
-                      onChange={(value) => updateParam("mockScale", value)}
-                      value={getParam(params, "mockScale")}
-                    />
+                    <>
+                      <ScaleControl
+                        limits={getParameterLimits(model, params, "mockScale")}
+                        onChange={(value) => updateParam("mockScale", value)}
+                        value={getParam(params, "mockScale")}
+                      />
+                      <PostGrooveToggle
+                        checked={getParam(params, "legGrooveEnabled") >= 0.5}
+                        onChange={(checked) =>
+                          updateParam("legGrooveEnabled", checked ? 1 : 0)
+                        }
+                      />
+                    </>
                   ) : null}
                   {model.parameters
-                    .filter(
-                      (parameter) =>
+                    .filter((parameter) => {
+                      if (
+                        model.viewer === "dining-table-v1" &&
+                        getParam(params, "legGrooveEnabled") < 0.5 &&
+                        LEG_GROOVE_PARAM_KEYS.has(parameter.key)
+                      ) {
+                        return false;
+                      }
+                      return (
                         parameter.key !== "mockScale" &&
                         !ANGLE_PARAM_KEYS.has(parameter.key) &&
                         !DIVIDER_PARAM_KEYS.has(parameter.key) &&
-                        !OPTION_PARAM_KEYS.has(parameter.key),
-                    )
+                        !OPTION_PARAM_KEYS.has(parameter.key)
+                      );
+                    })
                     .map((parameter) => (
                       <NumberControl
                         key={parameter.key}

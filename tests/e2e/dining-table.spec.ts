@@ -71,11 +71,25 @@ test("renders the dimension-driven oak table and exports the 1:10 wood mock", as
   await expect(page.getByLabel("Overall height in inches")).toHaveValue("30");
   await expect(page.getByLabel("Leg post size in inches")).toHaveValue("4");
   await expect(page.getByLabel("Leg corner radius in inches")).toHaveValue("1");
-  await expect(page.getByLabel("Leg top roundover radius in inches")).toHaveValue("1/4");
+  const grooveToggle = page.getByLabel("Post-top groove / rabbet");
+  await expect(grooveToggle).toBeChecked();
+  await expect(page.getByLabel("Post groove height in inches")).toHaveValue("1/4");
+  await expect(page.getByLabel("Post groove depth in inches")).toHaveValue("1/8");
+  await expect(page.getByLabel("Leg top shoulder roundover radius in inches")).toHaveValue("1/4");
   await expect(page.getByLabel("Leg bottom roundover radius in inches")).toHaveValue("1/4");
+  await expect(page.getByText("1/4 in high × 1/8 in deep; 1/4 in shoulder")).toBeVisible();
   await expect(page.getByLabel("Plate edge setback in inches")).toHaveValue("1/2");
   await expect(page.getByText("16 in · 38 in · 60 in")).toBeVisible();
   await expect(page.getByText("1:10; 193.0 × 96.5 × 76.2 mm")).toBeVisible();
+
+  await page.getByText("Post-top groove / rabbet", { exact: true }).click();
+  await expect(grooveToggle).not.toBeChecked();
+  await expect(page.getByLabel("Post groove height in inches")).toHaveCount(0);
+  await expect(page.getByLabel("Post groove depth in inches")).toHaveCount(0);
+  await expect(page.getByText("1/4 in top · 1/4 in bottom")).toBeVisible();
+  await page.getByText("Post-top groove / rabbet", { exact: true }).click();
+  await expect(grooveToggle).toBeChecked();
+  await expect(page.getByLabel("Post groove height in inches")).toBeVisible();
 
   await page.getByRole("button", { name: "Workspace actions" }).click();
   const [download] = await Promise.all([

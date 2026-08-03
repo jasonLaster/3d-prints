@@ -199,6 +199,71 @@ function tabletopLayers(
   return layers;
 }
 
+function legLayers(
+  size: number,
+  height: number,
+  cornerRadius: number,
+  bottomRoundover: number,
+  topRoundover: number,
+  grooveEnabled: boolean,
+  grooveHeight: number,
+  grooveDepth: number,
+  segments: number,
+) {
+  if (!grooveEnabled) {
+    return tabletopLayers(
+      size,
+      size,
+      height,
+      cornerRadius,
+      bottomRoundover,
+      topRoundover,
+      segments,
+    );
+  }
+
+  const layers: LoftLayer[] = [];
+  const add = (z: number, inset: number) => {
+    const safeInset = Math.min(inset, size / 2 - EPSILON);
+    const layer = {
+      z,
+      width: size - safeInset * 2,
+      depth: size - safeInset * 2,
+      radius: Math.max(cornerRadius - safeInset, EPSILON),
+    };
+    const previous = layers[layers.length - 1];
+    if (
+      previous &&
+      Math.abs(previous.z - layer.z) < EPSILON &&
+      Math.abs(previous.width - layer.width) < EPSILON
+    ) {
+      return;
+    }
+    layers.push(layer);
+  };
+
+  for (let index = 0; index <= segments; index += 1) {
+    const angle = (index / segments) * (Math.PI / 2);
+    add(
+      bottomRoundover - bottomRoundover * Math.cos(angle),
+      bottomRoundover - bottomRoundover * Math.sin(angle),
+    );
+  }
+
+  const grooveBottom = height - grooveHeight;
+  const shoulderBottom = grooveBottom - topRoundover;
+  add(shoulderBottom, 0);
+  for (let index = 1; index <= segments; index += 1) {
+    const angle = (index / segments) * (Math.PI / 2);
+    add(
+      shoulderBottom + topRoundover * Math.sin(angle),
+      grooveDepth * (1 - Math.cos(angle)),
+    );
+  }
+  add(height, grooveDepth);
+  return layers;
+}
+
 function scaled(params: ModelParams, key: string) {
   return getParam(params, key) / getParam(params, "mockScale");
 }
@@ -243,24 +308,38 @@ function createLegGeometry(
   const radius = Math.min(scaled(params, "legCornerRadius"), size / 2);
   const thickness = scaled(params, "topThickness");
   const height = scaled(params, "overallHeight") - thickness;
-  const topRoundover = Math.min(
-    scaled(params, "legTopRoundoverRadius"),
-    size / 2,
-    height / 2,
+  const grooveEnabled = getParam(params, "legGrooveEnabled") >= 0.5;
+  const grooveHeight = Math.min(
+    scaled(params, "legGrooveHeight"),
+    height / 3,
+  );
+  const grooveDepth = Math.min(
+    scaled(params, "legGrooveDepth"),
+    size / 3,
+    Math.max(radius - EPSILON, EPSILON),
   );
   const bottomRoundover = Math.min(
     scaled(params, "legBottomRoundoverRadius"),
     size / 2,
     height / 2,
   );
+  const topRoundover = Math.min(
+    scaled(params, "legTopRoundoverRadius"),
+    size / 2,
+    grooveEnabled
+      ? Math.max(height - grooveHeight - bottomRoundover, EPSILON)
+      : height / 2,
+  );
   const geometry = createRoundedLoft(
-    tabletopLayers(
-      size,
+    legLayers(
       size,
       height,
       radius,
       bottomRoundover,
       topRoundover,
+      grooveEnabled,
+      grooveHeight,
+      grooveDepth,
       model.geometry.edgeProfileSegments,
     ),
     model.geometry.cornerSegments,
@@ -436,10 +515,31 @@ export function getDiningTableParameterLimits(
     key === "legTopRoundoverRadius" ||
     key === "legBottomRoundoverRadius"
   ) {
+    const legHeight = getParam(params, "overallHeight") - thickness;
+    const reservedHeight =
+      key === "legTopRoundoverRadius" &&
+      getParam(params, "legGrooveEnabled") >= 0.5
+        ? getParam(params, "legGrooveHeight") +
+          getParam(params, "legBottomRoundoverRadius")
+        : 0;
     limits.max = Math.min(
       limits.max,
       legSize / 2,
-      (getParam(params, "overallHeight") - thickness) / 2,
+      key === "legBottomRoundoverRadius" ? legHeight / 2 : legHeight - reservedHeight,
+    );
+  } else if (key === "legGrooveHeight") {
+    limits.max = Math.min(
+      limits.max,
+      getParam(params, "overallHeight") -
+        thickness -
+        getParam(params, "legTopRoundoverRadius") -
+        getParam(params, "legBottomRoundoverRadius"),
+    );
+  } else if (key === "legGrooveDepth") {
+    limits.max = Math.min(
+      limits.max,
+      legSize / 3,
+      getParam(params, "legCornerRadius") - limits.step,
     );
   } else if (key === "plateSize") {
     limits.min = Math.max(limits.min, legSize);
@@ -497,10 +597,15 @@ export function getDiningTableAuditValue(
         `4 × ${formatLength(getParam(params, "legSize"), unit)} posts; ${formatLength(getParam(params, "legCornerRadius"), unit)} radius`,
       );
     case "legEndRoundovers":
-      return item(
-        check.label,
-        `${formatLength(getParam(params, "legTopRoundoverRadius"), unit)} top · ${formatLength(getParam(params, "legBottomRoundoverRadius"), unit)} bottom`,
-      );
+      return getParam(params, "legGrooveEnabled") >= 0.5
+        ? item(
+            check.label,
+            `${formatLength(getParam(params, "legGrooveHeight"), unit)} high × ${formatLength(getParam(params, "legGrooveDepth"), unit)} deep; ${formatLength(getParam(params, "legTopRoundoverRadius"), unit)} shoulder`,
+          )
+        : item(
+            check.label,
+            `${formatLength(getParam(params, "legTopRoundoverRadius"), unit)} top · ${formatLength(getParam(params, "legBottomRoundoverRadius"), unit)} bottom`,
+          );
     case "cornerPlates":
       return item(
         check.label,
@@ -524,6 +629,9 @@ export function getDiningTableAuditValue(
         getParam(params, "legTopRoundoverRadius") / scale,
         getParam(params, "legBottomRoundoverRadius") / scale,
         getParam(params, "plateThickness") / scale,
+        ...(getParam(params, "legGrooveEnabled") >= 0.5
+          ? [getParam(params, "legGrooveDepth") / scale]
+          : []),
       );
       return item(
         check.label,

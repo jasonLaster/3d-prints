@@ -24,6 +24,9 @@ close(params.legCornerRadius, inch, "leg corner radius");
 close(params.topRoundoverRadius, 0.5 * inch, "top roundover");
 close(params.bottomRoundoverRadius, 0.5 * inch, "bottom roundover");
 close(params.topThickness - params.topRoundoverRadius - params.bottomRoundoverRadius, 0.5 * inch, "flat edge band");
+assert.equal(params.legGrooveEnabled, 1, "post-top groove should be enabled by default");
+close(params.legGrooveHeight, 0.25 * inch, "post groove height");
+close(params.legGrooveDepth, 0.125 * inch, "post groove depth");
 close(params.legTopRoundoverRadius, 0.25 * inch, "leg top roundover");
 close(params.legBottomRoundoverRadius, 0.25 * inch, "leg bottom roundover");
 close(params.plateSize, 6 * inch, "plate size");
@@ -39,6 +42,12 @@ assert.ok(params.channelDepth <= params.topThickness);
 assert.ok(params.plateSize >= params.legSize);
 assert.ok(params.plateEdgeInset > 0);
 assert.ok(params.plateEdgeInset < params.legSize);
+assert.ok(params.legGrooveDepth < params.legSize / 2, "post groove must preserve a bearing face");
+assert.ok(
+  params.legGrooveHeight + params.legTopRoundoverRadius + params.legBottomRoundoverRadius <
+    params.overallHeight - params.topThickness,
+  "post groove and roundovers must fit within the leg height",
+);
 
 const mockEnvelope = [
   params.tableLength / params.mockScale,
@@ -49,12 +58,14 @@ assert.ok(mockEnvelope[0] <= 256, "default mock length must fit a 256 mm bed");
 assert.ok(mockEnvelope[1] <= 256, "default mock width must fit a 256 mm bed");
 assert.ok(params.legTopRoundoverRadius / params.mockScale >= 0.3, "top post roundover must survive the default print scale");
 assert.ok(params.legBottomRoundoverRadius / params.mockScale >= 0.3, "bottom post roundover must survive the default print scale");
+assert.ok(params.legGrooveDepth / params.mockScale >= 0.3, "post groove must survive the default print scale");
 
 const source = fs.readFileSync(path.join(root, "src/models/diningTable.ts"), "utf8");
 for (const required of [
   "createDiningTableWoodGeometry",
   "createDiningTableHardwareGeometries",
   "createRoundedLoft",
+  "legLayers",
   "channelPosition${index}",
 ]) {
   assert.ok(source.includes(required), `procedural source is missing ${required}`);

@@ -2,7 +2,7 @@
   "id": "dining-table",
   "name": "Oak Dining Table",
   "subtitle": "Parametric 1:10 construction mock",
-  "description": "A dimension-driven apronless oak dining table with rounded tabletop and posts, softened post ends, flush inset 6-inch corner plates, and three recessed C-channels.",
+  "description": "A dimension-driven apronless oak dining table with rounded tabletop and posts, an optional rounded post-top groove, flush inset 6-inch corner plates, and three recessed C-channels.",
   "viewer": "dining-table-v1",
   "stl": {
     "fileName": "dining-table.stl",
@@ -91,8 +91,26 @@
       "limits": { "min": 0, "max": 152.4, "step": 3.175 }
     },
     {
+      "key": "legGrooveEnabled",
+      "label": "Post-top groove / rabbet",
+      "default": 1,
+      "limits": { "min": 0, "max": 1, "step": 1 }
+    },
+    {
+      "key": "legGrooveHeight",
+      "label": "Post groove height",
+      "default": 6.35,
+      "limits": { "min": 1.5875, "max": 25.4, "step": 1.5875 }
+    },
+    {
+      "key": "legGrooveDepth",
+      "label": "Post groove depth",
+      "default": 3.175,
+      "limits": { "min": 0.79375, "max": 12.7, "step": 0.79375 }
+    },
+    {
       "key": "legTopRoundoverRadius",
-      "label": "Leg top roundover radius",
+      "label": "Leg top shoulder roundover radius",
       "default": 6.35,
       "limits": { "min": 1.5875, "max": 25.4, "step": 1.5875 }
     },
@@ -163,14 +181,16 @@
       "The full-size tabletop is 76 in long by 38 in wide by 1 1/2 in thick, and the finished table is 30 in high.",
       "Four 4 in square posts use 1 in vertical corner radii and meet a tabletop with 1 in plan-view corner radii.",
       "The tabletop has 1/2 in top and bottom roundovers, leaving a 1/2 in flat vertical edge band.",
-      "Each post has a 1/4 in horizontal edge roundover at both its top and bottom ends, with no routed reveal or rabbet.",
+      "Each post has an optional 1/4 in high by 1/8 in deep groove immediately below the tabletop; when enabled, the 1/4 in top roundover forms the lower shoulder of that groove.",
+      "Each post has a 1/4 in bottom roundover; disabling the groove restores the 1/4 in roundover to the post's top edge.",
       "Four 6 in square by 1/4 in steel plates are set 1/2 in back from both tabletop edges, and exactly three widthwise C-channels are flush with the tabletop underside.",
       "The default 1:10 mock fits inside a 256 mm square printer bed footprint."
     ],
     "invariants": [
       "Keep the real furniture dimensions independent from the mock scale denominator.",
       "Keep the tabletop and all four leg solids closed and printable.",
-      "Keep each post continuous and groove-free, using top and bottom end roundovers for the shadow transition and softened foot.",
+      "Keep each post continuous; when the post-top groove is enabled, place the rounded shoulder below the recessed band rather than at the tabletop contact edge.",
+      "Keep the groove shallow enough to preserve a substantial post-to-tabletop bearing face.",
       "Keep all four steel plate faces and three C-channel faces coplanar with the tabletop underside.",
       "Keep every plate edge set back from the tabletop side and end so no steel is visible in a normal side elevation.",
       "Keep the leg outer faces aligned to the tabletop edges when leg edge inset is zero.",
@@ -182,7 +202,7 @@
       { "key": "tableEnvelope", "label": "Full-size envelope" },
       { "key": "tabletopProfile", "label": "Tabletop edge profile" },
       { "key": "legGeometry", "label": "Leg geometry" },
-      { "key": "legEndRoundovers", "label": "Leg end roundovers" },
+      { "key": "legEndRoundovers", "label": "Leg top detail" },
       { "key": "cornerPlates", "label": "Corner plates" },
       { "key": "channelLayout", "label": "Three C-channels" },
       { "key": "printEnvelope", "label": "Mock print envelope" },
