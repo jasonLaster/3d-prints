@@ -1050,7 +1050,7 @@ test.describe("3D print app", () => {
 
     await librarySeparator.focus();
     await page.keyboard.press("Home");
-    await expect(librarySeparator).toHaveAttribute("aria-valuenow", "240");
+    await expect(librarySeparator).toHaveAttribute("aria-valuenow", "280");
     await page.keyboard.press("End");
     await expect(librarySeparator).toHaveAttribute("aria-valuenow", "460");
 

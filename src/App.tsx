@@ -1,4 +1,5 @@
 import {
+  Box,
   ChevronDown,
   ChevronRight,
   Clock3,
@@ -6,6 +7,7 @@ import {
   Focus,
   GitFork,
   Hand,
+  Info,
   Layers3,
   MoreHorizontal,
   Moon,
@@ -15,6 +17,7 @@ import {
   PanelRightOpen,
   Plus,
   RotateCcw,
+  Ruler,
   Search,
   SlidersHorizontal,
   Sun,
@@ -31,6 +34,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useId,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -66,6 +70,7 @@ import {
   createDoorLockAdapterGeometry,
   createHoverDiningTableExplodedParts,
   createHoverDiningTableGeometry,
+  createHoverDiningTableHardwareGeometries,
   createHoverDiningTableTemplateSegments,
   getHoverDiningTableTemplateSummary,
   getHoverDiningTablePieceCount,
@@ -93,6 +98,7 @@ import {
   updateWeightedCore,
   type AuditItem,
   type LengthUnit,
+  type HoverDiningTableStructuralMetric,
   type ModelDefinition,
   type ModelParameter,
   type ModelParams,
@@ -108,6 +114,7 @@ import {
   stepLengthInput,
   toUnit,
 } from "./units";
+import { createWoodTexture } from "./woodTexture";
 import type { Id } from "../convex/_generated/dataModel";
 
 type CoreViewMode = "surface" | "fill" | "section";
@@ -124,6 +131,7 @@ type AssemblyMode =
   | "cut-list"
   | "templates";
 type ViewerInteractionMode = "orbit" | "pan";
+type MobileInspectorSection = "assembly" | "parameters" | "checks";
 
 type ViewerHandle = {
   exportStl: () => void;
@@ -297,9 +305,9 @@ const LIBRARY_SIDEBAR_WIDTH_KEY = "3d-prints:library-sidebar-width";
 const THEME_STORAGE_KEY = "3d-prints:theme";
 const ENABLE_TRAY_ORIENTATION_CONTROLS =
   import.meta.env.VITE_ENABLE_TRAY_ORIENTATION_CONTROLS === "true";
-const LIBRARY_SIDEBAR_MIN_WIDTH = 240;
+const LIBRARY_SIDEBAR_MIN_WIDTH = 280;
 const LIBRARY_SIDEBAR_MAX_WIDTH = 460;
-const LIBRARY_SIDEBAR_DEFAULT_WIDTH = 320;
+const LIBRARY_SIDEBAR_DEFAULT_WIDTH = 304;
 const LIBRARY_SIDEBAR_COLLAPSED_WIDTH = 52;
 const PLAYWRIGHT_TEST_VERSION_TITLE_PREFIX = "Playwright ";
 const SCENE_BACKGROUND = {
@@ -322,87 +330,6 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function createWoodTexture(
-  renderer: THREE.WebGLRenderer,
-  species: "oak" | "walnut",
-) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1024;
-  canvas.height = 256;
-  const context = canvas.getContext("2d");
-  if (!context) return null;
-
-  const image = context.createImageData(canvas.width, canvas.height);
-  const walnut = species === "walnut";
-  const base = walnut ? [92, 58, 39] : [180, 143, 97];
-  let seed = walnut ? 0x77616c6e : 0x5f3759df;
-  for (let y = 0; y < canvas.height; y += 1) {
-    const broad = Math.sin(y * 0.072) * 5 + Math.sin(y * 0.019) * 7;
-    for (let x = 0; x < canvas.width; x += 1) {
-      seed = (seed * 1664525 + 1013904223) >>> 0;
-      const noise = ((seed & 255) / 255 - 0.5) * (walnut ? 7 : 0.8);
-      const offset = (y * canvas.width + x) * 4;
-      image.data[offset] = base[0] + broad + noise;
-      image.data[offset + 1] = base[1] + broad * 0.72 + noise;
-      image.data[offset + 2] = base[2] + broad * 0.45 + noise;
-      image.data[offset + 3] = 255;
-    }
-  }
-  context.putImageData(image, 0, 0);
-  for (let y = 0; y < canvas.height; y += walnut ? 1 : 32) {
-    const broad = Math.sin(y * 0.115) * 0.5 + Math.sin(y * 0.031) * 0.5;
-    const lightness = (walnut ? 62 : 92) + Math.round(broad * 12);
-    context.strokeStyle = walnut
-      ? `rgba(${lightness + 20}, ${lightness + 3}, ${Math.max(20, lightness - 18)}, 0.22)`
-      : `rgba(${lightness + 28}, ${lightness + 10}, ${Math.max(42, lightness - 22)}, 0.08)`;
-    context.lineWidth = walnut ? (y % 23 === 0 ? 1.1 : 0.42) : 0.6;
-    context.beginPath();
-    for (let x = 0; x <= canvas.width; x += 8) {
-      const wave = Math.sin(x * 0.018 + y * 0.15) * 1.7 + Math.sin(x * 0.005) * 1.2;
-      if (x === 0) context.moveTo(x, y + wave);
-      else context.lineTo(x, y + wave);
-    }
-    context.stroke();
-  }
-  for (let index = 0; index < (walnut ? 38 : 8); index += 1) {
-    const y = (index * 71) % canvas.height;
-    context.strokeStyle = walnut
-      ? "rgba(28, 14, 9, 0.22)"
-      : "rgba(68, 41, 21, 0.07)";
-    context.lineWidth = 0.65;
-    context.beginPath();
-    context.moveTo(0, y);
-    context.bezierCurveTo(280, y + 12, 700, y - 9, canvas.width, y + 3);
-    context.stroke();
-  }
-
-  if (!walnut) {
-    for (let index = 0; index < 40; index += 1) {
-      seed = (seed * 1664525 + 1013904223) >>> 0;
-      const x = seed % canvas.width;
-      seed = (seed * 1664525 + 1013904223) >>> 0;
-      const y = seed % canvas.height;
-      seed = (seed * 1664525 + 1013904223) >>> 0;
-      const length = 2 + (seed % 13);
-      context.strokeStyle = `rgba(63, 37, 19, ${0.04 + (seed % 4) / 100})`;
-      context.lineWidth = 0.45 + (seed % 3) * 0.18;
-      context.beginPath();
-      context.moveTo(x, y);
-      context.quadraticCurveTo(x + length * 0.55, y - 0.65, x + length, y);
-      context.stroke();
-    }
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(walnut ? 3.2 : 1, walnut ? 1.6 : 0.7);
-  texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  texture.needsUpdate = true;
-  return texture;
-}
-
 function isThemeMode(value: string | null): value is ThemeMode {
   return value === "light" || value === "dark";
 }
@@ -420,6 +347,22 @@ function getInitialTheme(): ThemeMode {
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light";
+}
+
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(
+    () => window.matchMedia?.(query).matches ?? false,
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(query);
+    const updateMatches = () => setMatches(mediaQuery.matches);
+    updateMatches();
+    mediaQuery.addEventListener("change", updateMatches);
+    return () => mediaQuery.removeEventListener("change", updateMatches);
+  }, [query]);
+
+  return matches;
 }
 
 function getStoredSidebarWidth() {
@@ -830,6 +773,7 @@ const HolderViewer = forwardRef<
   const trayDividerGroupRef = useRef<THREE.Group | null>(null);
   const assemblyPreviewGroupRef = useRef<THREE.Group | null>(null);
   const diningHardwareGroupRef = useRef<THREE.Group | null>(null);
+  const hoverHardwareGroupRef = useRef<THREE.Group | null>(null);
   const hoverExplodedGroupRef = useRef<THREE.Group | null>(null);
   const ghostMeshRef = useRef<THREE.Mesh | null>(null);
   const guideMeshRef = useRef<THREE.Mesh | null>(null);
@@ -974,6 +918,7 @@ const HolderViewer = forwardRef<
     const trayDividerGroup = trayDividerGroupRef.current;
     const assemblyPreviewGroup = assemblyPreviewGroupRef.current;
     const diningHardwareGroup = diningHardwareGroupRef.current;
+    const hoverHardwareGroup = hoverHardwareGroupRef.current;
     const hoverExplodedGroup = hoverExplodedGroupRef.current;
     const ghostMesh = ghostMeshRef.current;
     const guideMesh = guideMeshRef.current;
@@ -1044,7 +989,9 @@ const HolderViewer = forwardRef<
       });
       updateDiningTableGuide(guideMesh, latestParamsRef.current);
     } else if (model.viewer === "hover-dining-table-v1") {
-      if (!hoverExplodedGroup) return;
+      if (!hoverHardwareGroup || !hoverExplodedGroup || !diningMetalMaterial) {
+        return;
+      }
       mainMesh.geometry.dispose();
       mainMesh.geometry = createHoverDiningTableGeometry(
         latestParamsRef.current,
@@ -1068,13 +1015,29 @@ const HolderViewer = forwardRef<
       const cutList = latestAssemblyModeRef.current === "cut-list";
       const templates = latestAssemblyModeRef.current === "templates";
       mainMesh.visible = !exploded && !cutList && !templates;
+      hoverHardwareGroup.children.forEach((child) => {
+        if (child instanceof THREE.Mesh) child.geometry.dispose();
+      });
+      hoverHardwareGroup.clear();
+      const hardware = createHoverDiningTableHardwareGeometries(
+        latestParamsRef.current,
+      );
+      hardware.channels.forEach((geometry, index) => {
+        const mesh = new THREE.Mesh(geometry, diningMetalMaterial);
+        mesh.name = `${model.id}-c-channel-${index + 1}`;
+        hoverHardwareGroup.add(mesh);
+      });
+      hoverHardwareGroup.visible = !exploded && !cutList && !templates;
       hoverExplodedGroup.visible = exploded || templates;
       if (exploded) {
         for (const part of createHoverDiningTableExplodedParts(
           latestParamsRef.current,
           model,
         )) {
-          const mesh = new THREE.Mesh(part.geometry, holderMaterial);
+          const mesh = new THREE.Mesh(
+            part.geometry,
+            part.material === "Steel" ? diningMetalMaterial : holderMaterial,
+          );
           mesh.name = `${model.id}-${part.name}`;
           mesh.position.copy(part.offset);
           mesh.userData.assemblyCategory = part.category;
@@ -1243,7 +1206,8 @@ const HolderViewer = forwardRef<
 
     applyRenderOptions(
       holderMaterial,
-      model.viewer === "dining-table-v1"
+      model.viewer === "dining-table-v1" ||
+        model.viewer === "hover-dining-table-v1"
         ? diningMetalMaterial
         : domeMaterial,
       sandMesh,
@@ -1265,6 +1229,7 @@ const HolderViewer = forwardRef<
     const sandFloorMesh = sandFloorMeshRef.current;
     const trayLipMesh = trayLipMeshRef.current;
     const trayDividerGroup = trayDividerGroupRef.current;
+    const hoverHardwareGroup = hoverHardwareGroupRef.current;
     if (!mainMesh) {
       return null;
     }
@@ -1309,6 +1274,17 @@ const HolderViewer = forwardRef<
         }
       });
     }
+    const exportHoverHardware: THREE.Mesh[] = [];
+    if (model.viewer === "hover-dining-table-v1" && hoverHardwareGroup) {
+      hoverHardwareGroup.children.forEach((child, index) => {
+        if (child instanceof THREE.Mesh) {
+          const channel = new THREE.Mesh(createCleanExportGeometry(child.geometry));
+          channel.name = `${model.id}-c-channel-${index + 1}`;
+          exportHoverHardware.push(channel);
+          group.add(channel);
+        }
+      });
+    }
     group.updateMatrixWorld(true);
 
     const exporter = new STLExporter();
@@ -1320,6 +1296,7 @@ const HolderViewer = forwardRef<
     sandFloor?.geometry.dispose();
     trayLip?.geometry.dispose();
     exportDividers.forEach((divider) => divider.geometry.dispose());
+    exportHoverHardware.forEach((channel) => channel.geometry.dispose());
 
     return blob;
   }, [model]);
@@ -1806,6 +1783,19 @@ const HolderViewer = forwardRef<
           scene.add(hardwareGroup);
           diningHardwareGroupRef.current = hardwareGroup;
         } else if (model.viewer === "hover-dining-table-v1") {
+          const hardwareGroup = new THREE.Group();
+          hardwareGroup.name = `${model.id}-hardware`;
+          const hardware = createHoverDiningTableHardwareGeometries(
+            latestParamsRef.current,
+          );
+          hardware.channels.forEach((geometry, index) => {
+            const mesh = new THREE.Mesh(geometry, diningMetalMaterial);
+            mesh.name = `${model.id}-c-channel-${index + 1}`;
+            hardwareGroup.add(mesh);
+          });
+          scene.add(hardwareGroup);
+          hoverHardwareGroupRef.current = hardwareGroup;
+
           const explodedGroup = new THREE.Group();
           explodedGroup.name = `${model.id}-exploded-assembly`;
           explodedGroup.visible = latestAssemblyModeRef.current === "exploded";
@@ -1909,7 +1899,7 @@ const HolderViewer = forwardRef<
       <div className="viewer-backdrop" aria-hidden="true" />
       {model.viewer === "hover-dining-table-v1" &&
       assemblyMode === "cut-list" ? (
-        <HoverDiningTableCutList params={params} unit={unit} />
+        <HoverDiningTableCutList model={model} params={params} unit={unit} />
       ) : null}
       {model.viewer === "hover-dining-table-v1" &&
       assemblyMode === "templates" &&
@@ -1917,14 +1907,14 @@ const HolderViewer = forwardRef<
         <aside className="hover-template-legend" aria-label="Routing template summary">
           <div>
             <span className="template-swatch rail" aria-hidden="true" />
-            <strong>Top rail</strong>
+            <strong>Top rail · B1</strong>
             <span>
               {hoverTemplateSummary.templates[0].segmentCount} plates · mirror by end
             </span>
           </div>
           <div>
             <span className="template-swatch stile" aria-hidden="true" />
-            <strong>Vertical stile</strong>
+            <strong>Vertical stile · B3</strong>
             <span>
               {hoverTemplateSummary.templates[1].segmentCount} plates · mirror left/right
             </span>
@@ -1951,7 +1941,7 @@ const HolderViewer = forwardRef<
         ) : null}
         {model.viewer === "hover-dining-table-v1" &&
         assemblyMode === "templates" ? (
-          <span>Routing templates · 2 profiles · segmented STLs</span>
+          <span>Routing templates · exact B1 + B3 profiles · segmented STLs</span>
         ) : null}
       </div>
       <div className="viewer-nav" aria-label="3D view controls">
@@ -2045,7 +2035,8 @@ const HolderViewer = forwardRef<
           {[
             { label: "3D", preset: "iso", ariaLabel: "Isometric view" },
             { label: "Top", preset: "top", ariaLabel: "Top view" },
-            ...(model.viewer === "dining-table-v1"
+            ...(model.viewer === "dining-table-v1" ||
+            model.viewer === "hover-dining-table-v1"
               ? [{ label: "Bottom", preset: "bottom", ariaLabel: "Bottom view" }]
               : []),
             { label: "X", preset: "xEdge", ariaLabel: "Align X edge to view" },
@@ -2315,6 +2306,20 @@ const HOVER_PARAMETER_GROUPS = [
   "Routing templates",
 ] as const;
 
+function HoverParameterGroupIcon({
+  group,
+}: {
+  group: (typeof HOVER_PARAMETER_GROUPS)[number];
+}) {
+  if (group === "Overall") return <SlidersHorizontal aria-hidden="true" />;
+  if (group === "Tabletop") return <Layers3 aria-hidden="true" />;
+  if (group === "End boxes") return <Box aria-hidden="true" />;
+  if (group === "Support layout") return <GitFork aria-hidden="true" />;
+  if (group === "Support joinery") return <Focus aria-hidden="true" />;
+  if (group === "Routing templates") return <Ruler aria-hidden="true" />;
+  return <Layers3 aria-hidden="true" />;
+}
+
 function HoverDiningTableParameterControls({
   model,
   params,
@@ -2365,6 +2370,9 @@ function HoverDiningTableParameterControls({
                 }}
                 type="button"
               >
+                <span className="parameter-group-icon">
+                  <HoverParameterGroupIcon group={group} />
+                </span>
                 <h3 id={headingId}>{group}</h3>
                 <ChevronDown aria-hidden="true" />
               </button>
@@ -2602,11 +2610,11 @@ function HoverAssemblyControl({
   return (
     <div className="segmented-control" aria-label="X-Hover assembly view">
       {([
-        ["assembled", "Assembled"],
-        ["exploded", "Exploded"],
-        ["cut-list", "Cut list"],
-        ["templates", "Templates"],
-      ] as const).map(([mode, label]) => (
+        ["assembled", "Assembled", <Box aria-hidden="true" />],
+        ["exploded", "Exploded", <Layers3 aria-hidden="true" />],
+        ["cut-list", "Cut list", <Ruler aria-hidden="true" />],
+        ["templates", "Templates", <Focus aria-hidden="true" />],
+      ] as const).map(([mode, label, icon]) => (
         <button
           aria-pressed={value === mode}
           className={value === mode ? "active" : ""}
@@ -2614,7 +2622,8 @@ function HoverAssemblyControl({
           onClick={() => onChange(mode)}
           type="button"
         >
-          {label}
+          {icon}
+          <span>{label}</span>
         </button>
       ))}
     </div>
@@ -2806,6 +2815,150 @@ function AuditList({ items }: { items: AuditItem[] }) {
   );
 }
 
+function CollapsiblePanelSection({
+  children,
+  expanded,
+  id,
+  onToggle,
+  title,
+}: {
+  children: ReactNode;
+  expanded: boolean;
+  id: string;
+  onToggle: () => void;
+  title: string;
+}) {
+  const contentId = `${id}-content`;
+  return (
+    <section
+      className="panel-section collapsible-panel-section"
+      data-expanded={expanded}
+    >
+      <h2>
+        <button
+          aria-controls={contentId}
+          aria-expanded={expanded}
+          className="panel-section-toggle"
+          onClick={onToggle}
+          type="button"
+        >
+          <span>{title}</span>
+          <ChevronDown aria-hidden="true" />
+        </button>
+      </h2>
+      <div
+        className="collapsible-panel-content"
+        hidden={!expanded}
+        id={contentId}
+      >
+        {children}
+      </div>
+    </section>
+  );
+}
+
+type StructuralCalculationInput =
+  HoverDiningTableStructuralMetric["calculation"]["inputs"][number];
+
+function formatStructuralCalculationInput(
+  input: StructuralCalculationInput,
+  unit: LengthUnit,
+) {
+  if (input.format === "length" && typeof input.value === "number") {
+    return formatLength(input.value, unit);
+  }
+  if (input.format === "number" && typeof input.value === "number") {
+    return `${input.value.toFixed(input.precision ?? 2)}${input.suffix ?? ""}`;
+  }
+  return String(input.value);
+}
+
+function HoverStructuralMetric({
+  metric,
+  unit,
+}: {
+  metric: HoverDiningTableStructuralMetric;
+  unit: LengthUnit;
+}) {
+  const [isCalculationExpanded, setIsCalculationExpanded] = useState(false);
+  const calculationId = useId();
+  return (
+    <div
+      className="structural-metric"
+      data-calculation-expanded={isCalculationExpanded}
+      data-metric={metric.key}
+      data-score={metric.score}
+      role="listitem"
+    >
+      <div className="structural-metric-heading">
+        <div className="structural-metric-title">
+          <span>{metric.label}</span>
+          <button
+            aria-controls={calculationId}
+            aria-expanded={isCalculationExpanded}
+            aria-label={`Explain ${metric.label} calculation`}
+            className="structural-info-button"
+            onClick={() => setIsCalculationExpanded((current) => !current)}
+            title={`Show the ${metric.label.toLowerCase()} formula and inputs`}
+            type="button"
+          >
+            <Info aria-hidden="true" />
+          </button>
+        </div>
+        <strong>
+          {metric.grade} · {metric.score}
+        </strong>
+      </div>
+      <div
+        aria-label={`${metric.label}: ${metric.score} out of 100`}
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={metric.score}
+        className="structural-score-track"
+        role="meter"
+      >
+        <span style={{ width: `${metric.score}%` }} />
+      </div>
+      <small>{metric.detail}</small>
+      <div
+        aria-label={`${metric.label} calculation details`}
+        className="structural-calculation-panel"
+        hidden={!isCalculationExpanded}
+        id={calculationId}
+        role="note"
+      >
+        <div className="structural-calculation-section">
+          <h4>Rationale</h4>
+          <p>{metric.calculation.rationale}</p>
+        </div>
+        <div className="structural-calculation-section">
+          <h4>Formula</h4>
+          <code className="structural-formula">
+            {metric.calculation.formula}
+          </code>
+        </div>
+        <div className="structural-calculation-section">
+          <h4>Current inputs</h4>
+          <dl className="structural-calculation-inputs">
+            {metric.calculation.inputs.map((input) => (
+              <div key={input.key}>
+                <dt>
+                  <span>{input.label}</span>
+                  <code>{input.key}</code>
+                </dt>
+                <dd>{formatStructuralCalculationInput(input, unit)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <p className="structural-scoring-note">
+          {metric.calculation.scoringNote}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function HoverStructuralAssessment({
   params,
   unit,
@@ -2814,6 +2967,9 @@ function HoverStructuralAssessment({
   unit: LengthUnit;
 }) {
   const assessment = getHoverDiningTableStructuralAssessment(params);
+  const [isOverallCalculationExpanded, setIsOverallCalculationExpanded] =
+    useState(false);
+  const overallCalculationId = useId();
   const formatDelta = (delta: number) =>
     `${delta > 0 ? "+" : ""}${delta.toFixed(1)}`;
   return (
@@ -2823,9 +2979,24 @@ function HoverStructuralAssessment({
       data-overall-score={assessment.overallScore}
     >
       <div className="structural-score-header">
-        <div>
-          <p>Geometry-only screening</p>
-          <h3>Wobble resistance</h3>
+        <div className="structural-assessment-title">
+          <div>
+            <p>Geometry-only screening</p>
+            <h3>Wobble resistance</h3>
+          </div>
+          <button
+            aria-controls={overallCalculationId}
+            aria-expanded={isOverallCalculationExpanded}
+            aria-label="Explain overall structural score calculation"
+            className="structural-info-button"
+            onClick={() =>
+              setIsOverallCalculationExpanded((current) => !current)
+            }
+            title="Show the overall weighting and grade calculation"
+            type="button"
+          >
+            <Info aria-hidden="true" />
+          </button>
         </div>
         <div
           aria-label={`Overall structural grade ${assessment.overallGrade}, ${assessment.overallScore} out of 100`}
@@ -2839,33 +3010,53 @@ function HoverStructuralAssessment({
         Higher is better. This compares CAD proportions and support topology;
         it does not certify joints, glue, grain, floor flatness, or durability.
       </p>
+      <div
+        aria-label="Overall structural score calculation details"
+        className="structural-calculation-panel structural-overall-calculation"
+        hidden={!isOverallCalculationExpanded}
+        id={overallCalculationId}
+        role="note"
+      >
+        <div className="structural-calculation-section">
+          <h4>Rationale</h4>
+          <p>{assessment.overallCalculation.rationale}</p>
+        </div>
+        <div className="structural-calculation-section">
+          <h4>Formula</h4>
+          <code className="structural-formula">
+            {assessment.overallCalculation.formula}
+          </code>
+        </div>
+        <div className="structural-calculation-section">
+          <h4>Current weighted inputs</h4>
+          <dl className="structural-calculation-inputs">
+            {assessment.metrics.map((metric) => (
+              <div key={metric.key}>
+                <dt>
+                  <span>{metric.label}</span>
+                  <code>
+                    {(metric.calculation.weight * 100).toFixed(0)}% weight
+                  </code>
+                </dt>
+                <dd>
+                  {metric.score} × {metric.calculation.weight.toFixed(2)} ={" "}
+                  {(metric.score * metric.calculation.weight).toFixed(1)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <p className="structural-scoring-note">
+          {assessment.overallCalculation.scoringNote}
+        </p>
+      </div>
       <div className="structural-metrics" role="list">
         {assessment.metrics.map((metric) => (
-          <div
-            className="structural-metric"
-            data-metric={metric.key}
-            data-score={metric.score}
+          <HoverStructuralMetric
             key={metric.key}
-            role="listitem"
-          >
-            <div className="structural-metric-heading">
-              <span>{metric.label}</span>
-              <strong>
-                {metric.grade} · {metric.score}
-              </strong>
-            </div>
-            <div
-              aria-label={`${metric.label}: ${metric.score} out of 100`}
-              aria-valuemax={100}
-              aria-valuemin={0}
-              aria-valuenow={metric.score}
-              className="structural-score-track"
-              role="meter"
-            >
-              <span style={{ width: `${metric.score}%` }} />
-            </div>
-            <small>{metric.detail}</small>
-          </div>
+            metric={metric}
+            unit={unit}
+          />
         ))}
       </div>
       <div className="structural-sensitivity">
@@ -2910,6 +3101,47 @@ function HoverStructuralAssessment({
   );
 }
 
+function HoverDesignChecks({
+  auditExpanded,
+  auditItems,
+  idPrefix,
+  onAuditToggle,
+  onStructureToggle,
+  params,
+  structureExpanded,
+  unit,
+}: {
+  auditExpanded: boolean;
+  auditItems: AuditItem[];
+  idPrefix: string;
+  onAuditToggle: () => void;
+  onStructureToggle: () => void;
+  params: ModelParams;
+  structureExpanded: boolean;
+  unit: LengthUnit;
+}) {
+  return (
+    <>
+      <CollapsiblePanelSection
+        expanded={structureExpanded}
+        id={`${idPrefix}-structure`}
+        onToggle={onStructureToggle}
+        title="Structure"
+      >
+        <HoverStructuralAssessment params={params} unit={unit} />
+      </CollapsiblePanelSection>
+      <CollapsiblePanelSection
+        expanded={auditExpanded}
+        id={`${idPrefix}-audit`}
+        onToggle={onAuditToggle}
+        title="Audit"
+      >
+        <AuditList items={auditItems} />
+      </CollapsiblePanelSection>
+    </>
+  );
+}
+
 function LoadingShell({ message }: { message: string }) {
   return (
     <main className="app-shell">
@@ -2941,7 +3173,9 @@ type WorkspaceLibrarySidebarProps = {
   activeVersionId: Id<"versions"> | null;
   catalogModels: CatalogSeedModel[];
   convexEnabled: boolean;
+  designChecks: ReactNode | null;
   isCollapsed: boolean;
+  isCompactOpen: boolean;
   selectedModelId: string;
   onOpenModel: (modelId: string) => void;
   onOpenVersion: (version: SavedLibraryVersion) => void;
@@ -2952,20 +3186,33 @@ function WorkspaceLibrarySidebar({
   activeVersionId,
   catalogModels,
   convexEnabled,
+  designChecks,
   isCollapsed,
+  isCompactOpen,
   selectedModelId,
   onOpenModel,
   onOpenVersion,
   onToggleCollapsed,
 }: WorkspaceLibrarySidebarProps) {
-  const [activeSection, setActiveSection] = useState<"models" | "versions">(
-    "models",
-  );
+  const [activeSection, setActiveSection] = useState<
+    "models" | "versions" | "checks"
+  >("models");
   const [query, setQuery] = useState("");
+  const hasDesignChecks = designChecks !== null;
   const filteredModels = useMemo(
     () => filterLibraryModels(catalogModels, query),
     [catalogModels, query],
   );
+
+  useEffect(() => {
+    if (hasDesignChecks) {
+      setActiveSection("checks");
+    } else {
+      setActiveSection((current) =>
+        current === "checks" ? "models" : current,
+      );
+    }
+  }, [hasDesignChecks, selectedModelId]);
 
   if (isCollapsed) {
     return (
@@ -3006,12 +3253,29 @@ function WorkspaceLibrarySidebar({
         >
           <Clock3 aria-hidden="true" />
         </button>
+        {hasDesignChecks ? (
+          <button
+            aria-label="Show design checks"
+            className={activeSection === "checks" ? "active" : ""}
+            onClick={() => {
+              setActiveSection("checks");
+              onToggleCollapsed();
+            }}
+            title="Design checks"
+            type="button"
+          >
+            <SlidersHorizontal aria-hidden="true" />
+          </button>
+        ) : null}
       </aside>
     );
   }
 
   return (
-    <aside className="workspace-library-sidebar" aria-label="Workspace model library">
+    <aside
+      className={`workspace-library-sidebar${isCompactOpen ? " compact-open" : ""}`}
+      aria-label="Workspace model library"
+    >
       <div className="workspace-library-topbar">
         <button
           aria-label="Collapse model library"
@@ -3041,6 +3305,16 @@ function WorkspaceLibrarySidebar({
           <Clock3 aria-hidden="true" />
           Saved Versions
         </button>
+        {hasDesignChecks ? (
+          <button
+            className={activeSection === "checks" ? "active" : ""}
+            onClick={() => setActiveSection("checks")}
+            type="button"
+          >
+            <SlidersHorizontal aria-hidden="true" />
+            Design checks
+          </button>
+        ) : null}
       </nav>
 
       {activeSection === "models" ? (
@@ -3089,13 +3363,20 @@ function WorkspaceLibrarySidebar({
             })}
           </div>
         </div>
-      ) : (
+      ) : activeSection === "versions" ? (
         <WorkspaceSavedVersions
           activeVersionId={activeVersionId}
           convexEnabled={convexEnabled}
           selectedModelId={selectedModelId}
           onOpenVersion={onOpenVersion}
         />
+      ) : (
+        <div
+          aria-label="Hover-table design checks"
+          className="workspace-design-checks"
+        >
+          {designChecks}
+        </div>
       )}
     </aside>
   );
@@ -3380,6 +3661,8 @@ function WorkspaceHeader({
   onExportHoverTemplates,
   onSavedVersion,
   onThemeChange,
+  onOpenNavigation,
+  showNavigationTrigger,
 }: {
   activeVersionId: Id<"versions"> | null;
   activeVersionTitle: string | null;
@@ -3396,7 +3679,10 @@ function WorkspaceHeader({
   onExportHoverTemplates: () => void;
   onSavedVersion: (versionId: Id<"versions">, title: string) => void;
   onThemeChange: (theme: ThemeMode) => void;
+  onOpenNavigation: () => void;
+  showNavigationTrigger: boolean;
 }) {
+  const isDark = theme === "dark";
   return (
     <header className="workspace-header">
       <div className="workspace-title">
@@ -3406,6 +3692,36 @@ function WorkspaceHeader({
         </div>
       </div>
       <div className="workspace-actions">
+        {showNavigationTrigger ? (
+          <button
+            aria-label="Open workspace navigation"
+            className="workspace-quick-action workspace-navigation-trigger"
+            onClick={onOpenNavigation}
+            title="Open model library and design checks"
+            type="button"
+          >
+            <PanelLeftOpen aria-hidden="true" />
+          </button>
+        ) : null}
+        <button
+          aria-label="Toggle workspace appearance"
+          className="workspace-quick-action"
+          onClick={() => onThemeChange(isDark ? "light" : "dark")}
+          title={isDark ? "Use light theme" : "Use dark theme"}
+          type="button"
+        >
+          {isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+        </button>
+        <button
+          aria-label="Download current model STL"
+          className="workspace-quick-action workspace-export-action"
+          onClick={onExport}
+          title="Download current model STL"
+          type="button"
+        >
+          <Download aria-hidden="true" />
+          <span>Export</span>
+        </button>
         <WorkspaceActionsMenu
           activeVersionId={activeVersionId}
           convexEnabled={convexEnabled}
@@ -3451,6 +3767,13 @@ export default function App({
   const [isLibrarySidebarCollapsed, setIsLibrarySidebarCollapsed] =
     useState(false);
   const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(false);
+  const [isAuditExpanded, setIsAuditExpanded] = useState(true);
+  const [isStructureExpanded, setIsStructureExpanded] = useState(true);
+  const isCompactWorkspace = useMediaQuery("(max-width: 1240px)");
+  const isMobileWorkspace = useMediaQuery("(max-width: 840px)");
+  const [isCompactLibraryOpen, setIsCompactLibraryOpen] = useState(false);
+  const [mobileInspectorSection, setMobileInspectorSection] =
+    useState<MobileInspectorSection>("assembly");
   const [coreViewMode, setCoreViewMode] = useState<CoreViewMode>("surface");
   const [renderMode, setRenderMode] = useState<RenderMode>("solid");
   const [showOriginal, setShowOriginal] = useState(false);
@@ -3666,7 +3989,18 @@ export default function App({
         ),
       };
       if (model.viewer === "hover-dining-table-v1") {
-        if (key === "topSupportThickness") {
+        if (key === "frameSideWidth") {
+          const roundoverLimits = getParameterLimits(
+            model,
+            next,
+            "frameEdgeRoundover",
+          );
+          next.frameEdgeRoundover = clamp(
+            current.frameEdgeRoundover,
+            roundoverLimits.min,
+            roundoverLimits.max,
+          );
+        } else if (key === "topSupportThickness") {
           next.frameTopRailHeight = Math.max(current.frameTopRailHeight, nextValue);
         } else if (key === "bottomSupportThickness") {
           next.frameBottomRailHeight = Math.max(
@@ -3918,26 +4252,57 @@ export default function App({
         }
         onSavedVersion={handleSavedVersion}
         onThemeChange={updateTheme}
+        onOpenNavigation={() => setIsCompactLibraryOpen(true)}
         params={params}
+        showNavigationTrigger={isCompactWorkspace}
         theme={theme}
         unit={unit}
       />
 
       <div className="app-shell">
+        {isCompactWorkspace && isCompactLibraryOpen ? (
+          <button
+            aria-label="Close workspace navigation"
+            className="workspace-library-drawer-mask"
+            onClick={() => setIsCompactLibraryOpen(false)}
+            type="button"
+          />
+        ) : null}
         <WorkspaceLibrarySidebar
           activeVersionId={activeVersionId}
           catalogModels={catalogSeedModels}
           convexEnabled={convexEnabled}
-          isCollapsed={isLibrarySidebarCollapsed}
+          designChecks={
+            model.viewer === "hover-dining-table-v1" ? (
+              <HoverDesignChecks
+                auditExpanded={isAuditExpanded}
+                auditItems={auditItems}
+                idPrefix="sidebar-design-checks"
+                onAuditToggle={() =>
+                  setIsAuditExpanded((current) => !current)
+                }
+                onStructureToggle={() =>
+                  setIsStructureExpanded((current) => !current)
+                }
+                params={params}
+                structureExpanded={isStructureExpanded}
+                unit={unit}
+              />
+            ) : null
+          }
+          isCollapsed={isCompactWorkspace ? false : isLibrarySidebarCollapsed}
+          isCompactOpen={isCompactWorkspace && isCompactLibraryOpen}
           selectedModelId={selectedModelId}
           onOpenModel={openModel}
           onOpenVersion={openLibraryVersion}
           onToggleCollapsed={() =>
-            setIsLibrarySidebarCollapsed((current) => !current)
+            isCompactWorkspace
+              ? setIsCompactLibraryOpen(false)
+              : setIsLibrarySidebarCollapsed((current) => !current)
           }
         />
 
-        {!isLibrarySidebarCollapsed ? (
+        {!isLibrarySidebarCollapsed && !isCompactWorkspace ? (
           <div
             aria-label="Resize model library"
             aria-orientation="vertical"
@@ -4018,6 +4383,11 @@ export default function App({
         <aside
           className={`inspector${isInspectorCollapsed ? " collapsed" : ""}`}
           aria-label="Parameters and audit"
+          data-mobile-section={
+            model.viewer === "hover-dining-table-v1"
+              ? mobileInspectorSection
+              : undefined
+          }
         >
           {isInspectorCollapsed ? (
             <button
@@ -4033,7 +4403,9 @@ export default function App({
             <>
               <header className="inspector-header">
                 <div>
-                  <p>Model controls</p>
+                  {model.viewer === "hover-dining-table-v1" ? null : (
+                    <p>Model controls</p>
+                  )}
                   <h2>Inspector</h2>
                 </div>
                 <button
@@ -4047,9 +4419,57 @@ export default function App({
                 </button>
               </header>
 
+              {model.viewer === "hover-dining-table-v1" &&
+              isMobileWorkspace ? (
+                <nav
+                  aria-label="Mobile inspector section"
+                  className="mobile-workspace-tabs"
+                >
+                  {(
+                    [
+                      ["assembly", "Assembly"],
+                      ["parameters", "Parameters"],
+                      ["checks", "Checks"],
+                    ] as const
+                  ).map(([section, label]) => (
+                    <button
+                      aria-pressed={mobileInspectorSection === section}
+                      className={
+                        mobileInspectorSection === section ? "active" : ""
+                      }
+                      key={section}
+                      onClick={() => setMobileInspectorSection(section)}
+                      type="button"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </nav>
+              ) : null}
+
               <div className="inspector-body">
-                <section className="panel-section">
-                  <h2>Parameters</h2>
+                {model.viewer === "hover-dining-table-v1" ? (
+                  <section className="panel-section assembly-panel-section">
+                    <h2>Assembly</h2>
+                    <HoverAssemblyControl
+                      onChange={setAssemblyMode}
+                      value={assemblyMode}
+                    />
+                    <p className="assembly-mode-note">
+                      Switch between the assembled model, all{" "}
+                      {getHoverDiningTablePieceCount(params)} pieces, the
+                      full-size cut sheet, and routing templates. Template STLs
+                      export from workspace actions.
+                    </p>
+                  </section>
+                ) : null}
+
+                <section className="panel-section model-controls-panel-section">
+                  <h2>
+                    {model.viewer === "hover-dining-table-v1"
+                      ? "Model controls"
+                      : "Parameters"}
+                  </h2>
                   {model.viewer === "dining-table-v1" ? (
                     <>
                       <ScaleControl
@@ -4144,23 +4564,6 @@ export default function App({
                   </section>
                 ) : null}
 
-                {model.viewer === "hover-dining-table-v1" ? (
-                  <section className="panel-section">
-                    <h2>Assembly</h2>
-                    <HoverAssemblyControl
-                      onChange={setAssemblyMode}
-                      value={assemblyMode}
-                    />
-                    <p className="assembly-mode-note">
-                      Explode all {getHoverDiningTablePieceCount(params)} pieces,
-                      open the full-size fabrication
-                      sheet, or inspect the plate-split rail and stile routing
-                      templates. Export the individual template STLs from the
-                      workspace actions menu.
-                    </p>
-                  </section>
-                ) : null}
-
                 {model.viewer === "simple-box-v1" ? (
                   <section className="panel-section">
                     <h2>Dividers</h2>
@@ -4188,7 +4591,7 @@ export default function App({
                   </section>
                 ) : null}
 
-                <section className="panel-section">
+                <section className="panel-section rendering-panel-section">
                   <h2>Rendering</h2>
                   <RenderModeControl onChange={setRenderMode} value={renderMode} />
                   {model.viewer !== "dining-table-v1" &&
@@ -4205,17 +4608,35 @@ export default function App({
                   ) : null}
                 </section>
 
-                <section className="panel-section">
-                  <h2>Audit</h2>
-                  <AuditList items={auditItems} />
-                </section>
-
                 {model.viewer === "hover-dining-table-v1" ? (
-                  <section className="panel-section">
-                    <h2>Structure</h2>
-                    <HoverStructuralAssessment params={params} unit={unit} />
-                  </section>
-                ) : null}
+                  isCompactWorkspace ? (
+                    <div className="inspector-design-checks">
+                      <HoverDesignChecks
+                        auditExpanded={isAuditExpanded}
+                        auditItems={auditItems}
+                        idPrefix="inspector-design-checks"
+                        onAuditToggle={() =>
+                          setIsAuditExpanded((current) => !current)
+                        }
+                        onStructureToggle={() =>
+                          setIsStructureExpanded((current) => !current)
+                        }
+                        params={params}
+                        structureExpanded={isStructureExpanded}
+                        unit={unit}
+                      />
+                    </div>
+                  ) : null
+                ) : (
+                  <CollapsiblePanelSection
+                    expanded={isAuditExpanded}
+                    id="inspector-audit"
+                    onToggle={() => setIsAuditExpanded((current) => !current)}
+                    title="Audit"
+                  >
+                    <AuditList items={auditItems} />
+                  </CollapsiblePanelSection>
+                )}
               </div>
             </>
           )}

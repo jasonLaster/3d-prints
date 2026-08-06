@@ -5,8 +5,10 @@ import { fileURLToPath } from "node:url";
 import * as THREE from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import {
+  createHoverDiningTableCutPartGeometry,
   createHoverDiningTableExplodedParts,
   createHoverDiningTableGeometry,
+  createHoverDiningTableHardwareGeometries,
   getHoverDiningTableCutList,
   getHoverDiningTableParameterLimits,
   getHoverDiningTablePieceCount,
@@ -267,6 +269,46 @@ test("derives two centered half-lapped Xs with direct tabletop and floor contact
   );
   expect(fullSize.upperBrace.angleRadians).toBeGreaterThan(0);
   expect(fullSize.lowerBrace.angleRadians).toBeGreaterThan(0);
+  expect(fullSize.channels.count).toBe(3);
+  expect(fullSize.channels.centerXs[1]).toBeCloseTo(0, 6);
+  expect(fullSize.channels.centerXs[0]).toBeCloseTo(
+    -fullSize.channels.centerXs[2],
+    6,
+  );
+  expect(fullSize.channels.zBottom).toBeCloseTo(fullSize.topBottom, 6);
+  expect(fullSize.channels.zBottom).toBeCloseTo(fullSize.upperBrace.zTop, 6);
+  expect(fullSize.channels.zBottom).toBeCloseTo(
+    fullSize.upperStretchers.zTop,
+    6,
+  );
+  expect(fullSize.channels.zTop).toBeLessThan(fullSize.height);
+  const directOakBearingFraction =
+    1 -
+    (fullSize.channels.count * fullSize.channels.width) /
+      fullSize.braceSpanX;
+  expect(directOakBearingFraction).toBeGreaterThanOrEqual(0.5);
+
+  const hardware = createHoverDiningTableHardwareGeometries(defaultParams);
+  expect(hardware.channels).toHaveLength(3);
+  hardware.channels.forEach((channel, index) => {
+    const inspectedChannel = inspectGeometry(channel);
+    expect(inspectedChannel.finite, `channel ${index + 1}`).toBe(true);
+    expect(inspectedChannel.degenerateTriangles, `channel ${index + 1}`).toBe(0);
+    expect(inspectedChannel.size.x, `channel ${index + 1} width`).toBeCloseTo(
+      scaled.channels.width,
+      5,
+    );
+    expect(inspectedChannel.size.y, `channel ${index + 1} length`).toBeCloseTo(
+      scaled.channels.length,
+      5,
+    );
+    expect(inspectedChannel.size.z, `channel ${index + 1} depth`).toBeCloseTo(
+      scaled.channels.depth,
+      5,
+    );
+    expect(inspectedChannel.min.z).toBeCloseTo(scaled.topBottom, 5);
+    channel.dispose();
+  });
 
   const geometry = createHoverDiningTableGeometry(defaultParams, model);
   const inspected = inspectGeometry(geometry);
@@ -308,6 +350,15 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   expect(definitions.bottomSupportWidth.limits.max).toBeGreaterThan(2 * 25.4);
   expect(definitions.topSupportThickness.limits.max).toBeGreaterThan(1.5 * 25.4);
   expect(definitions.bottomSupportThickness.limits.max).toBeGreaterThan(1.5 * 25.4);
+  expect(
+    getHoverDiningTableParameterLimits(
+      model,
+      defaultParams,
+      "channelWidth",
+    ).max,
+  ).toBeLessThanOrEqual(
+    getHoverDiningTableSpec(defaultParams).fullSize.braceSpanX / 6,
+  );
 
   const expandedMembers = {
     ...defaultParams,
@@ -342,6 +393,61 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   expect(expanded.lowerBrace.thickness).toBeCloseTo(1.75 * 25.4, 6);
 });
 
+test("supports independent half-inch end-box stiles", () => {
+  const halfInch = 0.5 * 25.4;
+  const narrowParams = {
+    ...defaultParams,
+    frameSideWidth: halfInch,
+  };
+  const definitions = Object.fromEntries(
+    model.parameters.map((parameter) => [parameter.key, parameter]),
+  );
+  expect(definitions.frameSideWidth.limits.min).toBeCloseTo(halfInch, 6);
+  expect(
+    getHoverDiningTableParameterLimits(
+      model,
+      narrowParams,
+      "frameSideWidth",
+    ).min,
+  ).toBeCloseTo(halfInch, 6);
+  expect(
+    getHoverDiningTableParameterLimits(
+      model,
+      narrowParams,
+      "topSupportWidth",
+    ).max,
+  ).toBeGreaterThan(halfInch);
+
+  const spec = getHoverDiningTableSpec(narrowParams).fullSize;
+  expect(spec.frameSideWidth).toBeCloseTo(halfInch, 6);
+  expect(spec.upperBrace.width).toBeGreaterThan(spec.frameSideWidth);
+  expect(spec.lowerBrace.width).toBeGreaterThan(spec.frameSideWidth);
+  expect(spec.frameEdgeRoundover).toBeCloseTo(0.1875 * 25.4, 6);
+
+  const cutList = getHoverDiningTableCutList(narrowParams);
+  const stile = cutList.parts.find((part) => part.id === "B3")!;
+  expect(stile.width).toBeCloseTo(halfInch, 5);
+  const template = getHoverDiningTableTemplateSummary(
+    narrowParams,
+    model,
+  ).templates.find((candidate) => candidate.kind === "vertical-stile")!;
+  expect(template.finishedWidth).toBeCloseTo(stile.width, 5);
+
+  const assembled = createHoverDiningTableGeometry(narrowParams, model);
+  const assembledInspection = inspectGeometry(assembled);
+  expect(assembledInspection.finite).toBe(true);
+  expect(assembledInspection.degenerateTriangles).toBe(0);
+  assembled.dispose();
+
+  const exploded = createHoverDiningTableExplodedParts(narrowParams, model);
+  for (const part of exploded) {
+    const inspection = inspectGeometry(part.geometry);
+    expect(inspection.finite, part.name).toBe(true);
+    expect(inspection.degenerateTriangles, part.name).toBe(0);
+    part.geometry.dispose();
+  }
+});
+
 test("grades wobble risks and responds monotonically to structural parameters", () => {
   const baseline = getHoverDiningTableStructuralAssessment(defaultParams);
   expect(baseline.metrics).toHaveLength(6);
@@ -350,6 +456,44 @@ test("grades wobble risks and responds monotonically to structural parameters", 
   expect(baseline.metrics.every((metric) =>
     Number.isFinite(metric.score) && metric.score >= 0 && metric.score <= 100,
   )).toBe(true);
+  expect(
+    baseline.metrics.reduce(
+      (total, metric) => total + metric.calculation.weight,
+      0,
+    ),
+  ).toBeCloseTo(1, 10);
+  expect(baseline.overallCalculation.formula).toContain(
+    "23% × Lengthwise racking",
+  );
+  expect(baseline.overallCalculation.scoringNote).toContain(
+    baseline.overallScore.toFixed(1),
+  );
+  for (const metric of baseline.metrics) {
+    expect(metric.calculation.rationale.length, metric.key).toBeGreaterThan(40);
+    expect(metric.calculation.formula.length, metric.key).toBeGreaterThan(20);
+    expect(metric.calculation.inputs.length, metric.key).toBeGreaterThanOrEqual(5);
+    expect(Number.isFinite(metric.calculation.rawScore), metric.key).toBe(true);
+    expect(metric.calculation.scoringNote, metric.key).toContain(
+      `${(metric.calculation.weight * 100).toFixed(0)}%`,
+    );
+    expect(
+      new Set(metric.calculation.inputs.map((input) => input.key)).size,
+      metric.key,
+    ).toBe(metric.calculation.inputs.length);
+  }
+  expect(
+    baseline.metrics
+      .find((metric) => metric.key === "longitudinal-racking")!
+      .calculation.inputs.map((input) => input.key),
+  ).toEqual(
+    expect.arrayContaining([
+      "overallHeight",
+      "topSupportStyle",
+      "topSupportWidth",
+      "bottomSupportStyle",
+      "bottomSupportWidth",
+    ]),
+  );
   expect(baseline.heightSensitivity.lower?.delta).toBeGreaterThan(0);
   expect(baseline.heightSensitivity.higher?.delta).toBeLessThan(0);
 
@@ -434,11 +578,11 @@ test("atomically settles transient support-member and mating-box dimensions", ()
   geometry.dispose();
 });
 
-test("explodes the glue-up into one top, eight box bars, and four X bars", () => {
+test("explodes the assembly into one top, three channels, eight box bars, and four X bars", () => {
   const parts = createHoverDiningTableExplodedParts(defaultParams, model);
   const { scaled: spec } = getHoverDiningTableSpec(defaultParams);
-  expect(parts).toHaveLength(13);
-  expect(new Set(parts.map((part) => part.name)).size).toBe(13);
+  expect(parts).toHaveLength(16);
+  expect(new Set(parts.map((part) => part.name)).size).toBe(16);
   expect(
     Object.fromEntries(
       [...new Set(parts.map((part) => part.category))].map((category) => [
@@ -448,6 +592,7 @@ test("explodes the glue-up into one top, eight box bars, and four X bars", () =>
     ),
   ).toEqual({
     tabletop: 1,
+    "tabletop-hardware": 3,
     "end-box-horizontal": 4,
     "end-box-vertical": 4,
     "upper-x": 2,
@@ -602,10 +747,12 @@ test("explodes the glue-up into one top, eight box bars, and four X bars", () =>
     expect(inspected.size.x, part.name).toBeGreaterThan(0);
     expect(inspected.size.y, part.name).toBeGreaterThan(0);
     expect(inspected.size.z, part.name).toBeGreaterThan(0);
-    const woodUvs = inspectWoodUvs(part.geometry);
-    expect(woodUvs.finite, part.name).toBe(true);
-    expect(woodUvs.inUnitRange, part.name).toBe(true);
-    expect(woodUvs.count, part.name).toBe(inspected.position.count);
+    if (part.material === "Oak") {
+      const woodUvs = inspectWoodUvs(part.geometry);
+      expect(woodUvs.finite, part.name).toBe(true);
+      expect(woodUvs.inUnitRange, part.name).toBe(true);
+      expect(woodUvs.count, part.name).toBe(inspected.position.count);
+    }
     expect(part.offset.toArray().every(Number.isFinite), part.name).toBe(true);
     part.geometry.dispose();
   }
@@ -613,12 +760,12 @@ test("explodes the glue-up into one top, eight box bars, and four X bars", () =>
 
 test("derives assembled, exploded, and cut-list geometry for all six support layouts", () => {
   const variants = [
-    { top: 0, bottom: 0, pieces: 13, lines: 8, topCategory: "upper-x", bottomCategory: "floor-x" },
-    { top: 0, bottom: 1, pieces: 12, lines: 7, topCategory: "upper-x", bottomCategory: "floor-center-board" },
-    { top: 0, bottom: 2, pieces: 11, lines: 6, topCategory: "upper-x", bottomCategory: null },
-    { top: 1, bottom: 0, pieces: 13, lines: 7, topCategory: "upper-stretcher", bottomCategory: "floor-x" },
-    { top: 1, bottom: 1, pieces: 12, lines: 6, topCategory: "upper-stretcher", bottomCategory: "floor-center-board" },
-    { top: 1, bottom: 2, pieces: 11, lines: 5, topCategory: "upper-stretcher", bottomCategory: null },
+    { top: 0, bottom: 0, pieces: 16, lines: 9, topCategory: "upper-x", bottomCategory: "floor-x" },
+    { top: 0, bottom: 1, pieces: 15, lines: 8, topCategory: "upper-x", bottomCategory: "floor-center-board" },
+    { top: 0, bottom: 2, pieces: 14, lines: 7, topCategory: "upper-x", bottomCategory: null },
+    { top: 1, bottom: 0, pieces: 16, lines: 8, topCategory: "upper-stretcher", bottomCategory: "floor-x" },
+    { top: 1, bottom: 1, pieces: 15, lines: 7, topCategory: "upper-stretcher", bottomCategory: "floor-center-board" },
+    { top: 1, bottom: 2, pieces: 14, lines: 6, topCategory: "upper-stretcher", bottomCategory: null },
   ] as const;
 
   for (const variant of variants) {
@@ -650,6 +797,7 @@ test("derives assembled, exploded, and cut-list geometry for all six support lay
 
     const exploded = createHoverDiningTableExplodedParts(params, model);
     expect(exploded).toHaveLength(variant.pieces);
+    expect(exploded.filter((part) => part.category === "tabletop-hardware")).toHaveLength(3);
     expect(exploded.filter((part) => part.category === variant.topCategory)).toHaveLength(2);
     expect(exploded.filter((part) => part.category === "upper-x")).toHaveLength(
       variant.top === 0 ? 2 : 0,
@@ -687,6 +835,25 @@ test("derives assembled, exploded, and cut-list geometry for all six support lay
     expect(cutList.parts.filter((part) => part.kind === "support")).toHaveLength(
       (variant.top === 1 ? 1 : 0) + (variant.bottom === 1 ? 1 : 0),
     );
+    for (const cutPart of cutList.parts) {
+      const cutGeometry = createHoverDiningTableCutPartGeometry(
+        params,
+        model,
+        cutPart.id,
+      );
+      const cutInspection = inspectGeometry(cutGeometry);
+      expect(cutInspection.finite, `${variant.top}/${variant.bottom} ${cutPart.id}`).toBe(
+        true,
+      );
+      expect(
+        cutInspection.degenerateTriangles,
+        `${variant.top}/${variant.bottom} ${cutPart.id}`,
+      ).toBe(0);
+      expect(cutInspection.size.x).toBeGreaterThan(0);
+      expect(cutInspection.size.y).toBeGreaterThan(0);
+      expect(cutInspection.size.z).toBeGreaterThan(0);
+      cutGeometry.dispose();
+    }
     exploded.forEach((part) => part.geometry.dispose());
   }
 
@@ -705,16 +872,17 @@ test("derives assembled, exploded, and cut-list geometry for all six support lay
   ).toBeCloseTo(originalStretchers.placementBoundaryY!, 6);
 });
 
-test("derives a full-size finished cut schedule for all 13 pieces", () => {
+test("derives a full-size finished cut schedule for all 16 pieces", () => {
   const cutList = getHoverDiningTableCutList(defaultParams);
   const { fullSize: spec } = getHoverDiningTableSpec(defaultParams);
-  expect(cutList.material).toBe("Oak");
+  expect(cutList.material).toBe("White oak + blackened steel");
   expect(cutList.dimensionBasis).toBe("full-size finished dimensions");
-  expect(cutList.totalPieces).toBe(13);
-  expect(cutList.parts).toHaveLength(8);
-  expect(cutList.parts.reduce((sum, part) => sum + part.quantity, 0)).toBe(13);
+  expect(cutList.totalPieces).toBe(16);
+  expect(cutList.parts).toHaveLength(9);
+  expect(cutList.parts.reduce((sum, part) => sum + part.quantity, 0)).toBe(16);
   expect(cutList.parts.map((part) => part.id)).toEqual([
     "T1",
+    "H1",
     "B1",
     "B2",
     "B3",
@@ -737,6 +905,17 @@ test("derives a full-size finished cut schedule for all 13 pieces", () => {
     spec.topEdgeRoll,
     6,
   );
+
+  const channel = cutList.parts.find((part) => part.id === "H1")!;
+  expect(channel.quantity).toBe(3);
+  expect(channel.material).toBe("Steel");
+  expect(channel.grainDirection).toBe("n/a");
+  expect(channel.length).toBeCloseTo(spec.channels.length, 6);
+  expect(channel.width).toBeCloseTo(spec.channels.width, 6);
+  expect(channel.thickness).toBeCloseTo(spec.channels.depth, 6);
+  expect(channel.fabricationProfile.family).toBe("channel");
+  expect(channel.fabricationProfile.section.radius).toBe(0);
+  expect(channel.fabricationProfile.section.outline).toHaveLength(9);
 
   for (const id of ["B1", "B2"] as const) {
     const rail = cutList.parts.find((part) => part.id === id)!;
@@ -810,12 +989,20 @@ test("derives a full-size finished cut schedule for all 13 pieces", () => {
         part.fabricationProfile.bounds.minY,
       `${part.id} profile height`,
     ).toBeGreaterThan(0);
-    expect(
-      part.fabricationProfile.section.outline.some(
-        (command) => command.kind === "cubic",
-      ),
-      `${part.id} edge-treatment section`,
-    ).toBe(true);
+    if (part.kind === "channel") {
+      expect(
+        part.fabricationProfile.section.outline.some(
+          (command) => command.kind === "cubic",
+        ),
+      ).toBe(false);
+    } else {
+      expect(
+        part.fabricationProfile.section.outline.some(
+          (command) => command.kind === "cubic",
+        ),
+        `${part.id} edge-treatment section`,
+      ).toBe(true);
+    }
     if (part.lap) {
       expect(part.lap.centerFromEnd, part.id).toBeCloseTo(part.length / 2, 6);
       expect(part.lap.length, part.id).toBeGreaterThan(part.width);
@@ -870,7 +1057,30 @@ test("derives a full-size finished cut schedule for all 13 pieces", () => {
 });
 
 test("builds two full-size routing templates as plate-safe dovetailed STLs", () => {
+  const expectTemplateParity = (params: ModelParams) => {
+    const cutList = getHoverDiningTableCutList(params);
+    const templateSummary = getHoverDiningTableTemplateSummary(params, model);
+    for (const [templateKind, cutPartId] of [
+      ["top-rail", "B1"],
+      ["vertical-stile", "B3"],
+    ] as const) {
+      const template = templateSummary.templates.find(
+        (candidate) => candidate.kind === templateKind,
+      )!;
+      const cutPart = cutList.parts.find((candidate) => candidate.id === cutPartId)!;
+      expect(template.finishedLength, `${templateKind} length`).toBeCloseTo(
+        cutPart.length,
+        5,
+      );
+      expect(template.finishedWidth, `${templateKind} width`).toBeCloseTo(
+        cutPart.width,
+        5,
+      );
+    }
+  };
+
   const summary = getHoverDiningTableTemplateSummary(defaultParams, model);
+  expectTemplateParity(defaultParams);
   expect(summary.thickness).toBeCloseTo(3.175, 6);
   expect(summary.plateLength).toBeCloseTo(228.6, 6);
   expect(summary.dovetailDepth).toBeCloseTo(12.7, 6);
@@ -891,8 +1101,11 @@ test("builds two full-size routing templates as plate-safe dovetailed STLs", () 
   );
   for (const kind of ["top-rail", "vertical-stile"] as const) {
     const family = segments.filter((segment) => segment.template === kind);
+    const template = summary.templates.find(
+      (candidate) => candidate.kind === kind,
+    )!;
     expect(family).toHaveLength(
-      summary.templates.find((template) => template.kind === kind)!.segmentCount,
+      template.segmentCount,
     );
     family.forEach((segment, index) => {
       expect(segment.index).toBe(index);
@@ -919,8 +1132,39 @@ test("builds two full-size routing templates as plate-safe dovetailed STLs", () 
         5,
       );
       expect(segment.assemblyOffset.toArray().every(Number.isFinite)).toBe(true);
-      segment.geometry.dispose();
     });
+    const assembledBounds = family.reduce(
+      (bounds, segment) => {
+        segment.geometry.computeBoundingBox();
+        const geometryBounds = segment.geometry.boundingBox!;
+        bounds.minX = Math.min(bounds.minX, segment.assemblyOffset.x);
+        bounds.maxX = Math.max(
+          bounds.maxX,
+          segment.assemblyOffset.x + geometryBounds.max.x,
+        );
+        bounds.minY = Math.min(bounds.minY, segment.assemblyOffset.y);
+        bounds.maxY = Math.max(
+          bounds.maxY,
+          segment.assemblyOffset.y + geometryBounds.max.y,
+        );
+        return bounds;
+      },
+      {
+        minX: Number.POSITIVE_INFINITY,
+        maxX: Number.NEGATIVE_INFINITY,
+        minY: Number.POSITIVE_INFINITY,
+        maxY: Number.NEGATIVE_INFINITY,
+      },
+    );
+    expect(assembledBounds.maxX - assembledBounds.minX).toBeCloseTo(
+      template.finishedLength,
+      4,
+    );
+    expect(assembledBounds.maxY - assembledBounds.minY).toBeCloseTo(
+      template.finishedWidth,
+      4,
+    );
+    family.forEach((segment) => segment.geometry.dispose());
   }
 
   const preview = createHoverDiningTableTemplateSegments(
@@ -944,19 +1188,25 @@ test("builds two full-size routing templates as plate-safe dovetailed STLs", () 
   );
   expect(smallerPlate.totalSegments).toBeGreaterThan(summary.totalSegments);
 
+  const splayedParams = {
+    ...defaultParams,
+    tableWidth: 40 * 25.4,
+    overallHeight: 30 * 25.4,
+    topThickness: 1.5 * 25.4,
+    sideOverhang: 3 * 25.4,
+    frameDepth: 2 * 25.4,
+    frameSideWidth: 2.5 * 25.4,
+    frameBottomRailHeight: 1.5 * 25.4,
+    frameTopRailHeight: 1.5 * 25.4,
+    frameBottomSpread: -2 * 25.4,
+    frameOuterTopCornerRadius: 1 * 25.4,
+    frameInnerTopCornerRadius: 3 * 25.4,
+    frameOuterCurveTension: 0.62,
+    frameInnerCurveTension: 0.51,
+  };
+  expectTemplateParity(splayedParams);
   const splayedSegments = createHoverDiningTableTemplateSegments(
-    {
-      ...defaultParams,
-      tableWidth: 40 * 25.4,
-      overallHeight: 30 * 25.4,
-      topThickness: 1.5 * 25.4,
-      sideOverhang: 3 * 25.4,
-      frameDepth: 2 * 25.4,
-      frameSideWidth: 2.5 * 25.4,
-      frameBottomRailHeight: 1.5 * 25.4,
-      frameTopRailHeight: 1.5 * 25.4,
-      frameBottomSpread: -2 * 25.4,
-    },
+    splayedParams,
     model,
   );
   expect(splayedSegments.length).toBeGreaterThanOrEqual(4);
@@ -992,6 +1242,113 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     page.getByLabel("X-Hover Dining Table model viewer"),
   ).toBeVisible();
   await expect(page.locator("canvas").first()).toBeVisible();
+  await expect(
+    page.locator(".inspector-body > .panel-section > h2"),
+  ).toHaveText(["Assembly", "Model controls", "Rendering"]);
+  const designChecks = page.getByLabel("Hover-table design checks");
+  await expect(designChecks).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Design checks", exact: true }),
+  ).toHaveClass(/active/);
+  await expect(page.locator(".inspector-design-checks")).toBeHidden();
+  const librarySidebar = page.getByLabel("Workspace model library");
+  await librarySidebar
+    .getByRole("button", { name: "Model Library", exact: true })
+    .click();
+  await expect(designChecks).toBeHidden();
+  await librarySidebar
+    .getByRole("button", { name: "Design checks", exact: true })
+    .click();
+  await expect(designChecks).toBeVisible();
+  const overflowState = await page.evaluate(() => ({
+    document: document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+    app: document.querySelector<HTMLElement>(".app-shell")!.scrollWidth -
+      document.querySelector<HTMLElement>(".app-shell")!.clientWidth,
+    libraryOverflowX: getComputedStyle(
+      document.querySelector<HTMLElement>(".workspace-design-checks")!,
+    ).overflowX,
+    inspectorOverflowX: getComputedStyle(
+      document.querySelector<HTMLElement>(".inspector-body")!,
+    ).overflowX,
+  }));
+  expect(overflowState.document).toBeLessThanOrEqual(0);
+  expect(overflowState.app).toBeLessThanOrEqual(0);
+  expect(overflowState.libraryOverflowX).toBe("hidden");
+  expect(overflowState.inspectorOverflowX).toBe("hidden");
+
+  const viewer = page.locator(".viewer");
+  const orientationBeforeDisclosure = await page
+    .locator(".orientation-cube")
+    .getAttribute("style");
+  const auditToggle = designChecks.getByRole("button", {
+    name: "Audit",
+    exact: true,
+  });
+  const structureToggle = designChecks.getByRole("button", {
+    name: "Structure",
+    exact: true,
+  });
+  await expect(auditToggle).toHaveAttribute("aria-expanded", "true");
+  await expect(structureToggle).toHaveAttribute("aria-expanded", "true");
+  await auditToggle.focus();
+  await page.keyboard.press("Enter");
+  await expect(auditToggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("#sidebar-design-checks-audit-content")).toBeHidden();
+  await structureToggle.click();
+  await expect(structureToggle).toHaveAttribute("aria-expanded", "false");
+  await expect(
+    page.locator("#sidebar-design-checks-structure-content"),
+  ).toBeHidden();
+  await expect(viewer).toHaveAttribute("data-assembly-mode", "assembled");
+  await expect(page.locator(".orientation-cube")).toHaveAttribute(
+    "style",
+    orientationBeforeDisclosure!,
+  );
+  await auditToggle.click();
+  await structureToggle.click();
+  await expect(
+    page.locator("#sidebar-design-checks-audit-content"),
+  ).toBeVisible();
+  await expect(
+    page.locator("#sidebar-design-checks-structure-content"),
+  ).toBeVisible();
+  await page.locator(".inspector-body").evaluate((element) => {
+    element.scrollTo({ top: 0 });
+  });
+  await expect(page.locator(".assembly-panel-section")).toBeVisible();
+
+  const assemblyPanelBeforeModeSwitch = await page
+    .locator(".assembly-panel-section")
+    .boundingBox();
+  const modelControlsBeforeModeSwitch = await page
+    .locator(".inspector-body > .panel-section")
+    .nth(1)
+    .boundingBox();
+  await page.getByRole("button", { name: "Exploded" }).click();
+  await expect(viewer).toHaveAttribute("data-assembly-mode", "exploded");
+  const assemblyPanelAfterModeSwitch = await page
+    .locator(".assembly-panel-section")
+    .boundingBox();
+  const modelControlsAfterModeSwitch = await page
+    .locator(".inspector-body > .panel-section")
+    .nth(1)
+    .boundingBox();
+  expect(assemblyPanelBeforeModeSwitch).not.toBeNull();
+  expect(assemblyPanelAfterModeSwitch).not.toBeNull();
+  expect(modelControlsBeforeModeSwitch).not.toBeNull();
+  expect(modelControlsAfterModeSwitch).not.toBeNull();
+  expect(assemblyPanelAfterModeSwitch!.y).toBeCloseTo(
+    assemblyPanelBeforeModeSwitch!.y,
+    0,
+  );
+  expect(modelControlsAfterModeSwitch!.y).toBeCloseTo(
+    modelControlsBeforeModeSwitch!.y,
+    0,
+  );
+  await page.getByRole("button", { name: "Assembled" }).click();
+  await expect(viewer).toHaveAttribute("data-assembly-mode", "assembled");
+
   const parameterGroupToggles = page.locator(".parameter-group-toggle");
   await expect(parameterGroupToggles).toHaveCount(8);
   await expect(page.getByLabel("Table length in inches")).toBeHidden();
@@ -1074,7 +1431,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     "assembled",
   );
   await expect(
-    page.getByText(/inspect the plate-split rail and stile routing templates/),
+    page.getByText(/full-size cut sheet, and routing templates/),
   ).toBeVisible();
 
   const orientationBeforeExplosion = await page
@@ -1086,7 +1443,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     "data-assembly-mode",
     "exploded",
   );
-  await expect(page.getByText("Exploded · 13 pieces")).toBeVisible();
+  await expect(page.getByText("Exploded · 16 pieces")).toBeVisible();
   await expect(page.locator(".orientation-cube")).toHaveAttribute(
     "style",
     orientationBeforeExplosion!,
@@ -1102,12 +1459,16 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     ),
   ).toBeVisible();
   await expect(
-    page.getByText(/top supports Z 28 1\/4 in · floor supports Z 0 in · zero support gaps/),
+    page.getByText(/top supports \+ recessed channel webs Z 28 1\/4 in · \d+% direct oak bearing · floor supports Z 0 in · zero support gaps/),
   ).toBeVisible();
   await expect(page.getByText(/8 box-parallel bearing faces/)).toBeVisible();
-  await expect(page.locator(".audit-row .status-dot.pass")).toHaveCount(15);
+  await expect(
+    designChecks.locator(".audit-row .status-dot.pass"),
+  ).toHaveCount(16);
 
-  const structuralAssessment = page.getByLabel("Structural wobble assessment");
+  const structuralAssessment = designChecks.getByLabel(
+    "Structural wobble assessment",
+  );
   await expect(structuralAssessment).toBeVisible();
   await expect(
     structuralAssessment.getByRole("listitem"),
@@ -1115,6 +1476,46 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(
     structuralAssessment.getByText("Overall-height sensitivity"),
   ).toBeVisible();
+  const overallCalculationButton = structuralAssessment.getByRole("button", {
+    name: "Explain overall structural score calculation",
+  });
+  await overallCalculationButton.click();
+  const overallCalculation = structuralAssessment.getByLabel(
+    "Overall structural score calculation details",
+  );
+  await expect(overallCalculation).toBeVisible();
+  await expect(
+    overallCalculation.getByText(/23% × Lengthwise racking/),
+  ).toBeVisible();
+  await expect(
+    overallCalculation.getByText(/90 × 0\.23 = 20\.7/),
+  ).toBeVisible();
+  await overallCalculationButton.click();
+  await expect(overallCalculation).toBeHidden();
+  const calculationButtons = structuralAssessment.locator(
+    ".structural-metric .structural-info-button",
+  );
+  await expect(calculationButtons).toHaveCount(6);
+  const rackingCalculationButton = structuralAssessment.getByRole("button", {
+    name: "Explain Lengthwise racking calculation",
+  });
+  await rackingCalculationButton.click();
+  await expect(rackingCalculationButton).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  const rackingCalculation = structuralAssessment.getByLabel(
+    "Lengthwise racking calculation details",
+  );
+  await expect(rackingCalculation).toBeVisible();
+  await expect(rackingCalculation.getByText("Rationale")).toBeVisible();
+  await expect(
+    rackingCalculation.getByText(/30 \+ 35 × topTopology/),
+  ).toBeVisible();
+  const rackingHeightInput = rackingCalculation
+    .locator(".structural-calculation-inputs > div")
+    .filter({ hasText: "overallHeight" });
+  await expect(rackingHeightInput.getByText("29 1/2 in")).toBeVisible();
   const baselineStructuralScore = Number(
     await structuralAssessment.getAttribute("data-overall-score"),
   );
@@ -1122,6 +1523,8 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect.poll(async () =>
     Number(await structuralAssessment.getAttribute("data-overall-score")),
   ).toBeLessThan(baselineStructuralScore);
+  await expect(page.getByLabel("Overall height in inches")).toHaveValue("32");
+  await expect(rackingHeightInput.getByText("32 in")).toBeVisible();
   await page.getByLabel("Overall height in inches").fill("29 1/2");
 
   await page.getByLabel("Table width in inches").fill("36");
@@ -1156,6 +1559,14 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await page.getByLabel("Top support width in inches").fill("2 1/8");
   await expect(page).toHaveURL(/topSupportWidth=2\.126/);
   await expect(page.getByLabel("Bottom support width in inches")).toHaveValue("2 1/2");
+  await page.getByLabel("End-box side width in inches").fill("1/2");
+  await expect(page).toHaveURL(/frameSideWidth=0\.5/);
+  await expect(page.getByLabel("End-box side width in inches")).toHaveValue("1/2");
+  await expect(
+    page.getByLabel("End-box face-edge round-over in inches"),
+  ).toHaveValue("3/16");
+  await expect(page.getByLabel("Top support width in inches")).toHaveValue("2 1/8");
+  await expect(page.getByLabel("Bottom support width in inches")).toHaveValue("2 1/2");
   await expect(page.getByLabel("Upper-X brace width in inches")).toHaveCount(0);
   await expect(page.getByLabel("Floor-X brace width in inches")).toHaveCount(0);
   await page.getByLabel("Top support thickness in inches").fill("2");
@@ -1168,7 +1579,9 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     .getByLabel("Inner corner curve tension Bézier tension")
     .fill("0.65");
   await expect(page).toHaveURL(/frameInnerCurveTension=0\.65/);
-  await expect(page.locator(".audit-row .status-dot.pass")).toHaveCount(15);
+  await expect(
+    designChecks.locator(".audit-row .status-dot.pass"),
+  ).toHaveCount(16);
 
   await page.getByRole("button", { name: "Reset parameters" }).click();
   await expect(page.getByLabel("Table width in inches")).toHaveValue("35 1/2");
@@ -1185,8 +1598,12 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     "templates",
   );
   await expect(
-    page.getByText("Routing templates · 2 profiles · segmented STLs"),
+    page.getByText(
+      "Routing templates · exact B1 + B3 profiles · segmented STLs",
+    ),
   ).toBeVisible();
+  await expect(page.getByText("Top rail · B1")).toBeVisible();
+  await expect(page.getByText("Vertical stile · B3")).toBeVisible();
   const templateDownloads: string[] = [];
   page.on("download", (download) => {
     if (download.suggestedFilename().includes("-template-part-")) {
@@ -1214,14 +1631,15 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     "data-assembly-mode",
     "cut-list",
   );
-  await expect(page.getByText("Cut list · full-size · 13 pieces")).toBeVisible();
+  await expect(page.getByText("Cut list · full-size · 16 pieces")).toBeVisible();
   await expect(page.getByLabel("X-Hover full-size cut list")).toBeVisible();
-  await expect(page.locator(".hover-cut-table tbody tr")).toHaveCount(8);
-  await expect(page.locator(".hover-cut-card")).toHaveCount(8);
+  await expect(page.locator(".hover-cut-table tbody tr")).toHaveCount(9);
+  await expect(page.locator(".hover-cut-card")).toHaveCount(9);
+  await expect(page.locator(".hover-cut-3d")).toHaveCount(9);
   await expect(
     page.getByRole("img", { name: /dimensioned cut diagram/ }),
-  ).toHaveCount(8);
-  await expect(page.locator(".cut-part-section > path")).toHaveCount(8);
+  ).toHaveCount(9);
+  await expect(page.locator(".cut-part-section > path")).toHaveCount(9);
   await expect(
     page.locator('.cut-part-section[data-section-kind="half-lap"]'),
   ).toHaveCount(4);
@@ -1235,6 +1653,15 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(
     page.locator('[data-profile-family="brace"]'),
   ).toHaveCount(4);
+  await expect(
+    page.locator('[data-profile-family="channel"]'),
+  ).toHaveCount(1);
+  await expect(
+    page.locator('.hover-cut-card[data-part-id="H1"]'),
+  ).toHaveAttribute("data-grain-axis", "none");
+  await expect(page.locator('.hover-cut-card[data-part-id="H1"]')).toContainText(
+    "U-channel web + flanges",
+  );
   await expect(
     page.locator('.hover-cut-card[data-part-id="B1"] [data-profile-family="frame-rail"]'),
   ).toHaveAttribute("d", /C/);
@@ -1271,7 +1698,44 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(page.locator('.hover-cut-card[data-part-id="U2"]')).toContainText(
     "bottom half-lap",
   );
+  const upperLapPreview = page.locator(
+    '.hover-cut-card[data-part-id="U1"] .hover-cut-3d',
+  );
+  await upperLapPreview.scrollIntoViewIfNeeded();
+  await expect(upperLapPreview).toHaveAttribute("data-ready", "true");
+  await expect(
+    upperLapPreview.getByRole("img", { name: /Interactive 3D view/ }),
+  ).toBeVisible();
+  for (const label of ["ISO", "Top", "Bottom", "Front", "End"]) {
+    await expect(upperLapPreview.getByRole("button", { name: label })).toBeVisible();
+  }
+  const edgeToggle = upperLapPreview.getByRole("button", { name: "Edges" });
+  await expect(edgeToggle).toHaveAttribute("aria-pressed", "true");
+  await edgeToggle.click();
+  await expect(edgeToggle).toHaveAttribute("aria-pressed", "false");
+  await edgeToggle.click();
+  const upperLapCanvas = upperLapPreview.getByRole("img", {
+    name: "Interactive 3D view of Upper X — member A. Drag to rotate and scroll to zoom.",
+  });
+  const upperLapCanvasBounds = await upperLapCanvas.boundingBox();
+  expect(upperLapCanvasBounds).not.toBeNull();
+  await page.mouse.move(
+    upperLapCanvasBounds!.x + upperLapCanvasBounds!.width * 0.5,
+    upperLapCanvasBounds!.y + upperLapCanvasBounds!.height * 0.5,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    upperLapCanvasBounds!.x + upperLapCanvasBounds!.width * 0.68,
+    upperLapCanvasBounds!.y + upperLapCanvasBounds!.height * 0.36,
+    { steps: 4 },
+  );
+  await page.mouse.up();
+  await expect(upperLapPreview).toHaveAttribute("data-view", "free");
+  await upperLapPreview.getByRole("button", { name: "Top" }).click();
+  await expect(upperLapPreview).toHaveAttribute("data-view", "top");
   await page.getByLabel("Table width in inches").fill("36");
+  await expect(upperLapPreview).toHaveAttribute("data-ready", "true");
+  await expect(upperLapPreview).toHaveAttribute("data-view", "top");
   await expect(page.locator('.hover-cut-card[data-part-id="T1"]')).toContainText(
     "W 36 in",
   );
@@ -1318,7 +1782,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     "data-assembly-mode",
     "assembled",
   );
-  await expect(page.getByText("Exploded · 13 pieces")).toHaveCount(0);
+  await expect(page.getByText("Exploded · 16 pieces")).toHaveCount(0);
   expect(pageErrors).toEqual([]);
 });
 
@@ -1355,15 +1819,15 @@ test("switches support layouts associatively across viewer, exploded mode, cut l
   );
 
   await page.getByRole("button", { name: "Exploded" }).click();
-  await expect(page.getByText("Exploded · 12 pieces")).toBeVisible();
+  await expect(page.getByText("Exploded · 15 pieces")).toBeVisible();
   await expect(page.locator(".orientation-cube")).toHaveAttribute(
     "style",
     orientationBefore!,
   );
 
   await page.getByRole("button", { name: "Cut list" }).click();
-  await expect(page.getByText("Cut list · full-size · 12 pieces")).toBeVisible();
-  await expect(page.locator(".hover-cut-table tbody tr")).toHaveCount(6);
+  await expect(page.getByText("Cut list · full-size · 15 pieces")).toBeVisible();
+  await expect(page.locator(".hover-cut-table tbody tr")).toHaveCount(7);
   await expect(page.locator('[data-profile-family="support"]')).toHaveCount(2);
   await expect(
     page.locator('.cut-part-section[data-section-kind="half-lap"]'),
@@ -1383,7 +1847,7 @@ test("switches support layouts associatively across viewer, exploded mode, cut l
   await page.getByLabel("Bottom support style").click();
   await page.getByRole("option", { name: "None" }).click();
   await page.getByRole("button", { name: "Exploded" }).click();
-  await expect(page.getByText("Exploded · 11 pieces")).toBeVisible();
+  await expect(page.getByText("Exploded · 14 pieces")).toBeVisible();
   await expect(page.getByText(/None · end boxes remain unconnected/)).toBeVisible();
 });
 
@@ -1417,6 +1881,24 @@ test("keeps the fabrication sheet usable in narrow center panes and on phones", 
 }) => {
   await page.setViewportSize({ width: 981, height: 1000 });
   await page.goto("/?model=hover-dining-table&unit=in");
+  await expect(
+    page.getByLabel("X-Hover Dining Table model viewer"),
+  ).toBeVisible();
+  const compactSceneWidth = await page.locator(".scene-panel").evaluate(
+    (element) => element.getBoundingClientRect().width,
+  );
+  expect(compactSceneWidth).toBeGreaterThanOrEqual(600);
+  await expect(
+    page.getByRole("button", { name: "Open workspace navigation" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Open workspace navigation" })
+    .click();
+  await expect(page.getByLabel("Workspace model library")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Close workspace navigation" })
+    .click();
+  await expect(page.getByLabel("Workspace model library")).toBeHidden();
   await page.getByRole("button", { name: "Top support members" }).click();
   await page.getByRole("button", { name: "Cut list" }).click();
 
@@ -1465,16 +1947,29 @@ test("keeps the fabrication sheet usable in narrow center panes and on phones", 
   const mobileViewer = page.locator('.viewer[data-assembly-mode="cut-list"]');
   await expect(mobileViewer).toBeVisible();
   await expect(page.locator('.hover-cut-sheet')).toBeVisible();
+  await expect(page.getByLabel("Hover-table design checks")).toBeHidden();
+  const mobileAssemblyButtonHeights = await page
+    .locator('[aria-label="X-Hover assembly view"] button')
+    .evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().height),
+    );
+  await page.getByRole("button", { name: "Checks", exact: true }).click();
+  await expect(page.locator(".inspector-design-checks")).toBeVisible();
+  await expect(
+    page
+      .locator(".inspector-design-checks")
+      .getByLabel("Structural wobble assessment"),
+  ).toBeVisible();
   const mobileMeasurements = await mobileViewer.evaluate((viewerElement) => {
     const viewer = viewerElement.getBoundingClientRect();
     const sheet = document.querySelector<HTMLElement>(".hover-cut-sheet")!;
-    const buttons = Array.from(
-      document.querySelectorAll<HTMLElement>(
-        '[aria-label="X-Hover assembly view"] button',
-      ),
+    const previewButtonHeights = Array.from(
+      document.querySelectorAll<HTMLElement>(".hover-cut-3d-toolbar button"),
     ).map((button) => button.getBoundingClientRect().height);
     const auditRows = Array.from(
-      document.querySelectorAll<HTMLElement>(".audit-row"),
+      document.querySelectorAll<HTMLElement>(
+        ".inspector-design-checks .audit-row",
+      ),
     ).map((row) => {
       const rowBounds = row.getBoundingClientRect();
       const valueBounds = row
@@ -1482,20 +1977,26 @@ test("keeps the fabrication sheet usable in narrow center panes and on phones", 
         .getBoundingClientRect();
       return valueBounds.right - rowBounds.right;
     });
+    return {
+      documentOverflow:
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+      documentScrollLeft: document.documentElement.scrollLeft,
+      sheetOverflow: sheet.scrollWidth - sheet.clientWidth,
+      sheetOverflowX: getComputedStyle(sheet).overflowX,
+      viewerHeight: viewer.height,
+      previewButtonHeights,
+      auditOverflow: Math.max(...auditRows),
+    };
+  });
+  await page.getByRole("button", { name: "Parameters", exact: true }).click();
+  const mobileParameterMeasurements = await page.evaluate(() => {
     const xGroup = document.querySelector<HTMLElement>(
       '.parameter-group[aria-labelledby="parameter-group-top-support-members"]',
     )!;
     const xHeading = xGroup.querySelector("h3")!.getBoundingClientRect();
     const xNote = xGroup.querySelector("p")!.getBoundingClientRect();
-
     return {
-      documentOverflow:
-        document.documentElement.scrollWidth -
-        document.documentElement.clientWidth,
-      sheetOverflow: sheet.scrollWidth - sheet.clientWidth,
-      viewerHeight: viewer.height,
-      buttonHeights: buttons,
-      auditOverflow: Math.max(...auditRows),
       xHeadingLeft: xHeading.left,
       xHeadingBottom: xHeading.bottom,
       xNoteLeft: xNote.left,
@@ -1504,17 +2005,22 @@ test("keeps the fabrication sheet usable in narrow center panes and on phones", 
   });
 
   expect(mobileMeasurements.documentOverflow).toBeLessThanOrEqual(0);
+  expect(mobileMeasurements.documentScrollLeft).toBe(0);
   expect(mobileMeasurements.sheetOverflow).toBeLessThanOrEqual(0);
+  expect(mobileMeasurements.sheetOverflowX).toBe("hidden");
   expect(mobileMeasurements.viewerHeight).toBeGreaterThanOrEqual(700);
-  expect(Math.min(...mobileMeasurements.buttonHeights)).toBeGreaterThanOrEqual(
+  expect(Math.min(...mobileAssemblyButtonHeights)).toBeGreaterThanOrEqual(
     44,
   );
+  expect(
+    Math.min(...mobileMeasurements.previewButtonHeights),
+  ).toBeGreaterThanOrEqual(44);
   expect(mobileMeasurements.auditOverflow).toBeLessThanOrEqual(0);
-  expect(mobileMeasurements.xNoteTop).toBeGreaterThanOrEqual(
-    mobileMeasurements.xHeadingBottom + 3,
+  expect(mobileParameterMeasurements.xNoteTop).toBeGreaterThanOrEqual(
+    mobileParameterMeasurements.xHeadingBottom + 3,
   );
-  expect(mobileMeasurements.xNoteLeft).toBeCloseTo(
-    mobileMeasurements.xHeadingLeft,
+  expect(mobileParameterMeasurements.xNoteLeft).toBeCloseTo(
+    mobileParameterMeasurements.xHeadingLeft,
     0,
   );
 });

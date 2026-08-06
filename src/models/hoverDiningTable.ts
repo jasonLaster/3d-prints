@@ -14,6 +14,7 @@ import type {
 
 const EPSILON = 1e-5;
 const MIN_BRACE_SPAN = 101.6;
+const MIN_FRAME_FACE_FLAT = 3.175;
 
 type BracePlaneSpec = {
   width: number;
@@ -49,6 +50,19 @@ type StraightSupportSpec = {
   zTop: number;
 };
 
+type CChannelSpec = {
+  count: 3;
+  endClearance: number;
+  sideInset: number;
+  width: number;
+  depth: number;
+  wallThickness: number;
+  length: number;
+  centerXs: [number, number, number];
+  zBottom: number;
+  zTop: number;
+};
+
 export type HoverDiningTableProfilePoint = {
   x: number;
   y: number;
@@ -71,7 +85,13 @@ export type HoverDiningTableProfileCommand =
   | { kind: "close"; edgeTreatment?: "roundover" | "square" };
 
 export type HoverDiningTableFabricationProfile = {
-  family: "tabletop" | "frame-rail" | "frame-stile" | "brace" | "support";
+  family:
+    | "tabletop"
+    | "frame-rail"
+    | "frame-stile"
+    | "brace"
+    | "support"
+    | "channel";
   outline: HoverDiningTableProfileCommand[];
   bounds: {
     minX: number;
@@ -134,6 +154,7 @@ export type HoverDiningTableSpec = {
   lowerBrace: BracePlaneSpec;
   upperStretchers: StraightSupportSpec;
   lowerCenterBoard: StraightSupportSpec;
+  channels: CChannelSpec;
 };
 
 export type HoverDiningTableStructuralGrade = "A" | "B" | "C" | "D" | "F";
@@ -150,11 +171,31 @@ export type HoverDiningTableStructuralMetric = {
   score: number;
   grade: HoverDiningTableStructuralGrade;
   detail: string;
+  calculation: {
+    rationale: string;
+    formula: string;
+    inputs: Array<{
+      key: string;
+      label: string;
+      value: number | string;
+      format: "length" | "number" | "choice";
+      precision?: number;
+      suffix?: string;
+    }>;
+    rawScore: number;
+    weight: number;
+    scoringNote: string;
+  };
 };
 
 export type HoverDiningTableStructuralAssessment = {
   overallScore: number;
   overallGrade: HoverDiningTableStructuralGrade;
+  overallCalculation: {
+    rationale: string;
+    formula: string;
+    scoringNote: string;
+  };
   metrics: HoverDiningTableStructuralMetric[];
   heightSensitivity: {
     stepMm: number;
@@ -247,9 +288,9 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
   const frameTopWidth = width - sideOverhang * 2;
   const frameBottomSpread = getParam(params, "frameBottomSpread");
   const frameBottomWidth = frameTopWidth + frameBottomSpread;
-  // Keep the end-box side width as its own construction dimension. Support
-  // members are constrained to fit it, but changing a member must not resize
-  // the box behind the user's back.
+  // Keep the end-box side width as its own construction dimension. Supports
+  // bear on the horizontal rails, so their plan width does not set the stile
+  // width and must never resize it behind the user's back.
   const frameSideWidth = getParam(params, "frameSideWidth");
   const openingTopWidth = frameTopWidth - frameSideWidth * 2;
   const openingBottomWidth = frameBottomWidth - frameSideWidth * 2;
@@ -265,8 +306,23 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
   const openingBottom = frameBottomRailHeight;
   const openingTop = frameHeight - frameTopRailHeight;
   const frameDepth = getParam(params, "frameDepth");
+  const frameEdgeRoundover = Math.min(
+    getParam(params, "frameEdgeRoundover"),
+    Math.min(
+      frameDepth,
+      frameSideWidth,
+      frameBottomRailHeight,
+      frameTopRailHeight,
+    ) /
+      2 -
+      MIN_FRAME_FACE_FLAT / 2,
+  );
   const endOverhang = getParam(params, "endOverhang");
   const braceSpanX = length - 2 * (endOverhang + frameDepth);
+  const channelWidth = getParam(params, "channelWidth");
+  const channelEndClearance = getParam(params, "channelEndClearance");
+  const channelOuterCenterX =
+    braceSpanX / 2 - channelEndClearance - channelWidth / 2;
   const frameInnerTopCornerRadius = getParam(
     params,
     "frameInnerTopCornerRadius",
@@ -304,7 +360,7 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
     frameInnerBottomCornerRadius,
     frameOuterCurveTension: getParam(params, "frameOuterCurveTension"),
     frameInnerCurveTension: getParam(params, "frameInnerCurveTension"),
-    frameEdgeRoundover: getParam(params, "frameEdgeRoundover"),
+    frameEdgeRoundover,
     halfLapClearance: getParam(params, "halfLapClearance"),
     frameHeight,
     frameTopWidth,
@@ -365,7 +421,27 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       zBottom: 0,
       zTop: bottomSupportThickness,
     },
+    channels: {
+      count: 3,
+      endClearance: channelEndClearance,
+      sideInset: getParam(params, "channelSideInset"),
+      width: channelWidth,
+      depth: getParam(params, "channelDepth"),
+      wallThickness: getParam(params, "channelWallThickness"),
+      length: width - getParam(params, "channelSideInset") * 2,
+      centerXs: [-channelOuterCenterX, 0, channelOuterCenterX],
+      zBottom: topBottom,
+      zTop: topBottom + getParam(params, "channelDepth"),
+    },
   };
+}
+
+function upperSupportOakBearingFraction(spec: HoverDiningTableSpec) {
+  // A widthwise channel interrupts the same fraction of an X member as it
+  // does a straight stretcher: both the interrupted diagonal length and the
+  // full diagonal length scale by 1 / cos(planAngle).
+  return 1 -
+    (spec.channels.count * spec.channels.width) / spec.braceSpanX;
 }
 
 function assertPositive(value: number, label: string) {
@@ -413,9 +489,6 @@ function assertBracePlane(
   ) {
     throw new Error(`${label} mitered end must stop at the inner-corner tangent`);
   }
-  if (brace.width > spec.frameSideWidth + EPSILON) {
-    throw new Error(`${label} brace width must fit its end-box member scale`);
-  }
   if (brace.thickness > railHeight + EPSILON) {
     throw new Error(`${label} brace thickness must fit its end-box rail zone`);
   }
@@ -462,9 +535,6 @@ function assertStraightSupport(
   if (support.spanX < MIN_BRACE_SPAN) {
     throw new Error(`${label} needs a positive structural span between end boxes`);
   }
-  if (support.width > spec.frameSideWidth + EPSILON) {
-    throw new Error(`${label} width must fit its end-box member scale`);
-  }
   if (support.thickness > railHeight + EPSILON) {
     throw new Error(`${label} thickness must fit its end-box rail zone`);
   }
@@ -506,6 +576,12 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
     ["frame inner top radius", spec.frameInnerTopCornerRadius],
     ["frame inner bottom radius", spec.frameInnerBottomCornerRadius],
     ["frame edge round-over", spec.frameEdgeRoundover],
+    ["C-channel end clearance", spec.channels.endClearance],
+    ["C-channel side inset", spec.channels.sideInset],
+    ["C-channel width", spec.channels.width],
+    ["C-channel depth", spec.channels.depth],
+    ["C-channel wall thickness", spec.channels.wallThickness],
+    ["C-channel length", spec.channels.length],
   ] as const) {
     assertPositive(value, label);
   }
@@ -555,6 +631,61 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
   }
   if (spec.topEdgeRoll * 2 >= spec.width) {
     throw new Error("Tabletop edge roll must leave a positive flat top width");
+  }
+  if (spec.channels.count !== 3 || spec.channels.centerXs.length !== 3) {
+    throw new Error("The tabletop must retain exactly three C-channels");
+  }
+  if (
+    Math.abs(spec.channels.centerXs[1]) > EPSILON ||
+    Math.abs(spec.channels.centerXs[0] + spec.channels.centerXs[2]) > EPSILON
+  ) {
+    throw new Error("C-channels must remain centered and mirror-symmetric");
+  }
+  if (
+    spec.channels.centerXs[0] + spec.channels.width / 2 >= -EPSILON ||
+    spec.channels.centerXs[2] - spec.channels.width / 2 <= EPSILON
+  ) {
+    throw new Error("The three C-channels must remain distinct and ordered");
+  }
+  if (
+    spec.channels.sideInset < spec.topEdgeRoll - EPSILON ||
+    spec.channels.length + spec.channels.sideInset * 2 > spec.width + EPSILON
+  ) {
+    throw new Error("C-channels must stop inside both rolled tabletop edges");
+  }
+  if (
+    spec.channels.depth >= spec.topThickness ||
+    Math.abs(spec.channels.zBottom - spec.topBottom) > EPSILON ||
+    spec.channels.zTop > spec.height + EPSILON
+  ) {
+    throw new Error("C-channels must fit in flush tabletop-underside mortises");
+  }
+  if (
+    Math.abs(spec.channels.zBottom - spec.upperBrace.zTop) > EPSILON ||
+    Math.abs(spec.channels.zBottom - spec.upperStretchers.zTop) > EPSILON
+  ) {
+    throw new Error(
+      "Flush C-channel webs and upper supports must share the tabletop underside contact plane",
+    );
+  }
+  if (upperSupportOakBearingFraction(spec) < 0.5 - EPSILON) {
+    throw new Error(
+      "C-channels must leave at least half of every upper support bearing directly on oak",
+    );
+  }
+  if (
+    spec.channels.wallThickness * 2 >= spec.channels.width ||
+    spec.channels.wallThickness >= spec.channels.depth
+  ) {
+    throw new Error("C-channel web and flanges must retain a positive U-section");
+  }
+  const channelClearHalfSpan = spec.braceSpanX / 2;
+  if (
+    Math.abs(spec.channels.centerXs[2]) + spec.channels.width / 2 +
+      spec.channels.endClearance >
+    channelClearHalfSpan + EPSILON
+  ) {
+    throw new Error("Outer C-channels must remain clear of both end boxes");
   }
   if (Math.abs(spec.frameHeight - spec.topBottom) > EPSILON) {
     throw new Error("End boxes must terminate at the tabletop underside without a hover gap");
@@ -665,6 +796,25 @@ function scaleStraightSupport(
   };
 }
 
+function scaleCChannel(channel: CChannelSpec, scale: number): CChannelSpec {
+  return {
+    ...channel,
+    endClearance: channel.endClearance / scale,
+    sideInset: channel.sideInset / scale,
+    width: channel.width / scale,
+    depth: channel.depth / scale,
+    wallThickness: channel.wallThickness / scale,
+    length: channel.length / scale,
+    centerXs: channel.centerXs.map((centerX) => centerX / scale) as [
+      number,
+      number,
+      number,
+    ],
+    zBottom: channel.zBottom / scale,
+    zTop: channel.zTop / scale,
+  };
+}
+
 export function getHoverDiningTableSpec(params: ModelParams) {
   const fullSize = rawHoverDiningTableSpec(params);
   assertHoverDiningTableSpec(fullSize);
@@ -704,6 +854,7 @@ export function getHoverDiningTableSpec(params: ModelParams) {
     lowerBrace: scaleBrace(fullSize.lowerBrace, scale),
     upperStretchers: scaleStraightSupport(fullSize.upperStretchers, scale),
     lowerCenterBoard: scaleStraightSupport(fullSize.lowerCenterBoard, scale),
+    channels: scaleCChannel(fullSize.channels, scale),
   };
   return { fullSize, scaled };
 }
@@ -1345,6 +1496,93 @@ function createEndBoxPartFabricationProfile(
   };
 }
 
+/**
+ * Returns the full-size, finished profiles assigned to each glue-up member of
+ * an end box. Consumers such as routing templates must use these profiles so
+ * the rail-owned corner returns and tangent-to-tangent stiles cannot drift.
+ */
+export function getHoverDiningTableEndBoxFabricationProfiles(
+  params: ModelParams,
+) {
+  const { fullSize: spec } = getHoverDiningTableSpec(params);
+  return {
+    top: createEndBoxPartFabricationProfile(spec, "top"),
+    bottom: createEndBoxPartFabricationProfile(spec, "bottom"),
+    left: createEndBoxPartFabricationProfile(spec, "left"),
+    right: createEndBoxPartFabricationProfile(spec, "right"),
+  };
+}
+
+export type HoverDiningTableStileFabricationLayout = {
+  origin: THREE.Vector2;
+  lengthAxis: THREE.Vector2;
+  widthAxis: THREE.Vector2;
+  length: number;
+  width: number;
+};
+
+/**
+ * Places a finished stile in its grain-aligned fabrication frame. Its angled
+ * rail seams change the inner-edge length, but they must not inflate the stock
+ * width or make the routing template use the table's global vertical axis.
+ */
+export function getHoverDiningTableStileFabricationLayout(
+  profile: HoverDiningTableFabricationProfile,
+): HoverDiningTableStileFabricationLayout {
+  if (profile.family !== "frame-stile") {
+    throw new Error("Stile fabrication layout requires a frame-stile profile");
+  }
+  const move = profile.outline[0];
+  const seamIndex = profile.outline.findIndex(
+    (command, index) =>
+      index > 0 &&
+      (command.kind === "line" || command.kind === "cubic") &&
+      command.edgeTreatment === "square",
+  );
+  const outerEnd = profile.outline[seamIndex - 1];
+  if (
+    move?.kind !== "move" ||
+    seamIndex <= 1 ||
+    !outerEnd ||
+    outerEnd.kind === "move" ||
+    outerEnd.kind === "close"
+  ) {
+    throw new Error("Stile profile is missing its outer tangent-to-tangent edge");
+  }
+  const origin = new THREE.Vector2(move.to.x, move.to.y);
+  const lengthAxis = new THREE.Vector2(
+    outerEnd.to.x - move.to.x,
+    outerEnd.to.y - move.to.y,
+  ).normalize();
+  const widthAxis = new THREE.Vector2(lengthAxis.y, -lengthAxis.x);
+  const profilePoints = profile.outline.flatMap((command) => {
+    if (command.kind === "close") return [];
+    if (command.kind === "cubic") {
+      return [command.control1, command.control2, command.to];
+    }
+    return [command.to];
+  });
+  const localPoints = profilePoints.map((point) => {
+    const relative = new THREE.Vector2(point.x, point.y).sub(origin);
+    return new THREE.Vector2(
+      relative.dot(lengthAxis),
+      relative.dot(widthAxis),
+    );
+  });
+  const bounds = new THREE.Box2().setFromPoints(localPoints);
+  const length = bounds.max.x - bounds.min.x;
+  const width = bounds.max.y - bounds.min.y;
+  if (
+    !Number.isFinite(length) ||
+    !Number.isFinite(width) ||
+    length <= EPSILON ||
+    width <= EPSILON
+  ) {
+    throw new Error("Stile fabrication layout has invalid local bounds");
+  }
+  return { origin, lengthAxis, widthAxis, length, width };
+}
+
 function createTabletopCrossSectionProfile(
   spec: HoverDiningTableSpec,
 ): HoverDiningTableProfileCommand[] {
@@ -1435,6 +1673,43 @@ function createTabletopFabricationProfile(
   };
 }
 
+function createCChannelSectionProfile(
+  channel: CChannelSpec,
+): HoverDiningTableProfileCommand[] {
+  const halfWidth = channel.width / 2;
+  const innerHalfWidth = halfWidth - channel.wallThickness;
+  const webTop = channel.wallThickness;
+  return [
+    { kind: "move", to: { x: -halfWidth, y: 0 } },
+    { kind: "line", to: { x: halfWidth, y: 0 } },
+    { kind: "line", to: { x: halfWidth, y: channel.depth } },
+    { kind: "line", to: { x: innerHalfWidth, y: channel.depth } },
+    { kind: "line", to: { x: innerHalfWidth, y: webTop } },
+    { kind: "line", to: { x: -innerHalfWidth, y: webTop } },
+    { kind: "line", to: { x: -innerHalfWidth, y: channel.depth } },
+    { kind: "line", to: { x: -halfWidth, y: channel.depth } },
+    { kind: "close" },
+  ];
+}
+
+function createCChannelFabricationProfile(
+  channel: CChannelSpec,
+): HoverDiningTableFabricationProfile {
+  const outline = rectangleProfile(channel.length, channel.width);
+  return {
+    family: "channel",
+    outline,
+    bounds: profileBounds(outline),
+    section: {
+      width: channel.width,
+      thickness: channel.depth,
+      radius: 0,
+      label: "U-channel web + flanges",
+      outline: createCChannelSectionProfile(channel),
+    },
+  };
+}
+
 function assertFabricationProfile(
   profile: HoverDiningTableFabricationProfile,
   label: string,
@@ -1456,6 +1731,19 @@ function assertFabricationProfile(
     throw new Error(`${label} fabrication outline must be a closed profile`);
   }
   if (
+    profile.section.outline[0]?.kind !== "move" ||
+    profile.section.outline[profile.section.outline.length - 1]?.kind !== "close"
+  ) {
+    throw new Error(`${label} must retain a closed section profile`);
+  }
+  if (profile.family === "channel") {
+    if (
+      profile.section.radius !== 0 ||
+      profile.section.outline.some((command) => command.kind === "cubic")
+    ) {
+      throw new Error(`${label} channel must retain its square U-section`);
+    }
+  } else if (
     !Number.isFinite(profile.section.radius) ||
     profile.section.radius <= 0 ||
     !profile.section.outline.some((command) => command.kind === "cubic")
@@ -1481,7 +1769,7 @@ function assertFabricationProfile(
         `${label} stile must retain its two square rail-tangent seams`,
       );
     }
-  } else if (squareEdgeCount !== 0) {
+  } else if (profile.family !== "channel" && squareEdgeCount !== 0) {
     throw new Error(`${label} contains an unexpected square profile edge`);
   }
 }
@@ -1490,19 +1778,49 @@ function createTabletopCrossSection(spec: HoverDiningTableSpec) {
   return createShapeFromProfile(createTabletopCrossSectionProfile(spec));
 }
 
-function createTabletopGeometry(
+function createMortisedTabletopCrossSectionProfile(
+  spec: HoverDiningTableSpec,
+): HoverDiningTableProfileCommand[] {
+  const base = createTabletopCrossSectionProfile(spec);
+  const halfMortiseLength = spec.channels.length / 2;
+  const firstCurveIndex = base.findIndex((command) => command.kind === "cubic");
+  const shoulder = spec.width / 2 - spec.topEdgeRoll;
+  return [
+    { kind: "move", to: { x: -shoulder, y: 0 } },
+    { kind: "line", to: { x: -halfMortiseLength, y: 0 } },
+    {
+      kind: "line",
+      to: { x: -halfMortiseLength, y: spec.channels.depth },
+    },
+    {
+      kind: "line",
+      to: { x: halfMortiseLength, y: spec.channels.depth },
+    },
+    { kind: "line", to: { x: halfMortiseLength, y: 0 } },
+    { kind: "line", to: { x: shoulder, y: 0 } },
+    ...base.slice(firstCurveIndex),
+  ];
+}
+
+function createTabletopSegmentGeometry(
   spec: HoverDiningTableSpec,
   model: HoverDiningTableModelDefinition,
+  xStart: number,
+  xEnd: number,
+  mortised: boolean,
 ) {
-  const geometry = new THREE.ExtrudeGeometry(createTabletopCrossSection(spec), {
+  const profile = mortised
+    ? createMortisedTabletopCrossSectionProfile(spec)
+    : createTabletopCrossSectionProfile(spec);
+  const geometry = new THREE.ExtrudeGeometry(createShapeFromProfile(profile), {
     bevelEnabled: false,
     curveSegments: model.geometry.curveSegments,
-    depth: spec.length,
+    depth: xEnd - xStart,
     steps: 1,
   });
   geometry.applyMatrix4(
     new THREE.Matrix4().set(
-      0, 0, 1, -spec.length / 2,
+      0, 0, 1, xStart,
       1, 0, 0, 0,
       0, 1, 0, spec.topBottom,
       0, 0, 0, 1,
@@ -1510,6 +1828,69 @@ function createTabletopGeometry(
   );
   geometry.computeVertexNormals();
   return geometry;
+}
+
+function createTabletopGeometry(
+  spec: HoverDiningTableSpec,
+  model: HoverDiningTableModelDefinition,
+) {
+  const segments: THREE.BufferGeometry[] = [];
+  let cursor = -spec.length / 2;
+  for (const centerX of spec.channels.centerXs) {
+    const channelStart = centerX - spec.channels.width / 2;
+    const channelEnd = centerX + spec.channels.width / 2;
+    if (channelStart > cursor + EPSILON) {
+      segments.push(
+        createTabletopSegmentGeometry(spec, model, cursor, channelStart, false),
+      );
+    }
+    segments.push(
+      createTabletopSegmentGeometry(spec, model, channelStart, channelEnd, true),
+    );
+    cursor = channelEnd;
+  }
+  if (cursor < spec.length / 2 - EPSILON) {
+    segments.push(
+      createTabletopSegmentGeometry(spec, model, cursor, spec.length / 2, false),
+    );
+  }
+  return mergeGeometryList(
+    segments,
+    "Unable to merge mortised Hover-table tabletop geometry",
+  );
+}
+
+function createCChannelGeometry(channel: CChannelSpec, centerX: number) {
+  const geometry = new THREE.ExtrudeGeometry(
+    createShapeFromProfile(createCChannelSectionProfile(channel)),
+    {
+      bevelEnabled: false,
+      curveSegments: 1,
+      depth: channel.length,
+      steps: 1,
+    },
+  );
+  geometry.applyMatrix4(
+    new THREE.Matrix4().set(
+      1, 0, 0, centerX,
+      0, 0, 1, -channel.length / 2,
+      0, 1, 0, channel.zBottom,
+      0, 0, 0, 1,
+    ),
+  );
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+export function createHoverDiningTableHardwareGeometries(params: ModelParams) {
+  const { scaled: spec } = getHoverDiningTableSpec(params);
+  return {
+    channels: spec.channels.centerXs.map((centerX) =>
+      createCChannelGeometry(spec.channels, centerX),
+    ),
+  };
 }
 
 function createEndFrameGeometry(
@@ -2071,12 +2452,14 @@ export type HoverDiningTableExplodedPart = {
   name: string;
   category:
     | "tabletop"
+    | "tabletop-hardware"
     | "end-box-horizontal"
     | "end-box-vertical"
     | "upper-x"
     | "floor-x"
     | "upper-stretcher"
     | "floor-center-board";
+  material: "Oak" | "Steel";
   geometry: THREE.BufferGeometry;
   offset: THREE.Vector3;
   fabricationProfile: HoverDiningTableFabricationProfile;
@@ -2087,17 +2470,19 @@ export type HoverDiningTableCutPart = {
   name: string;
   assembly:
     | "tabletop"
+    | "tabletop hardware"
     | "end boxes"
     | "upper X"
     | "floor X"
     | "upper stretchers"
     | "floor center board";
-  kind: "tabletop" | "rail" | "stile" | "brace" | "support";
+  kind: "tabletop" | "rail" | "stile" | "brace" | "support" | "channel";
+  material: "Oak" | "Steel";
   quantity: number;
   length: number;
   width: number;
   thickness: number;
-  grainDirection: "length";
+  grainDirection: "length" | "n/a";
   fabricationProfile: HoverDiningTableFabricationProfile;
   cutAngleDegrees?: number;
   lap?: {
@@ -2117,7 +2502,7 @@ export type HoverDiningTableCutPart = {
 };
 
 export type HoverDiningTableCutList = {
-  material: "Oak";
+  material: "White oak + blackened steel";
   dimensionBasis: "full-size finished dimensions";
   totalPieces: number;
   parts: HoverDiningTableCutPart[];
@@ -2134,6 +2519,7 @@ function createBraceCutParts(
   const common = {
     assembly,
     kind: "brace" as const,
+    material: "Oak" as const,
     quantity: 1,
     length: brace.diagonalLength,
     width: brace.width,
@@ -2183,6 +2569,7 @@ function createStraightSupportCutPart(
     name,
     assembly,
     kind: "support",
+    material: "Oak",
     quantity: support.count,
     length: support.spanX,
     width: support.width,
@@ -2202,7 +2589,7 @@ function createStraightSupportCutPart(
 
 export function getHoverDiningTablePieceCount(params: ModelParams) {
   const bottomStyle = bottomSupportStyle(getParam(params, "bottomSupportStyle"));
-  return 11 +
+  return 14 +
     (bottomStyle === "x" ? 2 : bottomStyle === "center-board" ? 1 : 0);
 }
 
@@ -2219,33 +2606,18 @@ export function getHoverDiningTableCutList(
     top: createEndBoxPartFabricationProfile(spec, "top"),
     bottom: createEndBoxPartFabricationProfile(spec, "bottom"),
     left: createEndBoxPartFabricationProfile(spec, "left"),
+    right: createEndBoxPartFabricationProfile(spec, "right"),
   };
-  const outerFrame = getRoundedTrapezoidDefinition(
-    spec.frameBottomWidth,
-    spec.frameTopWidth,
-    0,
-    spec.frameHeight,
-    spec.frameOuterBottomCornerRadius,
-    spec.frameOuterTopCornerRadius,
-    spec.frameOuterCurveTension,
+  const stileLayout = getHoverDiningTableStileFabricationLayout(
+    frameProfiles.right,
   );
-  const innerFrame = getRoundedTrapezoidDefinition(
-    spec.openingBottomWidth,
-    spec.openingTopWidth,
-    spec.openingBottom,
-    spec.openingTop,
-    spec.frameInnerBottomCornerRadius,
-    spec.frameInnerTopCornerRadius,
-    spec.frameInnerCurveTension,
-  );
-  const stileVector = outerFrame.leftLower.clone().sub(outerFrame.leftUpper);
-  const stileLength = stileVector.length();
-  const stileWidth = Math.max(
-    outerFrame.leftUpper.distanceTo(innerFrame.leftUpper),
-    outerFrame.leftLower.distanceTo(innerFrame.leftLower),
-  );
+  const stileLength = stileLayout.length;
+  const stileWidth = stileLayout.width;
   const stileCutAngle = THREE.MathUtils.radToDeg(
-    Math.atan2(Math.abs(stileVector.x), Math.abs(stileVector.y)),
+    Math.atan2(
+      Math.abs(stileLayout.lengthAxis.x),
+      Math.abs(stileLayout.lengthAxis.y),
+    ),
   );
   const topRailLength = frameProfiles.top.bounds.maxX - frameProfiles.top.bounds.minX;
   const topRailWidth = frameProfiles.top.bounds.maxY - frameProfiles.top.bounds.minY;
@@ -2259,6 +2631,7 @@ export function getHoverDiningTableCutList(
       name: "Tabletop",
       assembly: "tabletop",
       kind: "tabletop",
+      material: "Oak",
       quantity: 1,
       length: spec.length,
       width: spec.width,
@@ -2267,6 +2640,7 @@ export function getHoverDiningTableCutList(
       fabricationProfile: createTabletopFabricationProfile(spec),
       notes: [
         "Roll both long edges to the listed Bézier profile; keep both ends flat and square.",
+        "Route all three channel mortises upward from the underside so their installed webs finish exactly flush; the upper supports stay at the original underside plane.",
       ],
       processDimensions: [
         { label: "Long-edge roll", value: spec.topEdgeRoll },
@@ -2278,10 +2652,34 @@ export function getHoverDiningTableCutList(
       ],
     },
     {
+      id: "H1",
+      name: "Widthwise C-channel",
+      assembly: "tabletop hardware",
+      kind: "channel",
+      material: "Steel",
+      quantity: spec.channels.count,
+      length: spec.channels.length,
+      width: spec.channels.width,
+      thickness: spec.channels.depth,
+      grainDirection: "n/a",
+      fabricationProfile: createCChannelFabricationProfile(spec.channels),
+      notes: [
+        "Blackened-steel U-channel seats in a full-width rectangular mortise with its web flush to the tabletop underside.",
+        "Install one at table center and the outer pair symmetrically at the model-derived locations; the upper supports pass beneath this common plane and retain direct oak bearing between channels.",
+        "Field-drill slotted screw holes for seasonal wood movement and place upper-support fasteners in the uninterrupted oak bearing runs.",
+      ],
+      processDimensions: [
+        { label: "Steel wall", value: spec.channels.wallThickness },
+        { label: "Long-edge inset", value: spec.channels.sideInset },
+        { label: "End-box clearance", value: spec.channels.endClearance },
+      ],
+    },
+    {
       id: "B1",
       name: "End-box top rail",
       assembly: "end boxes",
       kind: "rail",
+      material: "Oak",
       quantity: 2,
       length: topRailLength,
       width: topRailWidth,
@@ -2313,6 +2711,7 @@ export function getHoverDiningTableCutList(
       name: "End-box bottom rail",
       assembly: "end boxes",
       kind: "rail",
+      material: "Oak",
       quantity: 2,
       length: bottomRailLength,
       width: bottomRailWidth,
@@ -2344,12 +2743,13 @@ export function getHoverDiningTableCutList(
       name: "End-box stile",
       assembly: "end boxes",
       kind: "stile",
+      material: "Oak",
       quantity: 4,
       length: stileLength,
       width: stileWidth,
       thickness: spec.frameDepth,
       grainDirection: "length",
-      fabricationProfile: frameProfiles.left,
+      fabricationProfile: frameProfiles.right,
       cutAngleDegrees: stileCutAngle,
       notes: [
         "Two mirrored stiles per end box.",
@@ -2432,7 +2832,7 @@ export function getHoverDiningTableCutList(
   }
 
   return {
-    material: "Oak",
+    material: "White oak + blackened steel",
     dimensionBasis: "full-size finished dimensions",
     totalPieces,
     parts,
@@ -2457,6 +2857,97 @@ function createEndBoxFinishedPartGeometry(
 }
 
 /**
+ * Builds the exact finished solid represented by one cut-list schedule line.
+ * Repeated and mirrored pieces intentionally share one representative solid;
+ * every surface treatment and joinery cut comes from the assembled-model
+ * constructors rather than from a simplified preview mesh.
+ */
+export function createHoverDiningTableCutPartGeometry(
+  params: ModelParams,
+  model: HoverDiningTableModelDefinition,
+  partId: string,
+) {
+  const { scaled: spec } = getHoverDiningTableSpec(params);
+  let geometry: THREE.BufferGeometry;
+
+  if (partId === "T1") {
+    geometry = createTabletopGeometry(spec, model);
+  } else if (partId === "H1") {
+    geometry = createCChannelGeometry(spec.channels, 0);
+  } else if (partId === "B1") {
+    geometry = createEndBoxFinishedPartGeometry(
+      spec,
+      model,
+      -spec.frameCenterX,
+      "top",
+    );
+  } else if (partId === "B2") {
+    geometry = createEndBoxFinishedPartGeometry(
+      spec,
+      model,
+      -spec.frameCenterX,
+      "bottom",
+    );
+  } else if (partId === "B3") {
+    geometry = createEndBoxFinishedPartGeometry(
+      spec,
+      model,
+      -spec.frameCenterX,
+      "left",
+    );
+  } else if (partId === "U1" || partId === "U2") {
+    if (spec.topSupportStyle !== "x") {
+      throw new Error(`${partId} requires the upper X support layout`);
+    }
+    const geometries = createHalfLappedXParts(
+      spec.upperBrace,
+      spec.halfLapClearance,
+      model,
+    );
+    const selectedIndex = partId === "U1" ? 0 : 1;
+    geometry = geometries[selectedIndex];
+    geometries.forEach((candidate, index) => {
+      if (index !== selectedIndex) candidate.dispose();
+    });
+  } else if (partId === "F1" || partId === "F2") {
+    if (spec.bottomSupportStyle !== "x") {
+      throw new Error(`${partId} requires the floor X support layout`);
+    }
+    const geometries = createHalfLappedXParts(
+      spec.lowerBrace,
+      spec.halfLapClearance,
+      model,
+    );
+    const selectedIndex = partId === "F1" ? 0 : 1;
+    geometry = geometries[selectedIndex];
+    geometries.forEach((candidate, index) => {
+      if (index !== selectedIndex) candidate.dispose();
+    });
+  } else if (partId === "S1") {
+    if (spec.topSupportStyle !== "stretchers") {
+      throw new Error("S1 requires the upper-stretcher support layout");
+    }
+    const geometries = createStraightSupportParts(spec.upperStretchers, model);
+    geometry = geometries[0];
+    geometries.slice(1).forEach((candidate) => candidate.dispose());
+  } else if (partId === "C1") {
+    if (spec.bottomSupportStyle !== "center-board") {
+      throw new Error("C1 requires the floor-center-board support layout");
+    }
+    const geometries = createStraightSupportParts(spec.lowerCenterBoard, model);
+    geometry = geometries[0];
+    geometries.slice(1).forEach((candidate) => candidate.dispose());
+  } else {
+    throw new Error(`Unknown Hover-table cut-list item: ${partId}`);
+  }
+
+  if (partId !== "H1") addPlanarWoodUvs(geometry);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+/**
  * Returns independently movable, fabrication-complete glue-up pieces for the
  * selected support layout. The four bars of each end box share the assembled
  * Bézier/tangent constraints, while selective face round-overs leave every
@@ -2473,11 +2964,23 @@ export function createHoverDiningTableExplodedParts(
     {
       name: "tabletop",
       category: "tabletop",
+      material: "Oak",
       geometry: createTabletopGeometry(spec, model),
       offset: new THREE.Vector3(0, 0, baseLift + gap * 3),
       fabricationProfile: createTabletopFabricationProfile(spec),
     },
   ];
+
+  spec.channels.centerXs.forEach((centerX, index) => {
+    parts.push({
+      name: `tabletop-c-channel-${index + 1}`,
+      category: "tabletop-hardware",
+      material: "Steel",
+      geometry: createCChannelGeometry(spec.channels, centerX),
+      offset: new THREE.Vector3(0, 0, baseLift + gap * 1.8),
+      fabricationProfile: createCChannelFabricationProfile(spec.channels),
+    });
+  });
 
   for (const endSign of [-1, 1] as const) {
     const x = endSign * spec.frameCenterX;
@@ -2487,6 +2990,7 @@ export function createHoverDiningTableExplodedParts(
       {
         name: `${endLabel}-box-top-rail`,
         category: "end-box-horizontal",
+        material: "Oak",
         geometry: createEndBoxFinishedPartGeometry(spec, model, x, "top"),
         offset: new THREE.Vector3(xOffset, 0, baseLift + gap),
         fabricationProfile: createEndBoxPartFabricationProfile(spec, "top"),
@@ -2494,6 +2998,7 @@ export function createHoverDiningTableExplodedParts(
       {
         name: `${endLabel}-box-bottom-rail`,
         category: "end-box-horizontal",
+        material: "Oak",
         geometry: createEndBoxFinishedPartGeometry(spec, model, x, "bottom"),
         offset: new THREE.Vector3(xOffset, 0, 0),
         fabricationProfile: createEndBoxPartFabricationProfile(spec, "bottom"),
@@ -2501,6 +3006,7 @@ export function createHoverDiningTableExplodedParts(
       {
         name: `${endLabel}-box-left-vertical`,
         category: "end-box-vertical",
+        material: "Oak",
         geometry: createEndBoxFinishedPartGeometry(spec, model, x, "left"),
         offset: new THREE.Vector3(xOffset, -gap, baseLift),
         fabricationProfile: createEndBoxPartFabricationProfile(spec, "left"),
@@ -2508,6 +3014,7 @@ export function createHoverDiningTableExplodedParts(
       {
         name: `${endLabel}-box-right-vertical`,
         category: "end-box-vertical",
+        material: "Oak",
         geometry: createEndBoxFinishedPartGeometry(spec, model, x, "right"),
         offset: new THREE.Vector3(xOffset, gap, baseLift),
         fabricationProfile: createEndBoxPartFabricationProfile(spec, "right"),
@@ -2533,6 +3040,7 @@ export function createHoverDiningTableExplodedParts(
       parts.push({
         name: `${category}-bar-${index + 1}`,
         category,
+        material: "Oak",
         geometry,
         offset: new THREE.Vector3(
           0,
@@ -2559,6 +3067,7 @@ export function createHoverDiningTableExplodedParts(
             ? `upper-stretcher-${index + 1}`
             : "floor-center-board",
         category,
+        material: "Oak",
         geometry,
         offset: new THREE.Vector3(0, separation, baseLift),
         fabricationProfile: createStraightSupportFabricationProfile(support),
@@ -2576,7 +3085,9 @@ export function createHoverDiningTableExplodedParts(
     addStraightParts(spec.lowerCenterBoard, "floor-center-board");
   }
 
-  parts.forEach((part) => addPlanarWoodUvs(part.geometry));
+  parts.forEach((part) => {
+    if (part.material === "Oak") addPlanarWoodUvs(part.geometry);
+  });
 
   parts.forEach((part) =>
     assertFabricationProfile(part.fabricationProfile, part.name),
@@ -2621,6 +3132,13 @@ export function getHoverDiningTableParameterLimits(
     limits.min = Math.max(
       limits.min,
       2 * (spec.endOverhang + spec.frameDepth) + MIN_BRACE_SPAN,
+      2 * (spec.endOverhang + spec.frameDepth) +
+        2 * spec.channels.endClearance +
+        3 * spec.channels.width +
+        limits.step,
+      2 * (spec.endOverhang + spec.frameDepth) +
+        6 * spec.channels.width +
+        limits.step,
     );
   } else if (key === "tableWidth") {
     limits.min = Math.max(
@@ -2632,6 +3150,9 @@ export function getHoverDiningTableParameterLimits(
         spec.frameBottomSpread +
         2 * spec.frameSideWidth +
         2 * spec.frameInnerBottomCornerRadius,
+      spec.channels.sideInset * 2 +
+        spec.channels.wallThickness * 2 +
+        limits.step,
     );
   } else if (key === "overallHeight") {
     limits.min = Math.max(
@@ -2645,9 +3166,17 @@ export function getHoverDiningTableParameterLimits(
       spec.topThickness + spec.lowerBrace.thickness + spec.upperBrace.thickness,
     );
   } else if (key === "topThickness") {
+    limits.min = Math.max(
+      limits.min,
+      spec.channels.depth + limits.step,
+    );
     limits.max = Math.min(limits.max, spec.height / 5);
   } else if (key === "topEdgeRoll") {
-    limits.max = Math.min(limits.max, spec.width / 3);
+    limits.max = Math.min(
+      limits.max,
+      spec.width / 3,
+      spec.channels.sideInset,
+    );
   } else if (key === "sideOverhang") {
     limits.min = Math.max(
       limits.min,
@@ -2669,20 +3198,72 @@ export function getHoverDiningTableParameterLimits(
     limits.max = Math.min(
       limits.max,
       (spec.length - 2 * spec.frameDepth - MIN_BRACE_SPAN) / 2,
+      (spec.length -
+        2 * spec.frameDepth -
+        2 * spec.channels.endClearance -
+        3 * spec.channels.width -
+        limits.step) /
+        2,
+      (spec.length -
+        2 * spec.frameDepth -
+        6 * spec.channels.width -
+        limits.step) /
+        2,
     );
   } else if (key === "frameDepth") {
     limits.min = Math.max(limits.min, spec.frameEdgeRoundover * 2 + limits.step);
     limits.max = Math.min(
       limits.max,
       (spec.length - 2 * spec.endOverhang - MIN_BRACE_SPAN) / 2,
+      (spec.length -
+        2 * spec.endOverhang -
+        2 * spec.channels.endClearance -
+        3 * spec.channels.width -
+        limits.step) /
+        2,
+      (spec.length -
+        2 * spec.endOverhang -
+        6 * spec.channels.width -
+        limits.step) /
+        2,
     );
-  } else if (key === "frameSideWidth") {
+  } else if (key === "channelEndClearance") {
+    limits.max = Math.min(
+      limits.max,
+      (spec.braceSpanX - 3 * spec.channels.width - limits.step) / 2,
+    );
+  } else if (key === "channelSideInset") {
+    limits.min = Math.max(limits.min, spec.topEdgeRoll);
+    limits.max = Math.min(
+      limits.max,
+      spec.width / 2 - spec.channels.wallThickness - limits.step,
+    );
+  } else if (key === "channelWidth") {
     limits.min = Math.max(
       limits.min,
-      spec.frameEdgeRoundover * 2 + limits.step,
-      spec.upperBrace.width,
-      spec.lowerBrace.width,
+      spec.channels.wallThickness * 2 + limits.step,
     );
+    limits.max = Math.min(
+      limits.max,
+      (spec.braceSpanX - 2 * spec.channels.endClearance - limits.step) / 3,
+      spec.braceSpanX / 6 - limits.step,
+    );
+  } else if (key === "channelDepth") {
+    limits.min = Math.max(
+      limits.min,
+      spec.channels.wallThickness + limits.step,
+    );
+    limits.max = Math.min(
+      limits.max,
+      spec.topThickness - limits.step,
+    );
+  } else if (key === "channelWallThickness") {
+    limits.max = Math.min(
+      limits.max,
+      spec.channels.depth - limits.step,
+      spec.channels.width / 2 - limits.step,
+    );
+  } else if (key === "frameSideWidth") {
     limits.max = Math.min(
       limits.max,
       (spec.frameTopWidth - 2 * spec.frameInnerTopCornerRadius) / 2,
@@ -2771,7 +3352,6 @@ export function getHoverDiningTableParameterLimits(
       key === "topSupportWidth"
         ? (spec.frameTopWidth - 2 * spec.frameInnerTopCornerRadius) / 2
         : (spec.frameBottomWidth - 2 * spec.frameInnerBottomCornerRadius) / 2,
-      spec.frameSideWidth,
       brace.cornerTangentY - brace.endpointInset,
     );
   } else if (key === "topSupportThickness" || key === "bottomSupportThickness") {
@@ -2856,6 +3436,18 @@ const STRUCTURAL_REFERENCE = {
   supportArea: 2 * 1.25 * 25.4 * 25.4,
 } as const;
 
+const STRUCTURAL_WEIGHTS: Record<
+  HoverDiningTableStructuralMetric["key"],
+  number
+> = {
+  "longitudinal-racking": 0.23,
+  "end-box-racking": 0.2,
+  torsion: 0.18,
+  tipping: 0.14,
+  "floor-rocking": 0.12,
+  "member-stiffness": 0.13,
+};
+
 function structuralScore(value: number) {
   return Number(Math.max(0, Math.min(100, value)).toFixed(1));
 }
@@ -2873,9 +3465,26 @@ function structuralMetric(
   label: string,
   rawScore: number,
   detail: string,
+  calculation: Pick<
+    HoverDiningTableStructuralMetric["calculation"],
+    "rationale" | "formula" | "inputs"
+  >,
 ): HoverDiningTableStructuralMetric {
   const score = structuralScore(rawScore);
-  return { key, label, score, grade: structuralGrade(score), detail };
+  const weight = STRUCTURAL_WEIGHTS[key];
+  return {
+    key,
+    label,
+    score,
+    grade: structuralGrade(score),
+    detail,
+    calculation: {
+      ...calculation,
+      rawScore: Number(rawScore.toFixed(1)),
+      weight,
+      scoringNote: `Raw result ${rawScore.toFixed(1)} is clamped to 0–100, then contributes ${(weight * 100).toFixed(0)}% of the overall score (${(score * weight).toFixed(1)} weighted points). Grade bands: A ≥ 85, B ≥ 75, C ≥ 65, D ≥ 50, F < 50.`,
+    },
+  };
 }
 
 function evaluateHoverDiningTableStructure(
@@ -2996,24 +3605,232 @@ function evaluateHoverDiningTableStructure(
       "Lengthwise racking",
       longitudinalRacking,
       `${spec.topSupportStyle === "x" ? "upper X" : "upper stretchers"} + ${spec.bottomSupportStyle === "x" ? "floor X" : spec.bottomSupportStyle === "center-board" ? "center board" : "no floor connector"}`,
+      {
+        rationale:
+          "Lengthwise sway grows with tabletop height and falls as the top and floor support paths become more triangulated and gain cross-sectional area. The base 30 represents the two end boxes before the connecting members contribute.",
+        formula:
+          "30 + 35 × topTopology × topAreaFactor × heightFactor^1.4 + 25 × bottomTopology × bottomAreaFactor × heightFactor^1.4",
+        inputs: [
+          {
+            key: "overallHeight",
+            label: "Overall height",
+            value: spec.height,
+            format: "length",
+          },
+          {
+            key: "topSupportStyle",
+            label: "Top support topology",
+            value: `${spec.topSupportStyle} (${topRackingTopology.toFixed(2)})`,
+            format: "choice",
+          },
+          {
+            key: "topSupportWidth",
+            label: "Top support width",
+            value: spec.upperBrace.width,
+            format: "length",
+          },
+          {
+            key: "topSupportThickness",
+            label: "Top support thickness",
+            value: spec.upperBrace.thickness,
+            format: "length",
+          },
+          {
+            key: "bottomSupportStyle",
+            label: "Bottom support topology",
+            value: `${spec.bottomSupportStyle} (${bottomRackingTopology.toFixed(2)})`,
+            format: "choice",
+          },
+          {
+            key: "bottomSupportWidth",
+            label: "Bottom support width",
+            value: spec.lowerBrace.width,
+            format: "length",
+          },
+          {
+            key: "bottomSupportThickness",
+            label: "Bottom support thickness",
+            value: spec.lowerBrace.thickness,
+            format: "length",
+          },
+          {
+            key: "heightFactor",
+            label: "Reference height ÷ current height",
+            value: heightFactor,
+            format: "number",
+            precision: 3,
+          },
+          {
+            key: "topAreaFactor",
+            label: "Top cross-section factor",
+            value: topAreaFactor,
+            format: "number",
+            precision: 3,
+          },
+          {
+            key: "bottomAreaFactor",
+            label: "Bottom cross-section factor",
+            value: bottomAreaFactor,
+            format: "number",
+            precision: 3,
+          },
+        ],
+      },
     ),
     structuralMetric(
       "end-box-racking",
       "End-box racking",
       endBoxRacking,
       `stile slenderness ${stileSlenderness.toFixed(1)}:1 · depth/height ${(spec.frameDepth / spec.height).toFixed(3)}`,
+      {
+        rationale:
+          "Each end box behaves like a portal frame. Wider stiles, deeper members, and taller rails increase its resistance; increasing overall height increases the lever arm and is penalized quadratically.",
+        formula:
+          "78 × (sideWidth ÷ 2.25 in)^1.2 × (boxDepth ÷ 2.5 in)^0.8 × (averageRailHeight ÷ 1.5 in)^0.4 × heightFactor^2",
+        inputs: [
+          {
+            key: "frameSideWidth",
+            label: "End-box side width",
+            value: spec.frameSideWidth,
+            format: "length",
+          },
+          {
+            key: "frameDepth",
+            label: "End-box member depth",
+            value: spec.frameDepth,
+            format: "length",
+          },
+          {
+            key: "frameTopRailHeight",
+            label: "Top rail height",
+            value: spec.frameTopRailHeight,
+            format: "length",
+          },
+          {
+            key: "frameBottomRailHeight",
+            label: "Bottom rail height",
+            value: spec.frameBottomRailHeight,
+            format: "length",
+          },
+          {
+            key: "overallHeight",
+            label: "Overall height",
+            value: spec.height,
+            format: "length",
+          },
+          {
+            key: "stileSlenderness",
+            label: "Derived stile slenderness",
+            value: stileSlenderness,
+            format: "number",
+            precision: 2,
+            suffix: ":1",
+          },
+        ],
+      },
     ),
     structuralMetric(
       "torsion",
       "Torsional rigidity",
       torsion,
       `${spec.topSupportStyle === "x" ? "triangulated" : "parallel"} top · ${spec.bottomSupportStyle === "x" ? "triangulated" : spec.bottomSupportStyle === "center-board" ? "single-axis" : "open"} floor plane`,
+      {
+        rationale:
+          "Twist resistance depends on closed or triangulated support paths at both elevations. Greater vertical separation between those paths and broader engagement across the end boxes improve the torsional couple.",
+        formula:
+          "15 + 75 × √(topTopology × bottomTopology) × planeSeparation^0.6 × √(widthEngagement)",
+        inputs: [
+          {
+            key: "topSupportStyle",
+            label: "Top torsion topology",
+            value: `${spec.topSupportStyle} (${topTorsionTopology.toFixed(2)})`,
+            format: "choice",
+          },
+          {
+            key: "bottomSupportStyle",
+            label: "Bottom torsion topology",
+            value: `${spec.bottomSupportStyle} (${bottomTorsionTopology.toFixed(2)})`,
+            format: "choice",
+          },
+          {
+            key: "supportPlaneSeparation",
+            label: "Support-plane separation ÷ height",
+            value: supportPlaneSeparation,
+            format: "number",
+            precision: 3,
+          },
+          {
+            key: "frameBottomWidth",
+            label: "End-box bottom width",
+            value: spec.frameBottomWidth,
+            format: "length",
+          },
+          {
+            key: "tableWidth",
+            label: "Table width",
+            value: spec.width,
+            format: "length",
+          },
+          {
+            key: "widthEngagement",
+            label: "Normalized width engagement",
+            value: widthEngagement,
+            format: "number",
+            precision: 3,
+          },
+        ],
+      },
     ),
     structuralMetric(
       "tipping",
       "Tipping margin",
       tipping,
       `controlling half-footprint / height ${controllingTippingRatio.toFixed(2)}`,
+      {
+        rationale:
+          "The smaller of the lateral and longitudinal half-footprints controls how far the center of mass can move before passing the support polygon. A taller table reduces that geometric margin.",
+        formula:
+          "20 + 80 × min(1, min(bottomWidth ÷ 2 ÷ height, footprintLength ÷ 2 ÷ height) ÷ 0.65)",
+        inputs: [
+          {
+            key: "overallHeight",
+            label: "Overall height",
+            value: spec.height,
+            format: "length",
+          },
+          {
+            key: "tableLength",
+            label: "Table length",
+            value: spec.length,
+            format: "length",
+          },
+          {
+            key: "endOverhang",
+            label: "End overhang",
+            value: spec.endOverhang,
+            format: "length",
+          },
+          {
+            key: "frameBottomWidth",
+            label: "End-box bottom width",
+            value: spec.frameBottomWidth,
+            format: "length",
+          },
+          {
+            key: "footprintLength",
+            label: "Derived longitudinal footprint",
+            value: footprintLength,
+            format: "length",
+          },
+          {
+            key: "controllingTippingRatio",
+            label: "Controlling half-footprint ÷ height",
+            value: controllingTippingRatio,
+            format: "number",
+            precision: 3,
+          },
+        ],
+      },
     ),
     structuralMetric(
       "floor-rocking",
@@ -3024,31 +3841,123 @@ function evaluateHoverDiningTableStructure(
         : spec.bottomSupportStyle === "center-board"
           ? "end boxes + one center floor contact"
           : "end boxes + crossing floor-contact network",
+      {
+        rationale:
+          "Rocking tolerance rewards long flat end-box bearing runs and fewer over-constrained floor contacts. A floor X is structurally useful for racking but is more sensitive to an uneven floor than two end boxes alone.",
+        formula:
+          "contactBase + 10 × min(1, (bottomWidth − 2 × outerBottomRadius) ÷ bottomWidth), where contactBase = X 52, center board 62, none 84",
+        inputs: [
+          {
+            key: "bottomSupportStyle",
+            label: "Floor contact topology",
+            value: spec.bottomSupportStyle,
+            format: "choice",
+          },
+          {
+            key: "rockingBase",
+            label: "Topology base score",
+            value: rockingBase,
+            format: "number",
+            precision: 0,
+          },
+          {
+            key: "frameBottomWidth",
+            label: "End-box bottom width",
+            value: spec.frameBottomWidth,
+            format: "length",
+          },
+          {
+            key: "frameOuterBottomCornerRadius",
+            label: "Outer bottom radius",
+            value: spec.frameOuterBottomCornerRadius,
+            format: "length",
+          },
+          {
+            key: "flatBottomRun",
+            label: "Flat bottom fraction",
+            value: flatBottomRun,
+            format: "number",
+            precision: 3,
+          },
+        ],
+      },
     ),
     structuralMetric(
       "member-stiffness",
       "Member stiffness",
       memberStiffness,
       `support slenderness ${supportSlenderness.toFixed(1)}:1 · white-oak MOE reference`,
+      {
+        rationale:
+          "This is a relative geometric stiffness screen for white oak held at a constant material modulus. It penalizes end-box stiles above 8:1 slenderness and the most slender active support member above 25:1.",
+        formula:
+          "100 − max(0, stileSlenderness − 8) × 2 − max(0, supportSlenderness − 25) × 0.9",
+        inputs: [
+          {
+            key: "openingHeight",
+            label: "End-box opening height",
+            value: spec.openingHeight,
+            format: "length",
+          },
+          {
+            key: "frameSideWidth",
+            label: "End-box side width",
+            value: spec.frameSideWidth,
+            format: "length",
+          },
+          {
+            key: "frameDepth",
+            label: "Member depth",
+            value: spec.frameDepth,
+            format: "length",
+          },
+          {
+            key: "stileSlenderness",
+            label: "Derived stile slenderness",
+            value: stileSlenderness,
+            format: "number",
+            precision: 2,
+            suffix: ":1",
+          },
+          {
+            key: "supportSlenderness",
+            label: "Controlling support slenderness",
+            value: supportSlenderness,
+            format: "number",
+            precision: 2,
+            suffix: ":1",
+          },
+          {
+            key: "materialAssumption",
+            label: "Fixed material assumption",
+            value: "White oak; MOE held constant",
+            format: "choice",
+          },
+        ],
+      },
     ),
   ];
-  const weights: Record<HoverDiningTableStructuralMetric["key"], number> = {
-    "longitudinal-racking": 0.23,
-    "end-box-racking": 0.2,
-    torsion: 0.18,
-    tipping: 0.14,
-    "floor-rocking": 0.12,
-    "member-stiffness": 0.13,
-  };
   const overallScore = structuralScore(
     metrics.reduce(
-      (total, metric) => total + metric.score * weights[metric.key],
+      (total, metric) =>
+        total + metric.score * STRUCTURAL_WEIGHTS[metric.key],
       0,
     ),
   );
   return {
     overallScore,
     overallGrade: structuralGrade(overallScore),
+    overallCalculation: {
+      rationale:
+        "The composite emphasizes the failure modes most likely to feel like table wobble: lengthwise racking, end-box racking, and torsion. Tipping, floor rocking, and member stiffness remain material contributors without overwhelming the connection topology.",
+      formula: metrics
+        .map(
+          (metric) =>
+            `${(STRUCTURAL_WEIGHTS[metric.key] * 100).toFixed(0)}% × ${metric.label}`,
+        )
+        .join(" + "),
+      scoringNote: `The weighted sum is ${overallScore.toFixed(1)}. Grade bands: A ≥ 85, B ≥ 75, C ≥ 65, D ≥ 50, F < 50. This remains a geometry-only comparison, not a load certification.`,
+    },
     metrics,
     basis: "geometry-only screening",
   };
@@ -3123,6 +4032,16 @@ export function getHoverDiningTableAuditValue(
         check.label,
         `${formatLength(spec.topThickness, unit)} top · ${formatLength(spec.topEdgeRoll, unit)} long-edge roll · flat ends`,
       );
+    case "hoverChannels":
+      {
+        const positions = spec.channels.centerXs
+          .map((centerX) => formatLength(centerX + spec.length / 2, unit))
+          .join(" / ");
+        return item(
+          check.label,
+          `3 × widthwise blackened-steel U-channels · centers ${positions} from left end · ${formatLength(spec.channels.length, unit)} long × ${formatLength(spec.channels.depth, unit)} deep · webs flush underside · ${(upperSupportOakBearingFraction(spec) * 100).toFixed(0)}% upper-support length remains direct-to-oak`,
+        );
+      }
     case "hoverEndBoxes":
       return item(
         check.label,
@@ -3181,17 +4100,17 @@ export function getHoverDiningTableAuditValue(
     case "hoverDirectContact":
       return item(
         check.label,
-        `top supports Z ${formatLength(spec.topBottom, unit)} · ${spec.bottomSupportStyle === "none" ? "no floor support selected" : `floor supports Z ${formatLength(0, unit)}`} · zero support gaps`,
+        `top supports + recessed channel webs Z ${formatLength(spec.topBottom, unit)} · ${(upperSupportOakBearingFraction(spec) * 100).toFixed(0)}% direct oak bearing · ${spec.bottomSupportStyle === "none" ? "no floor support selected" : `floor supports Z ${formatLength(0, unit)}`} · zero support gaps`,
       );
     case "hoverExplodedAssembly":
       return item(
         check.label,
-        `${getHoverDiningTablePieceCount(params)} constrained solids · profiled top · 4 Bézier rails · 4 tangent-seam stiles · selected finished supports`,
+        `${getHoverDiningTablePieceCount(params)} constrained solids · mortised profiled top · 3 steel C-channels · 4 Bézier rails · 4 tangent-seam stiles · selected finished supports`,
       );
     case "hoverCutList":
       {
         const scheduleLines =
-          4 +
+          5 +
           (spec.topSupportStyle === "x" ? 2 : 1) +
           (spec.bottomSupportStyle === "x"
             ? 2
@@ -3200,7 +4119,7 @@ export function getHoverDiningTableAuditValue(
               : 0);
         return item(
           check.label,
-          `${scheduleLines} schedule lines · ${getHoverDiningTablePieceCount(params)} oak pieces · exact profiles + edge sections · full-size finished dimensions`,
+          `${scheduleLines} schedule lines · ${getHoverDiningTablePieceCount(params)} oak + steel pieces · exact profiles + edge or U-channel sections · full-size finished dimensions`,
         );
       }
     case "hoverRoutingTemplates":

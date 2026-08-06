@@ -141,6 +141,7 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
     "hover-dining-table-v1": [
       "hoverTableEnvelope",
       "hoverTabletopProfile",
+      "hoverChannels",
       "hoverEndBoxes",
       "hoverBoxOpening",
       "hoverCornerCurves",
@@ -499,7 +500,8 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "upperBraceMaxZ",
     "lowerBraceMinZ",
     "zero air gap",
-    "11–13 independently movable pieces",
+    "14–16 independently movable pieces",
+    "Three blackened-steel widthwise C-channels",
     "presentation-only",
     "true-shape SVG views",
     "full-size finished dimensions",

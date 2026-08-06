@@ -25,6 +25,7 @@ assert.equal(model.viewer, "hover-dining-table-v1");
 assert.ok(model.geometry.curveSegments >= 12, "Bézier profiles need smooth sampling");
 assert.ok(model.geometry.bevelSegments >= 4, "End-box face round-overs need smooth sampling");
 assert.ok(model.geometry.braceRoundoverSegments >= 4, "Brace edge round-overs need smooth sampling");
+assert.equal(model.geometry.channelCount, 3, "the tabletop needs exactly three C-channels");
 
 close(params.tableLength, 75 * inch, "table length");
 close(params.tableWidth, 35.5 * inch, "table width");
@@ -33,6 +34,11 @@ close(params.topThickness, 1.25 * inch, "tabletop thickness");
 close(params.topEdgeRoll, 0.625 * inch, "long-edge roll depth");
 close(params.sideOverhang, 1.75 * inch, "side overhang");
 close(params.endOverhang, 7.5 * inch, "end overhang");
+close(params.channelEndClearance, 4 * inch, "channel clearance from end boxes");
+close(params.channelSideInset, 2 * inch, "channel inset from long edges");
+close(params.channelWidth, 2 * inch, "channel outside width");
+close(params.channelDepth, 0.375 * inch, "channel mortise depth");
+close(params.channelWallThickness, 0.125 * inch, "channel steel wall");
 close(params.frameDepth, 2.5 * inch, "end-box depth");
 close(params.frameSideWidth, 2.25 * inch, "end-box side width");
 close(params.frameBottomRailHeight, 1.75 * inch, "bottom rail");
@@ -89,6 +95,11 @@ const openingBottomWidth = frameBottomWidth - 2 * params.frameSideWidth;
 const openingHeight =
   frameHeight - params.frameBottomRailHeight - params.frameTopRailHeight;
 const spanX = params.tableLength - 2 * (params.endOverhang + params.frameDepth);
+const channelOuterCenterX =
+  spanX / 2 - params.channelEndClearance - params.channelWidth / 2;
+const channelCenters = [-channelOuterCenterX, 0, channelOuterCenterX];
+const directOakBearingFraction =
+  1 - (model.geometry.channelCount * params.channelWidth) / spanX;
 const deriveBraceEnd = (openingWidth, innerRadius, width, inset) => {
   const cornerTangentY = openingWidth / 2 - innerRadius;
   let endpointY = cornerTangentY - inset - width / 2;
@@ -135,6 +146,26 @@ assert.ok(
     params.frameInnerTopCornerRadius + params.frameInnerBottomCornerRadius,
 );
 assert.ok(spanX > 4 * inch, "both X assemblies need a positive structural span");
+assert.equal(channelCenters.length, model.geometry.channelCount);
+close(channelCenters[0] + channelCenters[2], 0, "outer channel symmetry");
+close(channelCenters[1], 0, "center channel position");
+assert.ok(
+  channelCenters[0] + params.channelWidth / 2 < -params.channelWidth / 2,
+  "left and center channel mortises must remain distinct",
+);
+assert.ok(
+  channelCenters[2] - params.channelWidth / 2 > params.channelWidth / 2,
+  "right and center channel mortises must remain distinct",
+);
+assert.ok(params.channelSideInset >= params.topEdgeRoll);
+assert.ok(params.tableWidth - 2 * params.channelSideInset > 0);
+assert.ok(params.channelDepth < params.topThickness);
+assert.ok(params.channelWallThickness < params.channelDepth);
+assert.ok(params.channelWallThickness * 2 < params.channelWidth);
+assert.ok(
+  directOakBearingFraction >= 0.5,
+  "flush channels must leave at least half of each upper support on oak",
+);
 assert.ok(upperLength > spanX && lowerLength > spanX);
 assert.ok(upperAngle > 0 && lowerAngle > 0);
 assert.ok(upperAngle < Math.PI / 4 && lowerAngle < Math.PI / 4);
@@ -153,8 +184,10 @@ close(params.bottomSupportThickness / 2, 0.625 * inch, "bottom half-lap depth");
 close(topBottom, frameHeight, "end boxes terminate at the tabletop underside");
 close(topBottom, topBottom, "upper-X top contact");
 close(0, 0, "lower-X floor contact");
-assert.ok(params.topSupportWidth <= params.frameSideWidth);
-assert.ok(params.bottomSupportWidth <= params.frameSideWidth);
+assert.equal(
+  model.parameters.find((p) => p.key === "frameSideWidth").limits.min,
+  0.5 * inch,
+);
 assert.ok(params.topSupportThickness <= params.frameTopRailHeight);
 assert.ok(params.bottomSupportThickness <= params.frameBottomRailHeight);
 assert.ok(params.halfLapClearance < params.topSupportThickness / 2);
@@ -191,6 +224,9 @@ for (const required of [
   "createEndFrameGeometry",
   "createHalfLappedX",
   "createHoverDiningTableExplodedParts",
+  "createHoverDiningTableHardwareGeometries",
+  "createCChannelGeometry",
+  "createMortisedTabletopCrossSectionProfile",
   "createEndBoxPartProfiles",
   "createSelectivelyRoundedExtrusion",
   "assertFabricationProfile",
@@ -217,8 +253,10 @@ for (const required of [
   assert.ok(source.includes(required), `procedural source is missing ${required}`);
 }
 for (const required of [
-  "roundedTrapezoidRightSide",
-  "roundedTrapezoidTopSide",
+  "getHoverDiningTableEndBoxFabricationProfiles",
+  "getHoverDiningTableStileFabricationLayout",
+  "profiles.top",
+  "profiles.right",
   "createHoverDiningTableTemplateSegments",
   "getHoverDiningTableTemplateSummary",
   "templatePlateLength",
@@ -253,12 +291,14 @@ for (const phrase of [
   "cubic Bézier",
   "straight-rail tangent",
   "only the bottom long edge",
-  "11–13 glue-up pieces",
+  "14–16 assembly pieces",
+  "Exactly three blackened-steel C-channels",
   "presentation-only",
   "do not substitute proxy blanks",
   "exact constrained profiles",
   "full-size finished dimensions",
-  "full-size top-rail routing template",
+  "full-size top-rail and mirrored vertical-stile routing templates",
+  "exact finished B1/B3 part profiles",
   "complementary in-plane dovetails",
   "1/8 in nominal thickness",
   "rough-milling allowance",
@@ -271,5 +311,5 @@ for (const phrase of [
 }
 
 console.log(
-  `hover-dining-table audit passed: 75 × 35.5 × 29.5 in, 2 end boxes, 4 diagonal braces, 2 centered half-laps, 2 plate-split routing templates, zero contact gaps, 1:${params.mockScale} model ${mockEnvelope.map((value) => value.toFixed(1)).join(" × ")} mm`,
+  `hover-dining-table audit passed: 75 × 35.5 × 29.5 in, 3 flush C-channels, ${(directOakBearingFraction * 100).toFixed(0)}% upper-support oak bearing, 2 end boxes, 4 diagonal braces, 2 centered half-laps, 2 plate-split routing templates, zero contact gaps, 1:${params.mockScale} model ${mockEnvelope.map((value) => value.toFixed(1)).join(" × ")} mm`,
 );

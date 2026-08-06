@@ -132,6 +132,7 @@ export type HoverDiningTableGeometry = {
   curveSegments: number;
   bevelSegments: number;
   braceRoundoverSegments: number;
+  channelCount: 3;
 };
 
 export type SupportedViewer =

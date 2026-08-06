@@ -74,8 +74,12 @@ export {
 } from "./diningTable";
 export {
   assertHoverDiningTableSpec,
+  createHoverDiningTableCutPartGeometry,
   createHoverDiningTableExplodedParts,
   createHoverDiningTableGeometry,
+  createHoverDiningTableHardwareGeometries,
+  getHoverDiningTableEndBoxFabricationProfiles,
+  getHoverDiningTableStileFabricationLayout,
   getHoverDiningTableCutList,
   getHoverDiningTablePieceCount,
   getHoverDiningTableStructuralAssessment,

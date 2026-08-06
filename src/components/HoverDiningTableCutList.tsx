@@ -4,7 +4,9 @@ import {
   type ModelParams,
 } from "../models";
 import type { HoverDiningTableCutPart } from "../models/hoverDiningTable";
+import type { HoverDiningTableModelDefinition } from "../models/types";
 import { formatLength } from "../units";
+import { HoverCutPartPreview } from "./HoverCutPartPreview";
 
 function formatAngle(value: number | undefined) {
   if (!value || Math.abs(value) < 0.05) return "square";
@@ -16,6 +18,9 @@ function formatProcessing(part: HoverDiningTableCutPart) {
     return `${formatAngle(part.cutAngleDegrees)} box-parallel ends · ${part.lap.face} half-lap`;
   }
   if (part.kind === "tabletop") return "square ends · Bézier-roll long edges";
+  if (part.kind === "channel") {
+    return "flush underside mortise · U-channel web + flanges";
+  }
   if (part.kind === "rail") {
     return "finished inner/outer Bézier corners · rounded face edges";
   }
@@ -23,7 +28,7 @@ function formatProcessing(part: HoverDiningTableCutPart) {
     return `${formatAngle(part.cutAngleDegrees)} tangent-seam profile · rounded face edges`;
   }
   if (part.kind === "support") {
-    return "square box-parallel ends · rounded top/bottom long edges";
+    return "square box-parallel ends · rounded bottom long edges";
   }
   return "finished profile";
 }
@@ -177,7 +182,13 @@ function PartSection({
           <path d={section.d} />
         </clipPath>
       </defs>
-      <text x="358" y="25">{part.lap ? "Lap section" : "Edge section"}</text>
+      <text x="358" y="25">
+        {part.lap
+          ? "Lap section"
+          : part.kind === "channel"
+            ? "U-channel section"
+            : "Edge section"}
+      </text>
       <path d={section.d} />
       {part.lap ? (
         <>
@@ -200,9 +211,11 @@ function PartSection({
         </>
       ) : null}
       <line x1={section.left} x2={section.left - 10} y1={section.top} y2={section.top - 9} />
-      <text x="318" y="105">
-        R {formatLength(part.fabricationProfile.section.radius, unit)}
-      </text>
+      {part.kind !== "channel" ? (
+        <text x="318" y="105">
+          R {formatLength(part.fabricationProfile.section.radius, unit)}
+        </text>
+      ) : null}
       <text x="358" y="117">{part.fabricationProfile.section.label}</text>
     </g>
   );
@@ -242,6 +255,7 @@ function dimensionLabel(part: HoverDiningTableCutPart) {
   if (part.fabricationProfile.family === "frame-stile") return "tangent-to-tangent";
   if (part.fabricationProfile.family === "brace") return "true member length";
   if (part.fabricationProfile.family === "support") return "finished member length";
+  if (part.fabricationProfile.family === "channel") return "finished channel length";
   return "finished plan";
 }
 
@@ -285,7 +299,7 @@ function shouldShowLap(part: HoverDiningTableCutPart) {
 }
 
 function shouldShowSection(part: HoverDiningTableCutPart) {
-  return sectionRadiusIsVisible(part);
+  return part.fabricationProfile.family === "channel" || sectionRadiusIsVisible(part);
 }
 
 function profileLabel(part: HoverDiningTableCutPart) {
@@ -298,15 +312,21 @@ function profileLabel(part: HoverDiningTableCutPart) {
       return "mitered plan profile";
     case "support":
       return "square-ended member profile";
+    case "channel":
+      return "widthwise steel C-channel";
     default:
       return "square-ended plan profile";
   }
 }
 
 function HoverCutPartDiagram({
+  model,
+  params,
   part,
   unit,
 }: {
+  model: HoverDiningTableModelDefinition;
+  params: ModelParams;
   part: HoverDiningTableCutPart;
   unit: LengthUnit;
 }) {
@@ -321,10 +341,11 @@ function HoverCutPartDiagram({
   const verticalTextX = verticalDimensionX + 18;
   const lapCenterX = (layout.left + layout.right) / 2;
   const isStile = part.fabricationProfile.family === "frame-stile";
+  const hasGrain = part.grainDirection !== "n/a";
   return (
     <article
       className="hover-cut-card"
-      data-grain-axis={isStile ? "vertical" : "horizontal"}
+      data-grain-axis={hasGrain ? (isStile ? "vertical" : "horizontal") : "none"}
       data-length-axis={isStile ? "vertical" : "horizontal"}
       data-part-id={part.id}
     >
@@ -336,6 +357,7 @@ function HoverCutPartDiagram({
         </div>
         <span className="hover-cut-quantity">Qty {part.quantity}</span>
       </header>
+      <HoverCutPartPreview model={model} params={params} part={part} />
       <svg
         aria-label={`${part.name} dimensioned cut diagram`}
         className="hover-cut-diagram"
@@ -392,11 +414,13 @@ function HoverCutPartDiagram({
           </g>
         ) : null}
         {shouldShowSection(part) ? <PartSection part={part} unit={unit} /> : null}
-        <GrainArrow
-          layout={layout}
-          markerId={grainArrowId}
-          vertical={part.fabricationProfile.family === "frame-stile"}
-        />
+        {hasGrain ? (
+          <GrainArrow
+            layout={layout}
+            markerId={grainArrowId}
+            vertical={part.fabricationProfile.family === "frame-stile"}
+          />
+        ) : null}
 
         <g className="cut-dimension-lines">
           <line x1={layout.left} x2={layout.left} y1={layout.bottom + 4} y2={lengthY + 8} />
@@ -435,6 +459,10 @@ function HoverCutPartDiagram({
         </g>
       </svg>
       <dl className="hover-cut-card-data">
+        <div>
+          <dt>Material</dt>
+          <dd>{part.material}</dd>
+        </div>
         <div>
           <dt>Thickness</dt>
           <dd>{formatLength(part.thickness, unit)}</dd>
@@ -484,9 +512,11 @@ function HoverCutPartDiagram({
 }
 
 export function HoverDiningTableCutList({
+  model,
   params,
   unit,
 }: {
+  model: HoverDiningTableModelDefinition;
   params: ModelParams;
   unit: LengthUnit;
 }) {
@@ -502,6 +532,10 @@ export function HoverDiningTableCutList({
             <p>
               Full-size finished dimensions. Add rough-milling allowance for
               your stock and verify critical joinery on a full-size story stick.
+            </p>
+            <p>
+              Each interactive 3D view uses the exact exploded-model solid;
+              rotate it freely or snap to a face to inspect cuts and borders.
             </p>
           </div>
           <dl>
@@ -527,6 +561,7 @@ export function HoverDiningTableCutList({
               <tr>
                 <th>Item</th>
                 <th>Part</th>
+                <th>Material</th>
                 <th>Qty</th>
                 <th>Length</th>
                 <th>Width</th>
@@ -539,6 +574,7 @@ export function HoverDiningTableCutList({
                 <tr key={part.id}>
                   <td>{part.id}</td>
                   <th scope="row">{part.name}</th>
+                  <td>{part.material}</td>
                   <td>{part.quantity}</td>
                   <td>{formatLength(part.length, unit)}</td>
                   <td>{formatLength(part.width, unit)}</td>
@@ -552,7 +588,13 @@ export function HoverDiningTableCutList({
 
         <div className="hover-cut-card-grid">
           {cutList.parts.map((part) => (
-            <HoverCutPartDiagram key={part.id} part={part} unit={unit} />
+            <HoverCutPartDiagram
+              key={part.id}
+              model={model}
+              params={params}
+              part={part}
+              unit={unit}
+            />
           ))}
         </div>
 
@@ -570,7 +612,8 @@ export function HoverDiningTableCutList({
             </p>
           )}
           <p>
-            Grain runs with every listed length. The end-box curves are routed
+            Grain runs with every listed oak length; H1 is blackened steel and
+            has no grain direction. The end-box curves are routed
             from the same constrained profiles used by the assembled and
             exploded models: B1/B2 carry the inner and outer Bézier returns,
             while B3 runs between their tangent seams. Section views preserve

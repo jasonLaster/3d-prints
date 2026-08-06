@@ -1,6 +1,12 @@
 import * as THREE from "three";
 import { getParam } from "./shared";
-import { getHoverDiningTableSpec } from "./hoverDiningTable";
+import {
+  getHoverDiningTableEndBoxFabricationProfiles,
+  getHoverDiningTableStileFabricationLayout,
+  type HoverDiningTableFabricationProfile,
+  type HoverDiningTableProfileCommand,
+  type HoverDiningTableProfilePoint,
+} from "./hoverDiningTable";
 import type {
   HoverDiningTableModelDefinition,
   ModelParams,
@@ -92,104 +98,132 @@ function appendLine(target: THREE.Vector2[], point: THREE.Vector2) {
   }
 }
 
-function roundedTrapezoidRightSide(
-  bottomWidth: number,
-  topWidth: number,
-  bottom: number,
-  top: number,
-  bottomRadius: number,
-  topRadius: number,
-  tension: number,
-  segments: number,
-) {
-  const bottomRight = new THREE.Vector2(bottomWidth / 2, bottom);
-  const topRight = new THREE.Vector2(topWidth / 2, top);
-  const direction = topRight.clone().sub(bottomRight).normalize();
-  const bottomTangent = new THREE.Vector2(
-    bottomRight.x - bottomRadius,
-    bottom,
-  );
-  const lowerSideTangent = bottomRight
-    .clone()
-    .addScaledVector(direction, bottomRadius);
-  const upperSideTangent = topRight
-    .clone()
-    .addScaledVector(direction, -topRadius);
-  const topTangent = new THREE.Vector2(topRight.x - topRadius, top);
-  const points: THREE.Vector2[] = [];
-
-  appendCubic(
-    points,
-    bottomTangent,
-    bottomTangent.clone().add(new THREE.Vector2(bottomRadius * tension, 0)),
-    lowerSideTangent
-      .clone()
-      .addScaledVector(direction, -bottomRadius * tension),
-    lowerSideTangent,
-    segments,
-  );
-  appendLine(points, upperSideTangent);
-  appendCubic(
-    points,
-    upperSideTangent,
-    upperSideTangent.clone().addScaledVector(direction, topRadius * tension),
-    topTangent.clone().add(new THREE.Vector2(topRadius * tension, 0)),
-    topTangent,
-    segments,
-  );
-  return points;
-}
-
-function roundedTrapezoidTopSide(
-  bottomWidth: number,
-  topWidth: number,
-  bottom: number,
-  top: number,
-  radius: number,
-  tension: number,
-  segments: number,
-) {
-  const bottomLeft = new THREE.Vector2(-bottomWidth / 2, bottom);
-  const bottomRight = new THREE.Vector2(bottomWidth / 2, bottom);
-  const topLeft = new THREE.Vector2(-topWidth / 2, top);
-  const topRight = new THREE.Vector2(topWidth / 2, top);
-  const leftDown = bottomLeft.clone().sub(topLeft).normalize();
-  const rightUp = topRight.clone().sub(bottomRight).normalize();
-  const leftSideTangent = topLeft.clone().addScaledVector(leftDown, radius);
-  const leftTopTangent = new THREE.Vector2(topLeft.x + radius, top);
-  const rightTopTangent = new THREE.Vector2(topRight.x - radius, top);
-  const rightSideTangent = topRight.clone().addScaledVector(rightUp, -radius);
-  const points: THREE.Vector2[] = [];
-
-  appendCubic(
-    points,
-    leftSideTangent,
-    leftSideTangent.clone().addScaledVector(leftDown, -radius * tension),
-    leftTopTangent.clone().add(new THREE.Vector2(-radius * tension, 0)),
-    leftTopTangent,
-    segments,
-  );
-  appendLine(points, rightTopTangent);
-  appendCubic(
-    points,
-    rightTopTangent,
-    rightTopTangent.clone().add(new THREE.Vector2(radius * tension, 0)),
-    rightSideTangent.clone().addScaledVector(rightUp, radius * tension),
-    rightSideTangent,
-    segments,
-  );
-  return points;
-}
-
 function asBoundaryPoints(
   points: THREE.Vector2[],
   kind: HoverDiningTableTemplateKind,
+  scale: number,
+  stileLayout?: ReturnType<typeof getHoverDiningTableStileFabricationLayout>,
 ) {
-  return points.map((point) =>
-    kind === "top-rail"
-      ? { u: point.x, v: point.y }
-      : { u: point.y, v: point.x },
+  return points.map((point) => {
+    if (kind === "top-rail") {
+      return { u: point.x / scale, v: point.y / scale };
+    }
+    if (!stileLayout) {
+      throw new Error("Vertical-stile template is missing its fabrication frame");
+    }
+    const relative = point.clone().sub(stileLayout.origin);
+    return {
+      u: relative.dot(stileLayout.lengthAxis) / scale,
+      v: relative.dot(stileLayout.widthAxis) / scale,
+    };
+  });
+}
+
+function vectorFromProfilePoint(point: HoverDiningTableProfilePoint) {
+  return new THREE.Vector2(point.x, point.y);
+}
+
+function sampleProfilePath(
+  start: HoverDiningTableProfilePoint,
+  commands: HoverDiningTableProfileCommand[],
+  curveSegments: number,
+) {
+  const points = [vectorFromProfilePoint(start)];
+  let current = points[0];
+  for (const command of commands) {
+    if (command.kind === "line") {
+      current = vectorFromProfilePoint(command.to);
+      appendLine(points, current);
+    } else if (command.kind === "cubic") {
+      const end = vectorFromProfilePoint(command.to);
+      appendCubic(
+        points,
+        current,
+        vectorFromProfilePoint(command.control1),
+        vectorFromProfilePoint(command.control2),
+        end,
+        curveSegments,
+      );
+      current = end;
+    } else {
+      throw new Error("Routing-template path contains an unexpected command");
+    }
+  }
+  return points;
+}
+
+function boundaryFromFabricationProfile(
+  profile: HoverDiningTableFabricationProfile,
+  kind: HoverDiningTableTemplateKind,
+  scale: number,
+  curveSegments: number,
+): TemplateBoundary {
+  const outline = profile.outline;
+  const move = outline[0];
+  const close = outline[outline.length - 1];
+  const seamIndex = outline.findIndex(
+    (command, index) =>
+      index > 0 &&
+      (command.kind === "line" || command.kind === "cubic") &&
+      command.edgeTreatment === "square",
   );
+  if (
+    move?.kind !== "move" ||
+    close?.kind !== "close" ||
+    seamIndex <= 1
+  ) {
+    throw new Error(`${kind} template requires a closed two-seam part profile`);
+  }
+  const seam = outline[seamIndex];
+  if (seam.kind === "close" || seam.kind === "move") {
+    throw new Error(`${kind} template has an invalid tangent seam`);
+  }
+  const stileLayout =
+    kind === "vertical-stile"
+      ? getHoverDiningTableStileFabricationLayout(profile)
+      : undefined;
+
+  const outer = asBoundaryPoints(
+    sampleProfilePath(
+      move.to,
+      outline.slice(1, seamIndex),
+      curveSegments,
+    ),
+    kind,
+    scale,
+    stileLayout,
+  );
+  const inner = asBoundaryPoints(
+    sampleProfilePath(
+      seam.to,
+      outline.slice(seamIndex + 1, -1),
+      curveSegments,
+    ).reverse(),
+    kind,
+    scale,
+    stileLayout,
+  );
+  for (const [label, points] of [
+    ["outer", outer],
+    ["inner", inner],
+  ] as const) {
+    if (
+      points.length < 2 ||
+      points.some((point) => !Number.isFinite(point.u) || !Number.isFinite(point.v)) ||
+      points[0].u > points[points.length - 1].u + EPSILON
+    ) {
+      throw new Error(`${kind} ${label} boundary has an invalid direction`);
+    }
+  }
+  return {
+    kind,
+    label:
+      kind === "top-rail"
+        ? "Top rail routing template"
+        : "Vertical stile routing template",
+    outer,
+    inner,
+  };
 }
 
 function buildTemplateBoundaries(
@@ -197,71 +231,22 @@ function buildTemplateBoundaries(
   model: HoverDiningTableModelDefinition,
   scale: number,
 ): TemplateBoundary[] {
-  const { fullSize: spec } = getHoverDiningTableSpec(params);
   const curveSegments = Math.max(12, model.geometry.curveSegments * 3);
-  const divide = (points: THREE.Vector2[]) =>
-    points.map((point) => point.multiplyScalar(1 / scale));
-
-  const outerTop = divide(
-    roundedTrapezoidTopSide(
-      spec.frameBottomWidth,
-      spec.frameTopWidth,
-      0,
-      spec.frameHeight,
-      spec.frameOuterTopCornerRadius,
-      spec.frameOuterCurveTension,
-      curveSegments,
-    ),
-  );
-  const innerTop = divide(
-    roundedTrapezoidTopSide(
-      spec.openingBottomWidth,
-      spec.openingTopWidth,
-      spec.openingBottom,
-      spec.openingTop,
-      spec.frameInnerTopCornerRadius,
-      spec.frameInnerCurveTension,
-      curveSegments,
-    ),
-  );
-  const outerSide = divide(
-    roundedTrapezoidRightSide(
-      spec.frameBottomWidth,
-      spec.frameTopWidth,
-      0,
-      spec.frameHeight,
-      spec.frameOuterBottomCornerRadius,
-      spec.frameOuterTopCornerRadius,
-      spec.frameOuterCurveTension,
-      curveSegments,
-    ),
-  );
-  const innerSide = divide(
-    roundedTrapezoidRightSide(
-      spec.openingBottomWidth,
-      spec.openingTopWidth,
-      spec.openingBottom,
-      spec.openingTop,
-      spec.frameInnerBottomCornerRadius,
-      spec.frameInnerTopCornerRadius,
-      spec.frameInnerCurveTension,
-      curveSegments,
-    ),
-  );
+  const profiles = getHoverDiningTableEndBoxFabricationProfiles(params);
 
   return [
-    {
-      kind: "top-rail",
-      label: "Top rail routing template",
-      outer: asBoundaryPoints(outerTop, "top-rail"),
-      inner: asBoundaryPoints(innerTop, "top-rail"),
-    },
-    {
-      kind: "vertical-stile",
-      label: "Vertical stile routing template",
-      outer: asBoundaryPoints(outerSide, "vertical-stile"),
-      inner: asBoundaryPoints(innerSide, "vertical-stile"),
-    },
+    boundaryFromFabricationProfile(
+      profiles.top,
+      "top-rail",
+      scale,
+      curveSegments,
+    ),
+    boundaryFromFabricationProfile(
+      profiles.right,
+      "vertical-stile",
+      scale,
+      curveSegments,
+    ),
   ];
 }
 

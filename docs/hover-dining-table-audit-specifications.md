@@ -18,6 +18,7 @@ This document is the authoritative design and executable audit contract for `hov
 - Full-size envelope: 75 × 35.5 × 29.5 in.
 - 1 1/4 in tabletop with a flat rectangular plan and flat, square end faces.
 - Continuous 5/8 in deep rolled profiles on only the two long edges, controlled by a normalized cubic Bézier tension.
+- Three blackened-steel widthwise C-channels in rectangular underside mortises: one centered and two symmetrically derived between the end boxes. Each 2 in wide × 3/8 in deep U-section has a 1/8 in wall, stops 2 in from each long edge, and presents its web flush with the original underside plane.
 - Two closed transverse end boxes, inset 7 1/2 in from the tabletop ends and 1 3/4 in from the tabletop sides.
 - Separate top and bottom controls for both the 3/4 in outer and 2 1/2 in inner end-box corner radii. Equal defaults preserve the observed silhouette while independent values allow the upper and lower returns to be tuned without pretending they are concentric offsets.
 - Separate normalized Bézier controls for the inner and outer end-box corners.
@@ -37,7 +38,9 @@ This document is the authoritative design and executable audit contract for `hov
 
 The tabletop remains a square-ended extrusion. Its two short end faces stay planar and vertical. Only the two long edges receive the rolled profile. The long-edge cross-section is a normalized cubic Bézier function whose control lengths equal the roll radius or depth multiplied by the editable tension.
 
-The selected upper supports contact the tabletop underside but must not change the tabletop envelope, long-edge curve, or flat end faces. Direct contact does not prescribe a full-surface glue joint. A furniture-scale attachment design must still allow seasonal tabletop movement across the grain.
+The selected upper supports contact the tabletop underside but must not change the tabletop envelope, long-edge curve, or flat end faces. The C-channel mortises are the only permitted underside recesses. Their center positions are derived from table length, end-box inside faces, channel width, and editable box clearance; their length derives from table width and long-edge inset. The three channels remain distinct, symmetric, inside the tabletop, and clear of both rolled edges. The steel profile is a true U-section with a bottom web and two positive flanges, not a dark rectangular proxy. The exposed steel web is exactly coplanar with the surrounding oak underside—never proud—so an upper X or stretcher remains on its original contact plane. Channel width and spacing must leave at least 50% of each upper member's length bearing directly on uninterrupted oak; attachment fasteners belong in those oak runs.
+
+The renderer and exploded/cut-list modes show the channels as separate blackened-steel parts. Slotted screw-hole locations and fasteners remain field-engineering details because their layout depends on the selected hardware and must allow seasonal tabletop movement across the grain.
 
 ## End-box contract
 
@@ -95,6 +98,7 @@ Each selected X has exactly one traditional centered half-lap. Straight supports
 The former 3/8 in hover gap and support-pad concept are removed.
 
 - `upperBraceMaxZ` and the upper-stretcher maximum Z must equal `overallHeight - topThickness` within the audit tolerance.
+- The exposed C-channel web, surrounding oak underside, upper-X top face, and upper-stretcher top face must all share that same Z plane. The channels occupy only the mortised volume above it, while every upper support occupies only the volume below it.
 - No point on any selected upper support may extend into the tabletop volume or be lowered by a reveal, pad, or spacer parameter.
 - `lowerBraceMinZ` and the floor-board minimum Z must equal `0` when their layouts are selected.
 - No point on any selected floor support or either end box may extend below the floor plane.
@@ -103,17 +107,17 @@ The former 3/8 in hover gap and support-pad concept are removed.
 
 ## Exploded glue-up contract
 
-Exploded mode is a presentation of 11–13 independently movable pieces—each fabrication-complete—before glue-up: one tabletop, two end boxes with two horizontal rails and two vertical stiles each, two selected upper supports, and zero, one, or two selected floor supports. The default X/X layout has 13 independently movable pieces. The tabletop remains one piece. X members retain their box-parallel ends, bottom-edge round-overs, and complementary pockets; straight supports retain their square contact ends and bottom-edge roundovers.
+Exploded mode is a presentation of 14–16 independently movable pieces—each fabrication-complete—before assembly: one mortised tabletop, three steel C-channels, two end boxes with two horizontal rails and two vertical stiles each, two selected upper supports, and zero, one, or two selected floor supports. The default X/X layout has 16 independently movable pieces. The tabletop remains one piece. X members retain their box-parallel ends, bottom-edge round-overs, and complementary pockets; straight supports retain their square contact ends and bottom-edge roundovers.
 
 The four separated bars at each end retain the finished rail-and-stile geometry rather than reverting to rectangular stock. The top and bottom rails own the exact outer and inner cubic-Bézier returns, including independent radii and tensions. The stiles run between those tangent seams and retain the derived splay. Every rail and stile retains the configured 3D face-edge round-over, but its two glue seams stay square rather than being softened into a false gap. The exploded solids and assembled end-box ring are driven by the same width, opening, splay, radius, tension, depth, and round-over constraints; rectangular or trapezoidal proxy blanks are prohibited.
 
-Exploded offsets are presentation-only. Switching between Assembled and Exploded must not change any parameter, URL value, assembled STL, oak material, render mode, camera orientation, or zoom. A parameter or layout edit made in Exploded mode must regenerate and reposition the selected 11–13 pieces while retaining that mode and the current camera.
+Exploded offsets are presentation-only. Switching between Assembled and Exploded must not change any parameter, URL value, assembled STL, material assignment, render mode, camera orientation, or zoom. A parameter or layout edit made in Exploded mode must regenerate and reposition the selected 14–16 pieces while retaining that mode and the current camera.
 
 ## Dimensioned cut-list contract
 
-Cut List is a third assembly view, alongside Assembled and Exploded. It combines five to eight grouped schedule lines with true-shape SVG views for the selected 11–13 pieces: T1 tabletop (qty 1), B1 top rails (qty 2), B2 bottom rails (qty 2), B3 mirrored stiles (qty 4), then either U1/U2 or S1 (qty 2) above and either F1/F2, C1 (qty 1), or no floor row below. Every row and drawing uses full-size finished dimensions, regardless of mock scale. Separating each X member remains required because one lap is cut from the top face and its mate from the bottom.
+Cut List is a third assembly view, alongside Assembled and Exploded. It combines six to nine grouped schedule lines with true-shape SVG views for the selected 14–16 pieces: T1 tabletop (qty 1), H1 C-channel (qty 3), B1 top rails (qty 2), B2 bottom rails (qty 2), B3 mirrored stiles (qty 4), then either U1/U2 or S1 (qty 2) above and either F1/F2, C1 (qty 1), or no floor row below. Every row and drawing uses full-size finished dimensions, regardless of mock scale. Separating each X member remains required because one lap is cut from the top face and its mate from the bottom.
 
-Every row and drawing is associative to the full-size furniture parameters, not the manipulation-model scale. Each part shows finished nominal length, width, thickness, quantity, lengthwise oak grain, its exact constrained main profile, and a separate edge-treatment section. The tabletop section shows the actual Bézier edge roll. Rail drawings show all four inner/outer cubic returns. Stile drawings show the tangent-to-tangent splayed profile. X drawings show true length, box-parallel angle, rounded section, and complete lap dimensions. Straight-support drawings show their square-ended plan profile, rounded section, and absence of false joinery.
+Every row and drawing is associative to the full-size furniture parameters, not the manipulation-model scale. Each part shows material, finished nominal length, width, thickness, quantity, lengthwise oak grain where applicable, its exact constrained main profile, and a separate section. The H1 drawing has no grain arrow and shows the true U-section, wall, mortise depth, long-edge inset, and end-box clearance. The tabletop section shows the actual Bézier edge roll. Rail drawings show all four inner/outer cubic returns. Stile drawings show the tangent-to-tangent splayed profile. X drawings show true length, box-parallel angle, rounded section, and complete lap dimensions. Straight-support drawings show their square-ended plan profile, rounded section, and absence of false joinery.
 
 The sheet deliberately distinguishes finished nominal dimensions from rough stock. It tells the builder to add their own rough-milling allowance rather than silently increasing dimensions because allowance depends on stock condition and shop process. B1–B3 schedule sizes describe the bounding stock envelopes of the finished routed profiles; their drawings may not collapse those pieces back into square blanks.
 
@@ -142,7 +146,7 @@ The on-screen template preview uses `mockScale` only for display. Export always 
 The manipulation model must expose or derive these control families:
 
 - envelope and scale: mock scale, table length, table width, overall height, and tabletop thickness;
-- tabletop profile: long-edge roll depth and normalized Bézier tension;
+- tabletop profile and hardware: long-edge roll depth, normalized Bézier tension, plus C-channel width, mortise depth, steel wall, long-edge inset, and clearance from the end boxes;
 - end-box placement: side overhang, end overhang, and box depth;
 - end-box silhouette: side-member width, top- and bottom-rail heights, bottom spread, independent top/bottom inner and outer radii, independent inner and outer Bézier tensions, and face-edge round-over;
 - support layout: top X or original stretchers; floor X, centered board, or nothing;
@@ -179,6 +183,7 @@ Runtime construction checks must reject parameter combinations that would:
 - push an end-box silhouette or brace endpoint outside the tabletop plan;
 - make inner or outer end-box corner radii self-intersect;
 - make an end-box face round-over consume a side member or rail;
+- merge two C-channel mortises, move the outer pair asymmetrically, run a channel into an end box or rolled edge, consume the tabletop thickness, or collapse its U-section web or flanges;
 - move either diagonal centerline away from the table origin;
 - make opposite diagonals in one X unequal in length;
 - let the upper and floor X use different section, inset, round-over, or half-lap-depth parameters;
@@ -212,10 +217,11 @@ The static model audit and browser tests must eventually prove:
 - independent inward endpoint migration after increasing either editable top or bottom inner corner radius, with only the corresponding X moving and the complete angled end remaining tangent-clear;
 - bottom-edge brace round-overs with flat end cuts and square half-lap shoulders;
 - preserved square tabletop ends and independently editable Bézier curve families;
+- exactly three finite, nondegenerate widthwise C-channels in matching tabletop mortises, with a centered/symmetric layout, true U-sections, long-edge clearance, and flush underside webs;
 - finite, nondegenerate exported triangles and the exact scaled outer envelope; and
-- 11–13 exploded pieces according to layout, including true straight-support geometry where selected and exactly 13 for default X/X;
+- 14–16 exploded pieces according to layout, including three steel C-channels, true straight-support geometry where selected, and exactly 16 for default X/X;
 - an Assembled/Exploded switch that preserves parameter state, render mode, export geometry, camera orientation, and zoom; and
-- five to eight cut-list lines whose quantities sum to the selected 11–13 pieces, with exact model-derived SVG profiles and joinery only where applicable;
+- six to nine cut-list lines whose quantities sum to the selected 14–16 pieces, with exact model-derived SVG profiles, the H1 U-section, and joinery only where applicable;
 - invariance of every cut-list dimension under mock-scale edits plus associative schedule/SVG updates after full-size dimensional edits;
 - two full-size routing-template families derived from the frame Bézier geometry, nominally 1/8 in thick, with finite nondegenerate plate-safe segments and complementary male/female dovetails;
 - more exported template segments after reducing the usable plate span, while mock-scale changes alter only the preview size and never the full-size template dimensions or STL count;
@@ -224,6 +230,6 @@ The static model audit and browser tests must eventually prove:
 
 ## Source-of-truth boundary
 
-The supplied product images remain authoritative for the tabletop, end boxes, and original upper stretchers. The horizontal X assemblies, optional centered floor board, no-floor-support option, direct-contact elevations, and conditional half-laps are user-approved variations and supersede the photographs wherever selected.
+The supplied product images remain authoritative for the tabletop, end boxes, and original upper stretchers. The three recessed widthwise C-channels, horizontal X assemblies, optional centered floor board, no-floor-support option, direct-contact elevations, and conditional half-laps are user-approved variations and supersede the photographs wherever selected.
 
-The images do not establish concealed brace-to-box fastening, tabletop movement hardware, floor-flatness accommodation, or fabrication clearances. Those details must remain explicit engineering decisions rather than inferred product facts. Oak grain and finish are renderer materials only and never change exported geometry.
+The images do not establish concealed brace-to-box fastening, C-channel screw slots or fasteners, floor-flatness accommodation, or fabrication clearances. Those details must remain explicit engineering decisions rather than inferred product facts. Oak grain, finish, and blackened-steel appearance are renderer materials only and never change exported geometry.

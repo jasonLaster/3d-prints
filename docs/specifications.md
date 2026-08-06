@@ -121,6 +121,7 @@ X-Hover Dining Table:
 
 - Full-size dimensions remain independent from the manipulation-model scale.
 - Tabletop length and width drive a planar square-ended extrusion; the long-edge profile uses a normalized cubic Bézier handle function.
+- Three blackened-steel widthwise C-channels occupy matching underside mortises: one centered and two symmetric between the end boxes. Their U-section web is exactly flush with the surrounding oak underside so upper supports remain on the original contact plane; at least half of each upper member retains direct oak bearing. Width, depth, wall, long-edge inset, and end-box clearance remain parametric.
 - End-box width derives from tabletop width and side overhang, while the opening derives from box width, member widths, and rail heights.
 - Inner and outer corner radii remain independently adjustable at the top and bottom of each box; each curve family retains its normalized Bézier-tension control.
 - Bottom spread is the only splay control and defaults to zero, matching the supplied orthographic drawing.
@@ -130,8 +131,8 @@ X-Hover Dining Table:
 - Each top or bottom support edge-radius control rounds over both long-edge pairs on that support plane without rounding the plan ends or centered half-lap shoulders.
 - Selected top supports remain coplanar with the tabletop underside; selected floor supports remain coplanar with the floor. Neither contact condition has a gap control.
 - Each selected X uses one centered half-lap with a nominal depth of half the brace thickness and no overlapping solid volume. Straight supports have no false lap.
-- Assembled/Exploded mode separates the glue-up into 11–13 fully profiled oak pieces according to layout (13 for X/X), with the same curved boxes, true rounded support sections, contact ends, and conditional half-laps as the assembled geometry.
-- Cut List mode pairs a five-to-eight-line grouped schedule with exact model-derived SVGs and edge-treatment sections for the selected 11–13 pieces. Mock scale never changes fabrication values.
+- Assembled/Exploded mode separates the assembly into 14–16 fully profiled oak and steel pieces according to layout (16 for X/X), including three C-channels and the same curved boxes, true rounded support sections, contact ends, and conditional half-laps as the assembled geometry.
+- Cut List mode pairs a six-to-nine-line grouped schedule with exact model-derived SVGs and edge-treatment or U-channel sections for the selected 14–16 pieces. Mock scale never changes fabrication values.
 - Templates mode derives one top-rail and one mirrored vertical-stile routing pattern from the end-box outer/inner Bézier curves. Each defaults to 1/8 in thickness, splits across an editable 9 in usable square plate span, and exports every complementary male/female dovetail segment as an individual full-size STL.
 - The renderer uses procedural oak grain, but exports remain material-neutral geometry.
 
@@ -142,7 +143,7 @@ X-Hover Dining Table:
 - The orientation cube owns isometric, top, X-edge, and Y-edge presets, reflects the current camera orientation, and clears its active preset after free camera movement.
 - The top-right workspace actions menu owns Save, Fork, theme, and export, with Save/Fork name entry handled in a modal.
 - Rendering modes include Solid, X-Ray, and Wire.
-- X-Hover assembly mode switches between the assembled table and its selected 11–13-piece pre-glue-up layout without resetting the camera.
+- X-Hover assembly mode switches between the assembled table and its selected 14–16-piece pre-assembly layout without resetting the camera.
 - X-Hover Cut List is a third assembly mode and remains live under parameter and unit changes while preserving the assembled STL export.
 - X-Hover Templates is a fourth assembly mode showing the plate-split routing patterns without changing camera state or the assembled table export.
 - The viewer should remain nonblank after parameter edits, render-mode changes, unit changes, zoom, orientation presets, reset, center view, and sidebar collapse.

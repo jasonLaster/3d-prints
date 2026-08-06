@@ -17,7 +17,8 @@
     "mainAxis": { "x": 0, "y": 0, "z": 0 },
     "curveSegments": 16,
     "bevelSegments": 5,
-    "braceRoundoverSegments": 6
+    "braceRoundoverSegments": 6,
+    "channelCount": 3
   },
   "parameters": [
     {
@@ -88,6 +89,41 @@
       "limits": { "min": 50.8, "max": 508, "step": 6.35 }
     },
     {
+      "key": "channelEndClearance",
+      "label": "C-channel clearance from end boxes",
+      "group": "Tabletop",
+      "default": 101.6,
+      "limits": { "min": 25.4, "max": 304.8, "step": 6.35 }
+    },
+    {
+      "key": "channelSideInset",
+      "label": "C-channel inset from long edges",
+      "group": "Tabletop",
+      "default": 50.8,
+      "limits": { "min": 12.7, "max": 254, "step": 3.175 }
+    },
+    {
+      "key": "channelWidth",
+      "label": "C-channel outside width",
+      "group": "Tabletop",
+      "default": 50.8,
+      "limits": { "min": 25.4, "max": 101.6, "step": 3.175 }
+    },
+    {
+      "key": "channelDepth",
+      "label": "C-channel mortise depth",
+      "group": "Tabletop",
+      "default": 9.525,
+      "limits": { "min": 3.175, "max": 19.05, "step": 1.5875 }
+    },
+    {
+      "key": "channelWallThickness",
+      "label": "C-channel steel wall thickness",
+      "group": "Tabletop",
+      "default": 3.175,
+      "limits": { "min": 1.5875, "max": 6.35, "step": 0.79375 }
+    },
+    {
       "key": "frameDepth",
       "label": "End-box depth",
       "group": "End boxes",
@@ -99,7 +135,7 @@
       "label": "End-box side width",
       "group": "End boxes",
       "default": 57.15,
-      "limits": { "min": 25.4, "max": 127, "step": 3.175 }
+      "limits": { "min": 12.7, "max": 127, "step": 3.175 }
     },
     {
       "key": "frameBottomRailHeight",
@@ -282,18 +318,22 @@
     "dimensionTargets": [
       "The image and supplied elevation establish a 75 in long by 35.5 in wide by 29.5 in high table envelope.",
       "The tabletop has a flat rectangular plan, flat square end faces, and continuous Bézier-rolled long edges rather than rounded plan-view corners.",
+      "Exactly three blackened-steel C-channels run widthwise in flush underside mortises: one centered and two symmetrically derived between the end boxes, all clear of the rolled long edges.",
       "The base contains exactly two closed transverse end boxes with independently selectable support layouts: an upper horizontal X or two original lengthwise stretchers, plus a floor X, one centered lengthwise board, or no floor connector.",
       "Each end box has independently editable top and bottom values for both outer and inner corner radii, separately editable normalized Bézier tensions, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
       "Every selected X crosses at the table center with a derived 50/50 half-lap and no overlapping solid volume; straight-support layouts contain no artificial lap.",
       "Top and bottom support width, thickness, bearing-zone inset, and edge round-over contracts are independently editable while half-lap fit clearance applies only to selected Xs.",
       "The selected upper supports bear directly against the tabletop underside and every selected lower support bears directly on the floor, with zero gap or spacer.",
-      "Exploded mode presents 11–13 glue-up pieces according to the selected layouts: one profiled tabletop, four finished rail-and-stile bars per end box, two upper support members, and zero, one, or two lower support members.",
-      "Cut List mode presents the same selected pieces as five to eight grouped schedule lines with full-size finished dimensions, quantities, oak grain direction, exact constrained profiles, edge-treatment section views, and joinery notes.",
+      "Exploded mode presents 14–16 assembly pieces according to the selected layouts: one profiled tabletop, three steel C-channels, four finished rail-and-stile bars per end box, two upper support members, and zero, one, or two lower support members.",
+      "Cut List mode presents the same selected pieces as six to nine grouped schedule lines with full-size finished dimensions, quantities, material, oak grain direction where applicable, exact constrained profiles, edge-treatment or C-channel section views, and joinery notes.",
       "The default 1:10 manipulation model retains the full 75 × 35.5 × 29.5 in proportions."
     ],
     "invariants": [
       "Keep all full-size furniture dimensions independent from the mock-scale denominator.",
       "Keep the tabletop end faces planar and square while changing only the two continuous long-edge profiles.",
+      "Keep exactly three widthwise C-channels flush with the tabletop underside; derive the center channel at table center and the outer pair symmetrically from the end-box inside faces, channel width, and editable clearance.",
+      "Keep every C-channel inside the tabletop, clear of both rolled long edges and both end boxes, with a positive U-section web and two positive flanges that fit within the tabletop thickness.",
+      "Keep the exposed C-channel webs and every selected upper-support top face on the same tabletop-underside plane, with no proud hardware and at least half of each support length retaining direct oak bearing for attachment.",
       "Derive the end-box outer width from tabletop width and side overhang so width edits preserve the relationship.",
       "Derive both inner openings from outer box dimensions and member widths; never scale the opening independently.",
       "For each selected X, derive both diagonal lengths and equal-and-opposite plan angles from the end-box corner zones and keep the crossing at the table origin.",
@@ -305,12 +345,12 @@
       "Keep top and bottom exterior and interior corner radii independently editable because the observed curves are not concentric offsets.",
       "Keep top and bottom support sections and edge radii independently editable; each selected support derives radius-aware placement and selected joinery from its own member contract.",
       "Treat bottom spread as the explicit splay hypothesis; zero means orthogonal frame sides and remains the evidence-backed default.",
-      "Keep frame edge round-over below half the depth, side width, top-rail height, and bottom-rail height; keep support members within the independently editable end-box side width.",
+      "Keep frame edge round-over below half the depth, side width, top-rail height, and bottom-rail height; keep the end-box side width independently editable down to 1/2 in because support members bear on the horizontal rails rather than setting the stile width.",
       "Keep end boxes, their bottom spread, and all brace endpoints inside the tabletop width while preserving positive diagonal spans.",
       "Derive the exploded rail, stile, tabletop, X-brace, stretcher, and center-board solids from the same Bézier, splay, round-over, contact-plane, and half-lap constraints used by the assembled model; do not substitute proxy blanks.",
-      "Keep exploded offsets presentation-only: parameter edits and layout changes must regenerate the selected 11–13 fully profiled pieces without changing the assembled STL contract or resetting the camera.",
+      "Keep exploded offsets presentation-only: parameter edits and layout changes must regenerate the selected 14–16 fully profiled wood and steel pieces without changing the assembled STL contract or resetting the camera.",
       "Keep the cut list full-size and associative to the furniture parameters: changing mock scale must not change a listed fabrication dimension, while dimensional edits must update the schedule, exact SVG profile, section view, radii, tensions, round-overs, end cuts, and half-lap geometry.",
-      "Derive one full-size top-rail routing template and one mirrored vertical-stile routing template from the same outer/inner cubic Bézier boundaries as the assembled end box.",
+      "Derive the full-size top-rail and mirrored vertical-stile routing templates from the exact finished B1/B3 part profiles used by the assembled, exploded, and cut-list modes; the rails own all Bézier corner returns and each stile runs only tangent-to-tangent.",
       "Split both routing templates by the editable usable square print-plate span, keep every STL flat and inside that envelope, and join adjacent pieces with complementary in-plane dovetails sized by explicit depth and fit-clearance controls.",
       "Keep routing-template export at full furniture size and 1/8 in nominal thickness regardless of the manipulation-model scale; use the mock-scale denominator only for the on-screen template preview.",
       "Label listed sizes as finished nominal dimensions and keep rough-milling allowance explicit rather than silently adding stock to any part.",
@@ -322,6 +362,7 @@
     "checks": [
       { "key": "hoverTableEnvelope", "label": "Full-size envelope" },
       { "key": "hoverTabletopProfile", "label": "Square-ended tabletop" },
+      { "key": "hoverChannels", "label": "Three flush C-channels" },
       { "key": "hoverEndBoxes", "label": "Two closed end boxes" },
       { "key": "hoverBoxOpening", "label": "Derived box opening" },
       { "key": "hoverCornerCurves", "label": "Independent Bézier corners" },
