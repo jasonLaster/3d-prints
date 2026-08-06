@@ -131,6 +131,7 @@ assert(
 assert(model.geometry.dividerThickness >= 1.2, "divider thickness is printable");
 assert(model.geometry.dividerFloorOverlap > 0, "dividers overlap the floor for slicing");
 assert(model.geometry.dividerWallInset < model.geometry.originalFloorThickness, "dividers overlap side walls for slicing");
+assert(model.geometry.dividerTopClearance > 0, "dividers reserve a positive vertical safety gap");
 assert(model.geometry.stackingLipThickness >= 1.2, "stacking lip thickness is printable");
 assert(model.geometry.stackingLipFloorOverlap > 0, "stacking lip overlaps the floor for slicing");
 assert(
@@ -161,6 +162,29 @@ assert(parameter("lidThickness").default >= 1.2, "lid plate thickness is printab
 assert(parameter("lidSkirtHeight").default >= 1, "lid skirt has positive engagement depth");
 assert(parameter("lidClearance").default > 0, "lid has positive per-side clearance");
 assert(nearlyEqual(parameter("lidClearance").default, parameter("lipClearance").default), "lid and stack use the same proven fit allowance");
+const dividerTop =
+  parameter("height").default -
+  Math.max(
+    parameter("lidSkirtHeight").default - model.geometry.stackingLipFloorOverlap,
+    parameter("lipHeight").default - model.geometry.stackingLipFloorOverlap,
+  ) -
+  model.geometry.dividerTopClearance;
+const lidSkirtBottom =
+  parameter("height").default -
+  parameter("lidSkirtHeight").default +
+  model.geometry.stackingLipFloorOverlap;
+const stackingFootBottom =
+  parameter("height").default -
+  parameter("lipHeight").default +
+  model.geometry.stackingLipFloorOverlap;
+assert(
+  nearlyEqual(lidSkirtBottom - dividerTop, model.geometry.dividerTopClearance),
+  "default divider top leaves the configured safety gap below the lid skirt",
+);
+assert(
+  nearlyEqual(stackingFootBottom - dividerTop, model.geometry.dividerTopClearance),
+  "default divider top leaves the configured safety gap below a stacked box",
+);
 
 if (fs.existsSync(stlPath)) {
   const topology = analyzeStl(stlPath);

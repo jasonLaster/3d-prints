@@ -20,8 +20,8 @@ The default 1:10 mock is approximately 193 × 97 × 76 mm.
 
 ## Source-of-truth boundary
 
-The procedural geometry controls dimensions, counts, and placement. The independent post corner is mirrored to face outward at all four table corners. The post-top groove is part of the solid geometry and can be switched off without changing the overall table height. Oak grain and blackened steel are render materials only and must never change the model geometry. The two-color export produces a wood STL for color 1 and a registered hardware STL containing all four plates and three C-channels for color 2.
+The procedural geometry controls dimensions, counts, and placement. The independent post corner is mirrored to face outward at all four table corners. The post-top groove is part of the solid geometry and can be switched off without changing the overall table height. Oak grain and blackened steel are render materials only and must never change the model geometry. The two-color export produces a wood STL for color 1 and a registered hardware STL containing all four plates and three C-channels for color 2. Both files are flipped into the same support-free print orientation, with the tabletop top face on the build plate and the legs extending upward.
 
 ## Print caveat
 
-The assembled mock requires supports beneath the tabletop. Import both STL files simultaneously as parts of one multipart object so the slicer preserves their shared origin; assign the hardware part to the second filament. Importing the hardware independently may cause a slicer to drop it to the build plate and lose registration. A future split-part export can place the tabletop and four legs separately if a support-free fit mock is preferred.
+Import both STL files simultaneously as parts of one multipart object so the slicer preserves their shared origin; assign the hardware part to the second filament. The exported orientation places the broad tabletop face on the build plate and prints the legs vertically, so supports are not required for the default geometry. Importing the hardware independently may cause a slicer to drop it to the build plate and lose registration.

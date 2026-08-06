@@ -98,6 +98,14 @@ Door lock adapter:
 - Tube, collar, ridge, and cutout dimensions are independently editable in the inspector while dynamic limits preserve the collar fit and minimum tube wall.
 - Generated and exported geometry must remain one closed manifold shell.
 
+Concentric tube jig:
+
+- The jig is one coaxial, stepped tube stack rather than loose gauges: nine default steps run from `3/4 in` to `1 1/4 in` inclusive.
+- Each adjacent outside diameter increases by `1/16 in`, and each step is `1/4 in` tall, for a `2 1/4 in` overall default height.
+- The default `1/2 in` shared through-bore keeps all tubes concentric and leaves a `1/8 in` radial wall at the smallest step.
+- The tube-step exteriors are clean and uninterrupted, with no markings or recesses.
+- The stack ships with the `1 1/4 in` step on the build plate; each successive step narrows upward, so it prints without support.
+
 ## Viewer Contract
 
 - The primary viewer is a Three.js canvas with OrbitControls.
@@ -120,7 +128,7 @@ Door lock adapter:
 
 - Export downloads the current generated STL, not the untouched source STL.
 - Export file names include the model export prefix and active parameter values.
-- Dining Table export downloads same-origin `wood-color-1` and `hardware-color-2` STL files; the hardware file contains all four plates and three C-channels for multipart slicer import.
+- Dining Table export downloads same-origin `support-free-wood-color-1` and `support-free-hardware-color-2` STL files, flipped with the tabletop on the build plate and legs upward; the hardware file contains all four plates and three C-channels for multipart slicer import.
 - The paper towel export includes the flush weighted center tube floor and rounded weighted center tube top.
 - The generated STL snapshot used by Save/Fork follows the same geometry as Export.
 - Simple Box provides a separate lid export whose registration skirt uses the same wall-derived clearance contract as stacking.

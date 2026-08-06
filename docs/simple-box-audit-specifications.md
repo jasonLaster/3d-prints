@@ -19,6 +19,7 @@ The Simple Box is a smooth-wall organizer model that is independent from the Jap
 - The default stacking lip must engage at least `1 mm` inside the receiving box without touching its walls.
 - The box registration feature must be a solid stacking foot with a transition shoulder so the floor is continuously supported during printing.
 - Divider plates must overlap the floor and side walls, remain ordered, and stay inside the box length.
+- Divider tops must stay below the deeper of the fitted-lid skirt and stacking-foot keepout zones, with the configured vertical safety gap preserved as either engagement depth changes.
 - The exported Z span must include the box height and the underside lip.
 - The separately exported lid must be finite and manifold, match the box footprint, and use the same proven clearance allowance.
 - The combined print-layout STL must keep the box and print-oriented lid disconnected with a `10 mm` XY gap.

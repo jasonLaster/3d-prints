@@ -58,6 +58,7 @@ import {
   applyHolderMorph,
   applyTrayMorph,
   buildAuditItems,
+  createConcentricTubeJigGeometry,
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
   createDoorLockAdapterGeometry,
@@ -76,6 +77,7 @@ import {
   getStatusItems,
   snapGridfinityDimension,
   updateDoorLockAdapterGuide,
+  updateConcentricTubeJigGuide,
   updateDiningTableGuide,
   updateHolderGuide,
   updateTrayGuide,
@@ -140,6 +142,10 @@ const PARAM_QUERY_KEYS = [
   "cutoutWidth",
   "cutoutLength",
   "cutoutRotation",
+  "firstDiameter",
+  "increment",
+  "tubeHeight",
+  "boreDiameter",
   "mockScale",
   "tableLength",
   "tableWidth",
@@ -523,6 +529,14 @@ function downloadBlob(blob: Blob, name: string) {
   URL.revokeObjectURL(url);
 }
 
+function orientDiningTableForSupportFreePrint(
+  object: THREE.Object3D,
+  height: number,
+) {
+  object.rotation.x = Math.PI;
+  object.position.z = height;
+}
+
 function getExportFileName(model: ModelDefinition, params: ModelParams) {
   if (model.viewer === "dining-table-v1") {
     return `${model.export.filePrefix}-scale-1-${getParam(params, "mockScale").toFixed(0)}-length-${getParam(params, "tableLength").toFixed(1)}-width-${getParam(params, "tableWidth").toFixed(1)}.stl`;
@@ -531,7 +545,10 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
     .map(
       (parameter) => {
         const value = getParam(params, parameter.key);
-        return `${parameter.key}-${value.toFixed(1)}`;
+        const formatted = model.viewer === "concentric-tube-jig-v1"
+          ? value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "")
+          : value.toFixed(1);
+        return `${parameter.key}-${formatted}`;
       },
     )
     .join("-");
@@ -789,6 +806,13 @@ const HolderViewer = forwardRef<
         model,
       );
       updateDoorLockAdapterGuide(guideMesh, latestParamsRef.current);
+    } else if (model.viewer === "concentric-tube-jig-v1") {
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createConcentricTubeJigGeometry(
+        latestParamsRef.current,
+        model,
+      );
+      updateConcentricTubeJigGuide(guideMesh, latestParamsRef.current, model);
     } else if (model.viewer === "dining-table-v1") {
       if (!diningHardwareGroup || !diningMetalMaterial) return;
       mainMesh.geometry.dispose();
@@ -925,6 +949,12 @@ const HolderViewer = forwardRef<
     const group = new THREE.Group();
     const holder = new THREE.Mesh(createCleanExportGeometry(mainMesh.geometry));
     holder.name = `${model.id}-body`;
+    if (model.viewer === "dining-table-v1") {
+      orientDiningTableForSupportFreePrint(
+        holder,
+        getModelDimensions(model, latestParamsRef.current).height,
+      );
+    }
     group.add(holder);
 
     let roundedTop: THREE.Mesh | null = null;
@@ -980,12 +1010,17 @@ const HolderViewer = forwardRef<
     );
     const sourceGeometries = [...hardware.plates, ...hardware.channels];
     const group = new THREE.Group();
+    const printHeight = getModelDimensions(
+      model,
+      latestParamsRef.current,
+    ).height;
     const meshes = sourceGeometries.map((geometry, index) => {
       const mesh = new THREE.Mesh(createCleanExportGeometry(geometry));
       mesh.name =
         index < hardware.plates.length
           ? `${model.id}-plate-${index + 1}`
           : `${model.id}-c-channel-${index - hardware.plates.length + 1}`;
+      orientDiningTableForSupportFreePrint(mesh, printHeight);
       group.add(mesh);
       return mesh;
     });
@@ -1006,12 +1041,12 @@ const HolderViewer = forwardRef<
       const hardwareBlob = createDiningTableHardwareStlBlob();
       downloadBlob(
         blob,
-        fileName.replace(/\.stl$/, "-wood-color-1.stl"),
+        fileName.replace(/\.stl$/, "-support-free-wood-color-1.stl"),
       );
       if (hardwareBlob) {
         downloadBlob(
           hardwareBlob,
-          fileName.replace(/\.stl$/, "-hardware-color-2.stl"),
+          fileName.replace(/\.stl$/, "-support-free-hardware-color-2.stl"),
         );
       }
       return;
@@ -1153,7 +1188,8 @@ const HolderViewer = forwardRef<
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.minDistance = model.viewer === "door-lock-adapter-v1" ? 18 : 80;
+    controls.minDistance =
+      model.viewer === "door-lock-adapter-v1" || model.viewer === "concentric-tube-jig-v1" ? 18 : 80;
     controls.maxDistance = 1400;
     controlsRef.current = controls;
     const handleControlChange = () => updateCubeOrientation();
@@ -1284,8 +1320,10 @@ const HolderViewer = forwardRef<
 
         const displayedGeometry = model.viewer === "door-lock-adapter-v1"
           ? createDoorLockAdapterGeometry(latestParamsRef.current, model)
-          : model.viewer === "dining-table-v1"
-            ? createDiningTableWoodGeometry(latestParamsRef.current, model)
+          : model.viewer === "concentric-tube-jig-v1"
+            ? createConcentricTubeJigGeometry(latestParamsRef.current, model)
+            : model.viewer === "dining-table-v1"
+              ? createDiningTableWoodGeometry(latestParamsRef.current, model)
             : normalizedMain.geometry;
         const mainMesh = new THREE.Mesh(displayedGeometry, mainMaterial);
         mainMesh.name = `${model.id}-adjustable-body`;
@@ -1369,6 +1407,7 @@ const HolderViewer = forwardRef<
 
         if (
           model.viewer === "door-lock-adapter-v1" ||
+          model.viewer === "concentric-tube-jig-v1" ||
           model.viewer === "dining-table-v1"
         ) {
           normalizedMain.geometry.dispose();
@@ -2746,7 +2785,11 @@ export default function App({
       }
       return {
         ...current,
-        [key]: Number(nextValue.toFixed(1)),
+        [key]: Number(
+          nextValue.toFixed(
+            model.viewer === "concentric-tube-jig-v1" ? 4 : 1,
+          ),
+        ),
       };
     });
   };

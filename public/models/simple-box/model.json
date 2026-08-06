@@ -75,7 +75,7 @@
       "Keep all box walls smooth and free of decorative ribs.",
       "Keep length, width, and height independently adjustable.",
       "Keep floor thickness below box height.",
-      "Keep divider plates inside the box footprint.",
+      "Keep divider plates inside the box footprint and below the lid or stacking-foot keepout zone.",
       "Keep the underside lip inset for stacking or lid registration.",
       "Gridfinity mode snaps the footprint to 42n - 0.5 mm and uses the standard stepped base and stacking-lip profiles."
     ],

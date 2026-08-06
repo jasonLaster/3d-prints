@@ -203,7 +203,7 @@
       "Mirror the independently adjustable outside post corner to the matching outside corner at each of the four table positions.",
       "Keep the three C-channel positions ordered from the first end of the table.",
       "Keep top and bottom roundover radii within half the tabletop thickness.",
-      "Export the wood and the registered plate/C-channel hardware as separate same-origin STL bodies so a slicer can assign the hardware to a second filament.",
+      "Export the wood and registered plate/C-channel hardware as separate same-origin STL bodies, flipped with the tabletop top face on the build plate so the legs print upward without supports.",
       "Treat oak grain and steel finish as render materials; dimensions come only from procedural geometry."
     ],
     "checks": [

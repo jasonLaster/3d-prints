@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(5);
+  expect(catalog.models).toHaveLength(6);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -120,6 +120,13 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "adapterCutout",
       "adapterWallThickness",
       "adapterCentering",
+    ],
+    "concentric-tube-jig-v1": [
+      "tubeRange",
+      "tubeIncrements",
+      "tubeHeight",
+      "tubeBore",
+      "minimumWall",
     ],
     "dining-table-v1": [
       "tableEnvelope",
@@ -392,6 +399,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   const adapterDoc = readText(
     path.join(root, "docs/door-lock-adapter-audit-specifications.md"),
   );
+  const tubeJigDoc = readText(
+    path.join(root, "docs/concentric-tube-jig-audit-specifications.md"),
+  );
   const diningTableDoc = readText(
     path.join(root, "docs/dining-table-audit-specifications.md"),
   );
@@ -427,6 +437,16 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "Every mesh edge belongs to exactly two triangles",
   ]) {
     expect(adapterDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "nine coaxial tube steps",
+      "1/16 in",
+      "1/4 in",
+      "1/2 in",
+      "widest default tube",
+  ]) {
+    expect(tubeJigDoc).toContain(phrase);
   }
 
   for (const phrase of [

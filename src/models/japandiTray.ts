@@ -608,6 +608,31 @@ export function createSimpleBoxLidPrintGeometries(
   });
 }
 
+export function getSimpleBoxDividerTop(
+  params: ModelParams,
+  model: SimpleBoxModelDefinition,
+) {
+  const settings = model.geometry;
+  const height = getParam(params, "height");
+  const attachmentOverlap = settings.stackingLipFloorOverlap;
+  const lidIntrusion = Math.max(
+    0,
+    getParam(params, "lidSkirtHeight") - attachmentOverlap,
+  );
+  const stackingIntrusion =
+    getParam(params, "gridfinityCompatible") >= 0.5
+      ? settings.gridfinityLipSupportHeight +
+        settings.gridfinityLipInnerChamfer +
+        settings.gridfinityLipOuterChamfer
+      : Math.max(0, getParam(params, "lipHeight") - attachmentOverlap);
+
+  return (
+    height -
+    Math.max(lidIntrusion, stackingIntrusion) -
+    settings.dividerTopClearance
+  );
+}
+
 export function createTrayDividerGeometries(
   params: ModelParams,
   model: SimpleBoxModelDefinition,
@@ -616,15 +641,15 @@ export function createTrayDividerGeometries(
   const count = Math.round(getParam(params, "dividerCount"));
   const length = getParam(params, "length");
   const width = getParam(params, "width");
-  const height = getParam(params, "height");
   const floorThickness = getParam(params, "floorThickness");
   const dividerBottom = floorThickness - settings.dividerFloorOverlap;
-  const dividerHeight = Math.max(
-    1,
-    height - dividerBottom - settings.dividerTopClearance,
-  );
+  const dividerHeight = getSimpleBoxDividerTop(params, model) - dividerBottom;
   const dividerWidth = Math.max(1, width - settings.dividerWallInset * 2);
   const rotation = THREE.MathUtils.degToRad(-getParam(params, "rotation"));
+
+  if (dividerHeight < settings.minimumFloorThickness) {
+    return [];
+  }
 
   return Array.from({ length: count }, (_, index) => {
     const position = Math.min(
@@ -743,13 +768,17 @@ export function getTrayAuditValue(
         return { label: check.label, value: "Not applicable", status: "warn" };
       }
       const dividerCount = Math.round(getParam(params, "dividerCount"));
+      const dividerBottom =
+        floorThickness - model.geometry.dividerFloorOverlap;
+      const dividerHeight = getSimpleBoxDividerTop(params, model) - dividerBottom;
       return {
         label: check.label,
         value: `${dividerCount} divider${dividerCount === 1 ? "" : "s"}`,
         status:
           dividerCount >= 0 &&
           dividerCount <= 4 &&
-          model.geometry.dividerThickness >= 1.2
+          model.geometry.dividerThickness >= 1.2 &&
+          (dividerCount === 0 || dividerHeight >= settings.minimumFloorThickness)
             ? "pass"
             : "warn",
       };

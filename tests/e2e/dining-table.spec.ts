@@ -40,6 +40,17 @@ function inspectStl(buffer: Buffer) {
       degenerateTriangles += 1;
     }
   }
+  let bedMinX = Infinity;
+  let bedMaxX = -Infinity;
+  let bedMinY = Infinity;
+  let bedMaxY = -Infinity;
+  for (let index = 0; index < position.count; index += 1) {
+    if (Math.abs(position.getZ(index) - bounds.min.z) > 1e-4) continue;
+    bedMinX = Math.min(bedMinX, position.getX(index));
+    bedMaxX = Math.max(bedMaxX, position.getX(index));
+    bedMinY = Math.min(bedMinY, position.getY(index));
+    bedMaxY = Math.max(bedMaxY, position.getY(index));
+  }
   geometry.dispose();
   return {
     finite,
@@ -48,6 +59,10 @@ function inspectStl(buffer: Buffer) {
       x: bounds.min.x,
       y: bounds.min.y,
       z: bounds.min.z,
+    },
+    bedContactSize: {
+      x: bedMaxX - bedMinX,
+      y: bedMaxY - bedMinY,
     },
     size: {
       x: bounds.max.x - bounds.min.x,
@@ -109,16 +124,16 @@ test("renders the oak table and exports the registered two-color 1:10 mock", asy
   await page.getByRole("button", { name: "Export two-color STLs" }).click();
   await expect.poll(() => downloads.length).toBe(2);
   const woodDownload = downloads.find((download) =>
-    download.suggestedFilename().endsWith("-wood-color-1.stl"),
+    download.suggestedFilename().endsWith("-support-free-wood-color-1.stl"),
   );
   const hardwareDownload = downloads.find((download) =>
-    download.suggestedFilename().endsWith("-hardware-color-2.stl"),
+    download.suggestedFilename().endsWith("-support-free-hardware-color-2.stl"),
   );
   expect(woodDownload?.suggestedFilename()).toBe(
-    "dining-table-scale-1-10-length-1930.4-width-965.2-wood-color-1.stl",
+    "dining-table-scale-1-10-length-1930.4-width-965.2-support-free-wood-color-1.stl",
   );
   expect(hardwareDownload?.suggestedFilename()).toBe(
-    "dining-table-scale-1-10-length-1930.4-width-965.2-hardware-color-2.stl",
+    "dining-table-scale-1-10-length-1930.4-width-965.2-support-free-hardware-color-2.stl",
   );
   const woodPath = await woodDownload?.path();
   const hardwarePath = await hardwareDownload?.path();
@@ -133,9 +148,11 @@ test("renders the oak table and exports the registered two-color 1:10 mock", asy
   expect(woodStl.size.x).toBeCloseTo(193.04, 1);
   expect(woodStl.size.y).toBeCloseTo(96.52, 1);
   expect(woodStl.size.z).toBeCloseTo(76.2, 1);
+  expect(woodStl.bedContactSize.x).toBeGreaterThan(185);
+  expect(woodStl.bedContactSize.y).toBeGreaterThan(90);
   expect(hardwareStl.finite).toBe(true);
   expect(hardwareStl.degenerateTriangles).toBe(0);
-  expect(hardwareStl.min.z).toBeCloseTo(72.39, 1);
+  expect(hardwareStl.min.z).toBeCloseTo(2.54, 1);
   expect(hardwareStl.size.x).toBeCloseTo(190.5, 1);
   expect(hardwareStl.size.y).toBeCloseTo(93.98, 1);
   expect(hardwareStl.size.z).toBeCloseTo(1.27, 1);

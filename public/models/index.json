@@ -22,6 +22,11 @@
       "configUrl": "/models/door-lock-adapter/model.json"
     },
     {
+      "id": "concentric-tube-jig",
+      "name": "Concentric Tube Jig",
+      "configUrl": "/models/concentric-tube-jig/model.json"
+    },
+    {
       "id": "dining-table",
       "name": "Oak Dining Table",
       "configUrl": "/models/dining-table/model.json"
