@@ -303,8 +303,10 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   expect(definitions.sideOverhang.limits.max).toBeGreaterThan(4 * 25.4);
   expect(definitions.endOverhang.limits.max).toBeGreaterThan(12 * 25.4);
   expect(definitions.frameBottomSpread.limits.min).toBeLessThan(-2 * 25.4);
-  expect(definitions.xBraceWidth.limits.max).toBeGreaterThan(2 * 25.4);
-  expect(definitions.xBraceThickness.limits.max).toBeGreaterThan(1.5 * 25.4);
+  expect(definitions.topSupportWidth.limits.max).toBeGreaterThan(2 * 25.4);
+  expect(definitions.bottomSupportWidth.limits.max).toBeGreaterThan(2 * 25.4);
+  expect(definitions.topSupportThickness.limits.max).toBeGreaterThan(1.5 * 25.4);
+  expect(definitions.bottomSupportThickness.limits.max).toBeGreaterThan(1.5 * 25.4);
 
   const expandedMembers = {
     ...defaultParams,
@@ -316,23 +318,27 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
     getHoverDiningTableParameterLimits(
       model,
       expandedMembers,
-      "xBraceWidth",
+      "topSupportWidth",
     ).max,
   ).toBeGreaterThan(2 * 25.4);
   expect(
     getHoverDiningTableParameterLimits(
       model,
       expandedMembers,
-      "xBraceThickness",
+      "topSupportThickness",
     ).max,
   ).toBeGreaterThan(1.5 * 25.4);
   const expanded = getHoverDiningTableSpec({
     ...expandedMembers,
-    xBraceWidth: 63.5,
-    xBraceThickness: 50.8,
+    topSupportWidth: 63.5,
+    bottomSupportWidth: 76.2,
+    topSupportThickness: 50.8,
+    bottomSupportThickness: 44.45,
   }).fullSize;
+  expect(expanded.upperBrace.width).toBeCloseTo(2.5 * 25.4, 6);
+  expect(expanded.lowerBrace.width).toBeCloseTo(3 * 25.4, 6);
   expect(expanded.upperBrace.thickness).toBeCloseTo(2 * 25.4, 6);
-  expect(expanded.lowerBrace.thickness).toBeCloseTo(2 * 25.4, 6);
+  expect(expanded.lowerBrace.thickness).toBeCloseTo(1.75 * 25.4, 6);
 });
 
 test("atomically settles transient support-member and mating-box dimensions", () => {
@@ -341,18 +347,20 @@ test("atomically settles transient support-member and mating-box dimensions", ()
     frameSideWidth: 2 * 25.4,
     frameTopRailHeight: 1 * 25.4,
     frameBottomRailHeight: 1 * 25.4,
-    xBraceWidth: 4 * 25.4,
-    xBraceThickness: 2 * 25.4,
+    topSupportWidth: 4 * 25.4,
+    bottomSupportWidth: 3 * 25.4,
+    topSupportThickness: 2 * 25.4,
+    bottomSupportThickness: 1.5 * 25.4,
   };
 
   const spec = getHoverDiningTableSpec(transientParams).fullSize;
-  expect(spec.frameSideWidth).toBeCloseTo(transientParams.xBraceWidth, 6);
+  expect(spec.frameSideWidth).toBeCloseTo(transientParams.topSupportWidth, 6);
   expect(spec.frameTopRailHeight).toBeCloseTo(
-    transientParams.xBraceThickness,
+    transientParams.topSupportThickness,
     6,
   );
   expect(spec.frameBottomRailHeight).toBeCloseTo(
-    transientParams.xBraceThickness,
+    transientParams.bottomSupportThickness,
     6,
   );
 
@@ -930,9 +938,12 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(page.getByLabel("End-box inner top radius in inches")).toHaveValue("2 1/2");
   await expect(page.getByLabel("End-box inner bottom radius in inches")).toHaveValue("2 1/2");
   await expect(page.getByLabel("End-box bottom spread in inches")).toHaveValue("0");
-  await expect(page.getByLabel("Support member width in inches")).toHaveValue("2");
-  await expect(page.getByLabel("Support member thickness in inches")).toHaveValue("1 1/4");
-  await expect(page.getByLabel("Support top/bottom round-over in inches")).toHaveValue("1/8");
+  await expect(page.getByLabel("Top support width in inches")).toHaveValue("2");
+  await expect(page.getByLabel("Bottom support width in inches")).toHaveValue("2");
+  await expect(page.getByLabel("Top support thickness in inches")).toHaveValue("1 1/4");
+  await expect(page.getByLabel("Bottom support thickness in inches")).toHaveValue("1 1/4");
+  await expect(page.getByLabel("Top support top/bottom round-over in inches")).toHaveValue("1/8");
+  await expect(page.getByLabel("Bottom support top/bottom round-over in inches")).toHaveValue("1/8");
   await expect(page.getByLabel("Half-lap fit clearance in inches")).toHaveValue("0");
   await expect(page.getByLabel("Top support style")).toContainText("Cross bars (X)");
   await expect(page.getByLabel("Bottom support style")).toContainText("Cross bars (X)");
@@ -948,22 +959,20 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     "Tabletop",
     "End boxes",
     "Support layout",
-    "Support members",
+    "Top support members",
+    "Bottom support members",
+    "Support joinery",
     "Routing templates",
   ]);
   await expect(
-    page.getByText(
-      "One section drives every selected support; larger sections grow the matching box bearing members.",
-    ),
+    page.getByText("Dimensions for the selected top X or stretcher members."),
   ).toBeVisible();
   const xGroupHeading = await page
-    .getByRole("region", { name: "Support members" })
-    .getByRole("heading", { name: "Support members" })
+    .getByRole("region", { name: "Top support members" })
+    .getByRole("heading", { name: "Top support members" })
     .boundingBox();
   const xGroupNote = await page
-    .getByText(
-      "One section drives every selected support; larger sections grow the matching box bearing members.",
-    )
+    .getByText("Dimensions for the selected top X or stretcher members.")
     .boundingBox();
   expect(xGroupHeading).not.toBeNull();
   expect(xGroupNote).not.toBeNull();
@@ -1043,19 +1052,23 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     "style",
     orientationBeforeExplosion!,
   );
-  await page.getByLabel("Support member width in inches").fill("3");
-  await expect(page).toHaveURL(/xBraceWidth=3/);
+  await page.getByLabel("Top support width in inches").fill("3");
+  await expect(page).toHaveURL(/topSupportWidth=3/);
   await expect(page.getByLabel("End-box side width in inches")).toHaveValue(
     "3",
   );
-  await page.getByLabel("Support member width in inches").fill("2 1/8");
-  await expect(page).toHaveURL(/xBraceWidth=2\.126/);
+  await page.getByLabel("Bottom support width in inches").fill("2 1/2");
+  await expect(page).toHaveURL(/bottomSupportWidth=2\.5/);
+  await expect(page.getByLabel("Top support width in inches")).toHaveValue("3");
+  await page.getByLabel("Top support width in inches").fill("2 1/8");
+  await expect(page).toHaveURL(/topSupportWidth=2\.126/);
+  await expect(page.getByLabel("Bottom support width in inches")).toHaveValue("2 1/2");
   await expect(page.getByLabel("Upper-X brace width in inches")).toHaveCount(0);
   await expect(page.getByLabel("Floor-X brace width in inches")).toHaveCount(0);
-  await page.getByLabel("Support member thickness in inches").fill("2");
-  await expect(page).toHaveURL(/xBraceThickness=2/);
+  await page.getByLabel("Top support thickness in inches").fill("2");
+  await expect(page).toHaveURL(/topSupportThickness=2/);
   await expect(page.getByLabel("End-box top rail height in inches")).toHaveValue("2");
-  await expect(page.getByLabel("End-box bottom rail height in inches")).toHaveValue("2");
+  await expect(page.getByLabel("End-box bottom rail height in inches")).toHaveValue("1 3/4");
   await page.getByLabel("Half-lap fit clearance in inches").fill("1/32");
   await expect(page).toHaveURL(/halfLapClearance=0\.0315/);
   await page
@@ -1067,7 +1080,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await page.getByRole("button", { name: "Reset parameters" }).click();
   await expect(page.getByLabel("Table width in inches")).toHaveValue("35 1/2");
   await expect(page.getByLabel("End-box bottom spread in inches")).toHaveValue("0");
-  await expect(page.getByLabel("Support member width in inches")).toHaveValue("2");
+  await expect(page.getByLabel("Top support width in inches")).toHaveValue("2");
   await expect(page.getByLabel("Half-lap fit clearance in inches")).toHaveValue("0");
   await expect(
     page.getByLabel("Inner corner curve tension Bézier tension"),
@@ -1289,10 +1302,16 @@ test("migrates legacy split-brace and shared-radius links to canonical parameter
   await expect(page.getByLabel("End-box inner bottom radius in inches")).toHaveValue("3");
   await expect(page.getByLabel("End-box outer top radius in inches")).toHaveValue("1");
   await expect(page.getByLabel("End-box outer bottom radius in inches")).toHaveValue("1");
-  await expect(page.getByLabel("Support member width in inches")).toHaveValue("2 1/4");
-  await expect(page.getByLabel("Support member thickness in inches")).toHaveValue("1 1/2");
-  await expect(page.getByLabel("Support top/bottom round-over in inches")).toHaveValue("1/4");
-  await expect(page).toHaveURL(/xBraceWidth=2\.25/);
+  await expect(page.getByLabel("Top support width in inches")).toHaveValue("1 3/4");
+  await expect(page.getByLabel("Bottom support width in inches")).toHaveValue("2 1/4");
+  await expect(page.getByLabel("Top support thickness in inches")).toHaveValue("1");
+  await expect(page.getByLabel("Bottom support thickness in inches")).toHaveValue("1 1/2");
+  await expect(page.getByLabel("Top support top/bottom round-over in inches")).toHaveValue("1/8");
+  await expect(page.getByLabel("Bottom support top/bottom round-over in inches")).toHaveValue("1/4");
+  await expect(page).toHaveURL(/topSupportWidth=1\.75/);
+  await expect(page).toHaveURL(/bottomSupportWidth=2\.25/);
+  await expect(page).toHaveURL(/topSupportThickness=1/);
+  await expect(page).toHaveURL(/bottomSupportThickness=1\.5/);
   await expect(page).toHaveURL(/frameInnerTopCornerRadius=3/);
   await expect(page).not.toHaveURL(/lowerBraceWidth=/);
   await expect(page).not.toHaveURL(/frameInnerCornerRadius=/);
@@ -1347,10 +1366,11 @@ test("keeps the fabrication sheet usable in narrow center panes and on phones", 
   );
 
   await page.setViewportSize({ width: 393, height: 852 });
-  const mobileMeasurements = await page.evaluate(() => {
-    const viewer = document
-      .querySelector<HTMLElement>('.viewer[data-assembly-mode="cut-list"]')!
-      .getBoundingClientRect();
+  const mobileViewer = page.locator('.viewer[data-assembly-mode="cut-list"]');
+  await expect(mobileViewer).toBeVisible();
+  await expect(page.locator('.hover-cut-sheet')).toBeVisible();
+  const mobileMeasurements = await mobileViewer.evaluate((viewerElement) => {
+    const viewer = viewerElement.getBoundingClientRect();
     const sheet = document.querySelector<HTMLElement>(".hover-cut-sheet")!;
     const buttons = Array.from(
       document.querySelectorAll<HTMLElement>(
@@ -1367,7 +1387,7 @@ test("keeps the fabrication sheet usable in narrow center panes and on phones", 
       return valueBounds.right - rowBounds.right;
     });
     const xGroup = document.querySelector<HTMLElement>(
-      '.parameter-group[aria-labelledby="parameter-group-support-members"]',
+      '.parameter-group[aria-labelledby="parameter-group-top-support-members"]',
     )!;
     const xHeading = xGroup.querySelector("h3")!.getBoundingClientRect();
     const xNote = xGroup.querySelector("p")!.getBoundingClientRect();

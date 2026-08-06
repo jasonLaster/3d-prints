@@ -186,37 +186,65 @@
       "limits": { "min": 0, "max": 2, "step": 1 }
     },
     {
-      "key": "xBraceWidth",
-      "label": "Support member width",
-      "group": "Support members",
+      "key": "topSupportWidth",
+      "label": "Top support width",
+      "group": "Top support members",
       "default": 50.8,
       "limits": { "min": 19.05, "max": 101.6, "step": 3.175 }
     },
     {
-      "key": "xBraceThickness",
-      "label": "Support member thickness",
-      "group": "Support members",
+      "key": "topSupportThickness",
+      "label": "Top support thickness",
+      "group": "Top support members",
       "default": 31.75,
       "limits": { "min": 12.7, "max": 76.2, "step": 3.175 }
     },
     {
-      "key": "xBraceEndpointInset",
-      "label": "Support bearing-zone inset",
-      "group": "Support members",
+      "key": "topSupportEndpointInset",
+      "label": "Top support bearing-zone inset",
+      "group": "Top support members",
       "default": 0,
       "limits": { "min": 0, "max": 101.6, "step": 1.5875 }
     },
     {
-      "key": "xBraceEdgeRadius",
-      "label": "Support top/bottom round-over",
-      "group": "Support members",
+      "key": "topSupportEdgeRadius",
+      "label": "Top support top/bottom round-over",
+      "group": "Top support members",
+      "default": 3.175,
+      "limits": { "min": 0.79375, "max": 19.05, "step": 1.5875 }
+    },
+    {
+      "key": "bottomSupportWidth",
+      "label": "Bottom support width",
+      "group": "Bottom support members",
+      "default": 50.8,
+      "limits": { "min": 19.05, "max": 101.6, "step": 3.175 }
+    },
+    {
+      "key": "bottomSupportThickness",
+      "label": "Bottom support thickness",
+      "group": "Bottom support members",
+      "default": 31.75,
+      "limits": { "min": 12.7, "max": 76.2, "step": 3.175 }
+    },
+    {
+      "key": "bottomSupportEndpointInset",
+      "label": "Bottom support bearing-zone inset",
+      "group": "Bottom support members",
+      "default": 0,
+      "limits": { "min": 0, "max": 101.6, "step": 1.5875 }
+    },
+    {
+      "key": "bottomSupportEdgeRadius",
+      "label": "Bottom support top/bottom round-over",
+      "group": "Bottom support members",
       "default": 3.175,
       "limits": { "min": 0.79375, "max": 19.05, "step": 1.5875 }
     },
     {
       "key": "halfLapClearance",
       "label": "Half-lap fit clearance",
-      "group": "Support members",
+      "group": "Support joinery",
       "default": 0,
       "limits": { "min": 0, "max": 3.175, "step": 0.1 }
     },
@@ -257,7 +285,7 @@
       "The base contains exactly two closed transverse end boxes with independently selectable support layouts: an upper horizontal X or two original lengthwise stretchers, plus a floor X, one centered lengthwise board, or no floor connector.",
       "Each end box has independently editable top and bottom values for both outer and inner corner radii, separately editable normalized Bézier tensions, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
       "Every selected X crosses at the table center with a derived 50/50 half-lap and no overlapping solid volume; straight-support layouts contain no artificial lap.",
-      "One shared support width, thickness, bearing-zone inset, and edge round-over contract drives every support layout while half-lap fit clearance applies only to selected Xs.",
+      "Top and bottom support width, thickness, bearing-zone inset, and edge round-over contracts are independently editable while half-lap fit clearance applies only to selected Xs.",
       "The selected upper supports bear directly against the tabletop underside and every selected lower support bears directly on the floor, with zero gap or spacer.",
       "Exploded mode presents 11–13 glue-up pieces according to the selected layouts: one profiled tabletop, four finished rail-and-stile bars per end box, two upper support members, and zero, one, or two lower support members.",
       "Cut List mode presents the same selected pieces as five to eight grouped schedule lines with full-size finished dimensions, quantities, oak grain direction, exact constrained profiles, edge-treatment section views, and joinery notes.",
@@ -275,7 +303,7 @@
       "Keep every selected top-support envelope coplanar with the tabletop underside and every selected floor-support envelope coplanar with the floor; expose no gap or spacer control.",
       "Keep inner and outer corner curves as cubic Bézier functions whose control lengths equal radius times normalized tension.",
       "Keep top and bottom exterior and interior corner radii independently editable because the observed curves are not concentric offsets.",
-      "Keep the support section and edge radius shared across the top and bottom choices; only radius-aware lateral placement and selected joinery may differ.",
+      "Keep top and bottom support sections and edge radii independently editable; each selected support derives radius-aware placement and selected joinery from its own member contract.",
       "Treat bottom spread as the explicit splay hypothesis; zero means orthogonal frame sides and remains the evidence-backed default.",
       "Keep frame edge round-over below half the depth, side width, top-rail height, and bottom-rail height.",
       "Keep end boxes, their bottom spread, and all brace endpoints inside the tabletop width while preserving positive diagonal spans.",

@@ -209,6 +209,15 @@ const PARAM_QUERY_KEYS = [
   "frameInnerBottomCornerRadius",
   "topSupportStyle",
   "bottomSupportStyle",
+  "topSupportWidth",
+  "topSupportThickness",
+  "topSupportEndpointInset",
+  "topSupportEdgeRadius",
+  "bottomSupportWidth",
+  "bottomSupportThickness",
+  "bottomSupportEndpointInset",
+  "bottomSupportEdgeRadius",
+  // Legacy shared/split support keys are retained only for URL migration.
   "xBraceWidth",
   "xBraceThickness",
   "xBraceEndpointInset",
@@ -477,13 +486,38 @@ function getParamsFromUrl(model: ModelDefinition) {
       frameOuterBottomCornerRadius: ["frameOuterCornerRadius"],
       frameInnerTopCornerRadius: ["frameInnerCornerRadius"],
       frameInnerBottomCornerRadius: ["frameInnerCornerRadius"],
-      xBraceWidth: ["lowerBraceWidth", "upperBraceWidth"],
-      xBraceThickness: ["lowerBraceThickness", "upperBraceThickness"],
-      xBraceEndpointInset: [
+      topSupportWidth: ["upperBraceWidth", "xBraceWidth", "lowerBraceWidth"],
+      bottomSupportWidth: ["lowerBraceWidth", "xBraceWidth", "upperBraceWidth"],
+      topSupportThickness: [
+        "upperBraceThickness",
+        "xBraceThickness",
+        "lowerBraceThickness",
+      ],
+      bottomSupportThickness: [
+        "lowerBraceThickness",
+        "xBraceThickness",
+        "upperBraceThickness",
+      ],
+      topSupportEndpointInset: [
+        "upperBraceEndpointInset",
+        "xBraceEndpointInset",
         "lowerBraceEndpointInset",
+      ],
+      bottomSupportEndpointInset: [
+        "lowerBraceEndpointInset",
+        "xBraceEndpointInset",
         "upperBraceEndpointInset",
       ],
-      xBraceEdgeRadius: ["lowerBraceEdgeRadius", "upperBraceEdgeRadius"],
+      topSupportEdgeRadius: [
+        "upperBraceEdgeRadius",
+        "xBraceEdgeRadius",
+        "lowerBraceEdgeRadius",
+      ],
+      bottomSupportEdgeRadius: [
+        "lowerBraceEdgeRadius",
+        "xBraceEdgeRadius",
+        "upperBraceEdgeRadius",
+      ],
     };
     for (const [canonicalKey, aliases] of Object.entries(legacyAliases)) {
       if (searchParams.has(canonicalKey)) continue;
@@ -2274,7 +2308,9 @@ const HOVER_PARAMETER_GROUPS = [
   "Tabletop",
   "End boxes",
   "Support layout",
-  "Support members",
+  "Top support members",
+  "Bottom support members",
+  "Support joinery",
   "Routing templates",
 ] as const;
 
@@ -2312,10 +2348,13 @@ function HoverDiningTableParameterControls({
               </h3>
               {group === "Support layout" ? (
                 <p>Choose the top and floor architecture independently.</p>
-              ) : group === "Support members" ? (
+              ) : group === "Top support members" ? (
+                <p>Dimensions for the selected top X or stretcher members.</p>
+              ) : group === "Bottom support members" ? (
+                <p>Dimensions for the selected bottom X, board, or no support.</p>
+              ) : group === "Support joinery" ? (
                 <p>
-                  One section drives every selected support; larger sections
-                  grow the matching box bearing members.
+                  Half-lap clearance applies only to selected X supports.
                 </p>
               ) : group === "End boxes" ? (
                 <p>Top and bottom corner radii remain independently editable.</p>
@@ -3487,13 +3526,11 @@ export default function App({
         ),
       };
       if (model.viewer === "hover-dining-table-v1") {
-        if (key === "xBraceWidth") {
+        if (key === "topSupportWidth" || key === "bottomSupportWidth") {
           next.frameSideWidth = Math.max(current.frameSideWidth, nextValue);
-        } else if (key === "xBraceThickness") {
-          next.frameTopRailHeight = Math.max(
-            current.frameTopRailHeight,
-            nextValue,
-          );
+        } else if (key === "topSupportThickness") {
+          next.frameTopRailHeight = Math.max(current.frameTopRailHeight, nextValue);
+        } else if (key === "bottomSupportThickness") {
           next.frameBottomRailHeight = Math.max(
             current.frameBottomRailHeight,
             nextValue,

@@ -125,9 +125,9 @@ X-Hover Dining Table:
 - Inner and outer corner radii remain independently adjustable at the top and bottom of each box; each curve family retains its normalized Bézier-tension control.
 - Bottom spread is the only splay control and defaults to zero, matching the supplied orthographic drawing.
 - Top support is selectable between the current X and the two original lengthwise stretchers. Bottom support is independently selectable between the current X, one centered lengthwise board, and nothing. Missing URL values preserve the X/X default.
-- One shared width, thickness, bearing-zone inset, and edge-radius contract drives every selected support. Larger shared values grow the matching box members. X endpoints derive from top or bottom inner-corner tangencies; upper stretchers track the outside edge of the top end-box rail; the floor board remains centered.
+- Top and bottom support members have independent width, thickness, bearing-zone inset, and edge-radius contracts. Larger values grow only the matching box bearing members. X endpoints derive from their corresponding inner-corner tangencies; upper stretchers track the outside edge of the top end-box rail; the floor board remains centered.
 - Angled brace ends are coplanar with the inside faces of the end boxes and migrate inward when inner radius, opening width, brace width, endpoint inset, or bottom spread changes.
-- The shared brace edge-radius control rounds over both long-edge pairs on all four members without rounding the plan ends or centered half-lap shoulders.
+- Each top or bottom support edge-radius control rounds over both long-edge pairs on that support plane without rounding the plan ends or centered half-lap shoulders.
 - Selected top supports remain coplanar with the tabletop underside; selected floor supports remain coplanar with the floor. Neither contact condition has a gap control.
 - Each selected X uses one centered half-lap with a nominal depth of half the brace thickness and no overlapping solid volume. Straight supports have no false lap.
 - Assembled/Exploded mode separates the glue-up into 11–13 fully profiled oak pieces according to layout (13 for X/X), with the same curved boxes, true rounded support sections, contact ends, and conditional half-laps as the assembled geometry.

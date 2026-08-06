@@ -1,6 +1,6 @@
 # X-Hover Dining Table audit specification
 
-The X-Hover Dining Table is a parametric family based on the supplied Hover Dining Table. The source photographs and dimension drawing establish the tabletop, oak finish, proportions, two sculpted transverse end boxes, and original upper lengthwise stretchers. The user-approved variation adds independent top and floor support choices while retaining one shared support-member section.
+The X-Hover Dining Table is a parametric family based on the supplied Hover Dining Table. The source photographs and dimension drawing establish the tabletop, oak finish, proportions, two sculpted transverse end boxes, and original upper lengthwise stretchers. The user-approved variation adds independent top and floor support choices with independently editable member sections for each support plane.
 
 This document is the authoritative design and executable audit contract for `hover-dining-table-v1`.
 
@@ -72,7 +72,7 @@ The longitudinal centerline span is derived from table length, end overhang, and
 - the two rotations are equal and opposite; and
 - changing table length, width, overhang, box depth, side-member width, or endpoint inset must regenerate both Xs without detached or projecting ends.
 
-All support layouts share one editable member width, vertical thickness, bearing-zone inset, and edge radius. X lateral endpoints remain independently derived from the top and bottom inner-corner tangencies; upper-stretcher lateral placement derives from the top rail's outside bearing edge; and the floor board remains centered. Increasing member width beyond the current side-member width raises both side members; increasing thickness beyond either rail height raises both rails. That coupling is resolved atomically inside the geometry contract as well as in the inspector, so transient parameter or hot-reload states cannot evaluate an enlarged support against stale mating members. The common edge-radius control creates top-and-bottom long-edge round-overs, not rounded plan ends. Half-lap fit clearance applies only while at least one X is selected.
+Top and bottom support layouts each expose their own member width, vertical thickness, bearing-zone inset, and edge radius. X lateral endpoints remain independently derived from the corresponding inner-corner tangencies; upper-stretcher lateral placement derives from the top rail's outside bearing edge; and the floor board remains centered. Increasing a top or bottom member width raises the shared side-member bearing width as needed; increasing a top or bottom thickness raises only its matching rail. That coupling is resolved atomically inside the geometry contract as well as in the inspector, so transient parameter or hot-reload states cannot evaluate an enlarged support against stale mating members. Each edge-radius control creates top-and-bottom long-edge round-overs, not rounded plan ends. Half-lap fit clearance applies only while at least one X is selected.
 
 ## Half-lap contract
 
@@ -146,7 +146,7 @@ The manipulation model must expose or derive these control families:
 - end-box placement: side overhang, end overhang, and box depth;
 - end-box silhouette: side-member width, top- and bottom-rail heights, bottom spread, independent top/bottom inner and outer radii, independent inner and outer Bézier tensions, and face-edge round-over;
 - support layout: top X or original stretchers; floor X, centered board, or nothing;
-- all support members: one shared width, thickness, bearing-zone inset, and edge radius, with layout-specific derived placement;
+- top and bottom support members: independent width, thickness, bearing-zone inset, and edge-radius controls, with layout-specific derived placement;
 - X joinery: half-lap fit clearance, with lap position, included angle, overlap length, and nominal 50% depth derived from the surrounding geometry.
 - routing templates: nominal thickness, usable square print-plate span, dovetail depth, and dovetail fit clearance, with segment counts and seam locations derived.
 
@@ -201,7 +201,7 @@ The static model audit and browser tests must eventually prove:
 - two full-size routing-template families derived from the frame Bézier geometry, nominally 1/8 in thick, with finite nondegenerate plate-safe segments and complementary male/female dovetails;
 - more exported template segments after reducing the usable plate span, while mock-scale changes alter only the preview size and never the full-size template dimensions or STL count;
 - camera orientation and zoom remain stable during every parameter edit.
-- the inspector presents Overall, Tabletop, End boxes, Support layout, Support members, and Routing templates as distinct groups; selectors persist in the URL; and legacy shared-radius/split-brace URLs migrate to the canonical controls.
+- the inspector presents Overall, Tabletop, End boxes, Support layout, Top support members, Bottom support members, Support joinery, and Routing templates as distinct groups; selectors persist in the URL; and legacy shared-radius/split-brace URLs migrate to the canonical controls.
 
 ## Source-of-truth boundary
 

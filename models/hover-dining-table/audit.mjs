@@ -42,9 +42,12 @@ close(params.frameOuterBottomCornerRadius, 0.75 * inch, "outer bottom radius");
 close(params.frameInnerTopCornerRadius, 2.5 * inch, "inner top radius");
 close(params.frameInnerBottomCornerRadius, 2.5 * inch, "inner bottom radius");
 close(params.frameEdgeRoundover, 0.375 * inch, "end-box face-edge round-over");
-close(params.xBraceWidth, 2 * inch, "shared X-brace width");
-close(params.xBraceThickness, 1.25 * inch, "shared X-brace thickness");
-close(params.xBraceEdgeRadius, 0.125 * inch, "shared X-brace round-over");
+close(params.topSupportWidth, 2 * inch, "top support width");
+close(params.bottomSupportWidth, 2 * inch, "bottom support width");
+close(params.topSupportThickness, 1.25 * inch, "top support thickness");
+close(params.bottomSupportThickness, 1.25 * inch, "bottom support thickness");
+close(params.topSupportEdgeRadius, 0.125 * inch, "top support round-over");
+close(params.bottomSupportEdgeRadius, 0.125 * inch, "bottom support round-over");
 close(params.halfLapClearance, 0, "nominal half-lap clearance");
 assert.equal(params.topSupportStyle, 0, "upper X remains the default support layout");
 assert.equal(params.bottomSupportStyle, 0, "floor X remains the default support layout");
@@ -55,10 +58,11 @@ close(params.templateJointClearance, 0.2, "routing-template joint clearance");
 assert.ok(params.templatePlateLength > params.templateDovetailDepth * 4);
 assert.ok(params.templateJointClearance < params.templateDovetailDepth / 3);
 assert.equal(params.frameBottomSpread, 0, "orthogonal end box is the evidence-backed default");
-assert.equal(params.xBraceEndpointInset, 0);
+assert.equal(params.topSupportEndpointInset, 0);
+assert.equal(params.bottomSupportEndpointInset, 0);
 assert.equal("hoverGap" in params, false, "the revised model must not expose a hover gap");
-assert.equal("stretcherHeight" in params, false, "straight supports reuse the shared section");
-assert.equal("stretcherThickness" in params, false, "straight supports reuse the shared section");
+assert.equal("stretcherHeight" in params, false, "straight supports use the selected support section");
+assert.equal("stretcherThickness" in params, false, "straight supports use the selected support section");
 assert.equal("supportPadLength" in params, false, "support pads are superseded");
 
 for (const key of [
@@ -85,9 +89,7 @@ const openingBottomWidth = frameBottomWidth - 2 * params.frameSideWidth;
 const openingHeight =
   frameHeight - params.frameBottomRailHeight - params.frameTopRailHeight;
 const spanX = params.tableLength - 2 * (params.endOverhang + params.frameDepth);
-const deriveBraceEnd = (openingWidth, innerRadius) => {
-  const width = params.xBraceWidth;
-  const inset = params.xBraceEndpointInset;
+const deriveBraceEnd = (openingWidth, innerRadius, width, inset) => {
   const cornerTangentY = openingWidth / 2 - innerRadius;
   let endpointY = cornerTangentY - inset - width / 2;
   let miterHalfWidth = width / 2;
@@ -106,10 +108,14 @@ const deriveBraceEnd = (openingWidth, innerRadius) => {
 const upperEnd = deriveBraceEnd(
   openingTopWidth,
   params.frameInnerTopCornerRadius,
+  params.topSupportWidth,
+  params.topSupportEndpointInset,
 );
 const lowerEnd = deriveBraceEnd(
   openingBottomWidth,
   params.frameInnerBottomCornerRadius,
+  params.bottomSupportWidth,
+  params.bottomSupportEndpointInset,
 );
 const upperEndpointY = upperEnd.endpointY;
 const lowerEndpointY = lowerEnd.endpointY;
@@ -133,27 +139,32 @@ assert.ok(upperLength > spanX && lowerLength > spanX);
 assert.ok(upperAngle > 0 && lowerAngle > 0);
 assert.ok(upperAngle < Math.PI / 4 && lowerAngle < Math.PI / 4);
 close(
-  upperEnd.endpointOuterY + params.xBraceEndpointInset,
+  upperEnd.endpointOuterY + params.topSupportEndpointInset,
   upperEnd.cornerTangentY,
   "upper angled end clears the inner-corner tangent",
 );
 close(
-  lowerEnd.endpointOuterY + params.xBraceEndpointInset,
+  lowerEnd.endpointOuterY + params.bottomSupportEndpointInset,
   lowerEnd.cornerTangentY,
   "lower angled end clears the inner-corner tangent",
 );
-close(params.xBraceThickness / 2, 0.625 * inch, "shared half-lap depth");
+close(params.topSupportThickness / 2, 0.625 * inch, "top half-lap depth");
+close(params.bottomSupportThickness / 2, 0.625 * inch, "bottom half-lap depth");
 close(topBottom, frameHeight, "end boxes terminate at the tabletop underside");
 close(topBottom, topBottom, "upper-X top contact");
 close(0, 0, "lower-X floor contact");
-assert.ok(params.xBraceWidth <= params.frameSideWidth);
-assert.ok(params.xBraceThickness <= params.frameTopRailHeight);
-assert.ok(params.xBraceThickness <= params.frameBottomRailHeight);
-assert.ok(params.halfLapClearance < params.xBraceThickness / 2);
+assert.ok(params.topSupportWidth <= params.frameSideWidth);
+assert.ok(params.bottomSupportWidth <= params.frameSideWidth);
+assert.ok(params.topSupportThickness <= params.frameTopRailHeight);
+assert.ok(params.bottomSupportThickness <= params.frameBottomRailHeight);
+assert.ok(params.halfLapClearance < params.topSupportThickness / 2);
+assert.ok(params.halfLapClearance < params.bottomSupportThickness / 2);
 assert.ok(params.sideOverhang < model.parameters.find((p) => p.key === "sideOverhang").limits.max);
 assert.ok(model.parameters.find((p) => p.key === "frameBottomSpread").limits.min < -2 * inch);
-assert.ok(model.parameters.find((p) => p.key === "xBraceWidth").limits.max > 2 * inch);
-assert.ok(model.parameters.find((p) => p.key === "xBraceThickness").limits.max > 1.5 * inch);
+assert.ok(model.parameters.find((p) => p.key === "topSupportWidth").limits.max > 2 * inch);
+assert.ok(model.parameters.find((p) => p.key === "bottomSupportWidth").limits.max > 2 * inch);
+assert.ok(model.parameters.find((p) => p.key === "topSupportThickness").limits.max > 1.5 * inch);
+assert.ok(model.parameters.find((p) => p.key === "bottomSupportThickness").limits.max > 1.5 * inch);
 
 const mockEnvelope = [
   params.tableLength / params.mockScale,

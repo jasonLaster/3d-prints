@@ -205,30 +205,38 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
   const topThickness = getParam(params, "topThickness");
   const topBottom = height - topThickness;
   const sideOverhang = getParam(params, "sideOverhang");
-  const xBraceWidth = getParam(params, "xBraceWidth");
-  const xBraceThickness = getParam(params, "xBraceThickness");
-  const xBraceEndpointInset = getParam(params, "xBraceEndpointInset");
-  const xBraceEdgeRadius = getParam(params, "xBraceEdgeRadius");
+  const topSupportWidth = getParam(params, "topSupportWidth");
+  const topSupportThickness = getParam(params, "topSupportThickness");
+  const topSupportEndpointInset = getParam(params, "topSupportEndpointInset");
+  const topSupportEdgeRadius = getParam(params, "topSupportEdgeRadius");
+  const bottomSupportWidth = getParam(params, "bottomSupportWidth");
+  const bottomSupportThickness = getParam(params, "bottomSupportThickness");
+  const bottomSupportEndpointInset = getParam(
+    params,
+    "bottomSupportEndpointInset",
+  );
+  const bottomSupportEdgeRadius = getParam(params, "bottomSupportEdgeRadius");
   const frameTopWidth = width - sideOverhang * 2;
   const frameBottomSpread = getParam(params, "frameBottomSpread");
   const frameBottomWidth = frameTopWidth + frameBottomSpread;
   // Support edits and model hot reloads can expose one transient render where
-  // the shared member section has updated but its mating box members have not.
+  // a member section has updated but its mating box members have not.
   // Resolve that coupling here as well as in the UI state update so every
   // geometry/audit caller receives one atomic, construction-safe spec.
   const frameSideWidth = Math.max(
     getParam(params, "frameSideWidth"),
-    xBraceWidth,
+    topSupportWidth,
+    bottomSupportWidth,
   );
   const openingTopWidth = frameTopWidth - frameSideWidth * 2;
   const openingBottomWidth = frameBottomWidth - frameSideWidth * 2;
   const frameBottomRailHeight = Math.max(
     getParam(params, "frameBottomRailHeight"),
-    xBraceThickness,
+    bottomSupportThickness,
   );
   const frameTopRailHeight = Math.max(
     getParam(params, "frameTopRailHeight"),
-    xBraceThickness,
+    topSupportThickness,
   );
   const frameHeight = topBottom;
   const openingBottom = frameBottomRailHeight;
@@ -246,7 +254,7 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
   );
   const upperPlacementBoundaryY = frameTopWidth / 2;
   const upperStretcherCenterY =
-    upperPlacementBoundaryY - xBraceEndpointInset - xBraceWidth / 2;
+    upperPlacementBoundaryY - topSupportEndpointInset - topSupportWidth / 2;
 
   return {
     scale,
@@ -290,49 +298,49 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       getParam(params, "bottomSupportStyle"),
     ),
     upperBrace: createBracePlaneSpec({
-      width: xBraceWidth,
-      thickness: xBraceThickness,
-      endpointInset: xBraceEndpointInset,
-      edgeRadius: xBraceEdgeRadius,
+      width: topSupportWidth,
+      thickness: topSupportThickness,
+      endpointInset: topSupportEndpointInset,
+      edgeRadius: topSupportEdgeRadius,
       spanX: braceSpanX,
       openingWidth: openingTopWidth,
       innerCornerRadius: frameInnerTopCornerRadius,
-      zBottom: topBottom - xBraceThickness,
+      zBottom: topBottom - topSupportThickness,
       zTop: topBottom,
     }),
     lowerBrace: createBracePlaneSpec({
-      width: xBraceWidth,
-      thickness: xBraceThickness,
-      endpointInset: xBraceEndpointInset,
-      edgeRadius: xBraceEdgeRadius,
+      width: bottomSupportWidth,
+      thickness: bottomSupportThickness,
+      endpointInset: bottomSupportEndpointInset,
+      edgeRadius: bottomSupportEdgeRadius,
       spanX: braceSpanX,
       openingWidth: openingBottomWidth,
       innerCornerRadius: frameInnerBottomCornerRadius,
       zBottom: 0,
-      zTop: xBraceThickness,
+      zTop: bottomSupportThickness,
     }),
     upperStretchers: {
       count: 2,
-      width: xBraceWidth,
-      thickness: xBraceThickness,
-      endpointInset: xBraceEndpointInset,
-      edgeRadius: xBraceEdgeRadius,
+      width: topSupportWidth,
+      thickness: topSupportThickness,
+      endpointInset: topSupportEndpointInset,
+      edgeRadius: topSupportEdgeRadius,
       spanX: braceSpanX,
       centerYs: [-upperStretcherCenterY, upperStretcherCenterY],
       placementBoundaryY: upperPlacementBoundaryY,
-      zBottom: topBottom - xBraceThickness,
+      zBottom: topBottom - topSupportThickness,
       zTop: topBottom,
     },
     lowerCenterBoard: {
       count: 1,
-      width: xBraceWidth,
-      thickness: xBraceThickness,
-      endpointInset: 0,
-      edgeRadius: xBraceEdgeRadius,
+      width: bottomSupportWidth,
+      thickness: bottomSupportThickness,
+      endpointInset: bottomSupportEndpointInset,
+      edgeRadius: bottomSupportEdgeRadius,
       spanX: braceSpanX,
       centerYs: [0],
       zBottom: 0,
-      zTop: xBraceThickness,
+      zTop: bottomSupportThickness,
     },
   };
 }
@@ -553,17 +561,6 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
     "Floor center board",
     spec.frameBottomRailHeight,
   );
-  for (const property of [
-    "width",
-    "thickness",
-    "endpointInset",
-    "edgeRadius",
-    "halfLapDepth",
-  ] as const) {
-    if (Math.abs(spec.upperBrace[property] - spec.lowerBrace[property]) > EPSILON) {
-      throw new Error(`Both X planes must share the same ${property}`);
-    }
-  }
   if (Math.abs(spec.upperBrace.zTop - spec.topBottom) > EPSILON) {
     throw new Error("Upper X top envelope must contact the tabletop underside");
   }
@@ -2630,6 +2627,7 @@ export function getHoverDiningTableParameterLimits(
       limits.min,
       spec.frameEdgeRoundover * 2 + limits.step,
       spec.upperBrace.width,
+      spec.lowerBrace.width,
     );
     limits.max = Math.min(
       limits.max,
@@ -2708,48 +2706,50 @@ export function getHoverDiningTableParameterLimits(
         2 -
         limits.step,
     );
-  } else if (key === "xBraceWidth") {
+  } else if (key === "topSupportWidth" || key === "bottomSupportWidth") {
+    const brace = key === "topSupportWidth" ? spec.upperBrace : spec.lowerBrace;
     limits.min = Math.max(
       limits.min,
-      spec.upperBrace.edgeRadius * 2 + limits.step,
+      brace.edgeRadius * 2 + limits.step,
     );
     limits.max = Math.min(
       limits.max,
-      (spec.frameTopWidth - 2 * spec.frameInnerTopCornerRadius) / 2,
-      (spec.frameBottomWidth - 2 * spec.frameInnerBottomCornerRadius) / 2,
-      spec.upperBrace.cornerTangentY - spec.upperBrace.endpointInset,
-      spec.lowerBrace.cornerTangentY - spec.lowerBrace.endpointInset,
+      key === "topSupportWidth"
+        ? (spec.frameTopWidth - 2 * spec.frameInnerTopCornerRadius) / 2
+        : (spec.frameBottomWidth - 2 * spec.frameInnerBottomCornerRadius) / 2,
+      brace.cornerTangentY - brace.endpointInset,
     );
-  } else if (key === "xBraceThickness") {
+  } else if (key === "topSupportThickness" || key === "bottomSupportThickness") {
+    const brace = key === "topSupportThickness" ? spec.upperBrace : spec.lowerBrace;
     limits.min = Math.max(
       limits.min,
-      spec.upperBrace.edgeRadius * 2 + limits.step,
+      brace.edgeRadius * 2 + limits.step,
     );
     limits.max = Math.min(
       limits.max,
-      getParameter(model, "frameTopRailHeight").limits.max,
-      getParameter(model, "frameBottomRailHeight").limits.max,
-      (spec.frameHeight -
+      key === "topSupportThickness"
+        ? getParameter(model, "frameTopRailHeight").limits.max
+        : getParameter(model, "frameBottomRailHeight").limits.max,
+      spec.frameHeight -
+        (key === "topSupportThickness"
+          ? spec.frameBottomRailHeight
+          : spec.frameTopRailHeight) -
         spec.frameInnerTopCornerRadius -
         spec.frameInnerBottomCornerRadius -
-        limits.step) /
-        2,
+        limits.step,
     );
-  } else if (key === "xBraceEndpointInset") {
+  } else if (key === "topSupportEndpointInset" || key === "bottomSupportEndpointInset") {
+    const brace = key === "topSupportEndpointInset" ? spec.upperBrace : spec.lowerBrace;
     limits.max = Math.min(
       limits.max,
-      spec.upperBrace.cornerTangentY -
-        spec.upperBrace.miterHalfWidth -
-        spec.upperBrace.width / 2,
-      spec.lowerBrace.cornerTangentY -
-        spec.lowerBrace.miterHalfWidth -
-        spec.lowerBrace.width / 2,
+      brace.cornerTangentY - brace.miterHalfWidth - brace.width / 2,
     );
-  } else if (key === "xBraceEdgeRadius") {
+  } else if (key === "topSupportEdgeRadius" || key === "bottomSupportEdgeRadius") {
+    const brace = key === "topSupportEdgeRadius" ? spec.upperBrace : spec.lowerBrace;
     limits.max = Math.min(
       limits.max,
-      spec.upperBrace.width / 2 - limits.step,
-      spec.upperBrace.halfLapDepth -
+      brace.width / 2 - limits.step,
+      brace.halfLapDepth -
         spec.halfLapClearance / 2 -
         limits.step,
     );
@@ -2757,6 +2757,7 @@ export function getHoverDiningTableParameterLimits(
     limits.max = Math.min(
       limits.max,
       spec.upperBrace.thickness / 4,
+      spec.lowerBrace.thickness / 4,
     );
   } else if (key === "templatePlateLength") {
     limits.min = Math.max(
