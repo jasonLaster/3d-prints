@@ -13,7 +13,7 @@ function formatAngle(value: number | undefined) {
 
 function formatProcessing(part: HoverDiningTableCutPart) {
   if (part.kind === "brace" && part.lap) {
-    return `${formatAngle(part.cutAngleDegrees)} miters · ${part.lap.face} half-lap`;
+    return `${formatAngle(part.cutAngleDegrees)} box-parallel ends · ${part.lap.face} half-lap`;
   }
   if (part.kind === "tabletop") return "square ends · roll long edges";
   if (part.kind === "stile") {
@@ -69,6 +69,10 @@ function HoverCutPartDiagram({
   const lapWidth = part.lap
     ? Math.max(12, Math.min(76, (part.lap.length / part.length) * 235))
     : 0;
+  const lapShoulderShift = part.lap
+    ? lapWidth * Math.cos((part.lap.shoulderAngleDegrees * Math.PI) / 180)
+    : 0;
+  const lapCenterX = 162.5;
   return (
     <article className="hover-cut-card" data-part-id={part.id}>
       <header>
@@ -128,15 +132,17 @@ function HoverCutPartDiagram({
         ) : null}
         {part.lap ? (
           <g className="cut-part-lap">
-            <rect
+            <polygon
               fill={`url(#lap-hatch-${part.id})`}
-              height="62"
-              width={lapWidth}
-              x={162.5 - lapWidth / 2}
-              y="38"
+              points={[
+                `${lapCenterX - lapWidth / 2 + lapShoulderShift / 2},38`,
+                `${lapCenterX + lapWidth / 2 + lapShoulderShift / 2},38`,
+                `${lapCenterX + lapWidth / 2 - lapShoulderShift / 2},100`,
+                `${lapCenterX - lapWidth / 2 - lapShoulderShift / 2},100`,
+              ].join(" ")}
             />
-            <text x="162.5" y="31">
-              {part.lap.face} half-lap
+            <text x={lapCenterX} y="31">
+              {part.lap.face} half-lap · {part.lap.shoulderAngleDegrees.toFixed(1)}°
             </text>
           </g>
         ) : null}
@@ -193,6 +199,10 @@ function HoverCutPartDiagram({
             <div>
               <dt>Lap depth</dt>
               <dd>{formatLength(part.lap.depth, unit)}</dd>
+            </div>
+            <div>
+              <dt>Shoulder angle</dt>
+              <dd>{part.lap.shoulderAngleDegrees.toFixed(1)}°</dd>
             </div>
             <div>
               <dt>Lap center from end</dt>

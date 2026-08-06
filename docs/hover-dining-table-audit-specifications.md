@@ -55,7 +55,7 @@ For each X plane:
 3. Both diagonal centerlines pass through `X = 0`, `Y = 0` and therefore cross at the exact table center.
 4. Both diagonals have equal plan length for a symmetric table.
 5. Their plan angle is derived from the longitudinal span and lateral endpoint span; it is never an independently edited rotation.
-6. Each end is cut on the end-box inside-face plane, producing a flat angled end rather than a rounded or square-to-the-brace cap.
+6. Each end is cut on the end-box inside-face plane. This flat angled end is one full-section planar bearing face parallel with the box rather than a rounded or square-to-the-brace cap.
 7. The outermost point of that angled cut is at the straight-rail tangent of the inner corner minus the editable endpoint inset. No part of the brace end may enter the Bézier corner.
 
 The longitudinal centerline span is derived from table length, end overhang, and end-box depth. For each rail, the corner tangent is `openingWidth / 2 - innerCornerRadius`. Because a diagonal brace is wider on an end-box-aligned cut plane than it is perpendicular to its own centerline, its mitered half-width is `braceWidth / (2 cos(planAngle))`. The endpoint solver places the centerline at `cornerTangent - endpointInset - miteredHalfWidth` and iterates the angle until that relationship converges. With `spanX` and `spanY` so derived:
@@ -73,12 +73,14 @@ Each X has exactly one traditional centered half-lap. The overlap is derived fro
 
 - The crossing is centered at `X = 0`, `Y = 0`.
 - Each brace retains exactly half its nominal vertical thickness through the overlap, excluding an optional fit clearance.
+- Both braces retain their full nominal plan width through the crossing; the pockets remove depth, not width.
 - One brace is relieved from its upper half and the other from its lower half so the assembled exterior faces remain coplanar.
 - The upper X preserves one continuous assembled top envelope at the tabletop underside.
 - The lower X preserves one continuous assembled bottom envelope at the floor.
 - The two half-lapped solids may touch at their mating surface but must not occupy overlapping volume.
 - A fit-clearance parameter may open the internal mating faces for fabrication or printing, but it must not create a visible gap at the assembled top, bottom, or outer shoulder seams.
 - Half-lap shoulders remain square and dimensionally explicit even when the brace edges are eased.
+- Pocket boundaries stay on exact aligned machining planes through every round-over layer; the renderer may not fan, taper, or twist those boundaries.
 - The upper member remains visibly continuous across the top half of the crossing and the lower member remains visibly continuous across the bottom half, so an oblique or underside render communicates the half-lap rather than two overlapping solids.
 
 ## Direct-contact contract

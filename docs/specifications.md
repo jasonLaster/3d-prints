@@ -15,9 +15,9 @@ This document defines the product and engineering contract for the 3D Prints app
 - The top remains square-ended while normalized cubic Bézier controls shape only the two rolled long edges.
 - Two sculpted closed end boxes use independent inner and outer radii and curve tensions, an explicit zero-default bottom-spread parameter, and rounded face edges.
 - Exactly four diagonal braces form two horizontal X assemblies between the end boxes: one directly against the tabletop underside and one directly on the floor.
-- Every brace has a flat angled end flush with the end-box inside face. Its complete cut face derives from and stays inward of the editable inner-corner tangent, so increasing the radius automatically pushes the X inward.
+- Every brace has a full-section planar angled end parallel and flush with the end-box inside face. Its complete cut face derives from and stays inward of the editable inner-corner tangent, so increasing the radius automatically pushes the X inward.
 - Brace top and bottom long edges are rounded over, while the flush end cuts and half-lap shoulders remain square.
-- Each X crosses at the table center with a derived 50/50 half-lap; there are no parallel lengthwise stretchers, hover pads, or spacer gaps.
+- Each X crosses at the table center with a derived 50/50 half-lap. Both boards retain full plan width, complementary half-depth pockets preserve one continuous assembled thickness, and there are no parallel lengthwise stretchers, hover pads, or spacer gaps.
 - See `docs/hover-dining-table-audit-specifications.md` for the evidence and invariant contract.
 
 ## Information Architecture

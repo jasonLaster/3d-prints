@@ -1195,7 +1195,7 @@ html.dark .viewer-status span {
   stroke-width: 1;
 }
 
-.cut-part-lap rect {
+.cut-part-lap :is(rect, polygon) {
   stroke: #9b6548;
   stroke-dasharray: 3 2;
   stroke-width: 1;

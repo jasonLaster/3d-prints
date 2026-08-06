@@ -703,34 +703,24 @@ function insetBraceSides(
   );
 }
 
-function cross2(a: THREE.Vector2, b: THREE.Vector2) {
-  return a.x * b.y - a.y * b.x;
-}
-
-function sampleConvexPolygon(points: THREE.Vector2[], sampleCount: number) {
-  const polygon = ensureCounterClockwise(points);
-  const center = polygon
-    .reduce((sum, point) => sum.add(point), new THREE.Vector2())
-    .multiplyScalar(1 / polygon.length);
-  return Array.from({ length: sampleCount }, (_, index) => {
-    const angle = (index / sampleCount) * Math.PI * 2;
-    const direction = new THREE.Vector2(Math.cos(angle), Math.sin(angle));
-    let distance = Number.POSITIVE_INFINITY;
-    for (let edgeIndex = 0; edgeIndex < polygon.length; edgeIndex += 1) {
-      const start = polygon[edgeIndex];
-      const end = polygon[(edgeIndex + 1) % polygon.length];
-      const edge = end.clone().sub(start);
-      const insideDistance = cross2(edge, center.clone().sub(start));
-      const rate = cross2(edge, direction);
-      if (rate < -EPSILON) {
-        distance = Math.min(distance, insideDistance / -rate);
-      }
+function alignConvexPolygon(points: THREE.Vector2[]) {
+  const polygon = ensureCounterClockwise(points).map((point) => point.clone());
+  let startIndex = 0;
+  for (let index = 1; index < polygon.length; index += 1) {
+    const candidate = polygon[index];
+    const current = polygon[startIndex];
+    if (
+      candidate.x < current.x - EPSILON ||
+      (Math.abs(candidate.x - current.x) <= EPSILON &&
+        candidate.y < current.y)
+    ) {
+      startIndex = index;
     }
-    if (!Number.isFinite(distance) || distance <= EPSILON) {
-      throw new Error("Unable to sample rounded X-brace plan region");
-    }
-    return center.clone().addScaledVector(direction, distance);
-  });
+  }
+  return [
+    ...polygon.slice(startIndex),
+    ...polygon.slice(0, startIndex),
+  ];
 }
 
 function createRoundedPlanPrism(
@@ -782,7 +772,6 @@ function createRoundedPlanPrism(
     pushLayer(zTop, 0);
   }
 
-  const perimeterSamples = Math.max(48, roundoverSegments * 12);
   const rings = layers.map((layer) => {
     const inset = insetBraceSides(points, brace, slopeSign, layer.inset);
     if (inset.length < 3) {
@@ -790,9 +779,16 @@ function createRoundedPlanPrism(
     }
     return {
       z: layer.z,
-      points: sampleConvexPolygon(inset, perimeterSamples),
+      points: alignConvexPolygon(inset),
     };
   });
+  const perimeterCount = rings[0].points.length;
+  if (
+    perimeterCount < 3 ||
+    rings.some((ring) => ring.points.length !== perimeterCount)
+  ) {
+    throw new Error("Rounded X-brace layers must preserve aligned cut planes");
+  }
   const positions: number[] = [];
   const addTriangle = (
     a: THREE.Vector3,
@@ -807,8 +803,8 @@ function createRoundedPlanPrism(
   for (let layerIndex = 0; layerIndex < rings.length - 1; layerIndex += 1) {
     const lower = rings[layerIndex];
     const upper = rings[layerIndex + 1];
-    for (let index = 0; index < perimeterSamples; index += 1) {
-      const next = (index + 1) % perimeterSamples;
+    for (let index = 0; index < perimeterCount; index += 1) {
+      const next = (index + 1) % perimeterCount;
       const lowerCurrent = as3(lower.points[index], lower.z);
       const lowerNext = as3(lower.points[next], lower.z);
       const upperCurrent = as3(upper.points[index], upper.z);
@@ -822,12 +818,12 @@ function createRoundedPlanPrism(
   const top = rings[rings.length - 1];
   const bottomCenter = bottom.points
     .reduce((sum, point) => sum.add(as3(point, bottom.z)), new THREE.Vector3())
-    .multiplyScalar(1 / perimeterSamples);
+    .multiplyScalar(1 / perimeterCount);
   const topCenter = top.points
     .reduce((sum, point) => sum.add(as3(point, top.z)), new THREE.Vector3())
-    .multiplyScalar(1 / perimeterSamples);
-  for (let index = 0; index < perimeterSamples; index += 1) {
-    const next = (index + 1) % perimeterSamples;
+    .multiplyScalar(1 / perimeterCount);
+  for (let index = 0; index < perimeterCount; index += 1) {
+    const next = (index + 1) % perimeterCount;
     addTriangle(
       bottomCenter,
       as3(bottom.points[next], bottom.z),
@@ -1055,6 +1051,7 @@ export type HoverDiningTableCutPart = {
     length: number;
     depth: number;
     fitClearance: number;
+    shoulderAngleDegrees: number;
   };
   processDimensions?: Array<{ label: string; value: number }>;
   notes: string[];
@@ -1097,6 +1094,7 @@ function createBraceCutParts(
     length: lapLength,
     depth: brace.halfLapDepth + halfLapClearance / 2,
     fitClearance: halfLapClearance,
+    shoulderAngleDegrees: THREE.MathUtils.radToDeg(includedAngle),
   };
   return [
     {
@@ -1225,7 +1223,9 @@ export function getHoverDiningTableCutList(
       (!Number.isFinite(part.lap.length) ||
         part.lap.length <= 0 ||
         part.lap.depth <= 0 ||
-        part.lap.depth >= part.thickness)
+        part.lap.depth >= part.thickness ||
+        part.lap.shoulderAngleDegrees <= 0 ||
+        part.lap.shoulderAngleDegrees >= 90)
     ) {
       throw new Error(`${part.id} half-lap dimensions are invalid`);
     }
@@ -1627,12 +1627,12 @@ export function getHoverDiningTableAuditValue(
     case "hoverBraceEndCuts":
       return item(
         check.label,
-        `4 flush miters · upper ${formatLength(spec.upperBrace.endpointOuterY, unit)} / ${formatLength(spec.upperBrace.cornerTangentY, unit)} tangent · lower ${formatLength(spec.lowerBrace.endpointOuterY, unit)} / ${formatLength(spec.lowerBrace.cornerTangentY, unit)} tangent · ${formatLength(spec.lowerBrace.edgeRadius, unit)} top/bottom round-over`,
+        `8 box-parallel bearing faces · 4 per X · upper ${formatLength(spec.upperBrace.endpointOuterY, unit)} / ${formatLength(spec.upperBrace.cornerTangentY, unit)} tangent · lower ${formatLength(spec.lowerBrace.endpointOuterY, unit)} / ${formatLength(spec.lowerBrace.cornerTangentY, unit)} tangent · ${formatLength(spec.lowerBrace.edgeRadius, unit)} top/bottom round-over`,
       );
     case "hoverHalfLaps":
       return item(
         check.label,
-        `2 centered · 50% depth · ${formatLength(spec.halfLapClearance, unit)} fit clearance`,
+        `2 centered · full width · complementary 50% depth · ${formatLength(spec.halfLapClearance, unit)} fit clearance`,
       );
     case "hoverDirectContact":
       return item(

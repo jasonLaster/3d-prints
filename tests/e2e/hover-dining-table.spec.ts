@@ -93,6 +93,84 @@ function inspectWoodUvs(geometry: THREE.BufferGeometry) {
   return { finite, inUnitRange, count: uv?.count ?? 0 };
 }
 
+function inspectPlanarContactFace(
+  geometry: THREE.BufferGeometry,
+  planeX: number,
+  tolerance = 1e-4,
+) {
+  const position = geometry.getAttribute("position");
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const ab = new THREE.Vector3();
+  const ac = new THREE.Vector3();
+  const normal = new THREE.Vector3();
+  let area = 0;
+  let triangleCount = 0;
+  let minimumAbsoluteNormalX = 1;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  let minZ = Number.POSITIVE_INFINITY;
+  let maxZ = Number.NEGATIVE_INFINITY;
+
+  for (let index = 0; index < position.count; index += 3) {
+    a.fromBufferAttribute(position, index);
+    b.fromBufferAttribute(position, index + 1);
+    c.fromBufferAttribute(position, index + 2);
+    if (
+      Math.abs(a.x - planeX) > tolerance ||
+      Math.abs(b.x - planeX) > tolerance ||
+      Math.abs(c.x - planeX) > tolerance
+    ) {
+      continue;
+    }
+    normal.crossVectors(ab.subVectors(b, a), ac.subVectors(c, a));
+    const triangleArea = normal.length() / 2;
+    if (triangleArea <= 1e-8) continue;
+    area += triangleArea;
+    triangleCount += 1;
+    minimumAbsoluteNormalX = Math.min(
+      minimumAbsoluteNormalX,
+      Math.abs(normal.normalize().x),
+    );
+    for (const point of [a, b, c]) {
+      minY = Math.min(minY, point.y);
+      maxY = Math.max(maxY, point.y);
+      minZ = Math.min(minZ, point.z);
+      maxZ = Math.max(maxZ, point.z);
+    }
+  }
+
+  return {
+    area,
+    triangleCount,
+    minimumAbsoluteNormalX,
+    ySpan: maxY - minY,
+    zSpan: maxZ - minZ,
+  };
+}
+
+function centerlineZRange(
+  geometry: THREE.BufferGeometry,
+  tolerance = 1e-4,
+) {
+  const position = geometry.getAttribute("position");
+  const zValues: number[] = [];
+  for (let index = 0; index < position.count; index += 1) {
+    if (
+      Math.abs(position.getX(index)) <= tolerance &&
+      Math.abs(position.getY(index)) <= tolerance
+    ) {
+      zValues.push(position.getZ(index));
+    }
+  }
+  return {
+    count: zValues.length,
+    min: Math.min(...zValues),
+    max: Math.max(...zValues),
+  };
+}
+
 test("derives two centered half-lapped Xs with direct tabletop and floor contact", () => {
   const { fullSize, scaled } = getHoverDiningTableSpec(defaultParams);
   for (const brace of [fullSize.upperBrace, fullSize.lowerBrace]) {
@@ -179,6 +257,7 @@ test("derives two centered half-lapped Xs with direct tabletop and floor contact
 
 test("explodes the glue-up into one top, eight box bars, and four X bars", () => {
   const parts = createHoverDiningTableExplodedParts(defaultParams, model);
+  const { scaled: spec } = getHoverDiningTableSpec(defaultParams);
   expect(parts).toHaveLength(13);
   expect(new Set(parts.map((part) => part.name)).size).toBe(13);
   expect(
@@ -195,6 +274,62 @@ test("explodes the glue-up into one top, eight box bars, and four X bars", () =>
     "upper-x": 2,
     "floor-x": 2,
   });
+
+  for (const [category, brace] of [
+    ["upper-x", spec.upperBrace],
+    ["floor-x", spec.lowerBrace],
+  ] as const) {
+    const members = parts.filter((part) => part.category === category);
+    expect(members, category).toHaveLength(2);
+    members.forEach((member, memberIndex) => {
+      member.geometry.computeBoundingBox();
+      const bounds = member.geometry.boundingBox!;
+      expect(bounds.min.x, member.name).toBeCloseTo(-brace.spanX / 2, 4);
+      expect(bounds.max.x, member.name).toBeCloseTo(brace.spanX / 2, 4);
+
+      for (const endSign of [-1, 1] as const) {
+        const contact = inspectPlanarContactFace(
+          member.geometry,
+          endSign * brace.spanX / 2,
+        );
+        expect(contact.triangleCount, `${member.name} contact ${endSign}`).toBeGreaterThan(0);
+        expect(contact.minimumAbsoluteNormalX, `${member.name} contact normal`).toBeCloseTo(1, 5);
+        expect(contact.ySpan, `${member.name} full-width contact`).toBeCloseTo(
+          brace.miterHalfWidth * 2,
+          4,
+        );
+        expect(contact.zSpan, `${member.name} full-depth contact`).toBeCloseTo(
+          brace.thickness,
+          4,
+        );
+        expect(contact.area, `${member.name} useful contact area`).toBeGreaterThan(
+          brace.width * brace.thickness * 0.7,
+        );
+      }
+
+      const center = centerlineZRange(member.geometry);
+      expect(center.count, `${member.name} centered pocket`).toBeGreaterThan(0);
+      if (memberIndex === 0) {
+        expect(center.min, `${member.name} lower envelope`).toBeCloseTo(
+          brace.zBottom,
+          4,
+        );
+        expect(center.max, `${member.name} top-pocket depth`).toBeCloseTo(
+          (brace.zBottom + brace.zTop - spec.halfLapClearance) / 2,
+          4,
+        );
+      } else {
+        expect(center.min, `${member.name} bottom-pocket depth`).toBeCloseTo(
+          (brace.zBottom + brace.zTop + spec.halfLapClearance) / 2,
+          4,
+        );
+        expect(center.max, `${member.name} upper envelope`).toBeCloseTo(
+          brace.zTop,
+          4,
+        );
+      }
+    });
+  }
 
   for (const part of parts) {
     const inspected = inspectGeometry(part.geometry);
@@ -245,6 +380,8 @@ test("derives a full-size finished cut schedule for all 13 pieces", () => {
       expect(part.lap.centerFromEnd, part.id).toBeCloseTo(part.length / 2, 6);
       expect(part.lap.length, part.id).toBeGreaterThan(part.width);
       expect(part.lap.depth, part.id).toBeLessThan(part.thickness);
+      expect(part.lap.shoulderAngleDegrees, part.id).toBeGreaterThan(0);
+      expect(part.lap.shoulderAngleDegrees, part.id).toBeLessThan(90);
     }
   }
 
@@ -333,10 +470,12 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(page.getByText("0 in bottom spread")).toBeVisible();
   await expect(page.getByText(/2 × .* at ±\d+\.\d°/).first()).toBeVisible();
   await expect(
-    page.getByText("2 centered · 50% depth · 0 in fit clearance"),
+    page.getByText(
+      "2 centered · full width · complementary 50% depth · 0 in fit clearance",
+    ),
   ).toBeVisible();
   await expect(page.getByText(/upper Z 28 1\/4 in · lower Z 0 in · zero gaps/)).toBeVisible();
-  await expect(page.getByText(/4 flush miters/)).toBeVisible();
+  await expect(page.getByText(/8 box-parallel bearing faces · 4 per X/)).toBeVisible();
   await expect(page.locator(".audit-row .status-dot.pass")).toHaveCount(14);
 
   await page.getByLabel("Table width in inches").fill("36");
@@ -347,7 +486,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(page.getByText("-1/2 in bottom spread")).toBeVisible();
   await page.getByLabel("End-box inner corner radius in inches").fill("3");
   await expect(page).toHaveURL(/frameInnerCornerRadius=3/);
-  await expect(page.getByText(/4 flush miters/)).toBeVisible();
+  await expect(page.getByText(/8 box-parallel bearing faces · 4 per X/)).toBeVisible();
   await expect(page.locator(".viewer")).toHaveAttribute(
     "data-assembly-mode",
     "exploded",
