@@ -1857,7 +1857,7 @@ html.dark .panel-section:nth-child(even) {
 }
 
 .nested-parameter-section .divider-controls-heading {
-  margin-bottom: 14px;
+  margin-bottom: 0;
 }
 
 .parameter-groups {
@@ -1875,8 +1875,8 @@ html.dark .panel-section:nth-child(even) {
   padding-top: 0;
 }
 
-.parameter-group .divider-controls-heading p {
-  margin: 5px 0 0;
+.parameter-group-description {
+  margin: 0 0 14px;
   color: var(--muted);
   font-size: 11px;
   line-height: 1.45;
@@ -1884,6 +1884,33 @@ html.dark .panel-section:nth-child(even) {
 
 .parameter-group .divider-controls-heading {
   display: block;
+}
+
+.parameter-group .divider-controls-heading .parameter-group-toggle {
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.parameter-group .parameter-group-toggle h3 {
+  flex: 1;
+  text-align: left;
+}
+
+.parameter-group .parameter-group-toggle svg {
+  transition: transform 160ms ease;
+}
+
+.parameter-group[data-expanded="true"] .parameter-group-toggle svg {
+  transform: rotate(180deg);
+}
+
+.parameter-group-content {
+  padding-top: 12px;
 }
 
 .hover-support-layout-controls {

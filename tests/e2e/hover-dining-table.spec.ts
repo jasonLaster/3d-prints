@@ -929,6 +929,14 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     page.getByLabel("X-Hover Dining Table model viewer"),
   ).toBeVisible();
   await expect(page.locator("canvas").first()).toBeVisible();
+  const parameterGroupToggles = page.locator(".parameter-group-toggle");
+  await expect(parameterGroupToggles).toHaveCount(8);
+  await expect(page.getByLabel("Table length in inches")).toBeHidden();
+  for (const toggle of await parameterGroupToggles.all()) {
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  }
   await expect(page.getByLabel("Mock scale denominator")).toHaveValue("10");
   await expect(page.getByLabel("Table length in inches")).toHaveValue("75");
   await expect(page.getByLabel("Table width in inches")).toHaveValue("35 1/2");
@@ -990,7 +998,10 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   const assembledButton = page.getByRole("button", { name: "Assembled" });
   const explodedButton = page.getByRole("button", { name: "Exploded" });
   const cutListButton = page.getByRole("button", { name: "Cut list" });
-  const templatesButton = page.getByRole("button", { name: "Templates" });
+  const templatesButton = page.getByRole("button", {
+    name: "Templates",
+    exact: true,
+  });
   await expect(assembledButton).toHaveAttribute("aria-pressed", "true");
   await expect(explodedButton).toHaveAttribute("aria-pressed", "false");
   await expect(cutListButton).toHaveAttribute("aria-pressed", "false");
@@ -1236,6 +1247,7 @@ test("switches support layouts associatively across viewer, exploded mode, cut l
 }) => {
   await page.goto("/?model=hover-dining-table&unit=in");
   await expect(page.locator("canvas").first()).toBeVisible();
+  await page.getByRole("button", { name: "Support layout" }).click();
   await page.evaluate(
     () =>
       new Promise<void>((resolve) =>
@@ -1280,6 +1292,7 @@ test("switches support layouts associatively across viewer, exploded mode, cut l
   await expect(page.getByText("Floor center board").first()).toBeVisible();
 
   await page.reload();
+  await page.getByRole("button", { name: "Support layout" }).click();
   await expect(page.getByLabel("Top support style")).toContainText(
     "Original stretchers",
   );
@@ -1324,6 +1337,7 @@ test("keeps the fabrication sheet usable in narrow center panes and on phones", 
 }) => {
   await page.setViewportSize({ width: 981, height: 1000 });
   await page.goto("/?model=hover-dining-table&unit=in");
+  await page.getByRole("button", { name: "Top support members" }).click();
   await page.getByRole("button", { name: "Cut list" }).click();
 
   const desktopContainment = await page.evaluate(() => {

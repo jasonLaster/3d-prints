@@ -2327,6 +2327,10 @@ function HoverDiningTableParameterControls({
   onChange: (key: string, value: number) => void;
   onUnitChange: (unit: LengthUnit) => void;
 }) {
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    () => new Set(),
+  );
+
   return (
     <div className="parameter-groups">
       {HOVER_PARAMETER_GROUPS.map((group) => {
@@ -2334,76 +2338,107 @@ function HoverDiningTableParameterControls({
           (parameter) => parameter.group === group,
         );
         if (parameters.length === 0) return null;
+        const groupSlug = group.toLowerCase().replace(/\s+/g, "-");
+        const headingId = `parameter-group-${groupSlug}`;
+        const contentId = `${headingId}-content`;
+        const expanded = expandedGroups.has(group);
         return (
           <section
-            aria-labelledby={`parameter-group-${group.toLowerCase().replace(/\s+/g, "-")}`}
+            aria-labelledby={headingId}
             className="nested-parameter-section parameter-group"
+            data-expanded={expanded}
             key={group}
           >
             <div className="divider-controls-heading">
-              <h3
-                id={`parameter-group-${group.toLowerCase().replace(/\s+/g, "-")}`}
+              <button
+                aria-controls={contentId}
+                aria-expanded={expanded}
+                className="parameter-group-toggle"
+                onClick={() => {
+                  setExpandedGroups((current) => {
+                    const next = new Set(current);
+                    if (next.has(group)) next.delete(group);
+                    else next.add(group);
+                    return next;
+                  });
+                }}
+                type="button"
               >
-                {group}
-              </h3>
+                <h3 id={headingId}>{group}</h3>
+                <ChevronDown aria-hidden="true" />
+              </button>
+            </div>
+            <div
+              className="parameter-group-content"
+              hidden={!expanded}
+              id={contentId}
+            >
               {group === "Support layout" ? (
-                <p>Choose the top and floor architecture independently.</p>
+                <p className="parameter-group-description">
+                  Choose the top and floor architecture independently.
+                </p>
               ) : group === "Top support members" ? (
-                <p>Dimensions for the selected top X or stretcher members.</p>
+                <p className="parameter-group-description">
+                  Dimensions for the selected top X or stretcher members.
+                </p>
               ) : group === "Bottom support members" ? (
-                <p>Dimensions for the selected bottom X, board, or no support.</p>
+                <p className="parameter-group-description">
+                  Dimensions for the selected bottom X, board, or no support.
+                </p>
               ) : group === "Support joinery" ? (
-                <p>
+                <p className="parameter-group-description">
                   Half-lap clearance applies only to selected X supports.
                 </p>
               ) : group === "End boxes" ? (
-                <p>Top and bottom corner radii remain independently editable.</p>
+                <p className="parameter-group-description">
+                  Top and bottom corner radii remain independently editable.
+                </p>
               ) : null}
-            </div>
-            {group === "Support layout" ? (
-              <HoverSupportLayoutControl params={params} onChange={onChange} />
-            ) : parameters.map((parameter) => {
-              if (
-                parameter.key === "halfLapClearance" &&
-                getParam(params, "topSupportStyle") >= 0.5 &&
-                getParam(params, "bottomSupportStyle") >= 0.5
-              ) {
-                return null;
-              }
-              if (parameter.key === "mockScale") {
+              {group === "Support layout" ? (
+                <HoverSupportLayoutControl params={params} onChange={onChange} />
+              ) : parameters.map((parameter) => {
+                if (
+                  parameter.key === "halfLapClearance" &&
+                  getParam(params, "topSupportStyle") >= 0.5 &&
+                  getParam(params, "bottomSupportStyle") >= 0.5
+                ) {
+                  return null;
+                }
+                if (parameter.key === "mockScale") {
+                  return (
+                    <ScaleControl
+                      key={parameter.key}
+                      limits={getParameterLimits(model, params, parameter.key)}
+                      onChange={(value) => onChange(parameter.key, value)}
+                      value={getParam(params, parameter.key)}
+                    />
+                  );
+                }
+                if (CURVE_PARAM_KEYS.has(parameter.key)) {
+                  return (
+                    <BezierCurveControl
+                      key={parameter.key}
+                      label={parameter.label}
+                      limits={getParameterLimits(model, params, parameter.key)}
+                      onChange={(value) => onChange(parameter.key, value)}
+                      value={getParam(params, parameter.key)}
+                    />
+                  );
+                }
                 return (
-                  <ScaleControl
-                    key={parameter.key}
-                    limits={getParameterLimits(model, params, parameter.key)}
-                    onChange={(value) => onChange(parameter.key, value)}
-                    value={getParam(params, parameter.key)}
-                  />
-                );
-              }
-              if (CURVE_PARAM_KEYS.has(parameter.key)) {
-                return (
-                  <BezierCurveControl
+                  <NumberControl
                     key={parameter.key}
                     label={parameter.label}
                     limits={getParameterLimits(model, params, parameter.key)}
                     onChange={(value) => onChange(parameter.key, value)}
-                    value={getParam(params, parameter.key)}
+                    onUnitChange={onUnitChange}
+                    preferFineStep={parameter.key.endsWith("Clearance")}
+                    unit={unit}
+                    valueMm={params[parameter.key]}
                   />
                 );
-              }
-              return (
-                <NumberControl
-                  key={parameter.key}
-                  label={parameter.label}
-                  limits={getParameterLimits(model, params, parameter.key)}
-                  onChange={(value) => onChange(parameter.key, value)}
-                  onUnitChange={onUnitChange}
-                  preferFineStep={parameter.key.endsWith("Clearance")}
-                  unit={unit}
-                  valueMm={params[parameter.key]}
-                />
-              );
-            })}
+              })}
+            </div>
           </section>
         );
       })}
