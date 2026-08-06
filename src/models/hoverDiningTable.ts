@@ -205,24 +205,37 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
   const topThickness = getParam(params, "topThickness");
   const topBottom = height - topThickness;
   const sideOverhang = getParam(params, "sideOverhang");
+  const xBraceWidth = getParam(params, "xBraceWidth");
+  const xBraceThickness = getParam(params, "xBraceThickness");
+  const xBraceEndpointInset = getParam(params, "xBraceEndpointInset");
+  const xBraceEdgeRadius = getParam(params, "xBraceEdgeRadius");
   const frameTopWidth = width - sideOverhang * 2;
   const frameBottomSpread = getParam(params, "frameBottomSpread");
   const frameBottomWidth = frameTopWidth + frameBottomSpread;
-  const frameSideWidth = getParam(params, "frameSideWidth");
+  // Support edits and model hot reloads can expose one transient render where
+  // the shared member section has updated but its mating box members have not.
+  // Resolve that coupling here as well as in the UI state update so every
+  // geometry/audit caller receives one atomic, construction-safe spec.
+  const frameSideWidth = Math.max(
+    getParam(params, "frameSideWidth"),
+    xBraceWidth,
+  );
   const openingTopWidth = frameTopWidth - frameSideWidth * 2;
   const openingBottomWidth = frameBottomWidth - frameSideWidth * 2;
-  const frameBottomRailHeight = getParam(params, "frameBottomRailHeight");
-  const frameTopRailHeight = getParam(params, "frameTopRailHeight");
+  const frameBottomRailHeight = Math.max(
+    getParam(params, "frameBottomRailHeight"),
+    xBraceThickness,
+  );
+  const frameTopRailHeight = Math.max(
+    getParam(params, "frameTopRailHeight"),
+    xBraceThickness,
+  );
   const frameHeight = topBottom;
   const openingBottom = frameBottomRailHeight;
   const openingTop = frameHeight - frameTopRailHeight;
   const frameDepth = getParam(params, "frameDepth");
   const endOverhang = getParam(params, "endOverhang");
   const braceSpanX = length - 2 * (endOverhang + frameDepth);
-  const xBraceWidth = getParam(params, "xBraceWidth");
-  const xBraceThickness = getParam(params, "xBraceThickness");
-  const xBraceEndpointInset = getParam(params, "xBraceEndpointInset");
-  const xBraceEdgeRadius = getParam(params, "xBraceEdgeRadius");
   const frameInnerTopCornerRadius = getParam(
     params,
     "frameInnerTopCornerRadius",

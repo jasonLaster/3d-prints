@@ -335,6 +335,34 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   expect(expanded.lowerBrace.thickness).toBeCloseTo(2 * 25.4, 6);
 });
 
+test("atomically settles transient support-member and mating-box dimensions", () => {
+  const transientParams = {
+    ...defaultParams,
+    frameSideWidth: 2 * 25.4,
+    frameTopRailHeight: 1 * 25.4,
+    frameBottomRailHeight: 1 * 25.4,
+    xBraceWidth: 4 * 25.4,
+    xBraceThickness: 2 * 25.4,
+  };
+
+  const spec = getHoverDiningTableSpec(transientParams).fullSize;
+  expect(spec.frameSideWidth).toBeCloseTo(transientParams.xBraceWidth, 6);
+  expect(spec.frameTopRailHeight).toBeCloseTo(
+    transientParams.xBraceThickness,
+    6,
+  );
+  expect(spec.frameBottomRailHeight).toBeCloseTo(
+    transientParams.xBraceThickness,
+    6,
+  );
+
+  const geometry = createHoverDiningTableGeometry(transientParams, model);
+  const inspected = inspectGeometry(geometry);
+  expect(inspected.finite).toBe(true);
+  expect(inspected.degenerateTriangles).toBe(0);
+  geometry.dispose();
+});
+
 test("explodes the glue-up into one top, eight box bars, and four X bars", () => {
   const parts = createHoverDiningTableExplodedParts(defaultParams, model);
   const { scaled: spec } = getHoverDiningTableSpec(defaultParams);
@@ -1014,6 +1042,11 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(page.locator(".orientation-cube")).toHaveAttribute(
     "style",
     orientationBeforeExplosion!,
+  );
+  await page.getByLabel("Support member width in inches").fill("3");
+  await expect(page).toHaveURL(/xBraceWidth=3/);
+  await expect(page.getByLabel("End-box side width in inches")).toHaveValue(
+    "3",
   );
   await page.getByLabel("Support member width in inches").fill("2 1/8");
   await expect(page).toHaveURL(/xBraceWidth=2\.126/);
