@@ -482,7 +482,7 @@ test("explodes the glue-up into one top, eight box bars, and four X bars", () =>
           (command) => command.kind === "cubic",
         ),
         `${member.name} rounded section`,
-      ).toHaveLength(4);
+      ).toHaveLength(2);
       member.geometry.computeBoundingBox();
       const bounds = member.geometry.boundingBox!;
       expect(bounds.min.x, member.name).toBeCloseTo(-brace.spanX / 2, 4);
@@ -942,8 +942,8 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(page.getByLabel("Bottom support width in inches")).toHaveValue("2");
   await expect(page.getByLabel("Top support thickness in inches")).toHaveValue("1 1/4");
   await expect(page.getByLabel("Bottom support thickness in inches")).toHaveValue("1 1/4");
-  await expect(page.getByLabel("Top support top/bottom round-over in inches")).toHaveValue("1/8");
-  await expect(page.getByLabel("Bottom support top/bottom round-over in inches")).toHaveValue("1/8");
+  await expect(page.getByLabel("Top support bottom round-over in inches")).toHaveValue("1/8");
+  await expect(page.getByLabel("Bottom support bottom round-over in inches")).toHaveValue("1/8");
   await expect(page.getByLabel("Half-lap fit clearance in inches")).toHaveValue("0");
   await expect(page.getByLabel("Top support style")).toContainText("Cross bars (X)");
   await expect(page.getByLabel("Bottom support style")).toContainText("Cross bars (X)");
@@ -1169,7 +1169,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     "Bézier long-edge roll",
   );
   await expect(page.locator('.hover-cut-card[data-part-id="U1"]')).toContainText(
-    "top/bottom long-edge round-over",
+    "bottom long-edge round-over",
   );
   await expect(page.locator('.hover-cut-card[data-part-id="T1"]')).toContainText(
     "L 75 in",
@@ -1308,8 +1308,8 @@ test("migrates legacy split-brace and shared-radius links to canonical parameter
   await expect(page.getByLabel("Bottom support width in inches")).toHaveValue("2 1/4");
   await expect(page.getByLabel("Top support thickness in inches")).toHaveValue("1");
   await expect(page.getByLabel("Bottom support thickness in inches")).toHaveValue("1 1/2");
-  await expect(page.getByLabel("Top support top/bottom round-over in inches")).toHaveValue("1/8");
-  await expect(page.getByLabel("Bottom support top/bottom round-over in inches")).toHaveValue("1/4");
+  await expect(page.getByLabel("Top support bottom round-over in inches")).toHaveValue("1/8");
+  await expect(page.getByLabel("Bottom support bottom round-over in inches")).toHaveValue("1/4");
   await expect(page).toHaveURL(/topSupportWidth=1\.75/);
   await expect(page).toHaveURL(/bottomSupportWidth=2\.25/);
   await expect(page).toHaveURL(/topSupportThickness=1/);

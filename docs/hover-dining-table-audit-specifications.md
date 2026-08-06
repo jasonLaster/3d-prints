@@ -72,7 +72,7 @@ The longitudinal centerline span is derived from table length, end overhang, and
 - the two rotations are equal and opposite; and
 - changing table length, width, overhang, box depth, side-member width, or endpoint inset must regenerate both Xs without detached or projecting ends.
 
-Top and bottom support layouts each expose their own member width, vertical thickness, bearing-zone inset, and edge radius. X lateral endpoints remain independently derived from the corresponding inner-corner tangencies; upper-stretcher lateral placement derives from the top rail's outside bearing edge; and the floor board remains centered. Increasing a top or bottom member width raises the shared side-member bearing width as needed; increasing a top or bottom thickness raises only its matching rail. That coupling is resolved atomically inside the geometry contract as well as in the inspector, so transient parameter or hot-reload states cannot evaluate an enlarged support against stale mating members. Each edge-radius control creates top-and-bottom long-edge round-overs, not rounded plan ends. Half-lap fit clearance applies only while at least one X is selected.
+Top and bottom support layouts each expose their own member width, vertical thickness, bearing-zone inset, and bottom-edge radius. X lateral endpoints remain independently derived from the corresponding inner-corner tangencies; upper-stretcher lateral placement derives from the top rail's outside bearing edge; and the floor board remains centered. Each edge-radius control rounds only the bottom long edge, leaving the top edge square; plan ends remain square. Half-lap fit clearance applies only while at least one X is selected.
 
 ## Half-lap contract
 
@@ -103,7 +103,7 @@ The former 3/8 in hover gap and support-pad concept are removed.
 
 ## Exploded glue-up contract
 
-Exploded mode is a presentation of 11–13 independently movable pieces—each fabrication-complete—before glue-up: one tabletop, two end boxes with two horizontal rails and two vertical stiles each, two selected upper supports, and zero, one, or two selected floor supports. The default X/X layout has 13 independently movable pieces. The tabletop remains one piece. X members retain their box-parallel ends, edge round-overs, and complementary pockets; straight supports retain their square contact ends and rounded sections.
+Exploded mode is a presentation of 11–13 independently movable pieces—each fabrication-complete—before glue-up: one tabletop, two end boxes with two horizontal rails and two vertical stiles each, two selected upper supports, and zero, one, or two selected floor supports. The default X/X layout has 13 independently movable pieces. The tabletop remains one piece. X members retain their box-parallel ends, bottom-edge round-overs, and complementary pockets; straight supports retain their square contact ends and bottom-edge roundovers.
 
 The four separated bars at each end retain the finished rail-and-stile geometry rather than reverting to rectangular stock. The top and bottom rails own the exact outer and inner cubic-Bézier returns, including independent radii and tensions. The stiles run between those tangent seams and retain the derived splay. Every rail and stile retains the configured 3D face-edge round-over, but its two glue seams stay square rather than being softened into a false gap. The exploded solids and assembled end-box ring are driven by the same width, opening, splay, radius, tension, depth, and round-over constraints; rectangular or trapezoidal proxy blanks are prohibited.
 
@@ -191,7 +191,7 @@ The static model audit and browser tests must eventually prove:
 - lower-X bottom contact at `Z = 0` with zero gap;
 - derived brace endpoint attachment after representative length, width, overhang, box-width, and endpoint-inset edits;
 - independent inward endpoint migration after increasing either editable top or bottom inner corner radius, with only the corresponding X moving and the complete angled end remaining tangent-clear;
-- top-and-bottom brace round-overs with flat end cuts and square half-lap shoulders;
+- bottom-edge brace round-overs with flat end cuts and square half-lap shoulders;
 - preserved square tabletop ends and independently editable Bézier curve families;
 - finite, nondegenerate exported triangles and the exact scaled outer envelope; and
 - 11–13 exploded pieces according to layout, including true straight-support geometry where selected and exactly 13 for default X/X;

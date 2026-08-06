@@ -491,7 +491,7 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "centered 50/50 half-lap",
     "straight-rail tangent",
     "flat angled end",
-    "top-and-bottom long-edge round-overs",
+    "bottom-edge brace round-overs",
     "upperBraceMaxZ",
     "lowerBraceMinZ",
     "zero air gap",

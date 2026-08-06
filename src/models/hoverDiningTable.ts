@@ -962,6 +962,37 @@ function roundedRectangleProfile(
   ];
 }
 
+function bottomRoundedRectangleProfile(
+  width: number,
+  height: number,
+  radius: number,
+): HoverDiningTableProfileCommand[] {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const safeRadius = Math.min(radius, halfWidth, halfHeight);
+  const control = safeRadius * 0.5522847498;
+  return [
+    { kind: "move", to: { x: -halfWidth + safeRadius, y: -halfHeight } },
+    { kind: "line", to: { x: halfWidth - safeRadius, y: -halfHeight } },
+    {
+      kind: "cubic",
+      control1: { x: halfWidth - safeRadius + control, y: -halfHeight },
+      control2: { x: halfWidth, y: -halfHeight + safeRadius - control },
+      to: { x: halfWidth, y: -halfHeight + safeRadius },
+    },
+    { kind: "line", to: { x: halfWidth, y: halfHeight } },
+    { kind: "line", to: { x: -halfWidth, y: halfHeight } },
+    { kind: "line", to: { x: -halfWidth, y: -halfHeight + safeRadius } },
+    {
+      kind: "cubic",
+      control1: { x: -halfWidth, y: -halfHeight + safeRadius - control },
+      control2: { x: -halfWidth + safeRadius - control, y: -halfHeight },
+      to: { x: -halfWidth + safeRadius, y: -halfHeight },
+    },
+    { kind: "close" },
+  ];
+}
+
 function profileBounds(commands: HoverDiningTableProfileCommand[]) {
   const points = createShapeFromProfile(commands).getPoints(48);
   const bounds = new THREE.Box2().setFromPoints(points);
@@ -1556,8 +1587,8 @@ function createBraceFabricationProfile(
       width: brace.width,
       thickness: brace.thickness,
       radius: brace.edgeRadius,
-      label: "top/bottom long-edge round-over",
-      outline: roundedRectangleProfile(
+      label: "bottom long-edge round-over",
+      outline: bottomRoundedRectangleProfile(
         brace.width,
         brace.thickness,
         brace.edgeRadius,
@@ -1578,8 +1609,8 @@ function createStraightSupportFabricationProfile(
       width: support.width,
       thickness: support.thickness,
       radius: support.edgeRadius,
-      label: "top/bottom long-edge round-over",
-      outline: roundedRectangleProfile(
+      label: "bottom long-edge round-over",
+      outline: bottomRoundedRectangleProfile(
         support.width,
         support.thickness,
         support.edgeRadius,
@@ -1874,7 +1905,7 @@ function createHalfLappedXParts(
       brace,
       slopeSign,
       Math.abs(zBottom - brace.zBottom) <= EPSILON,
-      Math.abs(zTop - brace.zTop) <= EPSILON,
+      false,
       model.geometry.braceRoundoverSegments,
     );
     if (geometry) target.push(geometry);
@@ -1961,7 +1992,7 @@ function createStraightSupportParts(
       prismSpec,
       1,
       true,
-      true,
+      false,
       model.geometry.braceRoundoverSegments,
     );
     if (!geometry) {
@@ -2084,7 +2115,7 @@ function createBraceCutParts(
     cutAngleDegrees: THREE.MathUtils.radToDeg(Math.abs(brace.angleRadians)),
     notes: [
       "Parallel end cuts bear flush on the end-box inside faces.",
-      "Round over the top and bottom long edges to the listed radius.",
+      "Round over the bottom long edge to the listed radius; leave the top edge square.",
     ],
     processDimensions: [
       { label: "Edge round-over", value: brace.edgeRadius },
@@ -2133,7 +2164,7 @@ function createStraightSupportCutPart(
     cutAngleDegrees: 0,
     notes: [
       "Square end faces bear flush on the parallel end-box inside faces.",
-      "Round over the top and bottom long edges to the listed radius.",
+      "Round over the bottom long edge to the listed radius; leave the top edge square.",
     ],
     processDimensions: [
       { label: "Edge round-over", value: support.edgeRadius },
@@ -2866,7 +2897,7 @@ export function getHoverDiningTableAuditValue(
               : 0;
         return item(
           check.label,
-          `${4 + bottomFaceCount} box-parallel bearing faces · selected members stop on straight contact zones · ${formatLength(spec.upperBrace.edgeRadius, unit)} top/bottom round-over`,
+          `${4 + bottomFaceCount} box-parallel bearing faces · selected members stop on straight contact zones · ${formatLength(spec.upperBrace.edgeRadius, unit)} bottom-edge round-over`,
         );
       }
     case "hoverHalfLaps":

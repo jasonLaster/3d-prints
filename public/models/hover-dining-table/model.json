@@ -208,7 +208,7 @@
     },
     {
       "key": "topSupportEdgeRadius",
-      "label": "Top support top/bottom round-over",
+      "label": "Top support bottom round-over",
       "group": "Top support members",
       "default": 3.175,
       "limits": { "min": 0.79375, "max": 19.05, "step": 1.5875 }
@@ -236,7 +236,7 @@
     },
     {
       "key": "bottomSupportEdgeRadius",
-      "label": "Bottom support top/bottom round-over",
+      "label": "Bottom support bottom round-over",
       "group": "Bottom support members",
       "default": 3.175,
       "limits": { "min": 0.79375, "max": 19.05, "step": 1.5875 }
