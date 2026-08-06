@@ -199,6 +199,10 @@ for (const required of [
   "getHoverDiningTableCutList",
   "Hover-table cut list must account for",
   "getHoverDiningTablePieceCount",
+  "getHoverDiningTableStructuralAssessment",
+  "Lengthwise racking",
+  "Floor rocking tolerance",
+  "heightSensitivity",
   "createStraightSupportParts",
   "createStraightSupportFabricationProfile",
   "miteredBraceFootprint",
@@ -248,7 +252,7 @@ for (const phrase of [
   "Generate parallel upper lengthwise stretchers only when selected",
   "cubic Bézier",
   "straight-rail tangent",
-  "top and bottom long edges",
+  "only the bottom long edge",
   "11–13 glue-up pieces",
   "presentation-only",
   "do not substitute proxy blanks",
@@ -259,6 +263,8 @@ for (const phrase of [
   "1/8 in nominal thickness",
   "rough-milling allowance",
   "zero means orthogonal",
+  "geometry-only wobble screen",
+  "increasing overall height cannot improve the overall score",
   "material-neutral",
 ]) {
   assert.ok(invariantText.includes(phrase), `audit invariants must retain: ${phrase}`);

@@ -152,6 +152,25 @@ The manipulation model must expose or derive these control families:
 
 There is no hover-gap control or support-pad control. Stretcher count and floor-board position are structural consequences of their semantic layout choices, not arbitrary numeric controls.
 
+## Structural wobble-screening contract
+
+The inspector includes a live, geometry-only structural screen. It is intentionally not a certification, finite-element analysis, or substitute for testing the assembled table. Joint geometry, glue quality, grain defects, moisture, tabletop fasteners, floor flatness, and cyclic degradation are not known by this CAD model.
+
+The screen reports six independently visible 0–100 scores plus a weighted overall grade: lengthwise racking (23%), end-box racking (20%), torsional rigidity (18%), tipping margin (14%), floor-rocking tolerance (12%), and member stiffness (13%). Grades are A at 85 or above, B at 75, C at 65, D at 50, and F below 50. Each row must expose its geometry driver rather than presenting an unexplained result.
+
+- Lengthwise racking rewards triangulated X layouts, larger support cross-sections, lower overall height, and a lower connecting plane.
+- End-box racking uses side-member width, box depth, rail height, and frame height as a closed-frame stiffness proxy.
+- Torsional rigidity rewards two separated triangulated support planes and penalizes parallel or missing lower connections.
+- Tipping margin uses the controlling half-footprint-to-height ratio in the longitudinal and transverse directions.
+- Floor-rocking tolerance treats an added floor X or center board as an additional coplanar contact network. This makes the design more sensitive to an uneven floor even when it improves racking.
+- Member stiffness compares stile and active-support slenderness. White oak's modulus of elasticity is a reference for the material assumption, but the score does not calculate allowable stress or joint capacity.
+
+The UI must also show a one-parameter overall-height sensitivity at ±1 in with every other input fixed. Increasing height must not improve the overall, end-box-racking, tipping, or member-stiffness scores. Enlarging the end-box side width or depth must not reduce the end-box-racking score. Removing triangulated support must reduce racking or torsional scores even if it improves uneven-floor tolerance.
+
+The research boundary follows [ISO 19682:2023](https://www.iso.org/standard/73590.html), which separates table stability, strength, and durability test methods; [ANSI/BIFMA X5.5-2021](https://www.bifma.org/news/551679/BIFMA-Revises-Desk-and-Table-Products-Standard.htm), which emphasizes table stability and leg strength; and the USDA Forest Products Laboratory's published white-oak reference values of approximately 12.27 GPa modulus of elasticity and 104.8 MPa modulus of rupture in clear bending specimens. These sources motivate the categories and oak reference only; this app does not claim conformance with either furniture standard.
+
+Before build approval, the finished table still requires a shim-free diagonal corner-rock test, a measured lateral push at tabletop height in both axes, loaded deflection measurement, and repeated-load joint inspection. The physical test result supersedes the CAD grade.
+
 ## Runtime assertions
 
 Runtime construction checks must reject parameter combinations that would:

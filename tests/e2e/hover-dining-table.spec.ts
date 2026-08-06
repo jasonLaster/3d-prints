@@ -11,6 +11,7 @@ import {
   getHoverDiningTableParameterLimits,
   getHoverDiningTablePieceCount,
   getHoverDiningTableSpec,
+  getHoverDiningTableStructuralAssessment,
 } from "../../src/models/hoverDiningTable";
 import {
   createHoverDiningTableTemplateSegments,
@@ -339,6 +340,68 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   expect(expanded.lowerBrace.width).toBeCloseTo(3 * 25.4, 6);
   expect(expanded.upperBrace.thickness).toBeCloseTo(2 * 25.4, 6);
   expect(expanded.lowerBrace.thickness).toBeCloseTo(1.75 * 25.4, 6);
+});
+
+test("grades wobble risks and responds monotonically to structural parameters", () => {
+  const baseline = getHoverDiningTableStructuralAssessment(defaultParams);
+  expect(baseline.metrics).toHaveLength(6);
+  expect(baseline.overallScore).toBeGreaterThanOrEqual(0);
+  expect(baseline.overallScore).toBeLessThanOrEqual(100);
+  expect(baseline.metrics.every((metric) =>
+    Number.isFinite(metric.score) && metric.score >= 0 && metric.score <= 100,
+  )).toBe(true);
+  expect(baseline.heightSensitivity.lower?.delta).toBeGreaterThan(0);
+  expect(baseline.heightSensitivity.higher?.delta).toBeLessThan(0);
+
+  const taller = getHoverDiningTableStructuralAssessment({
+    ...defaultParams,
+    overallHeight: defaultParams.overallHeight + 6 * 25.4,
+  });
+  expect(taller.overallScore).toBeLessThan(baseline.overallScore);
+  for (const key of ["end-box-racking", "tipping", "member-stiffness"] as const) {
+    expect(
+      taller.metrics.find((metric) => metric.key === key)!.score,
+      key,
+    ).toBeLessThan(
+      baseline.metrics.find((metric) => metric.key === key)!.score,
+    );
+  }
+
+  const openFloor = getHoverDiningTableStructuralAssessment({
+    ...defaultParams,
+    topSupportStyle: 1,
+    bottomSupportStyle: 2,
+  });
+  expect(
+    openFloor.metrics.find((metric) => metric.key === "torsion")!.score,
+  ).toBeLessThan(
+    baseline.metrics.find((metric) => metric.key === "torsion")!.score,
+  );
+  expect(
+    openFloor.metrics.find((metric) => metric.key === "longitudinal-racking")!
+      .score,
+  ).toBeLessThan(
+    baseline.metrics.find((metric) => metric.key === "longitudinal-racking")!
+      .score,
+  );
+  expect(
+    openFloor.metrics.find((metric) => metric.key === "floor-rocking")!.score,
+  ).toBeGreaterThan(
+    baseline.metrics.find((metric) => metric.key === "floor-rocking")!.score,
+  );
+
+  const widerBoxes = getHoverDiningTableStructuralAssessment({
+    ...defaultParams,
+    frameSideWidth: 3.5 * 25.4,
+    frameDepth: 3.5 * 25.4,
+  });
+  expect(
+    widerBoxes.metrics.find((metric) => metric.key === "end-box-racking")!
+      .score,
+  ).toBeGreaterThan(
+    baseline.metrics.find((metric) => metric.key === "end-box-racking")!
+      .score,
+  );
 });
 
 test("atomically settles transient support-member and mating-box dimensions", () => {
@@ -1043,6 +1106,23 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   ).toBeVisible();
   await expect(page.getByText(/8 box-parallel bearing faces/)).toBeVisible();
   await expect(page.locator(".audit-row .status-dot.pass")).toHaveCount(15);
+
+  const structuralAssessment = page.getByLabel("Structural wobble assessment");
+  await expect(structuralAssessment).toBeVisible();
+  await expect(
+    structuralAssessment.getByRole("listitem"),
+  ).toHaveCount(6);
+  await expect(
+    structuralAssessment.getByText("Overall-height sensitivity"),
+  ).toBeVisible();
+  const baselineStructuralScore = Number(
+    await structuralAssessment.getAttribute("data-overall-score"),
+  );
+  await page.getByLabel("Overall height in inches").fill("35");
+  await expect.poll(async () =>
+    Number(await structuralAssessment.getAttribute("data-overall-score")),
+  ).toBeLessThan(baselineStructuralScore);
+  await page.getByLabel("Overall height in inches").fill("29 1/2");
 
   await page.getByLabel("Table width in inches").fill("36");
   await expect(page.getByText("2 × 32 1/2 in wide closed boxes")).toBeVisible();

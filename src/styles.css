@@ -2223,6 +2223,169 @@ html.dark .segmented-control button.active {
   background: var(--warning);
 }
 
+.structural-assessment {
+  display: grid;
+  gap: 14px;
+}
+
+.structural-score-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.structural-score-header p,
+.structural-score-header h3,
+.structural-sensitivity h4,
+.structural-sensitivity p {
+  margin: 0;
+}
+
+.structural-score-header p {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.structural-score-header h3 {
+  margin-top: 3px;
+  color: var(--foreground);
+  font-size: 15px;
+}
+
+.structural-grade {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 88px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--panel-muted);
+}
+
+.structural-grade span {
+  color: var(--muted-strong);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.structural-grade strong {
+  color: var(--foreground);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.structural-grade.grade-a {
+  border-color: color-mix(in srgb, var(--success) 55%, var(--border));
+}
+
+.structural-grade.grade-d,
+.structural-grade.grade-f {
+  border-color: color-mix(in srgb, var(--warning) 60%, var(--border));
+}
+
+.structural-disclaimer,
+.structural-validation-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.structural-metrics {
+  display: grid;
+  gap: 12px;
+}
+
+.structural-metric {
+  display: grid;
+  gap: 5px;
+}
+
+.structural-metric-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted-strong);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.structural-metric-heading strong {
+  color: var(--foreground);
+  font-size: 11px;
+}
+
+.structural-score-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--panel-muted);
+}
+
+.structural-score-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--warning), var(--success));
+  transition: width 180ms ease;
+}
+
+.structural-metric small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.structural-sensitivity {
+  display: grid;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-muted);
+}
+
+.structural-sensitivity h4 {
+  color: var(--foreground);
+  font-size: 12px;
+}
+
+.structural-sensitivity p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.structural-sensitivity-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.structural-sensitivity-values span {
+  display: grid;
+  gap: 2px;
+  color: var(--muted-strong);
+  font-size: 10px;
+}
+
+.structural-sensitivity-values strong {
+  color: var(--foreground);
+  font-size: 12px;
+}
+
+.structural-validation-note {
+  padding-left: 9px;
+  border-left: 2px solid var(--warning);
+}
+
 .loading-panel {
   grid-area: 1 / 1 / -1 / -1;
   display: grid;

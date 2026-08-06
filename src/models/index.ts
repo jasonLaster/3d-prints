@@ -78,7 +78,13 @@ export {
   createHoverDiningTableGeometry,
   getHoverDiningTableCutList,
   getHoverDiningTablePieceCount,
+  getHoverDiningTableStructuralAssessment,
   updateHoverDiningTableGuide,
+} from "./hoverDiningTable";
+export type {
+  HoverDiningTableStructuralAssessment,
+  HoverDiningTableStructuralGrade,
+  HoverDiningTableStructuralMetric,
 } from "./hoverDiningTable";
 export {
   createHoverDiningTableTemplateSegments,

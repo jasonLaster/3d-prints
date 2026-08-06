@@ -69,6 +69,7 @@ import {
   createHoverDiningTableTemplateSegments,
   getHoverDiningTableTemplateSummary,
   getHoverDiningTablePieceCount,
+  getHoverDiningTableStructuralAssessment,
   createRoundedTopGeometry,
   createSandChamberFloorGeometry,
   createSandPreviewGeometry,
@@ -2805,6 +2806,110 @@ function AuditList({ items }: { items: AuditItem[] }) {
   );
 }
 
+function HoverStructuralAssessment({
+  params,
+  unit,
+}: {
+  params: ModelParams;
+  unit: LengthUnit;
+}) {
+  const assessment = getHoverDiningTableStructuralAssessment(params);
+  const formatDelta = (delta: number) =>
+    `${delta > 0 ? "+" : ""}${delta.toFixed(1)}`;
+  return (
+    <section
+      aria-label="Structural wobble assessment"
+      className="structural-assessment"
+      data-overall-score={assessment.overallScore}
+    >
+      <div className="structural-score-header">
+        <div>
+          <p>Geometry-only screening</p>
+          <h3>Wobble resistance</h3>
+        </div>
+        <div
+          aria-label={`Overall structural grade ${assessment.overallGrade}, ${assessment.overallScore} out of 100`}
+          className={`structural-grade grade-${assessment.overallGrade.toLowerCase()}`}
+        >
+          <span>Grade {assessment.overallGrade}</span>
+          <strong>{assessment.overallScore}</strong>
+        </div>
+      </div>
+      <p className="structural-disclaimer">
+        Higher is better. This compares CAD proportions and support topology;
+        it does not certify joints, glue, grain, floor flatness, or durability.
+      </p>
+      <div className="structural-metrics" role="list">
+        {assessment.metrics.map((metric) => (
+          <div
+            className="structural-metric"
+            data-metric={metric.key}
+            data-score={metric.score}
+            key={metric.key}
+            role="listitem"
+          >
+            <div className="structural-metric-heading">
+              <span>{metric.label}</span>
+              <strong>
+                {metric.grade} · {metric.score}
+              </strong>
+            </div>
+            <div
+              aria-label={`${metric.label}: ${metric.score} out of 100`}
+              aria-valuemax={100}
+              aria-valuemin={0}
+              aria-valuenow={metric.score}
+              className="structural-score-track"
+              role="meter"
+            >
+              <span style={{ width: `${metric.score}%` }} />
+            </div>
+            <small>{metric.detail}</small>
+          </div>
+        ))}
+      </div>
+      <div className="structural-sensitivity">
+        <div>
+          <h4>Overall-height sensitivity</h4>
+          <p>One parameter at a time; all other dimensions stay fixed.</p>
+        </div>
+        <div className="structural-sensitivity-values">
+          {assessment.heightSensitivity.lower ? (
+            <span>
+              {formatLength(
+                assessment.heightSensitivity.lower.heightMm,
+                unit,
+              )}{" "}
+              <strong>
+                {assessment.heightSensitivity.lower.score} ({formatDelta(
+                  assessment.heightSensitivity.lower.delta,
+                )})
+              </strong>
+            </span>
+          ) : null}
+          {assessment.heightSensitivity.higher ? (
+            <span>
+              {formatLength(
+                assessment.heightSensitivity.higher.heightMm,
+                unit,
+              )}{" "}
+              <strong>
+                {assessment.heightSensitivity.higher.score} ({formatDelta(
+                  assessment.heightSensitivity.higher.delta,
+                )})
+              </strong>
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <p className="structural-validation-note">
+        Build validation: shim-free corner-rock test, measured lateral push at
+        tabletop height, loaded deflection, and repeated-load joint inspection.
+      </p>
+    </section>
+  );
+}
+
 function LoadingShell({ message }: { message: string }) {
   return (
     <main className="app-shell">
@@ -4104,6 +4209,13 @@ export default function App({
                   <h2>Audit</h2>
                   <AuditList items={auditItems} />
                 </section>
+
+                {model.viewer === "hover-dining-table-v1" ? (
+                  <section className="panel-section">
+                    <h2>Structure</h2>
+                    <HoverStructuralAssessment params={params} unit={unit} />
+                  </section>
+                ) : null}
               </div>
             </>
           )}

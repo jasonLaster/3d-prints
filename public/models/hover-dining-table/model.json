@@ -299,7 +299,7 @@
       "For each selected X, derive both diagonal lengths and equal-and-opposite plan angles from the end-box corner zones and keep the crossing at the table origin.",
       "Derive each brace endpoint from the straight-rail tangent of the editable inner corner radius, inset the complete angled end face clear of that curve, and keep its full bearing face planar and parallel with the end-box inside face.",
       "Keep each selected X brace at full nominal width through the crossing, form complementary centered pockets at exactly half the nominal thickness, align every pocket boundary as a planar machining cut, and remove solid overlap between the two braces.",
-      "Round over the top and bottom long edges of every X brace while keeping the end miters and half-lap shoulders square.",
+      "Round over only the bottom long edge of every selected support while keeping the top edge, end miters, and half-lap shoulders square.",
       "Keep every selected top-support envelope coplanar with the tabletop underside and every selected floor-support envelope coplanar with the floor; expose no gap or spacer control.",
       "Keep inner and outer corner curves as cubic Bézier functions whose control lengths equal radius times normalized tension.",
       "Keep top and bottom exterior and interior corner radii independently editable because the observed curves are not concentric offsets.",
@@ -315,6 +315,8 @@
       "Keep routing-template export at full furniture size and 1/8 in nominal thickness regardless of the manipulation-model scale; use the mock-scale denominator only for the on-screen template preview.",
       "Label listed sizes as finished nominal dimensions and keep rough-milling allowance explicit rather than silently adding stock to any part.",
       "Generate parallel upper lengthwise stretchers only when selected, generate exactly one centered floor board only when selected, and never generate hover pads or spacer blocks.",
+      "Expose a geometry-only wobble screen with independent racking, torsion, tipping, floor-rocking, and member-stiffness grades; keep its formulas transparent and never present it as structural certification.",
+      "Keep structural sensitivity monotonic: increasing overall height cannot improve the overall score, while increasing end-box side width or depth cannot reduce its racking score.",
       "Treat oak grain and finish as renderer materials only; the STL geometry remains material-neutral."
     ],
     "checks": [

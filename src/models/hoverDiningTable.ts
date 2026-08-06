@@ -136,6 +136,34 @@ export type HoverDiningTableSpec = {
   lowerCenterBoard: StraightSupportSpec;
 };
 
+export type HoverDiningTableStructuralGrade = "A" | "B" | "C" | "D" | "F";
+
+export type HoverDiningTableStructuralMetric = {
+  key:
+    | "longitudinal-racking"
+    | "end-box-racking"
+    | "torsion"
+    | "tipping"
+    | "floor-rocking"
+    | "member-stiffness";
+  label: string;
+  score: number;
+  grade: HoverDiningTableStructuralGrade;
+  detail: string;
+};
+
+export type HoverDiningTableStructuralAssessment = {
+  overallScore: number;
+  overallGrade: HoverDiningTableStructuralGrade;
+  metrics: HoverDiningTableStructuralMetric[];
+  heightSensitivity: {
+    stepMm: number;
+    lower: { heightMm: number; score: number; delta: number } | null;
+    higher: { heightMm: number; score: number; delta: number } | null;
+  };
+  basis: "geometry-only screening";
+};
+
 function topSupportStyle(value: number): HoverDiningTableTopSupportStyle {
   return value >= 0.5 ? "stretchers" : "x";
 }
@@ -2818,6 +2846,244 @@ function item(
   status: "pass" | "warn" = "pass",
 ): AuditItem {
   return { label, value, status };
+}
+
+const STRUCTURAL_REFERENCE = {
+  height: 29.5 * 25.4,
+  frameSideWidth: 2.25 * 25.4,
+  frameDepth: 2.5 * 25.4,
+  averageRailHeight: 1.5 * 25.4,
+  supportArea: 2 * 1.25 * 25.4 * 25.4,
+} as const;
+
+function structuralScore(value: number) {
+  return Number(Math.max(0, Math.min(100, value)).toFixed(1));
+}
+
+function structuralGrade(score: number): HoverDiningTableStructuralGrade {
+  if (score >= 85) return "A";
+  if (score >= 75) return "B";
+  if (score >= 65) return "C";
+  if (score >= 50) return "D";
+  return "F";
+}
+
+function structuralMetric(
+  key: HoverDiningTableStructuralMetric["key"],
+  label: string,
+  rawScore: number,
+  detail: string,
+): HoverDiningTableStructuralMetric {
+  const score = structuralScore(rawScore);
+  return { key, label, score, grade: structuralGrade(score), detail };
+}
+
+function evaluateHoverDiningTableStructure(
+  spec: HoverDiningTableSpec,
+): Omit<HoverDiningTableStructuralAssessment, "heightSensitivity"> {
+  const heightFactor = STRUCTURAL_REFERENCE.height / spec.height;
+  const topAreaFactor = Math.sqrt(
+    (spec.upperBrace.width * spec.upperBrace.thickness) /
+      STRUCTURAL_REFERENCE.supportArea,
+  );
+  const bottomAreaFactor = Math.sqrt(
+    (spec.lowerBrace.width * spec.lowerBrace.thickness) /
+      STRUCTURAL_REFERENCE.supportArea,
+  );
+  const topRackingTopology = spec.topSupportStyle === "x" ? 1 : 0.72;
+  const bottomRackingTopology =
+    spec.bottomSupportStyle === "x"
+      ? 1
+      : spec.bottomSupportStyle === "center-board"
+        ? 0.55
+        : 0.12;
+  const longitudinalRacking =
+    30 +
+    35 * topRackingTopology * topAreaFactor * heightFactor ** 1.4 +
+    25 * bottomRackingTopology * bottomAreaFactor * heightFactor ** 1.4;
+
+  const averageRailHeight =
+    (spec.frameTopRailHeight + spec.frameBottomRailHeight) / 2;
+  const endBoxRacking =
+    78 *
+    (spec.frameSideWidth / STRUCTURAL_REFERENCE.frameSideWidth) ** 1.2 *
+    (spec.frameDepth / STRUCTURAL_REFERENCE.frameDepth) ** 0.8 *
+    (averageRailHeight / STRUCTURAL_REFERENCE.averageRailHeight) ** 0.4 *
+    heightFactor ** 2;
+
+  const topTorsionTopology = spec.topSupportStyle === "x" ? 1 : 0.65;
+  const bottomTorsionTopology =
+    spec.bottomSupportStyle === "x"
+      ? 1
+      : spec.bottomSupportStyle === "center-board"
+        ? 0.55
+        : 0.15;
+  const supportPlaneSeparation =
+    spec.bottomSupportStyle === "none"
+      ? 0.35
+      : Math.max(
+          0.2,
+          Math.min(
+            1,
+            (spec.topBottom - spec.upperBrace.thickness / 2 -
+              spec.lowerBrace.thickness / 2) /
+              spec.height,
+          ),
+        );
+  const widthEngagement = Math.max(
+    0.5,
+    Math.min(1.1, spec.frameBottomWidth / spec.width / 0.9),
+  );
+  const torsion =
+    15 +
+    75 *
+      Math.sqrt(topTorsionTopology * bottomTorsionTopology) *
+      supportPlaneSeparation ** 0.6 *
+      Math.sqrt(widthEngagement);
+
+  const footprintLength = spec.length - 2 * spec.endOverhang;
+  const lateralTippingRatio = spec.frameBottomWidth / (2 * spec.height);
+  const longitudinalTippingRatio = footprintLength / (2 * spec.height);
+  const controllingTippingRatio = Math.min(
+    lateralTippingRatio,
+    longitudinalTippingRatio,
+  );
+  const tipping = 20 + 80 * Math.min(1, controllingTippingRatio / 0.65);
+
+  const flatBottomRun = Math.max(
+    0,
+    (spec.frameBottomWidth - 2 * spec.frameOuterBottomCornerRadius) /
+      spec.frameBottomWidth,
+  );
+  const rockingBase =
+    spec.bottomSupportStyle === "x"
+      ? 52
+      : spec.bottomSupportStyle === "center-board"
+        ? 62
+        : 84;
+  const floorRocking = rockingBase + 10 * Math.min(1, flatBottomRun);
+
+  const stileSlenderness =
+    spec.openingHeight /
+    Math.sqrt(spec.frameSideWidth * spec.frameDepth);
+  const activeSupportSlenderness = [
+    spec.topSupportStyle === "x"
+      ? spec.upperBrace.diagonalLength /
+        Math.sqrt(spec.upperBrace.width * spec.upperBrace.thickness)
+      : spec.upperStretchers.spanX /
+        Math.sqrt(
+          spec.upperStretchers.width * spec.upperStretchers.thickness,
+        ),
+    spec.bottomSupportStyle === "x"
+      ? spec.lowerBrace.diagonalLength /
+        Math.sqrt(spec.lowerBrace.width * spec.lowerBrace.thickness)
+      : spec.bottomSupportStyle === "center-board"
+        ? spec.lowerCenterBoard.spanX /
+          Math.sqrt(
+            spec.lowerCenterBoard.width * spec.lowerCenterBoard.thickness,
+          )
+        : 0,
+  ];
+  const supportSlenderness = Math.max(...activeSupportSlenderness);
+  const memberStiffness =
+    100 -
+    Math.max(0, stileSlenderness - 8) * 2 -
+    Math.max(0, supportSlenderness - 25) * 0.9;
+
+  const metrics = [
+    structuralMetric(
+      "longitudinal-racking",
+      "Lengthwise racking",
+      longitudinalRacking,
+      `${spec.topSupportStyle === "x" ? "upper X" : "upper stretchers"} + ${spec.bottomSupportStyle === "x" ? "floor X" : spec.bottomSupportStyle === "center-board" ? "center board" : "no floor connector"}`,
+    ),
+    structuralMetric(
+      "end-box-racking",
+      "End-box racking",
+      endBoxRacking,
+      `stile slenderness ${stileSlenderness.toFixed(1)}:1 · depth/height ${(spec.frameDepth / spec.height).toFixed(3)}`,
+    ),
+    structuralMetric(
+      "torsion",
+      "Torsional rigidity",
+      torsion,
+      `${spec.topSupportStyle === "x" ? "triangulated" : "parallel"} top · ${spec.bottomSupportStyle === "x" ? "triangulated" : spec.bottomSupportStyle === "center-board" ? "single-axis" : "open"} floor plane`,
+    ),
+    structuralMetric(
+      "tipping",
+      "Tipping margin",
+      tipping,
+      `controlling half-footprint / height ${controllingTippingRatio.toFixed(2)}`,
+    ),
+    structuralMetric(
+      "floor-rocking",
+      "Floor rocking tolerance",
+      floorRocking,
+      spec.bottomSupportStyle === "none"
+        ? "two end-box floor contacts"
+        : spec.bottomSupportStyle === "center-board"
+          ? "end boxes + one center floor contact"
+          : "end boxes + crossing floor-contact network",
+    ),
+    structuralMetric(
+      "member-stiffness",
+      "Member stiffness",
+      memberStiffness,
+      `support slenderness ${supportSlenderness.toFixed(1)}:1 · white-oak MOE reference`,
+    ),
+  ];
+  const weights: Record<HoverDiningTableStructuralMetric["key"], number> = {
+    "longitudinal-racking": 0.23,
+    "end-box-racking": 0.2,
+    torsion: 0.18,
+    tipping: 0.14,
+    "floor-rocking": 0.12,
+    "member-stiffness": 0.13,
+  };
+  const overallScore = structuralScore(
+    metrics.reduce(
+      (total, metric) => total + metric.score * weights[metric.key],
+      0,
+    ),
+  );
+  return {
+    overallScore,
+    overallGrade: structuralGrade(overallScore),
+    metrics,
+    basis: "geometry-only screening",
+  };
+}
+
+export function getHoverDiningTableStructuralAssessment(
+  params: ModelParams,
+): HoverDiningTableStructuralAssessment {
+  const { fullSize: spec } = getHoverDiningTableSpec(params);
+  const current = evaluateHoverDiningTableStructure(spec);
+  const stepMm = 25.4;
+  const assessHeight = (heightMm: number) => {
+    try {
+      const candidate = getHoverDiningTableSpec({
+        ...params,
+        overallHeight: heightMm,
+      }).fullSize;
+      const score = evaluateHoverDiningTableStructure(candidate).overallScore;
+      return {
+        heightMm,
+        score,
+        delta: Number((score - current.overallScore).toFixed(1)),
+      };
+    } catch {
+      return null;
+    }
+  };
+  return {
+    ...current,
+    heightSensitivity: {
+      stepMm,
+      lower: assessHeight(spec.height - stepMm),
+      higher: assessHeight(spec.height + stepMm),
+    },
+  };
 }
 
 function formatBraceAngle(brace: BracePlaneSpec) {
