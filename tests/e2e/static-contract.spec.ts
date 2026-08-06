@@ -147,8 +147,11 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "hoverBoxSplay",
       "hoverUpperX",
       "hoverLowerX",
+      "hoverBraceEndCuts",
       "hoverHalfLaps",
       "hoverDirectContact",
+      "hoverExplodedAssembly",
+      "hoverCutList",
       "hoverPrintEnvelope",
     ],
   };
@@ -482,9 +485,16 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "Zero end-box bottom spread",
     "Exactly two horizontal X-brace assemblies",
     "centered 50/50 half-lap",
+    "straight-rail tangent",
+    "flat angled end",
+    "top-and-bottom long-edge round-overs",
     "upperBraceMaxZ",
     "lowerBraceMinZ",
     "zero air gap",
+    "13 independently movable pieces",
+    "presentation-only",
+    "true-shape SVG views",
+    "full-size finished dimensions",
   ]) {
     expect(hoverTableDoc).toContain(phrase);
   }

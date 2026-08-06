@@ -130,7 +130,7 @@ export type HoverDiningTableGeometry = {
   mainAxis: { x: number; y: number; z: number };
   curveSegments: number;
   bevelSegments: number;
-  braceCornerSegments: number;
+  braceRoundoverSegments: number;
 };
 
 export type SupportedViewer =

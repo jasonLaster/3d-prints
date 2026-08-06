@@ -118,6 +118,7 @@ button:disabled {
 
 .viewer {
   position: relative;
+  container-type: inline-size;
   overflow: hidden;
   width: 100%;
   height: 100%;
@@ -913,6 +914,398 @@ html.dark .viewer-status span {
   backdrop-filter: blur(14px);
 }
 
+.viewer[data-assembly-mode="cut-list"] .viewer-nav,
+.viewer[data-assembly-mode="cut-list"] .orientation-cube-control {
+  display: none;
+}
+
+.viewer[data-assembly-mode="cut-list"] .viewer-status span {
+  display: none;
+}
+
+.viewer[data-assembly-mode="cut-list"] .viewer-status span:last-child {
+  display: inline-flex;
+}
+
+.hover-cut-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: auto;
+  padding: 64px 28px 36px;
+  background:
+    linear-gradient(rgba(71, 62, 46, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(71, 62, 46, 0.035) 1px, transparent 1px),
+    #eee9df;
+  background-size: 20px 20px;
+  color: #20262b;
+  scrollbar-color: #9b9283 transparent;
+}
+
+.hover-cut-sheet-inner {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.hover-cut-sheet-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 26px;
+  border: 1px solid #847c6d;
+  border-bottom-width: 3px;
+  background: rgba(251, 249, 244, 0.94);
+}
+
+.hover-cut-sheet-header > div {
+  max-width: 680px;
+}
+
+.hover-cut-eyebrow {
+  margin: 0 0 6px;
+  color: #766b59;
+  font-size: 10px;
+  font-weight: 820;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.hover-cut-sheet-header h2 {
+  margin: 0;
+  color: #171c20;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: clamp(22px, 3vw, 34px);
+  letter-spacing: -0.04em;
+}
+
+.hover-cut-sheet-header p:last-child {
+  margin: 8px 0 0;
+  color: #5d625f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.hover-cut-sheet-header dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(86px, 1fr));
+  min-width: 310px;
+  margin: 0;
+  border: 1px solid #b7afa0;
+}
+
+.hover-cut-sheet-header dl div {
+  padding: 10px 12px;
+  border-right: 1px solid #b7afa0;
+}
+
+.hover-cut-sheet-header dl div:last-child {
+  border-right: 0;
+}
+
+.hover-cut-sheet-header dt,
+.hover-cut-card-data dt {
+  color: #736d63;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hover-cut-sheet-header dd,
+.hover-cut-card-data dd {
+  margin: 3px 0 0;
+  color: #20262b;
+  font-size: 13px;
+  font-weight: 780;
+}
+
+.hover-cut-table-wrap {
+  margin-top: 18px;
+  overflow-x: auto;
+  border: 1px solid #847c6d;
+  background: rgba(251, 249, 244, 0.96);
+}
+
+.hover-cut-table {
+  width: 100%;
+  min-width: 870px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
+.hover-cut-table caption {
+  padding: 12px 14px;
+  border-bottom: 1px solid #b7afa0;
+  color: #635b50;
+  font-size: 10px;
+  font-weight: 820;
+  letter-spacing: 0.1em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.hover-cut-table th,
+.hover-cut-table td {
+  padding: 9px 11px;
+  border-right: 1px solid #d2cabd;
+  border-bottom: 1px solid #d2cabd;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.hover-cut-table th:last-child,
+.hover-cut-table td:last-child {
+  border-right: 0;
+}
+
+.hover-cut-table thead th {
+  background: #ded7ca;
+  color: #4c4b46;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hover-cut-table tbody th {
+  font-weight: 760;
+}
+
+.hover-cut-table tbody tr:last-child th,
+.hover-cut-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.hover-cut-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.hover-cut-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #999080;
+  background: rgba(251, 249, 244, 0.96);
+  box-shadow: 0 10px 24px rgba(54, 44, 28, 0.07);
+}
+
+.hover-cut-card > header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 10px;
+  min-height: 42px;
+}
+
+.hover-cut-part-id,
+.hover-cut-quantity {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 4px 7px;
+  border: 1px solid #8c8373;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 820;
+}
+
+.hover-cut-part-id {
+  min-width: 32px;
+  background: #2c3337;
+  color: #f9f5ed;
+}
+
+.hover-cut-quantity {
+  color: #4f4d47;
+}
+
+.hover-cut-card h3 {
+  margin: 1px 0 0;
+  color: #242a2d;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.hover-cut-card header p {
+  margin: 3px 0 0;
+  color: #777064;
+  font-size: 9px;
+  font-weight: 720;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hover-cut-diagram {
+  display: block;
+  width: 100%;
+  margin: 8px 0 2px;
+  overflow: visible;
+}
+
+.cut-part-outline {
+  fill: rgba(193, 159, 105, 0.14);
+  stroke: #252c30;
+  stroke-width: 1.6;
+  vector-effect: non-scaling-stroke;
+}
+
+.cut-part-profile-lines line {
+  stroke: #98805b;
+  stroke-dasharray: 4 3;
+  stroke-width: 1;
+}
+
+.cut-dimension-lines line {
+  fill: none;
+  stroke: #565c5e;
+  stroke-width: 0.85;
+  vector-effect: non-scaling-stroke;
+}
+
+.cut-dimension-lines text,
+.cut-part-lap text,
+.cut-part-grain text {
+  fill: #4c5252;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  text-anchor: middle;
+}
+
+.cut-part-grain line {
+  stroke: #a67838;
+  stroke-width: 1.3;
+}
+
+.cut-part-grain text {
+  fill: #8d662f;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.hover-cut-diagram marker path {
+  fill: #4c5252;
+}
+
+.hover-cut-diagram pattern line {
+  stroke: #a46645;
+  stroke-width: 1;
+}
+
+.cut-part-lap rect {
+  stroke: #9b6548;
+  stroke-dasharray: 3 2;
+  stroke-width: 1;
+}
+
+.cut-part-lap text {
+  fill: #8c563d;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.hover-cut-card-data {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding-top: 11px;
+  border-top: 1px solid #d2cabd;
+}
+
+.hover-cut-card-data div {
+  min-width: 0;
+}
+
+.hover-cut-card-notes {
+  margin: 12px 0 0;
+  padding-left: 17px;
+  color: #65645f;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.hover-cut-card-notes li + li {
+  margin-top: 3px;
+}
+
+.hover-cut-sheet-footer {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid #847c6d;
+  background: #ded7ca;
+  color: #4f504d;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.hover-cut-sheet-footer p {
+  margin: 0;
+}
+
+/* The fabrication sheet lives in the resizable center pane, so its layout must
+   respond to that pane instead of the browser viewport. */
+@container (max-width: 700px) {
+  .hover-cut-sheet {
+    padding: 64px 18px 28px;
+  }
+
+  .hover-cut-sheet-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hover-cut-sheet-header > div {
+    max-width: none;
+  }
+
+  .hover-cut-sheet-header h2 {
+    font-size: clamp(22px, 7cqi, 28px);
+  }
+
+  .hover-cut-sheet-header dl {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .hover-cut-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container (max-width: 360px) {
+  .hover-cut-sheet {
+    padding-inline: 10px;
+  }
+
+  .hover-cut-sheet-header {
+    padding: 18px;
+  }
+
+  .hover-cut-sheet-header h2 {
+    font-size: 20px;
+  }
+
+  .hover-cut-sheet-header dl {
+    grid-template-columns: 1fr;
+  }
+
+  .hover-cut-sheet-header dl div {
+    border-right: 0;
+    border-bottom: 1px solid #b7afa0;
+  }
+
+  .hover-cut-sheet-header dl div:last-child {
+    border-bottom: 0;
+  }
+}
+
 html.dark .viewer-tool-rail {
   border-color: rgba(132, 146, 166, 0.36);
   background: rgba(19, 24, 33, 0.84);
@@ -1493,6 +1886,13 @@ html.dark .panel-section:nth-child(even) {
   box-shadow: inset 0 0 0 1px var(--accent-soft);
 }
 
+.segmented-control button:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 html.dark .segmented-control button.active {
   background: #172233;
 }
@@ -1576,8 +1976,8 @@ html.dark .segmented-control button.active {
 
 .audit-row {
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto;
-  align-items: center;
+  grid-template-columns: 10px minmax(0, 1fr);
+  align-items: start;
   gap: 9px;
   min-height: 32px;
   padding: 7px 0;
@@ -1591,10 +1991,14 @@ html.dark .segmented-control button.active {
 }
 
 .audit-row strong {
+  grid-column: 2;
+  justify-self: start;
   color: var(--foreground);
   font-size: 12px;
   font-weight: 800;
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .status-dot {
@@ -1796,12 +2200,63 @@ html.dark .segmented-control button.active {
     width: 60px;
   }
 
-  .audit-row {
-    grid-template-columns: 10px minmax(0, 1fr);
+  .segmented-control button {
+    height: 44px;
+  }
+}
+
+@media (max-width: 980px) {
+  .hover-cut-sheet {
+    padding: 64px 18px 28px;
   }
 
-  .audit-row strong {
-    grid-column: 2;
-    justify-self: start;
+  .hover-cut-sheet-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hover-cut-sheet-header dl {
+    min-width: 0;
+  }
+
+  .hover-cut-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .scene-panel:has(.viewer[data-assembly-mode="cut-list"]),
+  .viewer[data-assembly-mode="cut-list"] {
+    height: calc(100svh - 119px);
+    min-height: 560px;
+  }
+
+  .hover-cut-sheet {
+    padding: 92px 10px 20px;
+  }
+
+  .hover-cut-sheet-header {
+    padding: 18px;
+  }
+
+  .hover-cut-sheet-header dl {
+    grid-template-columns: 1fr;
+  }
+
+  .hover-cut-sheet-header dl div {
+    border-right: 0;
+    border-bottom: 1px solid #b7afa0;
+  }
+
+  .hover-cut-sheet-header dl div:last-child {
+    border-bottom: 0;
+  }
+
+  .hover-cut-card {
+    padding: 12px;
+  }
+
+  .hover-cut-sheet-footer {
+    grid-template-columns: 1fr;
   }
 }

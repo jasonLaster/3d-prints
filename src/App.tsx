@@ -55,6 +55,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./components/ui/select";
+import { HoverDiningTableCutList } from "./components/HoverDiningTableCutList";
 import {
   applyHolderMorph,
   applyTrayMorph,
@@ -63,6 +64,7 @@ import {
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
   createDoorLockAdapterGeometry,
+  createHoverDiningTableExplodedParts,
   createHoverDiningTableGeometry,
   createRoundedTopGeometry,
   createSandChamberFloorGeometry,
@@ -107,7 +109,14 @@ type CoreViewMode = "surface" | "fill" | "section";
 type RenderMode = "solid" | "xray" | "wire";
 type ThemeMode = "light" | "dark";
 type ViewPreset = "iso" | "top" | "bottom" | "xEdge" | "yEdge";
-type AssemblyMode = "box" | "stacked" | "lid" | "print-layout";
+type AssemblyMode =
+  | "box"
+  | "stacked"
+  | "lid"
+  | "print-layout"
+  | "assembled"
+  | "exploded"
+  | "cut-list";
 type ViewerInteractionMode = "orbit" | "pan";
 
 type ViewerHandle = {
@@ -291,13 +300,13 @@ function createWoodTexture(
 
   const image = context.createImageData(canvas.width, canvas.height);
   const walnut = species === "walnut";
-  const base = walnut ? [92, 58, 39] : [205, 181, 145];
+  const base = walnut ? [92, 58, 39] : [180, 143, 97];
   let seed = walnut ? 0x77616c6e : 0x5f3759df;
   for (let y = 0; y < canvas.height; y += 1) {
     const broad = Math.sin(y * 0.072) * 5 + Math.sin(y * 0.019) * 7;
     for (let x = 0; x < canvas.width; x += 1) {
       seed = (seed * 1664525 + 1013904223) >>> 0;
-      const noise = ((seed & 255) / 255 - 0.5) * 7;
+      const noise = ((seed & 255) / 255 - 0.5) * (walnut ? 7 : 0.8);
       const offset = (y * canvas.width + x) * 4;
       image.data[offset] = base[0] + broad + noise;
       image.data[offset + 1] = base[1] + broad * 0.72 + noise;
@@ -306,13 +315,13 @@ function createWoodTexture(
     }
   }
   context.putImageData(image, 0, 0);
-  for (let y = 0; y < canvas.height; y += 1) {
+  for (let y = 0; y < canvas.height; y += walnut ? 1 : 32) {
     const broad = Math.sin(y * 0.115) * 0.5 + Math.sin(y * 0.031) * 0.5;
-    const lightness = (walnut ? 62 : 145) + Math.round(broad * 12);
+    const lightness = (walnut ? 62 : 92) + Math.round(broad * 12);
     context.strokeStyle = walnut
       ? `rgba(${lightness + 20}, ${lightness + 3}, ${Math.max(20, lightness - 18)}, 0.22)`
-      : `rgba(${lightness + 24}, ${lightness + 4}, ${Math.max(70, lightness - 28)}, 0.13)`;
-    context.lineWidth = y % 23 === 0 ? 1.1 : 0.42;
+      : `rgba(${lightness + 28}, ${lightness + 10}, ${Math.max(42, lightness - 22)}, 0.08)`;
+    context.lineWidth = walnut ? (y % 23 === 0 ? 1.1 : 0.42) : 0.6;
     context.beginPath();
     for (let x = 0; x <= canvas.width; x += 8) {
       const wave = Math.sin(x * 0.018 + y * 0.15) * 1.7 + Math.sin(x * 0.005) * 1.2;
@@ -321,11 +330,11 @@ function createWoodTexture(
     }
     context.stroke();
   }
-  for (let index = 0; index < 38; index += 1) {
+  for (let index = 0; index < (walnut ? 38 : 8); index += 1) {
     const y = (index * 71) % canvas.height;
     context.strokeStyle = walnut
       ? "rgba(28, 14, 9, 0.22)"
-      : "rgba(80, 50, 26, 0.09)";
+      : "rgba(68, 41, 21, 0.07)";
     context.lineWidth = 0.65;
     context.beginPath();
     context.moveTo(0, y);
@@ -333,11 +342,28 @@ function createWoodTexture(
     context.stroke();
   }
 
+  if (!walnut) {
+    for (let index = 0; index < 40; index += 1) {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const x = seed % canvas.width;
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const y = seed % canvas.height;
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const length = 2 + (seed % 13);
+      context.strokeStyle = `rgba(63, 37, 19, ${0.04 + (seed % 4) / 100})`;
+      context.lineWidth = 0.45 + (seed % 3) * 0.18;
+      context.beginPath();
+      context.moveTo(x, y);
+      context.quadraticCurveTo(x + length * 0.55, y - 0.65, x + length, y);
+      context.stroke();
+    }
+  }
+
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(walnut ? 3.2 : 2.5, walnut ? 1.6 : 1.35);
+  texture.repeat.set(walnut ? 3.2 : 1, walnut ? 1.6 : 0.7);
   texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   texture.needsUpdate = true;
   return texture;
@@ -710,6 +736,7 @@ const HolderViewer = forwardRef<
   const trayDividerGroupRef = useRef<THREE.Group | null>(null);
   const assemblyPreviewGroupRef = useRef<THREE.Group | null>(null);
   const diningHardwareGroupRef = useRef<THREE.Group | null>(null);
+  const hoverExplodedGroupRef = useRef<THREE.Group | null>(null);
   const ghostMeshRef = useRef<THREE.Mesh | null>(null);
   const guideMeshRef = useRef<THREE.Mesh | null>(null);
   const mainMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
@@ -846,6 +873,7 @@ const HolderViewer = forwardRef<
     const trayDividerGroup = trayDividerGroupRef.current;
     const assemblyPreviewGroup = assemblyPreviewGroupRef.current;
     const diningHardwareGroup = diningHardwareGroupRef.current;
+    const hoverExplodedGroup = hoverExplodedGroupRef.current;
     const ghostMesh = ghostMeshRef.current;
     const guideMesh = guideMeshRef.current;
     const holderMaterial = mainMaterialRef.current;
@@ -915,11 +943,32 @@ const HolderViewer = forwardRef<
       });
       updateDiningTableGuide(guideMesh, latestParamsRef.current);
     } else if (model.viewer === "hover-dining-table-v1") {
+      if (!hoverExplodedGroup) return;
       mainMesh.geometry.dispose();
       mainMesh.geometry = createHoverDiningTableGeometry(
         latestParamsRef.current,
         model,
       );
+      hoverExplodedGroup.children.forEach((child) => {
+        if (child instanceof THREE.Mesh) child.geometry.dispose();
+      });
+      hoverExplodedGroup.clear();
+      const exploded = latestAssemblyModeRef.current === "exploded";
+      const cutList = latestAssemblyModeRef.current === "cut-list";
+      mainMesh.visible = !exploded && !cutList;
+      hoverExplodedGroup.visible = exploded;
+      if (exploded) {
+        for (const part of createHoverDiningTableExplodedParts(
+          latestParamsRef.current,
+          model,
+        )) {
+          const mesh = new THREE.Mesh(part.geometry, holderMaterial);
+          mesh.name = `${model.id}-${part.name}`;
+          mesh.position.copy(part.offset);
+          mesh.userData.assemblyCategory = part.category;
+          hoverExplodedGroup.add(mesh);
+        }
+      }
       updateHoverDiningTableGuide(guideMesh, latestParamsRef.current);
     } else {
       applyTrayMorph(mainMesh.geometry, base, latestParamsRef.current, model);
@@ -1414,7 +1463,7 @@ const HolderViewer = forwardRef<
           model.viewer === "dining-table-v1"
             ? createWoodTexture(renderer, "oak")
             : model.viewer === "hover-dining-table-v1"
-              ? createWoodTexture(renderer, "walnut")
+              ? createWoodTexture(renderer, "oak")
               : null;
         const isWoodFurniture =
           model.viewer === "dining-table-v1" ||
@@ -1548,6 +1597,12 @@ const HolderViewer = forwardRef<
           });
           scene.add(hardwareGroup);
           diningHardwareGroupRef.current = hardwareGroup;
+        } else if (model.viewer === "hover-dining-table-v1") {
+          const explodedGroup = new THREE.Group();
+          explodedGroup.name = `${model.id}-exploded-assembly`;
+          explodedGroup.visible = latestAssemblyModeRef.current === "exploded";
+          scene.add(explodedGroup);
+          hoverExplodedGroupRef.current = explodedGroup;
         }
 
         const ghostMesh = new THREE.Mesh(
@@ -1639,15 +1694,28 @@ const HolderViewer = forwardRef<
   return (
     <div
       className="viewer"
+      data-assembly-mode={assemblyMode}
       data-interaction-mode={interactionMode}
       ref={containerRef}
     >
       <div className="viewer-backdrop" aria-hidden="true" />
+      {model.viewer === "hover-dining-table-v1" &&
+      assemblyMode === "cut-list" ? (
+        <HoverDiningTableCutList params={params} unit={unit} />
+      ) : null}
       <div className="viewer-status" data-testid="viewer-status">
         {getStatusItems(model, params, unit).map((item) => (
           <span key={item}>{item}</span>
         ))}
         <span>{RENDER_MODE_LABELS[renderMode]}</span>
+        {model.viewer === "hover-dining-table-v1" &&
+        assemblyMode === "exploded" ? (
+          <span>Exploded · 13 pieces</span>
+        ) : null}
+        {model.viewer === "hover-dining-table-v1" &&
+        assemblyMode === "cut-list" ? (
+          <span>Cut list · full-size · 13 pieces</span>
+        ) : null}
       </div>
       <div className="viewer-nav" aria-label="3D view controls">
         <div className="viewer-tool-rail" role="group" aria-label="View tools">
@@ -2085,6 +2153,34 @@ function AssemblyPreviewControl({
         ["stacked", "Stacked pair"],
         ["lid", "Fitted lid"],
         ["print-layout", "Print layout"],
+      ] as const).map(([mode, label]) => (
+        <button
+          aria-pressed={value === mode}
+          className={value === mode ? "active" : ""}
+          key={mode}
+          onClick={() => onChange(mode)}
+          type="button"
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function HoverAssemblyControl({
+  value,
+  onChange,
+}: {
+  value: AssemblyMode;
+  onChange: (value: AssemblyMode) => void;
+}) {
+  return (
+    <div className="segmented-control" aria-label="X-Hover assembly view">
+      {([
+        ["assembled", "Assembled"],
+        ["exploded", "Exploded"],
+        ["cut-list", "Cut list"],
       ] as const).map(([mode, label]) => (
         <button
           aria-pressed={value === mode}
@@ -2939,7 +3035,9 @@ export default function App({
         setShowOriginal(false);
         setCoreViewMode("surface");
         setRenderMode("solid");
-        setAssemblyMode("box");
+        setAssemblyMode(
+          nextModel.viewer === "hover-dining-table-v1" ? "assembled" : "box",
+        );
       } catch (error) {
         if (!cancelled) {
           setLoadError(error instanceof Error ? error.message : String(error));
@@ -3505,6 +3603,20 @@ export default function App({
                       onChange={setAssemblyMode}
                       value={assemblyMode}
                     />
+                  </section>
+                ) : null}
+
+                {model.viewer === "hover-dining-table-v1" ? (
+                  <section className="panel-section">
+                    <h2>Assembly</h2>
+                    <HoverAssemblyControl
+                      onChange={setAssemblyMode}
+                      value={assemblyMode}
+                    />
+                    <p className="assembly-mode-note">
+                      Explode all 13 pieces or open the full-size dimensioned
+                      fabrication sheet.
+                    </p>
                   </section>
                 ) : null}
 

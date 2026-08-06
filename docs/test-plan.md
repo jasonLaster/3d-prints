@@ -20,11 +20,11 @@ This test plan describes what must be covered before a change is pushed or deplo
 | Workspace Shell | Root route opens the default model workspace, lists all catalog models in the sidebar, and does not expose arbitrary upload. |
 | Workspace Header | One-column actions menu for Save, Fork, theme, Export, and Convex-disabled setup note. |
 | Model Sidebar | Catalog model switching, collapsible/resizable behavior, and saved versions scoped to the selected model. |
-| Workspace Inspector | Collapsible/resizable behavior, parameter controls, weighted-center controls only for paper towel holder, rendering modes, original overlay, and audit rows. |
+| Workspace Inspector | Collapsible/resizable behavior, parameter controls, weighted-center controls only for paper towel holder, X-Hover Assembled/Exploded/Cut List modes, rendering modes, original overlay, and audit rows. |
 | URL State | Model selection, unit, theme, millimeter params, unknown model errors, root param cleanup, and saved-version rehydration. |
 | Units | Millimeters, centimeters, inches, fractional inches, global unit switching, and stable URL millimeter values. |
-| Parameter Limits | Static limits plus dependent holder tube/diameter limits, tray floor/height limits, and Double-X table end-box openings, curve radii, brace endpoints, half-lap depth, and direct-contact relationships. |
-| Viewer | Nonblank canvas after load, parameter edit, render mode, original overlay, zoom, cube orientation, reset, center view, and sidebar collapse. |
+| Parameter Limits | Static limits plus dependent holder tube/diameter limits, tray floor/height limits, and Double-X table end-box openings, curve radii, radius-aware flush brace endpoints, top/bottom round-overs, half-lap depth, and direct-contact relationships. |
+| Viewer | Nonblank canvas after load, parameter edit, X-Hover 13-piece explosion and dimensioned cut sheet, render mode, original overlay, zoom, cube orientation, reset, center view, and sidebar collapse. Assembly switching and live exploded/cut-list edits preserve camera state. |
 | Export | Download starts, file name includes model prefix and parameter keys, generated STL is non-empty, and furniture-model exports retain finite nondegenerate triangles plus their scaled envelope. |
 | Persistence | Convex schema/functions, Save, Fork, parent version link, selected-model saved-version list, saved-version open, and no arbitrary STL upload mutation. |
 | Accessibility | Accessible labels for controls, native `select` regressions rejected, keyboard sidebar rails, mobile layout. |

@@ -74,7 +74,9 @@ export {
 } from "./diningTable";
 export {
   assertHoverDiningTableSpec,
+  createHoverDiningTableExplodedParts,
   createHoverDiningTableGeometry,
+  getHoverDiningTableCutList,
   updateHoverDiningTableGuide,
 } from "./hoverDiningTable";
 export { getDefaultParams, getParam, getParameter } from "./shared";

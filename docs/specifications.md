@@ -11,10 +11,12 @@ This document defines the product and engineering contract for the 3D Prints app
 
 ## X-Hover Dining Table
 
-- User-approved Double-X variation of the supplied 75 × 35.5 × 29.5 in walnut Hover table.
+- User-approved Double-X variation of the supplied 75 × 35.5 × 29.5 in oak Hover table.
 - The top remains square-ended while normalized cubic Bézier controls shape only the two rolled long edges.
 - Two sculpted closed end boxes use independent inner and outer radii and curve tensions, an explicit zero-default bottom-spread parameter, and rounded face edges.
 - Exactly four diagonal braces form two horizontal X assemblies between the end boxes: one directly against the tabletop underside and one directly on the floor.
+- Every brace has a flat angled end flush with the end-box inside face. Its complete cut face derives from and stays inward of the editable inner-corner tangent, so increasing the radius automatically pushes the X inward.
+- Brace top and bottom long edges are rounded over, while the flush end cuts and half-lap shoulders remain square.
 - Each X crosses at the table center with a derived 50/50 half-lap; there are no parallel lengthwise stretchers, hover pads, or spacer gaps.
 - See `docs/hover-dining-table-audit-specifications.md` for the evidence and invariant contract.
 
@@ -122,10 +124,14 @@ X-Hover Dining Table:
 - End-box width derives from tabletop width and side overhang, while the opening derives from box width, member widths, and rail heights.
 - Inner and outer corner radii and Bézier tensions remain independently adjustable.
 - Bottom spread is the only splay control and defaults to zero, matching the supplied orthographic drawing.
-- Upper and lower X endpoints, diagonal lengths, and equal-and-opposite plan angles derive from the end-box corner zones; both crossings remain fixed at the table origin.
+- Upper and lower X endpoints, diagonal lengths, and equal-and-opposite plan angles derive from the straight-rail tangencies beyond the end-box inner corner curves; both crossings remain fixed at the table origin.
+- Angled brace ends are coplanar with the inside faces of the end boxes and migrate inward when inner radius, opening width, brace width, endpoint inset, or bottom spread changes.
+- Upper and lower brace edge-radius controls round over both long-edge pairs without rounding the plan ends or the centered half-lap shoulders.
 - Upper-X top faces remain coplanar with the tabletop underside, and lower-X bottom faces remain coplanar with the floor. Neither direct-contact condition has a gap control.
 - Each X uses one centered half-lap with a nominal depth of half the brace thickness and no overlapping solid volume.
-- The renderer uses procedural walnut grain, but exports remain material-neutral geometry.
+- An Assembled/Exploded viewer mode separates the glue-up into exactly 13 oak pieces: one tabletop, four rail-and-stile bars per end box, and two bars per X. The offsets are presentation-only and do not alter export geometry.
+- Cut List mode pairs an eight-line grouped parts schedule with dimensioned true-shape SVGs. It uses full-size finished dimensions, quantities, grain direction, end-cut angles, and centered half-lap width/depth/location; mock scale never changes fabrication values.
+- The renderer uses procedural oak grain, but exports remain material-neutral geometry.
 
 ## Viewer Contract
 
@@ -134,6 +140,8 @@ X-Hover Dining Table:
 - The orientation cube owns isometric, top, X-edge, and Y-edge presets, reflects the current camera orientation, and clears its active preset after free camera movement.
 - The top-right workspace actions menu owns Save, Fork, theme, and export, with Save/Fork name entry handled in a modal.
 - Rendering modes include Solid, X-Ray, and Wire.
+- X-Hover assembly mode switches between the assembled table and its 13-piece pre-glue-up layout without resetting the camera.
+- X-Hover Cut List is a third assembly mode and remains live under parameter and unit changes while preserving the assembled STL export.
 - The viewer should remain nonblank after parameter edits, render-mode changes, unit changes, zoom, orientation presets, reset, center view, and sidebar collapse.
 
 ## Persistence Contract

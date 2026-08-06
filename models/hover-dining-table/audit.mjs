@@ -24,7 +24,7 @@ assert.equal(model.name, "X-Hover Dining Table");
 assert.equal(model.viewer, "hover-dining-table-v1");
 assert.ok(model.geometry.curveSegments >= 12, "Bézier profiles need smooth sampling");
 assert.ok(model.geometry.bevelSegments >= 4, "End-box face round-overs need smooth sampling");
-assert.ok(model.geometry.braceCornerSegments >= 4, "Brace plan corners need smooth sampling");
+assert.ok(model.geometry.braceRoundoverSegments >= 4, "Brace edge round-overs need smooth sampling");
 
 close(params.tableLength, 75 * inch, "table length");
 close(params.tableWidth, 35.5 * inch, "table width");
@@ -44,8 +44,8 @@ close(params.upperBraceWidth, 1.75 * inch, "upper-X brace width");
 close(params.upperBraceThickness, 1 * inch, "upper-X brace thickness");
 close(params.lowerBraceWidth, 2 * inch, "floor-X brace width");
 close(params.lowerBraceThickness, 1.5 * inch, "floor-X brace thickness");
-close(params.upperBraceEdgeRadius, 0.125 * inch, "upper-X plan corner radius");
-close(params.lowerBraceEdgeRadius, 0.125 * inch, "floor-X plan corner radius");
+close(params.upperBraceEdgeRadius, 0.125 * inch, "upper-X top/bottom round-over");
+close(params.lowerBraceEdgeRadius, 0.125 * inch, "floor-X top/bottom round-over");
 close(params.halfLapClearance, 0, "nominal half-lap clearance");
 assert.equal(params.frameBottomSpread, 0, "orthogonal end box is the evidence-backed default");
 assert.equal(params.upperBraceEndpointInset, 0);
@@ -79,10 +79,34 @@ const openingBottomWidth = frameBottomWidth - 2 * params.frameSideWidth;
 const openingHeight =
   frameHeight - params.frameBottomRailHeight - params.frameTopRailHeight;
 const spanX = params.tableLength - 2 * (params.endOverhang + params.frameDepth);
-const upperEndpointY =
-  frameTopWidth / 2 - params.frameSideWidth / 2 - params.upperBraceEndpointInset;
-const lowerEndpointY =
-  frameBottomWidth / 2 - params.frameSideWidth / 2 - params.lowerBraceEndpointInset;
+const deriveBraceEnd = (openingWidth, width, inset) => {
+  const cornerTangentY = openingWidth / 2 - params.frameInnerCornerRadius;
+  let endpointY = cornerTangentY - inset - width / 2;
+  let miterHalfWidth = width / 2;
+  for (let iteration = 0; iteration < 12; iteration += 1) {
+    const directionX = spanX / Math.hypot(spanX, endpointY * 2);
+    miterHalfWidth = width / (2 * directionX);
+    endpointY = cornerTangentY - inset - miterHalfWidth;
+  }
+  return {
+    cornerTangentY,
+    endpointY,
+    endpointOuterY: endpointY + miterHalfWidth,
+    miterHalfWidth,
+  };
+};
+const upperEnd = deriveBraceEnd(
+  openingTopWidth,
+  params.upperBraceWidth,
+  params.upperBraceEndpointInset,
+);
+const lowerEnd = deriveBraceEnd(
+  openingBottomWidth,
+  params.lowerBraceWidth,
+  params.lowerBraceEndpointInset,
+);
+const upperEndpointY = upperEnd.endpointY;
+const lowerEndpointY = lowerEnd.endpointY;
 const upperSpanY = upperEndpointY * 2;
 const lowerSpanY = lowerEndpointY * 2;
 const upperLength = Math.hypot(spanX, upperSpanY);
@@ -99,6 +123,16 @@ assert.ok(spanX > 4 * inch, "both X assemblies need a positive structural span")
 assert.ok(upperLength > spanX && lowerLength > spanX);
 assert.ok(upperAngle > 0 && lowerAngle > 0);
 assert.ok(upperAngle < Math.PI / 4 && lowerAngle < Math.PI / 4);
+close(
+  upperEnd.endpointOuterY + params.upperBraceEndpointInset,
+  upperEnd.cornerTangentY,
+  "upper angled end clears the inner-corner tangent",
+);
+close(
+  lowerEnd.endpointOuterY + params.lowerBraceEndpointInset,
+  lowerEnd.cornerTangentY,
+  "lower angled end clears the inner-corner tangent",
+);
 close(params.upperBraceThickness / 2, 0.5 * inch, "upper half-lap depth");
 close(params.lowerBraceThickness / 2, 0.75 * inch, "lower half-lap depth");
 close(topBottom, frameHeight, "end boxes terminate at the tabletop underside");
@@ -131,6 +165,12 @@ for (const required of [
   "createTabletopCrossSection",
   "createEndFrameGeometry",
   "createHalfLappedX",
+  "createHoverDiningTableExplodedParts",
+  "parts.length !== 13",
+  "getHoverDiningTableCutList",
+  "X-Hover cut list must account for 13 pieces",
+  "miteredBraceFootprint",
+  "createRoundedPlanPrism",
   "clipPolygonHalfPlane",
   "halfLapDepth: thickness / 2",
   "upperBrace.zTop - spec.topBottom",
@@ -159,6 +199,12 @@ for (const phrase of [
   "directly on the floor",
   "Do not generate parallel lengthwise stretchers",
   "cubic Bézier",
+  "straight-rail tangent",
+  "top and bottom long edges",
+  "exactly 13 glue-up pieces",
+  "presentation-only",
+  "full-size finished dimensions",
+  "rough-milling allowance",
   "zero means orthogonal",
   "material-neutral",
 ]) {

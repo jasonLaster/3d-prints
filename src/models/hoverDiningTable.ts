@@ -23,6 +23,9 @@ type BracePlaneSpec = {
   spanX: number;
   spanY: number;
   endpointY: number;
+  endpointOuterY: number;
+  cornerTangentY: number;
+  miterHalfWidth: number;
   diagonalLength: number;
   angleRadians: number;
   zBottom: number;
@@ -72,8 +75,8 @@ function createBracePlaneSpec({
   endpointInset,
   edgeRadius,
   spanX,
-  frameWidth,
-  frameSideWidth,
+  openingWidth,
+  innerCornerRadius,
   zBottom,
   zTop,
 }: {
@@ -82,12 +85,20 @@ function createBracePlaneSpec({
   endpointInset: number;
   edgeRadius: number;
   spanX: number;
-  frameWidth: number;
-  frameSideWidth: number;
+  openingWidth: number;
+  innerCornerRadius: number;
   zBottom: number;
   zTop: number;
 }): BracePlaneSpec {
-  const endpointY = frameWidth / 2 - frameSideWidth / 2 - endpointInset;
+  const cornerTangentY = openingWidth / 2 - innerCornerRadius;
+  let endpointY = cornerTangentY - endpointInset - width / 2;
+  let miterHalfWidth = width / 2;
+  for (let iteration = 0; iteration < 12; iteration += 1) {
+    const diagonalLength = Math.hypot(spanX, endpointY * 2);
+    const directionX = spanX / diagonalLength;
+    miterHalfWidth = width / (2 * directionX);
+    endpointY = cornerTangentY - endpointInset - miterHalfWidth;
+  }
   const spanY = endpointY * 2;
   return {
     width,
@@ -97,6 +108,9 @@ function createBracePlaneSpec({
     spanX,
     spanY,
     endpointY,
+    endpointOuterY: endpointY + miterHalfWidth,
+    cornerTangentY,
+    miterHalfWidth,
     diagonalLength: Math.hypot(spanX, spanY),
     angleRadians: Math.atan2(spanY, spanX),
     zBottom,
@@ -168,8 +182,8 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       endpointInset: getParam(params, "upperBraceEndpointInset"),
       edgeRadius: getParam(params, "upperBraceEdgeRadius"),
       spanX: braceSpanX,
-      frameWidth: frameTopWidth,
-      frameSideWidth,
+      openingWidth: openingTopWidth,
+      innerCornerRadius: getParam(params, "frameInnerCornerRadius"),
       zBottom: topBottom - upperBraceThickness,
       zTop: topBottom,
     }),
@@ -179,8 +193,8 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       endpointInset: getParam(params, "lowerBraceEndpointInset"),
       edgeRadius: getParam(params, "lowerBraceEdgeRadius"),
       spanX: braceSpanX,
-      frameWidth: frameBottomWidth,
-      frameSideWidth,
+      openingWidth: openingBottomWidth,
+      innerCornerRadius: getParam(params, "frameInnerCornerRadius"),
       zBottom: 0,
       zTop: lowerBraceThickness,
     }),
@@ -204,7 +218,6 @@ function assertBracePlane(
   spec: HoverDiningTableSpec,
   label: "Upper" | "Lower",
   railHeight: number,
-  frameWidth: number,
 ) {
   for (const [dimensionLabel, value] of [
     [`${label} brace width`, brace.width],
@@ -223,19 +236,32 @@ function assertBracePlane(
   if (brace.endpointY <= brace.width / 2) {
     throw new Error(`${label} X endpoints must remain separated across the table width`);
   }
+  if (brace.cornerTangentY <= 0) {
+    throw new Error(`${label} end-box opening has no straight rail between its corner radii`);
+  }
+  if (
+    Math.abs(
+      brace.endpointOuterY + brace.endpointInset - brace.cornerTangentY,
+    ) > EPSILON
+  ) {
+    throw new Error(`${label} mitered end must stop at the inner-corner tangent`);
+  }
   if (brace.width > spec.frameSideWidth + EPSILON) {
-    throw new Error(`${label} brace width must fit its end-box side-member zone`);
+    throw new Error(`${label} brace width must fit its end-box member scale`);
   }
   if (brace.thickness > railHeight + EPSILON) {
     throw new Error(`${label} brace thickness must fit its end-box rail zone`);
   }
-  if (brace.edgeRadius * 2 >= Math.min(brace.width, brace.thickness)) {
+  if (brace.edgeRadius * 2 >= brace.width) {
     throw new Error(`${label} brace edge radius must preserve a flat cross-section`);
   }
   const directionX = Math.cos(brace.angleRadians);
-  const lateralEnvelope = brace.endpointY + (brace.width * directionX) / 2;
-  if (lateralEnvelope > frameWidth / 2 + EPSILON) {
-    throw new Error(`${label} X brace endpoints project outside the end-box silhouette`);
+  const expectedMiterHalfWidth = brace.width / (2 * directionX);
+  if (Math.abs(brace.miterHalfWidth - expectedMiterHalfWidth) > EPSILON) {
+    throw new Error(`${label} end cut must be angled flush to the end-box face`);
+  }
+  if (brace.endpointOuterY > brace.cornerTangentY + EPSILON) {
+    throw new Error(`${label} X brace end runs into the rounded end-box corner`);
   }
   if (Math.abs(brace.diagonalLength - Math.hypot(brace.spanX, brace.spanY)) > EPSILON) {
     throw new Error(`${label} diagonal length must remain derived from both spans`);
@@ -323,14 +349,12 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
     spec,
     "Upper",
     spec.frameTopRailHeight,
-    spec.frameTopWidth,
   );
   assertBracePlane(
     spec.lowerBrace,
     spec,
     "Lower",
     spec.frameBottomRailHeight,
-    spec.frameBottomWidth,
   );
   if (Math.abs(spec.upperBrace.zTop - spec.topBottom) > EPSILON) {
     throw new Error("Upper X top envelope must contact the tabletop underside");
@@ -346,6 +370,14 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
     Math.min(spec.upperBrace.thickness, spec.lowerBrace.thickness) / 2
   ) {
     throw new Error("Half-lap clearance must leave positive mating material in both Xs");
+  }
+  for (const [label, brace] of [
+    ["Upper", spec.upperBrace],
+    ["Lower", spec.lowerBrace],
+  ] as const) {
+    if (brace.edgeRadius >= brace.halfLapDepth - spec.halfLapClearance / 2) {
+      throw new Error(`${label} brace round-over must leave square half-lap shoulders`);
+    }
   }
   for (const [label, tension] of [
     ["tabletop edge", spec.topEdgeTension],
@@ -368,6 +400,9 @@ function scaleBrace(brace: BracePlaneSpec, scale: number): BracePlaneSpec {
     spanX: brace.spanX / scale,
     spanY: brace.spanY / scale,
     endpointY: brace.endpointY / scale,
+    endpointOuterY: brace.endpointOuterY / scale,
+    cornerTangentY: brace.cornerTangentY / scale,
+    miterHalfWidth: brace.miterHalfWidth / scale,
     diagonalLength: brace.diagonalLength / scale,
     zBottom: brace.zBottom / scale,
     zTop: brace.zTop / scale,
@@ -610,46 +645,16 @@ function ensureCounterClockwise(points: THREE.Vector2[]) {
   return polygonArea(points) < 0 ? points.slice().reverse() : points;
 }
 
-function roundedBraceFootprint(
-  brace: BracePlaneSpec,
-  slopeSign: -1 | 1,
-  cornerSegments: number,
-) {
-  const start = new THREE.Vector2(
-    -brace.spanX / 2,
-    -slopeSign * brace.endpointY,
-  );
-  const end = new THREE.Vector2(
-    brace.spanX / 2,
-    slopeSign * brace.endpointY,
-  );
-  const direction = end.clone().sub(start).normalize();
-  const normal = new THREE.Vector2(-direction.y, direction.x);
-  const halfLength = brace.diagonalLength / 2;
-  const halfWidth = brace.width / 2;
-  const radius = Math.min(brace.edgeRadius, halfWidth - EPSILON, halfLength - EPSILON);
-  const center = start.clone().add(end).multiplyScalar(0.5);
-  const localPoints: THREE.Vector2[] = [];
-  const corners = [
-    { x: halfLength - radius, y: halfWidth - radius, start: 0 },
-    { x: -halfLength + radius, y: halfWidth - radius, start: Math.PI / 2 },
-    { x: -halfLength + radius, y: -halfWidth + radius, start: Math.PI },
-    { x: halfLength - radius, y: -halfWidth + radius, start: (3 * Math.PI) / 2 },
-  ];
-  for (const corner of corners) {
-    for (let index = 0; index <= cornerSegments; index += 1) {
-      const angle = corner.start + (index / cornerSegments) * (Math.PI / 2);
-      const localX = corner.x + Math.cos(angle) * radius;
-      const localY = corner.y + Math.sin(angle) * radius;
-      localPoints.push(
-        center
-          .clone()
-          .addScaledVector(direction, localX)
-          .addScaledVector(normal, localY),
-      );
-    }
-  }
-  return ensureCounterClockwise(localPoints);
+function miteredBraceFootprint(brace: BracePlaneSpec, slopeSign: -1 | 1) {
+  const halfX = brace.spanX / 2;
+  const leftY = -slopeSign * brace.endpointY;
+  const rightY = slopeSign * brace.endpointY;
+  return ensureCounterClockwise([
+    new THREE.Vector2(-halfX, leftY - brace.miterHalfWidth),
+    new THREE.Vector2(halfX, rightY - brace.miterHalfWidth),
+    new THREE.Vector2(halfX, rightY + brace.miterHalfWidth),
+    new THREE.Vector2(-halfX, leftY + brace.miterHalfWidth),
+  ]);
 }
 
 function clipPolygonHalfPlane(
@@ -681,25 +686,165 @@ function clipPolygonHalfPlane(
   return result.length >= 3 ? ensureCounterClockwise(result) : [];
 }
 
-function createPlanPrism(
+function insetBraceSides(
+  points: THREE.Vector2[],
+  brace: BracePlaneSpec,
+  slopeSign: -1 | 1,
+  inset: number,
+) {
+  if (inset <= EPSILON) return ensureCounterClockwise(points);
+  const normal = braceNormal(brace, slopeSign);
+  const limit = brace.width / 2 - inset;
+  return clipPolygonHalfPlane(
+    clipPolygonHalfPlane(points, normal, limit, true),
+    normal,
+    -limit,
+    false,
+  );
+}
+
+function cross2(a: THREE.Vector2, b: THREE.Vector2) {
+  return a.x * b.y - a.y * b.x;
+}
+
+function sampleConvexPolygon(points: THREE.Vector2[], sampleCount: number) {
+  const polygon = ensureCounterClockwise(points);
+  const center = polygon
+    .reduce((sum, point) => sum.add(point), new THREE.Vector2())
+    .multiplyScalar(1 / polygon.length);
+  return Array.from({ length: sampleCount }, (_, index) => {
+    const angle = (index / sampleCount) * Math.PI * 2;
+    const direction = new THREE.Vector2(Math.cos(angle), Math.sin(angle));
+    let distance = Number.POSITIVE_INFINITY;
+    for (let edgeIndex = 0; edgeIndex < polygon.length; edgeIndex += 1) {
+      const start = polygon[edgeIndex];
+      const end = polygon[(edgeIndex + 1) % polygon.length];
+      const edge = end.clone().sub(start);
+      const insideDistance = cross2(edge, center.clone().sub(start));
+      const rate = cross2(edge, direction);
+      if (rate < -EPSILON) {
+        distance = Math.min(distance, insideDistance / -rate);
+      }
+    }
+    if (!Number.isFinite(distance) || distance <= EPSILON) {
+      throw new Error("Unable to sample rounded X-brace plan region");
+    }
+    return center.clone().addScaledVector(direction, distance);
+  });
+}
+
+function createRoundedPlanPrism(
   points: THREE.Vector2[],
   zBottom: number,
   zTop: number,
+  brace: BracePlaneSpec,
+  slopeSign: -1 | 1,
+  roundBottom: boolean,
+  roundTop: boolean,
+  roundoverSegments: number,
 ) {
-  if (points.length < 3 || zTop - zBottom <= EPSILON) return null;
-  const shape = new THREE.Shape();
-  shape.moveTo(points[0].x, points[0].y);
-  for (let index = 1; index < points.length; index += 1) {
-    shape.lineTo(points[index].x, points[index].y);
+  const height = zTop - zBottom;
+  if (points.length < 3 || height <= EPSILON) return null;
+  const radius = Math.min(
+    brace.edgeRadius,
+    brace.width / 2 - EPSILON,
+    height - EPSILON,
+  );
+  const layers: Array<{ z: number; inset: number }> = [];
+  const pushLayer = (z: number, inset: number) => {
+    const previous = layers[layers.length - 1];
+    if (previous && Math.abs(previous.z - z) <= EPSILON) {
+      previous.inset = Math.min(previous.inset, inset);
+    } else {
+      layers.push({ z, inset });
+    }
+  };
+  if (roundBottom && radius > EPSILON) {
+    for (let index = 0; index <= roundoverSegments; index += 1) {
+      const offset = (index / roundoverSegments) * radius;
+      const inset =
+        radius -
+        Math.sqrt(Math.max(0, radius ** 2 - (offset - radius) ** 2));
+      pushLayer(zBottom + offset, inset);
+    }
+  } else {
+    pushLayer(zBottom, 0);
   }
-  shape.closePath();
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    bevelEnabled: false,
-    curveSegments: 1,
-    depth: zTop - zBottom,
-    steps: 1,
+  if (roundTop && radius > EPSILON) {
+    pushLayer(zTop - radius, 0);
+    for (let index = 1; index <= roundoverSegments; index += 1) {
+      const offset = (index / roundoverSegments) * radius;
+      const inset =
+        radius - Math.sqrt(Math.max(0, radius ** 2 - offset ** 2));
+      pushLayer(zTop - radius + offset, inset);
+    }
+  } else {
+    pushLayer(zTop, 0);
+  }
+
+  const perimeterSamples = Math.max(48, roundoverSegments * 12);
+  const rings = layers.map((layer) => {
+    const inset = insetBraceSides(points, brace, slopeSign, layer.inset);
+    if (inset.length < 3) {
+      throw new Error("Brace round-over consumed a half-lap region");
+    }
+    return {
+      z: layer.z,
+      points: sampleConvexPolygon(inset, perimeterSamples),
+    };
   });
-  geometry.translate(0, 0, zBottom);
+  const positions: number[] = [];
+  const addTriangle = (
+    a: THREE.Vector3,
+    b: THREE.Vector3,
+    c: THREE.Vector3,
+  ) => {
+    positions.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+  };
+  const as3 = (point: THREE.Vector2, z: number) =>
+    new THREE.Vector3(point.x, point.y, z);
+
+  for (let layerIndex = 0; layerIndex < rings.length - 1; layerIndex += 1) {
+    const lower = rings[layerIndex];
+    const upper = rings[layerIndex + 1];
+    for (let index = 0; index < perimeterSamples; index += 1) {
+      const next = (index + 1) % perimeterSamples;
+      const lowerCurrent = as3(lower.points[index], lower.z);
+      const lowerNext = as3(lower.points[next], lower.z);
+      const upperCurrent = as3(upper.points[index], upper.z);
+      const upperNext = as3(upper.points[next], upper.z);
+      addTriangle(lowerCurrent, lowerNext, upperNext);
+      addTriangle(lowerCurrent, upperNext, upperCurrent);
+    }
+  }
+
+  const bottom = rings[0];
+  const top = rings[rings.length - 1];
+  const bottomCenter = bottom.points
+    .reduce((sum, point) => sum.add(as3(point, bottom.z)), new THREE.Vector3())
+    .multiplyScalar(1 / perimeterSamples);
+  const topCenter = top.points
+    .reduce((sum, point) => sum.add(as3(point, top.z)), new THREE.Vector3())
+    .multiplyScalar(1 / perimeterSamples);
+  for (let index = 0; index < perimeterSamples; index += 1) {
+    const next = (index + 1) % perimeterSamples;
+    addTriangle(
+      bottomCenter,
+      as3(bottom.points[next], bottom.z),
+      as3(bottom.points[index], bottom.z),
+    );
+    addTriangle(
+      topCenter,
+      as3(top.points[index], top.z),
+      as3(top.points[next], top.z),
+    );
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3),
+  );
   geometry.computeVertexNormals();
   return geometry;
 }
@@ -712,64 +857,145 @@ function braceNormal(brace: BracePlaneSpec, slopeSign: -1 | 1) {
   return new THREE.Vector2(-direction.y, direction.x);
 }
 
+function addPlanarWoodUvs(geometry: THREE.BufferGeometry) {
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox;
+  const position = geometry.getAttribute("position");
+  if (!bounds || !position) {
+    throw new Error("Unable to derive X-Hover wood texture coordinates");
+  }
+
+  const extents = [
+    bounds.max.x - bounds.min.x,
+    bounds.max.y - bounds.min.y,
+    bounds.max.z - bounds.min.z,
+  ];
+  const axes = [0, 1, 2].sort((a, b) => extents[b] - extents[a]);
+  const primaryAxis = axes[0];
+  const secondaryAxis = axes[1];
+  const primarySpan = Math.max(extents[primaryAxis], EPSILON);
+  const secondarySpan = Math.max(extents[secondaryAxis], EPSILON);
+  const minima = [bounds.min.x, bounds.min.y, bounds.min.z];
+  const uv = new Float32Array(position.count * 2);
+
+  for (let index = 0; index < position.count; index += 1) {
+    const coordinates = [
+      position.getX(index),
+      position.getY(index),
+      position.getZ(index),
+    ];
+    uv[index * 2] =
+      (coordinates[primaryAxis] - minima[primaryAxis]) / primarySpan;
+    uv[index * 2 + 1] =
+      (coordinates[secondaryAxis] - minima[secondaryAxis]) / secondarySpan;
+  }
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+}
+
 /**
  * Builds one X as two closed, non-overlapping half-lapped braces. The clipped
  * upper/lower footprints follow the other brace's actual angled edges, so the
  * center shoulders are derived from the included angle rather than overcut as
  * perpendicular slots.
  */
-function createHalfLappedX(
+function mergeGeometryList(
+  geometries: THREE.BufferGeometry[],
+  errorMessage: string,
+) {
+  const nonIndexed = geometries.map((geometry) =>
+    geometry.index ? geometry.toNonIndexed() : geometry,
+  );
+  for (const geometry of nonIndexed) {
+    addPlanarWoodUvs(geometry);
+  }
+  const merged = mergeGeometries(nonIndexed, false);
+  for (const geometry of new Set([...geometries, ...nonIndexed])) {
+    if (geometry !== merged) geometry.dispose();
+  }
+  if (!merged) throw new Error(errorMessage);
+  merged.computeVertexNormals();
+  merged.computeBoundingBox();
+  merged.computeBoundingSphere();
+  return merged;
+}
+
+function createHalfLappedXParts(
   brace: BracePlaneSpec,
   halfLapClearance: number,
   model: HoverDiningTableModelDefinition,
 ) {
-  const a = roundedBraceFootprint(
-    brace,
-    1,
-    model.geometry.braceCornerSegments,
-  );
-  const b = roundedBraceFootprint(
-    brace,
-    -1,
-    model.geometry.braceCornerSegments,
-  );
+  const a = miteredBraceFootprint(brace, 1);
+  const b = miteredBraceFootprint(brace, -1);
   const normalA = braceNormal(brace, 1);
   const normalB = braceNormal(brace, -1);
   const midpoint = (brace.zBottom + brace.zTop) / 2;
   const lowerMatingZ = midpoint - halfLapClearance / 2;
   const upperMatingZ = midpoint + halfLapClearance / 2;
-  const geometries: THREE.BufferGeometry[] = [];
-  const add = (points: THREE.Vector2[], zBottom: number, zTop: number) => {
-    const geometry = createPlanPrism(points, zBottom, zTop);
-    if (geometry) geometries.push(geometry);
+  const braceAGeometries: THREE.BufferGeometry[] = [];
+  const braceBGeometries: THREE.BufferGeometry[] = [];
+  const add = (
+    target: THREE.BufferGeometry[],
+    points: THREE.Vector2[],
+    zBottom: number,
+    zTop: number,
+    slopeSign: -1 | 1,
+  ) => {
+    const geometry = createRoundedPlanPrism(
+      points,
+      zBottom,
+      zTop,
+      brace,
+      slopeSign,
+      Math.abs(zBottom - brace.zBottom) <= EPSILON,
+      Math.abs(zTop - brace.zTop) <= EPSILON,
+      model.geometry.braceRoundoverSegments,
+    );
+    if (geometry) target.push(geometry);
   };
 
   // Brace A owns the lower half through the crossing.
-  add(a, brace.zBottom, lowerMatingZ);
+  add(braceAGeometries, a, brace.zBottom, lowerMatingZ, 1);
   add(
+    braceAGeometries,
     clipPolygonHalfPlane(a, normalB, -brace.width / 2, true),
     lowerMatingZ,
     brace.zTop,
+    1,
   );
   add(
+    braceAGeometries,
     clipPolygonHalfPlane(a, normalB, brace.width / 2, false),
     lowerMatingZ,
     brace.zTop,
+    1,
   );
 
   // Brace B owns the upper half through the crossing.
-  add(b, upperMatingZ, brace.zTop);
+  add(braceBGeometries, b, upperMatingZ, brace.zTop, -1);
   add(
+    braceBGeometries,
     clipPolygonHalfPlane(b, normalA, -brace.width / 2, true),
     brace.zBottom,
     upperMatingZ,
+    -1,
   );
   add(
+    braceBGeometries,
     clipPolygonHalfPlane(b, normalA, brace.width / 2, false),
     brace.zBottom,
     upperMatingZ,
+    -1,
   );
-  return geometries;
+  return [
+    mergeGeometryList(
+      braceAGeometries,
+      "Unable to merge lower-half X-brace member",
+    ),
+    mergeGeometryList(
+      braceBGeometries,
+      "Unable to merge upper-half X-brace member",
+    ),
+  ];
 }
 
 export function createHoverDiningTableGeometry(
@@ -777,27 +1003,381 @@ export function createHoverDiningTableGeometry(
   model: HoverDiningTableModelDefinition,
 ) {
   const { scaled: spec } = getHoverDiningTableSpec(params);
+  const upperX = createHalfLappedXParts(
+    spec.upperBrace,
+    spec.halfLapClearance,
+    model,
+  );
+  const lowerX = createHalfLappedXParts(
+    spec.lowerBrace,
+    spec.halfLapClearance,
+    model,
+  );
   const geometries = [
     createTabletopGeometry(spec, model),
     createEndFrameGeometry(spec, model, -spec.frameCenterX),
     createEndFrameGeometry(spec, model, spec.frameCenterX),
-    ...createHalfLappedX(spec.upperBrace, spec.halfLapClearance, model),
-    ...createHalfLappedX(spec.lowerBrace, spec.halfLapClearance, model),
+    ...upperX,
+    ...lowerX,
   ];
-  const nonIndexed = geometries.map((geometry) =>
-    geometry.index ? geometry.toNonIndexed() : geometry,
+  return mergeGeometryList(
+    geometries,
+    "Unable to merge Double-X dining-table geometry",
   );
-  const merged = mergeGeometries(nonIndexed, false);
-  for (const geometry of new Set([...geometries, ...nonIndexed])) {
-    if (geometry !== merged) geometry.dispose();
+}
+
+export type HoverDiningTableExplodedPart = {
+  name: string;
+  category:
+    | "tabletop"
+    | "end-box-horizontal"
+    | "end-box-vertical"
+    | "upper-x"
+    | "floor-x";
+  geometry: THREE.BufferGeometry;
+  offset: THREE.Vector3;
+};
+
+export type HoverDiningTableCutPart = {
+  id: string;
+  name: string;
+  assembly: "tabletop" | "end boxes" | "upper X" | "floor X";
+  kind: "tabletop" | "rail" | "stile" | "brace";
+  quantity: number;
+  length: number;
+  width: number;
+  thickness: number;
+  grainDirection: "length";
+  cutAngleDegrees?: number;
+  lap?: {
+    face: "top" | "bottom";
+    centerFromEnd: number;
+    length: number;
+    depth: number;
+    fitClearance: number;
+  };
+  processDimensions?: Array<{ label: string; value: number }>;
+  notes: string[];
+};
+
+export type HoverDiningTableCutList = {
+  material: "Oak";
+  dimensionBasis: "full-size finished dimensions";
+  totalPieces: 13;
+  parts: HoverDiningTableCutPart[];
+};
+
+function createBraceCutParts(
+  prefix: "U" | "F",
+  assembly: "upper X" | "floor X",
+  brace: BracePlaneSpec,
+  halfLapClearance: number,
+): HoverDiningTableCutPart[] {
+  const includedAngle = Math.abs(brace.angleRadians) * 2;
+  const lapLength = brace.width / Math.sin(includedAngle);
+  const common = {
+    assembly,
+    kind: "brace" as const,
+    quantity: 1,
+    length: brace.diagonalLength,
+    width: brace.width,
+    thickness: brace.thickness,
+    grainDirection: "length" as const,
+    cutAngleDegrees: THREE.MathUtils.radToDeg(Math.abs(brace.angleRadians)),
+    notes: [
+      "Parallel end cuts bear flush on the end-box inside faces.",
+      "Round over the top and bottom long edges to the listed radius.",
+    ],
+    processDimensions: [
+      { label: "Edge round-over", value: brace.edgeRadius },
+    ],
+  };
+  const lap = {
+    centerFromEnd: brace.diagonalLength / 2,
+    length: lapLength,
+    depth: brace.halfLapDepth + halfLapClearance / 2,
+    fitClearance: halfLapClearance,
+  };
+  return [
+    {
+      ...common,
+      id: `${prefix}1`,
+      name: `${assembly === "upper X" ? "Upper" : "Floor"} X — member A`,
+      lap: { ...lap, face: "top" },
+    },
+    {
+      ...common,
+      id: `${prefix}2`,
+      name: `${assembly === "upper X" ? "Upper" : "Floor"} X — member B`,
+      lap: { ...lap, face: "bottom" },
+    },
+  ];
+}
+
+/**
+ * Creates the full-size fabrication schedule. These are finished nominal
+ * dimensions rather than rough-milling allowances; the 1:mockScale display
+ * model never changes the values shown on the cut sheet.
+ */
+export function getHoverDiningTableCutList(
+  params: ModelParams,
+): HoverDiningTableCutList {
+  const { fullSize: spec } = getHoverDiningTableSpec(params);
+  const stileRise = spec.openingHeight;
+  const stileRun = spec.frameBottomSpread / 2;
+  const stileLength = Math.hypot(stileRise, stileRun);
+  const stileCutAngle = THREE.MathUtils.radToDeg(
+    Math.atan2(Math.abs(stileRun), stileRise),
+  );
+  const parts: HoverDiningTableCutPart[] = [
+    {
+      id: "T1",
+      name: "Tabletop",
+      assembly: "tabletop",
+      kind: "tabletop",
+      quantity: 1,
+      length: spec.length,
+      width: spec.width,
+      thickness: spec.topThickness,
+      grainDirection: "length",
+      notes: [
+        "Roll both long edges to the listed depth; keep both ends flat and square.",
+      ],
+      processDimensions: [
+        { label: "Long-edge roll", value: spec.topEdgeRoll },
+      ],
+    },
+    {
+      id: "B1",
+      name: "End-box top rail",
+      assembly: "end boxes",
+      kind: "rail",
+      quantity: 2,
+      length: spec.frameTopWidth,
+      width: spec.frameTopRailHeight,
+      thickness: spec.frameDepth,
+      grainDirection: "length",
+      notes: ["One per end box; square blank before frame glue-up."],
+    },
+    {
+      id: "B2",
+      name: "End-box bottom rail",
+      assembly: "end boxes",
+      kind: "rail",
+      quantity: 2,
+      length: spec.frameBottomWidth,
+      width: spec.frameBottomRailHeight,
+      thickness: spec.frameDepth,
+      grainDirection: "length",
+      notes: ["One per end box; square blank before frame glue-up."],
+    },
+    {
+      id: "B3",
+      name: "End-box stile",
+      assembly: "end boxes",
+      kind: "stile",
+      quantity: 4,
+      length: stileLength,
+      width: spec.frameSideWidth,
+      thickness: spec.frameDepth,
+      grainDirection: "length",
+      cutAngleDegrees: stileCutAngle,
+      notes: [
+        "Two mirrored stiles per end box.",
+        "After glue-up, route the listed outer/inner curves and face-edge round-over.",
+      ],
+      processDimensions: [
+        { label: "Outer corner radius", value: spec.frameOuterCornerRadius },
+        { label: "Inner corner radius", value: spec.frameInnerCornerRadius },
+        { label: "Face-edge round-over", value: spec.frameEdgeRoundover },
+      ],
+    },
+    ...createBraceCutParts(
+      "U",
+      "upper X",
+      spec.upperBrace,
+      spec.halfLapClearance,
+    ),
+    ...createBraceCutParts(
+      "F",
+      "floor X",
+      spec.lowerBrace,
+      spec.halfLapClearance,
+    ),
+  ];
+
+  const totalPieces = parts.reduce((sum, part) => sum + part.quantity, 0);
+  if (totalPieces !== 13) {
+    throw new Error(`X-Hover cut list must account for 13 pieces; received ${totalPieces}`);
   }
-  if (!merged) {
-    throw new Error("Unable to merge Double-X dining-table geometry");
+  for (const part of parts) {
+    for (const [label, value] of [
+      ["length", part.length],
+      ["width", part.width],
+      ["thickness", part.thickness],
+    ] as const) {
+      if (!Number.isFinite(value) || value <= 0) {
+        throw new Error(`${part.id} ${label} must be finite and positive`);
+      }
+    }
+    if (
+      part.lap &&
+      (!Number.isFinite(part.lap.length) ||
+        part.lap.length <= 0 ||
+        part.lap.depth <= 0 ||
+        part.lap.depth >= part.thickness)
+    ) {
+      throw new Error(`${part.id} half-lap dimensions are invalid`);
+    }
   }
-  merged.computeVertexNormals();
-  merged.computeBoundingBox();
-  merged.computeBoundingSphere();
-  return merged;
+
+  return {
+    material: "Oak",
+    dimensionBasis: "full-size finished dimensions",
+    totalPieces: 13,
+    parts,
+  };
+}
+
+function createEndBoxHorizontalBarGeometry(
+  spec: HoverDiningTableSpec,
+  x: number,
+  position: "top" | "bottom",
+) {
+  const top = position === "top";
+  const width = top ? spec.frameTopWidth : spec.frameBottomWidth;
+  const height = top ? spec.frameTopRailHeight : spec.frameBottomRailHeight;
+  const z = top ? spec.frameHeight - height / 2 : height / 2;
+  const geometry = new THREE.BoxGeometry(spec.frameDepth, width, height);
+  geometry.translate(x, 0, z);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function createEndBoxVerticalBarGeometry(
+  spec: HoverDiningTableSpec,
+  x: number,
+  sideSign: -1 | 1,
+) {
+  const bottom = spec.frameBottomRailHeight;
+  const top = spec.frameHeight - spec.frameTopRailHeight;
+  const outerBottom = sideSign * spec.frameBottomWidth / 2;
+  const innerBottom = outerBottom - sideSign * spec.frameSideWidth;
+  const outerTop = sideSign * spec.frameTopWidth / 2;
+  const innerTop = outerTop - sideSign * spec.frameSideWidth;
+  const shape = new THREE.Shape();
+  const points = ensureCounterClockwise([
+    new THREE.Vector2(innerBottom, bottom),
+    new THREE.Vector2(outerBottom, bottom),
+    new THREE.Vector2(outerTop, top),
+    new THREE.Vector2(innerTop, top),
+  ]);
+  shape.moveTo(points[0].x, points[0].y);
+  for (let index = 1; index < points.length; index += 1) {
+    shape.lineTo(points[index].x, points[index].y);
+  }
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    bevelEnabled: false,
+    curveSegments: 1,
+    depth: spec.frameDepth,
+    steps: 1,
+  });
+  geometry.applyMatrix4(
+    new THREE.Matrix4().set(
+      0, 0, 1, x - spec.frameDepth / 2,
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 0, 1,
+    ),
+  );
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+/**
+ * Returns the glue-up stock as thirteen independently movable pieces. The
+ * assembled model remains the source of truth for its routed inner/outer box
+ * curves; this view separates the four rail-and-stile blanks that produce each
+ * finished end box after glue-up and routing.
+ */
+export function createHoverDiningTableExplodedParts(
+  params: ModelParams,
+  model: HoverDiningTableModelDefinition,
+): HoverDiningTableExplodedPart[] {
+  const { scaled: spec } = getHoverDiningTableSpec(params);
+  const gap = Math.min(spec.length, spec.width) * 0.035;
+  const baseLift = gap;
+  const parts: HoverDiningTableExplodedPart[] = [
+    {
+      name: "tabletop",
+      category: "tabletop",
+      geometry: createTabletopGeometry(spec, model),
+      offset: new THREE.Vector3(0, 0, baseLift + gap * 3),
+    },
+  ];
+
+  for (const endSign of [-1, 1] as const) {
+    const x = endSign * spec.frameCenterX;
+    const xOffset = endSign * gap * 1.5;
+    const endLabel = endSign < 0 ? "left" : "right";
+    parts.push(
+      {
+        name: `${endLabel}-box-top-rail`,
+        category: "end-box-horizontal",
+        geometry: createEndBoxHorizontalBarGeometry(spec, x, "top"),
+        offset: new THREE.Vector3(xOffset, 0, baseLift + gap),
+      },
+      {
+        name: `${endLabel}-box-bottom-rail`,
+        category: "end-box-horizontal",
+        geometry: createEndBoxHorizontalBarGeometry(spec, x, "bottom"),
+        offset: new THREE.Vector3(xOffset, 0, 0),
+      },
+      {
+        name: `${endLabel}-box-left-vertical`,
+        category: "end-box-vertical",
+        geometry: createEndBoxVerticalBarGeometry(spec, x, -1),
+        offset: new THREE.Vector3(xOffset, -gap, baseLift),
+      },
+      {
+        name: `${endLabel}-box-right-vertical`,
+        category: "end-box-vertical",
+        geometry: createEndBoxVerticalBarGeometry(spec, x, 1),
+        offset: new THREE.Vector3(xOffset, gap, baseLift),
+      },
+    );
+  }
+
+  const addXParts = (
+    brace: BracePlaneSpec,
+    category: "upper-x" | "floor-x",
+  ) => {
+    const geometries = createHalfLappedXParts(
+      brace,
+      spec.halfLapClearance,
+      model,
+    );
+    geometries.forEach((geometry, index) => {
+      const direction = index === 0 ? -1 : 1;
+      parts.push({
+        name: `${category}-bar-${index + 1}`,
+        category,
+        geometry,
+        offset: new THREE.Vector3(0, direction * gap * 1.5, baseLift),
+      });
+    });
+  };
+  addXParts(spec.upperBrace, "upper-x");
+  addXParts(spec.lowerBrace, "floor-x");
+
+  parts.forEach((part) => addPlanarWoodUvs(part.geometry));
+
+  if (parts.length !== 13) {
+    parts.forEach((part) => part.geometry.dispose());
+    throw new Error(`Exploded X-Hover assembly must contain 13 pieces; received ${parts.length}`);
+  }
+  return parts;
 }
 
 export function getHoverDiningTableDimensions(params: ModelParams): ModelDimensions {
@@ -918,12 +1498,16 @@ export function getHoverDiningTableParameterLimits(
     limits.max = Math.min(
       limits.max,
       Math.min(
-        spec.openingTopWidth,
-        spec.openingBottomWidth,
-        spec.openingHeight,
-      ) /
-        2 -
-        limits.step,
+        spec.openingHeight / 2,
+        spec.openingTopWidth / 2 -
+          spec.upperBrace.endpointInset -
+          spec.upperBrace.miterHalfWidth -
+          spec.upperBrace.width / 2,
+        spec.openingBottomWidth / 2 -
+          spec.lowerBrace.endpointInset -
+          spec.lowerBrace.miterHalfWidth -
+          spec.lowerBrace.width / 2,
+      ) - limits.step,
     );
   } else if (key === "frameEdgeRoundover") {
     limits.max = Math.min(
@@ -957,14 +1541,18 @@ export function getHoverDiningTableParameterLimits(
       key === "upperBraceEndpointInset" ? spec.upperBrace : spec.lowerBrace;
     limits.max = Math.min(
       limits.max,
-      Math.max(0, (spec.frameSideWidth - brace.width) / 2),
+      Math.max(
+        0,
+        brace.cornerTangentY - brace.miterHalfWidth - brace.width / 2,
+      ),
     );
   } else if (key === "upperBraceEdgeRadius" || key === "lowerBraceEdgeRadius") {
     const brace =
       key === "upperBraceEdgeRadius" ? spec.upperBrace : spec.lowerBrace;
     limits.max = Math.min(
       limits.max,
-      Math.min(brace.width, brace.thickness) / 2 - limits.step,
+      brace.width / 2 - limits.step,
+      brace.halfLapDepth - spec.halfLapClearance / 2 - limits.step,
     );
   } else if (key === "halfLapClearance") {
     limits.max = Math.min(
@@ -1036,6 +1624,11 @@ export function getHoverDiningTableAuditValue(
         check.label,
         `2 × ${formatLength(spec.lowerBrace.diagonalLength, unit)} at ±${formatBraceAngle(spec.lowerBrace)}`,
       );
+    case "hoverBraceEndCuts":
+      return item(
+        check.label,
+        `4 flush miters · upper ${formatLength(spec.upperBrace.endpointOuterY, unit)} / ${formatLength(spec.upperBrace.cornerTangentY, unit)} tangent · lower ${formatLength(spec.lowerBrace.endpointOuterY, unit)} / ${formatLength(spec.lowerBrace.cornerTangentY, unit)} tangent · ${formatLength(spec.lowerBrace.edgeRadius, unit)} top/bottom round-over`,
+      );
     case "hoverHalfLaps":
       return item(
         check.label,
@@ -1045,6 +1638,16 @@ export function getHoverDiningTableAuditValue(
       return item(
         check.label,
         `upper Z ${formatLength(spec.upperBrace.zTop, unit)} · lower Z ${formatLength(spec.lowerBrace.zBottom, unit)} · zero gaps`,
+      );
+    case "hoverExplodedAssembly":
+      return item(
+        check.label,
+        "13 pieces · 1 top · 8 end-box bars · 4 X bars",
+      );
+    case "hoverCutList":
+      return item(
+        check.label,
+        "8 schedule lines · 13 oak pieces · full-size finished dimensions",
       );
     case "hoverPrintEnvelope":
       return item(

@@ -2,7 +2,7 @@
   "id": "hover-dining-table",
   "name": "X-Hover Dining Table",
   "subtitle": "Parametric Hover-table variation",
-  "description": "A 1:10 manipulation model of the 75-inch walnut X-Hover table: a square-ended Bézier-rolled top, two sculpted closed end boxes, and horizontal half-lapped X braces flush to both the tabletop underside and floor.",
+  "description": "A 1:10 manipulation model of the 75-inch oak X-Hover table: a square-ended Bézier-rolled top, two sculpted closed end boxes, and horizontal half-lapped X braces flush to both the tabletop underside and floor.",
   "viewer": "hover-dining-table-v1",
   "stl": {
     "fileName": "hover-dining-table.stl",
@@ -17,7 +17,7 @@
     "mainAxis": { "x": 0, "y": 0, "z": 0 },
     "curveSegments": 16,
     "bevelSegments": 5,
-    "braceCornerSegments": 5
+    "braceRoundoverSegments": 6
   },
   "parameters": [
     {
@@ -158,7 +158,7 @@
     },
     {
       "key": "upperBraceEdgeRadius",
-      "label": "Upper-X plan corner radius",
+      "label": "Upper-X top/bottom round-over",
       "default": 3.175,
       "limits": { "min": 1.5875, "max": 9.525, "step": 1.5875 }
     },
@@ -182,7 +182,7 @@
     },
     {
       "key": "lowerBraceEdgeRadius",
-      "label": "Floor-X plan corner radius",
+      "label": "Floor-X top/bottom round-over",
       "default": 3.175,
       "limits": { "min": 1.5875, "max": 12.7, "step": 1.5875 }
     },
@@ -202,6 +202,8 @@
       "Each end box has separately editable outer and inner corner radii, separately editable normalized Bézier tensions, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
       "Both X assemblies cross at the table center with a derived 50/50 half-lap and no overlapping solid volume.",
       "The upper X bears directly against the tabletop underside and the lower X bears directly on the floor, both with zero gap or spacer.",
+      "Exploded mode presents exactly 13 glue-up pieces: one tabletop, four rail-and-stile bars per end box, and two half-lapped bars per X.",
+      "Cut List mode presents the same 13 pieces as eight grouped schedule lines with full-size finished dimensions, quantities, oak grain direction, true-length member views, and dimensioned joinery notes.",
       "The default 1:10 manipulation model retains the full 75 × 35.5 × 29.5 in proportions."
     ],
     "invariants": [
@@ -210,15 +212,20 @@
       "Derive the end-box outer width from tabletop width and side overhang so width edits preserve the relationship.",
       "Derive both inner openings from outer box dimensions and member widths; never scale the opening independently.",
       "Derive all four diagonal lengths and equal-and-opposite plan angles from the end-box corner zones; keep both X crossings at the table origin.",
+      "Derive each brace endpoint from the straight-rail tangent of the editable inner corner radius, inset the complete angled end face clear of that curve, and cut the end flush to the end-box inside face.",
       "Keep each centered half-lap at half the nominal brace thickness and remove solid overlap between its two braces.",
+      "Round over the top and bottom long edges of every X brace while keeping the end miters and half-lap shoulders square.",
       "Keep the upper-X top envelope coplanar with the tabletop underside and the lower-X bottom envelope coplanar with the floor; expose no gap or spacer control.",
       "Keep inner and outer corner curves as cubic Bézier functions whose control lengths equal radius times normalized tension.",
       "Keep exterior and interior corner radii independent because the observed curves are not concentric offsets.",
       "Treat bottom spread as the explicit splay hypothesis; zero means orthogonal frame sides and remains the evidence-backed default.",
       "Keep frame edge round-over below half the depth, side width, top-rail height, and bottom-rail height.",
       "Keep end boxes, their bottom spread, and all brace endpoints inside the tabletop width while preserving positive diagonal spans.",
+      "Keep exploded offsets presentation-only: parameter edits must regenerate all 13 pieces without changing the assembled STL or resetting the camera.",
+      "Keep the cut list full-size and associative to the furniture parameters: changing mock scale must not change a listed fabrication dimension, while dimensional edits must update both the schedule and SVG views.",
+      "Label listed sizes as finished nominal dimensions and keep rough-milling allowance explicit rather than silently adding stock to any part.",
       "Do not generate parallel lengthwise stretchers, hover pads, or spacer blocks.",
-      "Treat walnut grain and finish as renderer materials only; the STL geometry remains material-neutral."
+      "Treat oak grain and finish as renderer materials only; the STL geometry remains material-neutral."
     ],
     "checks": [
       { "key": "hoverTableEnvelope", "label": "Full-size envelope" },
@@ -229,8 +236,11 @@
       { "key": "hoverBoxSplay", "label": "End-box splay hypothesis" },
       { "key": "hoverUpperX", "label": "Upper horizontal X" },
       { "key": "hoverLowerX", "label": "Floor horizontal X" },
+      { "key": "hoverBraceEndCuts", "label": "Radius-aware brace ends" },
       { "key": "hoverHalfLaps", "label": "Centered half-laps" },
       { "key": "hoverDirectContact", "label": "Zero-gap contacts" },
+      { "key": "hoverExplodedAssembly", "label": "Exploded glue-up" },
+      { "key": "hoverCutList", "label": "Dimensioned cut list" },
       { "key": "hoverPrintEnvelope", "label": "Manipulation-model envelope" }
     ]
   },
