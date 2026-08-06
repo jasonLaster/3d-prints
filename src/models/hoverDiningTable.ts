@@ -219,15 +219,10 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
   const frameTopWidth = width - sideOverhang * 2;
   const frameBottomSpread = getParam(params, "frameBottomSpread");
   const frameBottomWidth = frameTopWidth + frameBottomSpread;
-  // Support edits and model hot reloads can expose one transient render where
-  // a member section has updated but its mating box members have not.
-  // Resolve that coupling here as well as in the UI state update so every
-  // geometry/audit caller receives one atomic, construction-safe spec.
-  const frameSideWidth = Math.max(
-    getParam(params, "frameSideWidth"),
-    topSupportWidth,
-    bottomSupportWidth,
-  );
+  // Keep the end-box side width as its own construction dimension. Support
+  // members are constrained to fit it, but changing a member must not resize
+  // the box behind the user's back.
+  const frameSideWidth = getParam(params, "frameSideWidth");
   const openingTopWidth = frameTopWidth - frameSideWidth * 2;
   const openingBottomWidth = frameBottomWidth - frameSideWidth * 2;
   const frameBottomRailHeight = Math.max(
@@ -2717,6 +2712,7 @@ export function getHoverDiningTableParameterLimits(
       key === "topSupportWidth"
         ? (spec.frameTopWidth - 2 * spec.frameInnerTopCornerRadius) / 2
         : (spec.frameBottomWidth - 2 * spec.frameInnerBottomCornerRadius) / 2,
+      spec.frameSideWidth,
       brace.cornerTangentY - brace.endpointInset,
     );
   } else if (key === "topSupportThickness" || key === "bottomSupportThickness") {

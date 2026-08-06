@@ -305,7 +305,7 @@
       "Keep top and bottom exterior and interior corner radii independently editable because the observed curves are not concentric offsets.",
       "Keep top and bottom support sections and edge radii independently editable; each selected support derives radius-aware placement and selected joinery from its own member contract.",
       "Treat bottom spread as the explicit splay hypothesis; zero means orthogonal frame sides and remains the evidence-backed default.",
-      "Keep frame edge round-over below half the depth, side width, top-rail height, and bottom-rail height.",
+      "Keep frame edge round-over below half the depth, side width, top-rail height, and bottom-rail height; keep support members within the independently editable end-box side width.",
       "Keep end boxes, their bottom spread, and all brace endpoints inside the tabletop width while preserving positive diagonal spans.",
       "Derive the exploded rail, stile, tabletop, X-brace, stretcher, and center-board solids from the same Bézier, splay, round-over, contact-plane, and half-lap constraints used by the assembled model; do not substitute proxy blanks.",
       "Keep exploded offsets presentation-only: parameter edits and layout changes must regenerate the selected 11–13 fully profiled pieces without changing the assembled STL contract or resetting the camera.",

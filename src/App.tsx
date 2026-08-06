@@ -3526,9 +3526,7 @@ export default function App({
         ),
       };
       if (model.viewer === "hover-dining-table-v1") {
-        if (key === "topSupportWidth" || key === "bottomSupportWidth") {
-          next.frameSideWidth = Math.max(current.frameSideWidth, nextValue);
-        } else if (key === "topSupportThickness") {
+        if (key === "topSupportThickness") {
           next.frameTopRailHeight = Math.max(current.frameTopRailHeight, nextValue);
         } else if (key === "bottomSupportThickness") {
           next.frameBottomRailHeight = Math.max(

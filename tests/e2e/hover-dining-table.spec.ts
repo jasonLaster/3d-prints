@@ -310,7 +310,7 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
 
   const expandedMembers = {
     ...defaultParams,
-    frameSideWidth: 88.9,
+    frameSideWidth: 127,
     frameTopRailHeight: 63.5,
     frameBottomRailHeight: 63.5,
   };
@@ -344,7 +344,7 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
 test("atomically settles transient support-member and mating-box dimensions", () => {
   const transientParams = {
     ...defaultParams,
-    frameSideWidth: 2 * 25.4,
+    frameSideWidth: 4 * 25.4,
     frameTopRailHeight: 1 * 25.4,
     frameBottomRailHeight: 1 * 25.4,
     topSupportWidth: 4 * 25.4,
@@ -354,7 +354,7 @@ test("atomically settles transient support-member and mating-box dimensions", ()
   };
 
   const spec = getHoverDiningTableSpec(transientParams).fullSize;
-  expect(spec.frameSideWidth).toBeCloseTo(transientParams.topSupportWidth, 6);
+  expect(spec.frameSideWidth).toBeCloseTo(transientParams.frameSideWidth, 6);
   expect(spec.frameTopRailHeight).toBeCloseTo(
     transientParams.topSupportThickness,
     6,
@@ -1052,10 +1052,12 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     "style",
     orientationBeforeExplosion!,
   );
+  await page.getByLabel("End-box side width in inches").fill("3 1/2");
+  await expect(page).toHaveURL(/frameSideWidth=3.5/);
   await page.getByLabel("Top support width in inches").fill("3");
   await expect(page).toHaveURL(/topSupportWidth=3/);
   await expect(page.getByLabel("End-box side width in inches")).toHaveValue(
-    "3",
+    "3 1/2",
   );
   await page.getByLabel("Bottom support width in inches").fill("2 1/2");
   await expect(page).toHaveURL(/bottomSupportWidth=2\.5/);
