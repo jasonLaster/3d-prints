@@ -2,7 +2,7 @@
   "id": "hover-dining-table",
   "name": "X-Hover Dining Table",
   "subtitle": "Parametric Hover-table variation",
-  "description": "A 1:10 manipulation model of the 75-inch oak X-Hover table: a square-ended Bézier-rolled top, two sculpted closed end boxes, and horizontal half-lapped X braces flush to both the tabletop underside and floor.",
+  "description": "A 1:10 manipulation model of the 75-inch oak Hover table: a square-ended Bézier-rolled top, two sculpted closed end boxes, and independently selectable top and floor support layouts.",
   "viewer": "hover-dining-table-v1",
   "stl": {
     "fileName": "hover-dining-table.stl",
@@ -23,6 +23,7 @@
     {
       "key": "mockScale",
       "label": "Mock scale denominator",
+      "group": "Overall",
       "statusLabel": "Scale 1:",
       "default": 10,
       "limits": { "min": 6, "max": 24, "step": 1 }
@@ -30,6 +31,7 @@
     {
       "key": "tableLength",
       "label": "Table length",
+      "group": "Overall",
       "statusLabel": "Length",
       "default": 1905,
       "limits": { "min": 1524, "max": 2438.4, "step": 25.4 }
@@ -37,6 +39,7 @@
     {
       "key": "tableWidth",
       "label": "Table width",
+      "group": "Overall",
       "statusLabel": "Width",
       "default": 901.7,
       "limits": { "min": 762, "max": 1219.2, "step": 25.4 }
@@ -44,6 +47,7 @@
     {
       "key": "overallHeight",
       "label": "Overall height",
+      "group": "Overall",
       "statusLabel": "Height",
       "default": 749.3,
       "limits": { "min": 685.8, "max": 812.8, "step": 6.35 }
@@ -51,146 +55,198 @@
     {
       "key": "topThickness",
       "label": "Tabletop thickness",
+      "group": "Tabletop",
       "default": 31.75,
       "limits": { "min": 19.05, "max": 50.8, "step": 3.175 }
     },
     {
       "key": "topEdgeRoll",
       "label": "Long-edge roll depth",
+      "group": "Tabletop",
       "default": 15.875,
       "limits": { "min": 6.35, "max": 50.8, "step": 1.5875 }
     },
     {
       "key": "topEdgeTension",
       "label": "Tabletop edge curve tension",
+      "group": "Tabletop",
       "default": 0.552,
       "limits": { "min": 0.35, "max": 0.8, "step": 0.01 }
     },
     {
       "key": "sideOverhang",
       "label": "Tabletop side overhang",
+      "group": "Tabletop",
       "default": 44.45,
-      "limits": { "min": 19.05, "max": 101.6, "step": 3.175 }
+      "limits": { "min": 0, "max": 304.8, "step": 3.175 }
     },
     {
       "key": "endOverhang",
       "label": "Tabletop end overhang",
+      "group": "Tabletop",
       "default": 190.5,
-      "limits": { "min": 101.6, "max": 304.8, "step": 6.35 }
+      "limits": { "min": 50.8, "max": 508, "step": 6.35 }
     },
     {
       "key": "frameDepth",
       "label": "End-box depth",
+      "group": "End boxes",
       "default": 63.5,
-      "limits": { "min": 38.1, "max": 101.6, "step": 3.175 }
+      "limits": { "min": 25.4, "max": 152.4, "step": 3.175 }
     },
     {
       "key": "frameSideWidth",
       "label": "End-box side width",
+      "group": "End boxes",
       "default": 57.15,
-      "limits": { "min": 38.1, "max": 88.9, "step": 3.175 }
+      "limits": { "min": 25.4, "max": 127, "step": 3.175 }
     },
     {
       "key": "frameBottomRailHeight",
       "label": "End-box bottom rail height",
+      "group": "End boxes",
       "default": 44.45,
-      "limits": { "min": 31.75, "max": 76.2, "step": 3.175 }
+      "limits": { "min": 25.4, "max": 101.6, "step": 3.175 }
     },
     {
       "key": "frameTopRailHeight",
       "label": "End-box top rail height",
+      "group": "End boxes",
       "default": 31.75,
-      "limits": { "min": 25.4, "max": 63.5, "step": 3.175 }
+      "limits": { "min": 25.4, "max": 101.6, "step": 3.175 }
     },
     {
       "key": "frameBottomSpread",
       "label": "End-box bottom spread",
+      "group": "End boxes",
       "default": 0,
-      "limits": { "min": -50.8, "max": 101.6, "step": 3.175 }
+      "limits": { "min": -203.2, "max": 203.2, "step": 3.175 }
     },
     {
-      "key": "frameOuterCornerRadius",
-      "label": "End-box outer corner radius",
+      "key": "frameOuterTopCornerRadius",
+      "label": "End-box outer top radius",
+      "group": "End boxes",
       "default": 19.05,
-      "limits": { "min": 6.35, "max": 50.8, "step": 3.175 }
+      "limits": { "min": 6.35, "max": 152.4, "step": 3.175 }
     },
     {
-      "key": "frameInnerCornerRadius",
-      "label": "End-box inner corner radius",
+      "key": "frameOuterBottomCornerRadius",
+      "label": "End-box outer bottom radius",
+      "group": "End boxes",
+      "default": 19.05,
+      "limits": { "min": 6.35, "max": 152.4, "step": 3.175 }
+    },
+    {
+      "key": "frameInnerTopCornerRadius",
+      "label": "End-box inner top radius",
+      "group": "End boxes",
       "default": 63.5,
-      "limits": { "min": 25.4, "max": 101.6, "step": 3.175 }
+      "limits": { "min": 12.7, "max": 203.2, "step": 3.175 }
+    },
+    {
+      "key": "frameInnerBottomCornerRadius",
+      "label": "End-box inner bottom radius",
+      "group": "End boxes",
+      "default": 63.5,
+      "limits": { "min": 12.7, "max": 203.2, "step": 3.175 }
     },
     {
       "key": "frameOuterCurveTension",
       "label": "Outer corner curve tension",
+      "group": "End boxes",
       "default": 0.552,
       "limits": { "min": 0.35, "max": 0.8, "step": 0.01 }
     },
     {
       "key": "frameInnerCurveTension",
       "label": "Inner corner curve tension",
+      "group": "End boxes",
       "default": 0.58,
       "limits": { "min": 0.35, "max": 0.8, "step": 0.01 }
     },
     {
       "key": "frameEdgeRoundover",
       "label": "End-box face-edge round-over",
+      "group": "End boxes",
       "default": 9.525,
       "limits": { "min": 3.175, "max": 15.875, "step": 1.5875 }
     },
     {
-      "key": "upperBraceWidth",
-      "label": "Upper-X brace width",
-      "default": 44.45,
-      "limits": { "min": 31.75, "max": 63.5, "step": 3.175 }
-    },
-    {
-      "key": "upperBraceThickness",
-      "label": "Upper-X brace thickness",
-      "default": 25.4,
-      "limits": { "min": 19.05, "max": 44.45, "step": 3.175 }
-    },
-    {
-      "key": "upperBraceEndpointInset",
-      "label": "Upper-X endpoint inset",
+      "key": "topSupportStyle",
+      "label": "Top support style",
+      "group": "Support layout",
       "default": 0,
-      "limits": { "min": 0, "max": 12.7, "step": 1.5875 }
+      "limits": { "min": 0, "max": 1, "step": 1 }
     },
     {
-      "key": "upperBraceEdgeRadius",
-      "label": "Upper-X top/bottom round-over",
-      "default": 3.175,
-      "limits": { "min": 1.5875, "max": 9.525, "step": 1.5875 }
+      "key": "bottomSupportStyle",
+      "label": "Bottom support style",
+      "group": "Support layout",
+      "default": 0,
+      "limits": { "min": 0, "max": 2, "step": 1 }
     },
     {
-      "key": "lowerBraceWidth",
-      "label": "Floor-X brace width",
+      "key": "xBraceWidth",
+      "label": "Support member width",
+      "group": "Support members",
       "default": 50.8,
-      "limits": { "min": 31.75, "max": 63.5, "step": 3.175 }
+      "limits": { "min": 19.05, "max": 101.6, "step": 3.175 }
     },
     {
-      "key": "lowerBraceThickness",
-      "label": "Floor-X brace thickness",
-      "default": 38.1,
-      "limits": { "min": 25.4, "max": 50.8, "step": 3.175 }
+      "key": "xBraceThickness",
+      "label": "Support member thickness",
+      "group": "Support members",
+      "default": 31.75,
+      "limits": { "min": 12.7, "max": 76.2, "step": 3.175 }
     },
     {
-      "key": "lowerBraceEndpointInset",
-      "label": "Floor-X endpoint inset",
+      "key": "xBraceEndpointInset",
+      "label": "Support bearing-zone inset",
+      "group": "Support members",
       "default": 0,
-      "limits": { "min": 0, "max": 12.7, "step": 1.5875 }
+      "limits": { "min": 0, "max": 101.6, "step": 1.5875 }
     },
     {
-      "key": "lowerBraceEdgeRadius",
-      "label": "Floor-X top/bottom round-over",
+      "key": "xBraceEdgeRadius",
+      "label": "Support top/bottom round-over",
+      "group": "Support members",
       "default": 3.175,
-      "limits": { "min": 1.5875, "max": 12.7, "step": 1.5875 }
+      "limits": { "min": 0.79375, "max": 19.05, "step": 1.5875 }
     },
     {
       "key": "halfLapClearance",
       "label": "Half-lap fit clearance",
+      "group": "Support members",
       "default": 0,
       "limits": { "min": 0, "max": 3.175, "step": 0.1 }
+    },
+    {
+      "key": "templateThickness",
+      "label": "Routing-template thickness",
+      "group": "Routing templates",
+      "default": 3.175,
+      "limits": { "min": 1.5875, "max": 6.35, "step": 0.79375 }
+    },
+    {
+      "key": "templatePlateLength",
+      "label": "Usable square print-plate span",
+      "group": "Routing templates",
+      "default": 228.6,
+      "limits": { "min": 152.4, "max": 304.8, "step": 6.35 }
+    },
+    {
+      "key": "templateDovetailDepth",
+      "label": "Template dovetail depth",
+      "group": "Routing templates",
+      "default": 12.7,
+      "limits": { "min": 6.35, "max": 25.4, "step": 1.5875 }
+    },
+    {
+      "key": "templateJointClearance",
+      "label": "Template dovetail fit clearance",
+      "group": "Routing templates",
+      "default": 0.2,
+      "limits": { "min": 0, "max": 0.6, "step": 0.05 }
     }
   ],
   "audit": {
@@ -198,12 +254,13 @@
     "dimensionTargets": [
       "The image and supplied elevation establish a 75 in long by 35.5 in wide by 29.5 in high table envelope.",
       "The tabletop has a flat rectangular plan, flat square end faces, and continuous Bézier-rolled long edges rather than rounded plan-view corners.",
-      "The base contains exactly two closed transverse end boxes connected by exactly four diagonal braces grouped into one upper horizontal X and one lower horizontal X.",
-      "Each end box has separately editable outer and inner corner radii, separately editable normalized Bézier tensions, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
-      "Both X assemblies cross at the table center with a derived 50/50 half-lap and no overlapping solid volume.",
-      "The upper X bears directly against the tabletop underside and the lower X bears directly on the floor, both with zero gap or spacer.",
-      "Exploded mode presents exactly 13 glue-up pieces: one tabletop, four rail-and-stile bars per end box, and two half-lapped bars per X.",
-      "Cut List mode presents the same 13 pieces as eight grouped schedule lines with full-size finished dimensions, quantities, oak grain direction, true-length member views, and dimensioned joinery notes.",
+      "The base contains exactly two closed transverse end boxes with independently selectable support layouts: an upper horizontal X or two original lengthwise stretchers, plus a floor X, one centered lengthwise board, or no floor connector.",
+      "Each end box has independently editable top and bottom values for both outer and inner corner radii, separately editable normalized Bézier tensions, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
+      "Every selected X crosses at the table center with a derived 50/50 half-lap and no overlapping solid volume; straight-support layouts contain no artificial lap.",
+      "One shared support width, thickness, bearing-zone inset, and edge round-over contract drives every support layout while half-lap fit clearance applies only to selected Xs.",
+      "The selected upper supports bear directly against the tabletop underside and every selected lower support bears directly on the floor, with zero gap or spacer.",
+      "Exploded mode presents 11–13 glue-up pieces according to the selected layouts: one profiled tabletop, four finished rail-and-stile bars per end box, two upper support members, and zero, one, or two lower support members.",
+      "Cut List mode presents the same selected pieces as five to eight grouped schedule lines with full-size finished dimensions, quantities, oak grain direction, exact constrained profiles, edge-treatment section views, and joinery notes.",
       "The default 1:10 manipulation model retains the full 75 × 35.5 × 29.5 in proportions."
     ],
     "invariants": [
@@ -211,20 +268,25 @@
       "Keep the tabletop end faces planar and square while changing only the two continuous long-edge profiles.",
       "Derive the end-box outer width from tabletop width and side overhang so width edits preserve the relationship.",
       "Derive both inner openings from outer box dimensions and member widths; never scale the opening independently.",
-      "Derive all four diagonal lengths and equal-and-opposite plan angles from the end-box corner zones; keep both X crossings at the table origin.",
+      "For each selected X, derive both diagonal lengths and equal-and-opposite plan angles from the end-box corner zones and keep the crossing at the table origin.",
       "Derive each brace endpoint from the straight-rail tangent of the editable inner corner radius, inset the complete angled end face clear of that curve, and keep its full bearing face planar and parallel with the end-box inside face.",
-      "Keep each brace at full nominal width through the crossing, form complementary centered pockets at exactly half the nominal thickness, align every pocket boundary as a planar machining cut, and remove solid overlap between the two braces.",
+      "Keep each selected X brace at full nominal width through the crossing, form complementary centered pockets at exactly half the nominal thickness, align every pocket boundary as a planar machining cut, and remove solid overlap between the two braces.",
       "Round over the top and bottom long edges of every X brace while keeping the end miters and half-lap shoulders square.",
-      "Keep the upper-X top envelope coplanar with the tabletop underside and the lower-X bottom envelope coplanar with the floor; expose no gap or spacer control.",
+      "Keep every selected top-support envelope coplanar with the tabletop underside and every selected floor-support envelope coplanar with the floor; expose no gap or spacer control.",
       "Keep inner and outer corner curves as cubic Bézier functions whose control lengths equal radius times normalized tension.",
-      "Keep exterior and interior corner radii independent because the observed curves are not concentric offsets.",
+      "Keep top and bottom exterior and interior corner radii independently editable because the observed curves are not concentric offsets.",
+      "Keep the support section and edge radius shared across the top and bottom choices; only radius-aware lateral placement and selected joinery may differ.",
       "Treat bottom spread as the explicit splay hypothesis; zero means orthogonal frame sides and remains the evidence-backed default.",
       "Keep frame edge round-over below half the depth, side width, top-rail height, and bottom-rail height.",
       "Keep end boxes, their bottom spread, and all brace endpoints inside the tabletop width while preserving positive diagonal spans.",
-      "Keep exploded offsets presentation-only: parameter edits must regenerate all 13 pieces without changing the assembled STL or resetting the camera.",
-      "Keep the cut list full-size and associative to the furniture parameters: changing mock scale must not change a listed fabrication dimension, while dimensional edits must update both the schedule and SVG views.",
+      "Derive the exploded rail, stile, tabletop, X-brace, stretcher, and center-board solids from the same Bézier, splay, round-over, contact-plane, and half-lap constraints used by the assembled model; do not substitute proxy blanks.",
+      "Keep exploded offsets presentation-only: parameter edits and layout changes must regenerate the selected 11–13 fully profiled pieces without changing the assembled STL contract or resetting the camera.",
+      "Keep the cut list full-size and associative to the furniture parameters: changing mock scale must not change a listed fabrication dimension, while dimensional edits must update the schedule, exact SVG profile, section view, radii, tensions, round-overs, end cuts, and half-lap geometry.",
+      "Derive one full-size top-rail routing template and one mirrored vertical-stile routing template from the same outer/inner cubic Bézier boundaries as the assembled end box.",
+      "Split both routing templates by the editable usable square print-plate span, keep every STL flat and inside that envelope, and join adjacent pieces with complementary in-plane dovetails sized by explicit depth and fit-clearance controls.",
+      "Keep routing-template export at full furniture size and 1/8 in nominal thickness regardless of the manipulation-model scale; use the mock-scale denominator only for the on-screen template preview.",
       "Label listed sizes as finished nominal dimensions and keep rough-milling allowance explicit rather than silently adding stock to any part.",
-      "Do not generate parallel lengthwise stretchers, hover pads, or spacer blocks.",
+      "Generate parallel upper lengthwise stretchers only when selected, generate exactly one centered floor board only when selected, and never generate hover pads or spacer blocks.",
       "Treat oak grain and finish as renderer materials only; the STL geometry remains material-neutral."
     ],
     "checks": [
@@ -234,13 +296,14 @@
       { "key": "hoverBoxOpening", "label": "Derived box opening" },
       { "key": "hoverCornerCurves", "label": "Independent Bézier corners" },
       { "key": "hoverBoxSplay", "label": "End-box splay hypothesis" },
-      { "key": "hoverUpperX", "label": "Upper horizontal X" },
-      { "key": "hoverLowerX", "label": "Floor horizontal X" },
-      { "key": "hoverBraceEndCuts", "label": "Radius-aware brace ends" },
-      { "key": "hoverHalfLaps", "label": "Centered half-laps" },
+      { "key": "hoverUpperX", "label": "Selected top supports" },
+      { "key": "hoverLowerX", "label": "Selected floor supports" },
+      { "key": "hoverBraceEndCuts", "label": "Support bearing faces" },
+      { "key": "hoverHalfLaps", "label": "Conditional half-laps" },
       { "key": "hoverDirectContact", "label": "Zero-gap contacts" },
       { "key": "hoverExplodedAssembly", "label": "Exploded glue-up" },
       { "key": "hoverCutList", "label": "Dimensioned cut list" },
+      { "key": "hoverRoutingTemplates", "label": "Segmented routing templates" },
       { "key": "hoverPrintEnvelope", "label": "Manipulation-model envelope" }
     ]
   },
@@ -249,7 +312,7 @@
       "name": "audit",
       "path": "models/hover-dining-table/audit.mjs",
       "command": "npm run audit -- hover-dining-table",
-      "description": "Validates the image-derived dimensions, end-box curves, derived Double-X braces, centered half-laps, zero-gap contacts, and procedural source contract."
+      "description": "Validates the image-derived dimensions, end-box curves, selectable support layouts, conditional half-laps, zero-gap contacts, and procedural source contract."
     }
   ]
 }

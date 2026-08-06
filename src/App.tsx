@@ -66,6 +66,9 @@ import {
   createDoorLockAdapterGeometry,
   createHoverDiningTableExplodedParts,
   createHoverDiningTableGeometry,
+  createHoverDiningTableTemplateSegments,
+  getHoverDiningTableTemplateSummary,
+  getHoverDiningTablePieceCount,
   createRoundedTopGeometry,
   createSandChamberFloorGeometry,
   createSandPreviewGeometry,
@@ -97,6 +100,7 @@ import {
 import {
   UNIT_OPTIONS,
   formatLengthInput,
+  formatLength,
   fromUnit,
   isLengthUnit,
   parseLengthInput,
@@ -116,13 +120,15 @@ type AssemblyMode =
   | "print-layout"
   | "assembled"
   | "exploded"
-  | "cut-list";
+  | "cut-list"
+  | "templates";
 type ViewerInteractionMode = "orbit" | "pan";
 
 type ViewerHandle = {
   exportStl: () => void;
   exportLidStl: () => void;
   exportBoxAndLidStl: () => void;
+  exportHoverTemplateStls: () => void;
   getStlBlob: () => Blob | null;
   resetCamera: () => void;
   setView: (preset: ViewPreset) => void;
@@ -197,6 +203,18 @@ const PARAM_QUERY_KEYS = [
   "frameBottomRailHeight",
   "frameTopRailHeight",
   "frameBottomSpread",
+  "frameOuterTopCornerRadius",
+  "frameOuterBottomCornerRadius",
+  "frameInnerTopCornerRadius",
+  "frameInnerBottomCornerRadius",
+  "topSupportStyle",
+  "bottomSupportStyle",
+  "xBraceWidth",
+  "xBraceThickness",
+  "xBraceEndpointInset",
+  "xBraceEdgeRadius",
+  // Retain the former shared-radius and split-brace keys so old links migrate
+  // once and are then removed when the canonical state is written.
   "frameOuterCornerRadius",
   "frameInnerCornerRadius",
   "frameOuterCurveTension",
@@ -211,6 +229,10 @@ const PARAM_QUERY_KEYS = [
   "lowerBraceEndpointInset",
   "lowerBraceEdgeRadius",
   "halfLapClearance",
+  "templateThickness",
+  "templatePlateLength",
+  "templateDovetailDepth",
+  "templateJointClearance",
   // Retain superseded base keys so older shared URLs are cleaned on load.
   "hoverGap",
   "stretcherHeight",
@@ -233,6 +255,8 @@ const SCALAR_PARAM_KEYS = new Set([
   "topEdgeTension",
   "frameOuterCurveTension",
   "frameInnerCurveTension",
+  "topSupportStyle",
+  "bottomSupportStyle",
 ]);
 const CURVE_PARAM_KEYS = new Set([
   "topEdgeTension",
@@ -445,6 +469,41 @@ function getParamsFromUrl(model: ModelDefinition) {
 
   if (searchParams.get("model") !== model.id) {
     return params;
+  }
+
+  if (model.viewer === "hover-dining-table-v1") {
+    const legacyAliases: Record<string, string[]> = {
+      frameOuterTopCornerRadius: ["frameOuterCornerRadius"],
+      frameOuterBottomCornerRadius: ["frameOuterCornerRadius"],
+      frameInnerTopCornerRadius: ["frameInnerCornerRadius"],
+      frameInnerBottomCornerRadius: ["frameInnerCornerRadius"],
+      xBraceWidth: ["lowerBraceWidth", "upperBraceWidth"],
+      xBraceThickness: ["lowerBraceThickness", "upperBraceThickness"],
+      xBraceEndpointInset: [
+        "lowerBraceEndpointInset",
+        "upperBraceEndpointInset",
+      ],
+      xBraceEdgeRadius: ["lowerBraceEdgeRadius", "upperBraceEdgeRadius"],
+    };
+    for (const [canonicalKey, aliases] of Object.entries(legacyAliases)) {
+      if (searchParams.has(canonicalKey)) continue;
+      const parameter = model.parameters.find(
+        (candidate) => candidate.key === canonicalKey,
+      );
+      if (!parameter) continue;
+      const legacyValue = aliases
+        .map((alias) => searchParams.get(alias))
+        .find((value): value is string => value !== null);
+      if (legacyValue === undefined) continue;
+      const parsed = parseUrlParam(legacyValue, unit, parameter);
+      if (parsed !== null) {
+        params[canonicalKey] = clamp(
+          parsed,
+          parameter.limits.min,
+          parameter.limits.max,
+        );
+      }
+    }
   }
 
   for (const parameter of model.parameters) {
@@ -753,6 +812,13 @@ const HolderViewer = forwardRef<
   const [interactionMode, setInteractionMode] = useState<ViewerInteractionMode>(
     "orbit",
   );
+  const hoverTemplateSummary = useMemo(
+    () =>
+      model.viewer === "hover-dining-table-v1"
+        ? getHoverDiningTableTemplateSummary(params, model)
+        : null,
+    [model, params],
+  );
   const [activeViewPreset, setActiveViewPreset] = useState<ViewPreset | null>(
     "iso",
   );
@@ -950,13 +1016,24 @@ const HolderViewer = forwardRef<
         model,
       );
       hoverExplodedGroup.children.forEach((child) => {
-        if (child instanceof THREE.Mesh) child.geometry.dispose();
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (child.userData.ownsTemplateMaterial) {
+            const material = child.material;
+            if (Array.isArray(material)) {
+              material.forEach((entry) => entry.dispose());
+            } else {
+              material.dispose();
+            }
+          }
+        }
       });
       hoverExplodedGroup.clear();
       const exploded = latestAssemblyModeRef.current === "exploded";
       const cutList = latestAssemblyModeRef.current === "cut-list";
-      mainMesh.visible = !exploded && !cutList;
-      hoverExplodedGroup.visible = exploded;
+      const templates = latestAssemblyModeRef.current === "templates";
+      mainMesh.visible = !exploded && !cutList && !templates;
+      hoverExplodedGroup.visible = exploded || templates;
       if (exploded) {
         for (const part of createHoverDiningTableExplodedParts(
           latestParamsRef.current,
@@ -968,6 +1045,83 @@ const HolderViewer = forwardRef<
           mesh.userData.assemblyCategory = part.category;
           hoverExplodedGroup.add(mesh);
         }
+      } else if (templates) {
+        const previewScale = getParam(latestParamsRef.current, "mockScale");
+        const segments = createHoverDiningTableTemplateSegments(
+          latestParamsRef.current,
+          model,
+          previewScale,
+        );
+        const families = ["top-rail", "vertical-stile"] as const;
+        families.forEach((family, familyIndex) => {
+          const familySegments = segments.filter(
+            (segment) => segment.template === family,
+          );
+          const familyBounds = familySegments.reduce(
+            (bounds, segment) => {
+              segment.geometry.computeBoundingBox();
+              const geometryBounds = segment.geometry.boundingBox;
+              if (!geometryBounds) return bounds;
+              return {
+                minX: Math.min(bounds.minX, segment.assemblyOffset.x),
+                maxX: Math.max(
+                  bounds.maxX,
+                  segment.assemblyOffset.x + geometryBounds.max.x,
+                ),
+                minY: Math.min(bounds.minY, segment.assemblyOffset.y),
+                maxY: Math.max(
+                  bounds.maxY,
+                  segment.assemblyOffset.y + geometryBounds.max.y,
+                ),
+              };
+            },
+            {
+              minX: Number.POSITIVE_INFINITY,
+              maxX: Number.NEGATIVE_INFINITY,
+              minY: Number.POSITIVE_INFINITY,
+              maxY: Number.NEGATIVE_INFINITY,
+            },
+          );
+          const rowWidth = familyBounds.maxX - familyBounds.minX;
+          const rowHeight = familyBounds.maxY - familyBounds.minY;
+          const rowY =
+            familyIndex === 0
+              ? previewScale > 0
+                ? 8
+                : 0
+              : -rowHeight - 8;
+          const seamReveal = Math.max(
+            0.8,
+            (getParam(latestParamsRef.current, "templateThickness") /
+              previewScale) *
+              2.5,
+          );
+          familySegments.forEach((segment) => {
+            const palette =
+              family === "top-rail"
+                ? ["#e4a457", "#f1c77e"]
+                : ["#86a9c4", "#b8cfdf"];
+            const templateMaterial = new THREE.MeshStandardMaterial({
+              color: palette[segment.index % palette.length],
+              metalness: 0,
+              roughness: 0.7,
+              side: THREE.DoubleSide,
+            });
+            const mesh = new THREE.Mesh(segment.geometry, templateMaterial);
+            mesh.name = `${model.id}-${segment.template}-template-${segment.index + 1}`;
+            mesh.position.set(
+              segment.assemblyOffset.x -
+                (familyBounds.minX + rowWidth / 2) +
+                (segment.index - (segment.count - 1) / 2) * seamReveal,
+              segment.assemblyOffset.y - familyBounds.minY + rowY,
+              familyIndex * Math.max(0.3, segment.thickness * 1.5),
+            );
+            mesh.userData.template = segment.template;
+            mesh.userData.templatePart = segment.index + 1;
+            mesh.userData.ownsTemplateMaterial = true;
+            hoverExplodedGroup.add(mesh);
+          });
+        });
       }
       updateHoverDiningTableGuide(guideMesh, latestParamsRef.current);
     } else {
@@ -1256,17 +1410,36 @@ const HolderViewer = forwardRef<
     meshes.forEach((mesh) => mesh.geometry.dispose());
   }, [model]);
 
+  const exportHoverTemplateStls = useCallback(() => {
+    if (model.viewer !== "hover-dining-table-v1") return;
+    const segments = createHoverDiningTableTemplateSegments(
+      latestParamsRef.current,
+      model,
+      1,
+    );
+    segments.forEach((segment) => {
+      const mesh = new THREE.Mesh(createCleanExportGeometry(segment.geometry));
+      mesh.name = `${model.id}-${segment.template}-template-part-${segment.index + 1}`;
+      mesh.updateMatrixWorld(true);
+      const result = new STLExporter().parse(mesh, { binary: true });
+      downloadBlob(new Blob([result], { type: "model/stl" }), segment.fileName);
+      mesh.geometry.dispose();
+      segment.geometry.dispose();
+    });
+  }, [model]);
+
   useImperativeHandle(
     ref,
     () => ({
       exportStl,
       exportLidStl,
       exportBoxAndLidStl,
+      exportHoverTemplateStls,
       getStlBlob: createStlBlob,
       resetCamera,
       setView: setCameraView,
     }),
-    [createStlBlob, exportBoxAndLidStl, exportLidStl, exportStl, resetCamera, setCameraView],
+    [createStlBlob, exportBoxAndLidStl, exportHoverTemplateStls, exportLidStl, exportStl, resetCamera, setCameraView],
   );
 
   useEffect(() => {
@@ -1703,6 +1876,29 @@ const HolderViewer = forwardRef<
       assemblyMode === "cut-list" ? (
         <HoverDiningTableCutList params={params} unit={unit} />
       ) : null}
+      {model.viewer === "hover-dining-table-v1" &&
+      assemblyMode === "templates" &&
+      hoverTemplateSummary ? (
+        <aside className="hover-template-legend" aria-label="Routing template summary">
+          <div>
+            <span className="template-swatch rail" aria-hidden="true" />
+            <strong>Top rail</strong>
+            <span>
+              {hoverTemplateSummary.templates[0].segmentCount} plates · mirror by end
+            </span>
+          </div>
+          <div>
+            <span className="template-swatch stile" aria-hidden="true" />
+            <strong>Vertical stile</strong>
+            <span>
+              {hoverTemplateSummary.templates[1].segmentCount} plates · mirror left/right
+            </span>
+          </div>
+          <p>
+            {formatLength(hoverTemplateSummary.thickness, unit)} thick · {formatLength(hoverTemplateSummary.plateLength, unit)} usable plate · full-size STL export
+          </p>
+        </aside>
+      ) : null}
       <div className="viewer-status" data-testid="viewer-status">
         {getStatusItems(model, params, unit).map((item) => (
           <span key={item}>{item}</span>
@@ -1710,11 +1906,17 @@ const HolderViewer = forwardRef<
         <span>{RENDER_MODE_LABELS[renderMode]}</span>
         {model.viewer === "hover-dining-table-v1" &&
         assemblyMode === "exploded" ? (
-          <span>Exploded · 13 pieces</span>
+          <span>Exploded · {getHoverDiningTablePieceCount(params)} pieces</span>
         ) : null}
         {model.viewer === "hover-dining-table-v1" &&
         assemblyMode === "cut-list" ? (
-          <span>Cut list · full-size · 13 pieces</span>
+          <span>
+            Cut list · full-size · {getHoverDiningTablePieceCount(params)} pieces
+          </span>
+        ) : null}
+        {model.viewer === "hover-dining-table-v1" &&
+        assemblyMode === "templates" ? (
+          <span>Routing templates · 2 profiles · segmented STLs</span>
         ) : null}
       </div>
       <div className="viewer-nav" aria-label="3D view controls">
@@ -2023,6 +2225,153 @@ function BezierCurveControl({
   );
 }
 
+function HoverSupportLayoutControl({
+  params,
+  onChange,
+}: {
+  params: ModelParams;
+  onChange: (key: string, value: number) => void;
+}) {
+  return (
+    <div className="hover-support-layout-controls">
+      <div className="select-control">
+        <label htmlFor="top-support-style">Top support</label>
+        <Select
+          onValueChange={(value) => onChange("topSupportStyle", Number(value))}
+          value={String(Math.round(getParam(params, "topSupportStyle")))}
+        >
+          <SelectTrigger aria-label="Top support style" id="top-support-style">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="0">Cross bars (X)</SelectItem>
+            <SelectItem value="1">Original stretchers</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="select-control">
+        <label htmlFor="bottom-support-style">Bottom support</label>
+        <Select
+          onValueChange={(value) => onChange("bottomSupportStyle", Number(value))}
+          value={String(Math.round(getParam(params, "bottomSupportStyle")))}
+        >
+          <SelectTrigger aria-label="Bottom support style" id="bottom-support-style">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="0">Cross bars (X)</SelectItem>
+            <SelectItem value="1">Single center board</SelectItem>
+            <SelectItem value="2">None</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
+
+const HOVER_PARAMETER_GROUPS = [
+  "Overall",
+  "Tabletop",
+  "End boxes",
+  "Support layout",
+  "Support members",
+  "Routing templates",
+] as const;
+
+function HoverDiningTableParameterControls({
+  model,
+  params,
+  unit,
+  onChange,
+  onUnitChange,
+}: {
+  model: ModelDefinition;
+  params: ModelParams;
+  unit: LengthUnit;
+  onChange: (key: string, value: number) => void;
+  onUnitChange: (unit: LengthUnit) => void;
+}) {
+  return (
+    <div className="parameter-groups">
+      {HOVER_PARAMETER_GROUPS.map((group) => {
+        const parameters = model.parameters.filter(
+          (parameter) => parameter.group === group,
+        );
+        if (parameters.length === 0) return null;
+        return (
+          <section
+            aria-labelledby={`parameter-group-${group.toLowerCase().replace(/\s+/g, "-")}`}
+            className="nested-parameter-section parameter-group"
+            key={group}
+          >
+            <div className="divider-controls-heading">
+              <h3
+                id={`parameter-group-${group.toLowerCase().replace(/\s+/g, "-")}`}
+              >
+                {group}
+              </h3>
+              {group === "Support layout" ? (
+                <p>Choose the top and floor architecture independently.</p>
+              ) : group === "Support members" ? (
+                <p>
+                  One section drives every selected support; larger sections
+                  grow the matching box bearing members.
+                </p>
+              ) : group === "End boxes" ? (
+                <p>Top and bottom corner radii remain independently editable.</p>
+              ) : null}
+            </div>
+            {group === "Support layout" ? (
+              <HoverSupportLayoutControl params={params} onChange={onChange} />
+            ) : parameters.map((parameter) => {
+              if (
+                parameter.key === "halfLapClearance" &&
+                getParam(params, "topSupportStyle") >= 0.5 &&
+                getParam(params, "bottomSupportStyle") >= 0.5
+              ) {
+                return null;
+              }
+              if (parameter.key === "mockScale") {
+                return (
+                  <ScaleControl
+                    key={parameter.key}
+                    limits={getParameterLimits(model, params, parameter.key)}
+                    onChange={(value) => onChange(parameter.key, value)}
+                    value={getParam(params, parameter.key)}
+                  />
+                );
+              }
+              if (CURVE_PARAM_KEYS.has(parameter.key)) {
+                return (
+                  <BezierCurveControl
+                    key={parameter.key}
+                    label={parameter.label}
+                    limits={getParameterLimits(model, params, parameter.key)}
+                    onChange={(value) => onChange(parameter.key, value)}
+                    value={getParam(params, parameter.key)}
+                  />
+                );
+              }
+              return (
+                <NumberControl
+                  key={parameter.key}
+                  label={parameter.label}
+                  limits={getParameterLimits(model, params, parameter.key)}
+                  onChange={(value) => onChange(parameter.key, value)}
+                  onUnitChange={onUnitChange}
+                  preferFineStep={parameter.key.endsWith("Clearance")}
+                  unit={unit}
+                  valueMm={params[parameter.key]}
+                />
+              );
+            })}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 function AngleControl({
   label,
   limits,
@@ -2181,6 +2530,7 @@ function HoverAssemblyControl({
         ["assembled", "Assembled"],
         ["exploded", "Exploded"],
         ["cut-list", "Cut list"],
+        ["templates", "Templates"],
       ] as const).map(([mode, label]) => (
         <button
           aria-pressed={value === mode}
@@ -2719,6 +3069,7 @@ function WorkspaceActionsMenu({
   onExport,
   onExportLid,
   onExportBoxAndLid,
+  onExportHoverTemplates,
   onSavedVersion,
   onThemeChange,
 }: {
@@ -2733,6 +3084,7 @@ function WorkspaceActionsMenu({
   onExport: () => void;
   onExportLid: () => void;
   onExportBoxAndLid: () => void;
+  onExportHoverTemplates: () => void;
   onSavedVersion: (versionId: Id<"versions">, title: string) => void;
   onThemeChange: (theme: ThemeMode) => void;
 }) {
@@ -2819,6 +3171,12 @@ function WorkspaceActionsMenu({
                   </button>
                 </>
               ) : null}
+              {model.viewer === "hover-dining-table-v1" ? (
+                <button onClick={onExportHoverTemplates} type="button">
+                  <Download aria-hidden="true" />
+                  Export routing-template STL set
+                </button>
+              ) : null}
             </div>
           </div>
         </>
@@ -2840,6 +3198,7 @@ function WorkspaceHeader({
   onExport,
   onExportLid,
   onExportBoxAndLid,
+  onExportHoverTemplates,
   onSavedVersion,
   onThemeChange,
 }: {
@@ -2855,6 +3214,7 @@ function WorkspaceHeader({
   onExport: () => void;
   onExportLid: () => void;
   onExportBoxAndLid: () => void;
+  onExportHoverTemplates: () => void;
   onSavedVersion: (versionId: Id<"versions">, title: string) => void;
   onThemeChange: (theme: ThemeMode) => void;
 }) {
@@ -2876,6 +3236,7 @@ function WorkspaceHeader({
           onExport={onExport}
           onExportLid={onExportLid}
           onExportBoxAndLid={onExportBoxAndLid}
+          onExportHoverTemplates={onExportHoverTemplates}
           onSavedVersion={onSavedVersion}
           onThemeChange={onThemeChange}
           params={params}
@@ -3113,7 +3474,7 @@ export default function App({
           model.geometry.gridfinityGridSize,
         );
       }
-      return {
+      const next = {
         ...current,
         [key]: Number(
           nextValue.toFixed(
@@ -3125,6 +3486,21 @@ export default function App({
           ),
         ),
       };
+      if (model.viewer === "hover-dining-table-v1") {
+        if (key === "xBraceWidth") {
+          next.frameSideWidth = Math.max(current.frameSideWidth, nextValue);
+        } else if (key === "xBraceThickness") {
+          next.frameTopRailHeight = Math.max(
+            current.frameTopRailHeight,
+            nextValue,
+          );
+          next.frameBottomRailHeight = Math.max(
+            current.frameBottomRailHeight,
+            nextValue,
+          );
+        }
+      }
+      return next;
     });
   };
 
@@ -3362,6 +3738,9 @@ export default function App({
         onExport={() => viewerRef.current?.exportStl()}
         onExportLid={() => viewerRef.current?.exportLidStl()}
         onExportBoxAndLid={() => viewerRef.current?.exportBoxAndLidStl()}
+        onExportHoverTemplates={() =>
+          viewerRef.current?.exportHoverTemplateStls()
+        }
         onSavedVersion={handleSavedVersion}
         onThemeChange={updateTheme}
         params={params}
@@ -3496,25 +3875,30 @@ export default function App({
               <div className="inspector-body">
                 <section className="panel-section">
                   <h2>Parameters</h2>
-                  {model.viewer === "dining-table-v1" ||
-                  model.viewer === "hover-dining-table-v1" ? (
+                  {model.viewer === "dining-table-v1" ? (
                     <>
                       <ScaleControl
                         limits={getParameterLimits(model, params, "mockScale")}
                         onChange={(value) => updateParam("mockScale", value)}
                         value={getParam(params, "mockScale")}
                       />
-                      {model.viewer === "dining-table-v1" ? (
-                        <PostGrooveToggle
-                          checked={getParam(params, "legGrooveEnabled") >= 0.5}
-                          onChange={(checked) =>
-                            updateParam("legGrooveEnabled", checked ? 1 : 0)
-                          }
-                        />
-                      ) : null}
+                      <PostGrooveToggle
+                        checked={getParam(params, "legGrooveEnabled") >= 0.5}
+                        onChange={(checked) =>
+                          updateParam("legGrooveEnabled", checked ? 1 : 0)
+                        }
+                      />
                     </>
                   ) : null}
-                  {model.parameters
+                  {model.viewer === "hover-dining-table-v1" ? (
+                    <HoverDiningTableParameterControls
+                      model={model}
+                      onChange={updateParam}
+                      onUnitChange={setUnit}
+                      params={params}
+                      unit={unit}
+                    />
+                  ) : model.parameters
                     .filter((parameter) => {
                       if (
                         model.viewer === "dining-table-v1" &&
@@ -3543,27 +3927,6 @@ export default function App({
                         valueMm={params[parameter.key]}
                       />
                     ))}
-                  {model.viewer === "hover-dining-table-v1" ? (
-                    <section className="nested-parameter-section" aria-label="Bézier curve editor">
-                      <div className="divider-controls-heading">
-                        <div>
-                          <h3>Curve editor</h3>
-                          <p>κ scales each control handle from its radius.</p>
-                        </div>
-                      </div>
-                      {model.parameters
-                        .filter((parameter) => CURVE_PARAM_KEYS.has(parameter.key))
-                        .map((parameter) => (
-                          <BezierCurveControl
-                            key={parameter.key}
-                            label={parameter.label}
-                            limits={getParameterLimits(model, params, parameter.key)}
-                            onChange={(value) => updateParam(parameter.key, value)}
-                            value={getParam(params, parameter.key)}
-                          />
-                        ))}
-                    </section>
-                  ) : null}
                   {model.viewer === "simple-box-v1" ? (
                     <GridfinityToggle
                       checked={params.gridfinityCompatible >= 0.5}
@@ -3614,8 +3977,11 @@ export default function App({
                       value={assemblyMode}
                     />
                     <p className="assembly-mode-note">
-                      Explode all 13 pieces or open the full-size dimensioned
-                      fabrication sheet.
+                      Explode all {getHoverDiningTablePieceCount(params)} pieces,
+                      open the full-size fabrication
+                      sheet, or inspect the plate-split rail and stile routing
+                      templates. Export the individual template STLs from the
+                      workspace actions menu.
                     </p>
                   </section>
                 ) : null}

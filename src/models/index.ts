@@ -77,8 +77,13 @@ export {
   createHoverDiningTableExplodedParts,
   createHoverDiningTableGeometry,
   getHoverDiningTableCutList,
+  getHoverDiningTablePieceCount,
   updateHoverDiningTableGuide,
 } from "./hoverDiningTable";
+export {
+  createHoverDiningTableTemplateSegments,
+  getHoverDiningTableTemplateSummary,
+} from "./hoverDiningTableTemplates";
 export { getDefaultParams, getParam, getParameter } from "./shared";
 export type {
   AuditItem,

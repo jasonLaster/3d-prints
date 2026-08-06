@@ -37,22 +37,28 @@ close(params.frameDepth, 2.5 * inch, "end-box depth");
 close(params.frameSideWidth, 2.25 * inch, "end-box side width");
 close(params.frameBottomRailHeight, 1.75 * inch, "bottom rail");
 close(params.frameTopRailHeight, 1.25 * inch, "top rail");
-close(params.frameOuterCornerRadius, 0.75 * inch, "outer corner radius");
-close(params.frameInnerCornerRadius, 2.5 * inch, "inner corner radius");
+close(params.frameOuterTopCornerRadius, 0.75 * inch, "outer top radius");
+close(params.frameOuterBottomCornerRadius, 0.75 * inch, "outer bottom radius");
+close(params.frameInnerTopCornerRadius, 2.5 * inch, "inner top radius");
+close(params.frameInnerBottomCornerRadius, 2.5 * inch, "inner bottom radius");
 close(params.frameEdgeRoundover, 0.375 * inch, "end-box face-edge round-over");
-close(params.upperBraceWidth, 1.75 * inch, "upper-X brace width");
-close(params.upperBraceThickness, 1 * inch, "upper-X brace thickness");
-close(params.lowerBraceWidth, 2 * inch, "floor-X brace width");
-close(params.lowerBraceThickness, 1.5 * inch, "floor-X brace thickness");
-close(params.upperBraceEdgeRadius, 0.125 * inch, "upper-X top/bottom round-over");
-close(params.lowerBraceEdgeRadius, 0.125 * inch, "floor-X top/bottom round-over");
+close(params.xBraceWidth, 2 * inch, "shared X-brace width");
+close(params.xBraceThickness, 1.25 * inch, "shared X-brace thickness");
+close(params.xBraceEdgeRadius, 0.125 * inch, "shared X-brace round-over");
 close(params.halfLapClearance, 0, "nominal half-lap clearance");
+assert.equal(params.topSupportStyle, 0, "upper X remains the default support layout");
+assert.equal(params.bottomSupportStyle, 0, "floor X remains the default support layout");
+close(params.templateThickness, 0.125 * inch, "routing-template thickness");
+close(params.templatePlateLength, 9 * inch, "usable routing-template print span");
+close(params.templateDovetailDepth, 0.5 * inch, "routing-template dovetail depth");
+close(params.templateJointClearance, 0.2, "routing-template joint clearance");
+assert.ok(params.templatePlateLength > params.templateDovetailDepth * 4);
+assert.ok(params.templateJointClearance < params.templateDovetailDepth / 3);
 assert.equal(params.frameBottomSpread, 0, "orthogonal end box is the evidence-backed default");
-assert.equal(params.upperBraceEndpointInset, 0);
-assert.equal(params.lowerBraceEndpointInset, 0);
+assert.equal(params.xBraceEndpointInset, 0);
 assert.equal("hoverGap" in params, false, "the revised model must not expose a hover gap");
-assert.equal("stretcherHeight" in params, false, "parallel stretchers are superseded");
-assert.equal("stretcherThickness" in params, false, "parallel stretchers are superseded");
+assert.equal("stretcherHeight" in params, false, "straight supports reuse the shared section");
+assert.equal("stretcherThickness" in params, false, "straight supports reuse the shared section");
 assert.equal("supportPadLength" in params, false, "support pads are superseded");
 
 for (const key of [
@@ -65,8 +71,8 @@ for (const key of [
 close(params.topEdgeTension, 0.552, "tabletop near-circular Bézier tension", 0.001);
 close(params.frameOuterCurveTension, 0.552, "outer near-circular Bézier tension", 0.001);
 assert.notEqual(
-  params.frameOuterCornerRadius,
-  params.frameInnerCornerRadius,
+  params.frameOuterTopCornerRadius,
+  params.frameInnerTopCornerRadius,
   "inner and outer end-box radii must remain independently editable",
 );
 
@@ -79,8 +85,10 @@ const openingBottomWidth = frameBottomWidth - 2 * params.frameSideWidth;
 const openingHeight =
   frameHeight - params.frameBottomRailHeight - params.frameTopRailHeight;
 const spanX = params.tableLength - 2 * (params.endOverhang + params.frameDepth);
-const deriveBraceEnd = (openingWidth, width, inset) => {
-  const cornerTangentY = openingWidth / 2 - params.frameInnerCornerRadius;
+const deriveBraceEnd = (openingWidth, innerRadius) => {
+  const width = params.xBraceWidth;
+  const inset = params.xBraceEndpointInset;
+  const cornerTangentY = openingWidth / 2 - innerRadius;
   let endpointY = cornerTangentY - inset - width / 2;
   let miterHalfWidth = width / 2;
   for (let iteration = 0; iteration < 12; iteration += 1) {
@@ -97,13 +105,11 @@ const deriveBraceEnd = (openingWidth, width, inset) => {
 };
 const upperEnd = deriveBraceEnd(
   openingTopWidth,
-  params.upperBraceWidth,
-  params.upperBraceEndpointInset,
+  params.frameInnerTopCornerRadius,
 );
 const lowerEnd = deriveBraceEnd(
   openingBottomWidth,
-  params.lowerBraceWidth,
-  params.lowerBraceEndpointInset,
+  params.frameInnerBottomCornerRadius,
 );
 const upperEndpointY = upperEnd.endpointY;
 const lowerEndpointY = lowerEnd.endpointY;
@@ -116,34 +122,38 @@ const lowerAngle = Math.atan2(lowerSpanY, spanX);
 
 assert.ok(frameTopWidth < params.tableWidth, "end boxes must sit inside the top");
 assert.ok(frameBottomWidth <= params.tableWidth, "end-box feet must remain inside the top width");
-assert.ok(openingTopWidth > 2 * params.frameInnerCornerRadius);
-assert.ok(openingBottomWidth > 2 * params.frameInnerCornerRadius);
-assert.ok(openingHeight > 2 * params.frameInnerCornerRadius);
+assert.ok(openingTopWidth > 2 * params.frameInnerTopCornerRadius);
+assert.ok(openingBottomWidth > 2 * params.frameInnerBottomCornerRadius);
+assert.ok(
+  openingHeight >
+    params.frameInnerTopCornerRadius + params.frameInnerBottomCornerRadius,
+);
 assert.ok(spanX > 4 * inch, "both X assemblies need a positive structural span");
 assert.ok(upperLength > spanX && lowerLength > spanX);
 assert.ok(upperAngle > 0 && lowerAngle > 0);
 assert.ok(upperAngle < Math.PI / 4 && lowerAngle < Math.PI / 4);
 close(
-  upperEnd.endpointOuterY + params.upperBraceEndpointInset,
+  upperEnd.endpointOuterY + params.xBraceEndpointInset,
   upperEnd.cornerTangentY,
   "upper angled end clears the inner-corner tangent",
 );
 close(
-  lowerEnd.endpointOuterY + params.lowerBraceEndpointInset,
+  lowerEnd.endpointOuterY + params.xBraceEndpointInset,
   lowerEnd.cornerTangentY,
   "lower angled end clears the inner-corner tangent",
 );
-close(params.upperBraceThickness / 2, 0.5 * inch, "upper half-lap depth");
-close(params.lowerBraceThickness / 2, 0.75 * inch, "lower half-lap depth");
+close(params.xBraceThickness / 2, 0.625 * inch, "shared half-lap depth");
 close(topBottom, frameHeight, "end boxes terminate at the tabletop underside");
 close(topBottom, topBottom, "upper-X top contact");
 close(0, 0, "lower-X floor contact");
-assert.ok(params.upperBraceWidth <= params.frameSideWidth);
-assert.ok(params.lowerBraceWidth <= params.frameSideWidth);
-assert.ok(params.upperBraceThickness <= params.frameTopRailHeight);
-assert.ok(params.lowerBraceThickness <= params.frameBottomRailHeight);
-assert.ok(params.halfLapClearance < params.upperBraceThickness / 2);
-assert.ok(params.halfLapClearance < params.lowerBraceThickness / 2);
+assert.ok(params.xBraceWidth <= params.frameSideWidth);
+assert.ok(params.xBraceThickness <= params.frameTopRailHeight);
+assert.ok(params.xBraceThickness <= params.frameBottomRailHeight);
+assert.ok(params.halfLapClearance < params.xBraceThickness / 2);
+assert.ok(params.sideOverhang < model.parameters.find((p) => p.key === "sideOverhang").limits.max);
+assert.ok(model.parameters.find((p) => p.key === "frameBottomSpread").limits.min < -2 * inch);
+assert.ok(model.parameters.find((p) => p.key === "xBraceWidth").limits.max > 2 * inch);
+assert.ok(model.parameters.find((p) => p.key === "xBraceThickness").limits.max > 1.5 * inch);
 
 const mockEnvelope = [
   params.tableLength / params.mockScale,
@@ -158,6 +168,10 @@ const source = fs.readFileSync(
   path.join(root, "src/models/hoverDiningTable.ts"),
   "utf8",
 );
+const templateSource = fs.readFileSync(
+  path.join(root, "src/models/hoverDiningTableTemplates.ts"),
+  "utf8",
+);
 for (const required of [
   "assertHoverDiningTableSpec",
   "addRoundedTrapezoid",
@@ -166,9 +180,16 @@ for (const required of [
   "createEndFrameGeometry",
   "createHalfLappedX",
   "createHoverDiningTableExplodedParts",
-  "parts.length !== 13",
+  "createEndBoxPartProfiles",
+  "createSelectivelyRoundedExtrusion",
+  "assertFabricationProfile",
+  "four Bézier returns and two square tangent seams",
+  "parts.length !== expectedPieces",
   "getHoverDiningTableCutList",
-  "X-Hover cut list must account for 13 pieces",
+  "Hover-table cut list must account for",
+  "getHoverDiningTablePieceCount",
+  "createStraightSupportParts",
+  "createStraightSupportFabricationProfile",
   "miteredBraceFootprint",
   "alignConvexPolygon",
   "createRoundedPlanPrism",
@@ -180,8 +201,22 @@ for (const required of [
 ]) {
   assert.ok(source.includes(required), `procedural source is missing ${required}`);
 }
+for (const required of [
+  "roundedTrapezoidRightSide",
+  "roundedTrapezoidTopSide",
+  "createHoverDiningTableTemplateSegments",
+  "getHoverDiningTableTemplateSummary",
+  "templatePlateLength",
+  "templateDovetailDepth",
+  "templateJointClearance",
+  "jointStart: index === 0 ? \"none\" : \"female\"",
+  "jointEnd: index === count - 1 ? \"none\" : \"male\"",
+  "exceeds the usable square plate span",
+  "must export as multiple printable plates",
+]) {
+  assert.ok(templateSource.includes(required), `template source is missing ${required}`);
+}
 for (const forbidden of [
-  "createStretchers",
   "supportPadLength",
   "supportPadWidth",
   "getParam(params, \"hoverGap\")",
@@ -194,18 +229,23 @@ const invariantText = [
   ...model.audit.invariants,
 ].join(" ");
 for (const phrase of [
-  "exactly four diagonal braces",
+  "independently selectable support layouts",
   "50/50 half-lap",
   "no overlapping solid volume",
   "directly against the tabletop underside",
   "directly on the floor",
-  "Do not generate parallel lengthwise stretchers",
+  "Generate parallel upper lengthwise stretchers only when selected",
   "cubic Bézier",
   "straight-rail tangent",
   "top and bottom long edges",
-  "exactly 13 glue-up pieces",
+  "11–13 glue-up pieces",
   "presentation-only",
+  "do not substitute proxy blanks",
+  "exact constrained profiles",
   "full-size finished dimensions",
+  "full-size top-rail routing template",
+  "complementary in-plane dovetails",
+  "1/8 in nominal thickness",
   "rough-milling allowance",
   "zero means orthogonal",
   "material-neutral",
@@ -214,5 +254,5 @@ for (const phrase of [
 }
 
 console.log(
-  `hover-dining-table audit passed: 75 × 35.5 × 29.5 in, 2 end boxes, 4 diagonal braces, 2 centered half-laps, zero contact gaps, 1:${params.mockScale} model ${mockEnvelope.map((value) => value.toFixed(1)).join(" × ")} mm`,
+  `hover-dining-table audit passed: 75 × 35.5 × 29.5 in, 2 end boxes, 4 diagonal braces, 2 centered half-laps, 2 plate-split routing templates, zero contact gaps, 1:${params.mockScale} model ${mockEnvelope.map((value) => value.toFixed(1)).join(" × ")} mm`,
 );

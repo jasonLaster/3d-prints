@@ -927,6 +927,81 @@ html.dark .viewer-status span {
   display: inline-flex;
 }
 
+.hover-template-legend {
+  position: absolute;
+  z-index: 5;
+  left: 160px;
+  bottom: 26px;
+  width: min(320px, calc(100% - 186px));
+  padding: 13px 14px;
+  border: 1px solid rgba(91, 100, 112, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 30px rgba(39, 46, 56, 0.1);
+  color: #424b57;
+  backdrop-filter: blur(12px);
+}
+
+.hover-template-legend > div {
+  display: grid;
+  grid-template-columns: 12px minmax(86px, auto) 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.hover-template-legend > div + div {
+  margin-top: 7px;
+}
+
+.hover-template-legend strong {
+  font-size: 11px;
+}
+
+.hover-template-legend span:last-child {
+  color: #727b86;
+  text-align: right;
+}
+
+.hover-template-legend p {
+  margin: 10px 0 0;
+  padding-top: 9px;
+  border-top: 1px solid rgba(91, 100, 112, 0.14);
+  color: #69727d;
+  font-size: 10px;
+}
+
+.template-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: #e4a457;
+}
+
+.template-swatch.stile {
+  background: #86a9c4;
+}
+
+.dark .hover-template-legend {
+  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(25, 29, 35, 0.9);
+  color: #e5e9ee;
+}
+
+.dark .hover-template-legend span:last-child,
+.dark .hover-template-legend p {
+  color: #aeb7c2;
+}
+
+@media (max-width: 760px) {
+  .hover-template-legend {
+    right: 16px;
+    bottom: 16px;
+    left: auto;
+    width: min(320px, calc(100% - 32px));
+  }
+}
+
 .hover-cut-sheet {
   position: absolute;
   inset: 0;
@@ -1157,6 +1232,57 @@ html.dark .viewer-status span {
   stroke: #98805b;
   stroke-dasharray: 4 3;
   stroke-width: 1;
+}
+
+.cut-part-section path {
+  fill: rgba(193, 159, 105, 0.1);
+  stroke: #776b5a;
+  stroke-width: 1.1;
+  vector-effect: non-scaling-stroke;
+}
+
+.cut-part-section line {
+  stroke: #8c563d;
+  stroke-width: 0.85;
+  vector-effect: non-scaling-stroke;
+}
+
+.cut-part-section .cut-part-section-pocket {
+  stroke: none;
+}
+
+.cut-part-section .cut-part-section-pocket-line {
+  stroke: #8c563d;
+  stroke-dasharray: 2 2;
+  stroke-width: 1;
+}
+
+.cut-part-section text,
+.cut-part-feature-labels text,
+.cut-part-view-label text {
+  fill: #6a6257;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 7.5px;
+  text-anchor: middle;
+}
+
+.cut-part-section text:first-child {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cut-part-feature-labels text {
+  fill: #8c563d;
+  text-anchor: start;
+}
+
+.cut-part-view-label text {
+  fill: #777064;
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  text-anchor: start;
+  text-transform: uppercase;
 }
 
 .cut-dimension-lines line {
@@ -1732,6 +1858,61 @@ html.dark .panel-section:nth-child(even) {
 
 .nested-parameter-section .divider-controls-heading {
   margin-bottom: 14px;
+}
+
+.parameter-groups {
+  display: grid;
+  gap: 20px;
+}
+
+.parameter-group {
+  margin-top: 0;
+  padding-top: 18px;
+}
+
+.parameter-group:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.parameter-group .divider-controls-heading p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.parameter-group .divider-controls-heading {
+  display: block;
+}
+
+.hover-support-layout-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.hover-support-layout-controls .select-control {
+  min-width: 0;
+}
+
+.hover-support-layout-controls label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.hover-support-layout-controls .ui-select-trigger {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .hover-support-layout-controls {
+    grid-template-columns: 1fr;
+  }
 }
 
 .number-control label {

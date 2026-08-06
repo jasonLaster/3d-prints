@@ -15,40 +15,292 @@ function formatProcessing(part: HoverDiningTableCutPart) {
   if (part.kind === "brace" && part.lap) {
     return `${formatAngle(part.cutAngleDegrees)} box-parallel ends · ${part.lap.face} half-lap`;
   }
-  if (part.kind === "tabletop") return "square ends · roll long edges";
-  if (part.kind === "stile") {
-    return `${formatAngle(part.cutAngleDegrees)} blank · route frame after glue-up`;
+  if (part.kind === "tabletop") return "square ends · Bézier-roll long edges";
+  if (part.kind === "rail") {
+    return "finished inner/outer Bézier corners · rounded face edges";
   }
-  return "square blank";
+  if (part.kind === "stile") {
+    return `${formatAngle(part.cutAngleDegrees)} tangent-seam profile · rounded face edges`;
+  }
+  if (part.kind === "support") {
+    return "square box-parallel ends · rounded top/bottom long edges";
+  }
+  return "finished profile";
 }
 
-function GrainArrow({ markerId }: { markerId: string }) {
+function GrainArrow({
+  markerId,
+  layout,
+  vertical,
+}: {
+  markerId: string;
+  layout: SvgProfileLayout;
+  vertical: boolean;
+}) {
+  if (vertical) {
+    const x = (layout.left + layout.right) / 2;
+    const centerY = (layout.top + layout.bottom) / 2;
+    return (
+      <g className="cut-part-grain">
+        <line
+          markerEnd={`url(#${markerId})`}
+          x1={x}
+          x2={x}
+          y1={layout.bottom - 12}
+          y2={layout.top + 12}
+        />
+        <text transform={`rotate(-90 ${x - 8} ${centerY})`} x={x - 8} y={centerY}>
+          grain
+        </text>
+      </g>
+    );
+  }
+  const y = (layout.top + layout.bottom) / 2;
   return (
     <g className="cut-part-grain">
-      <line markerEnd={`url(#${markerId})`} x1="92" x2="232" y1="76" y2="76" />
-      <text x="104" y="68">grain</text>
+      <line
+        markerEnd={`url(#${markerId})`}
+        x1={layout.left + (layout.right - layout.left) * 0.18}
+        x2={layout.right - (layout.right - layout.left) * 0.18}
+        y1={y}
+        y2={y}
+      />
+      <text x={layout.left + (layout.right - layout.left) * 0.22} y={y - 7}>
+        grain
+      </text>
     </g>
   );
 }
 
-function getPartSkew(part: HoverDiningTableCutPart) {
-  const angle = part.cutAngleDegrees ?? 0;
-  return part.kind === "stile" || part.kind === "brace"
-    ? Math.min(34, Math.tan((angle * Math.PI) / 180) * 62)
-    : 0;
+type SvgProfileLayout = {
+  d: string;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  scale: number;
+};
+
+function layoutProfile(
+  profile: HoverDiningTableCutPart["fabricationProfile"],
+  frame: { x: number; y: number; width: number; height: number },
+  section = false,
+): SvgProfileLayout {
+  const commands = section ? profile.section.outline : profile.outline;
+  const rawBounds = section
+    ? (() => {
+        const points = commands.flatMap((command) => {
+          if (command.kind === "close") return [];
+          if (command.kind === "cubic") {
+            return [command.control1, command.control2, command.to];
+          }
+          return [command.to];
+        });
+        return {
+          minX: Math.min(...points.map((point) => point.x)),
+          minY: Math.min(...points.map((point) => point.y)),
+          maxX: Math.max(...points.map((point) => point.x)),
+          maxY: Math.max(...points.map((point) => point.y)),
+        };
+      })()
+    : profile.bounds;
+  const spanX = Math.max(rawBounds.maxX - rawBounds.minX, 1e-6);
+  const spanY = Math.max(rawBounds.maxY - rawBounds.minY, 1e-6);
+  const scale = Math.min(frame.width / spanX, frame.height / spanY);
+  const renderedWidth = spanX * scale;
+  const renderedHeight = spanY * scale;
+  const left = frame.x + (frame.width - renderedWidth) / 2;
+  const top = frame.y + (frame.height - renderedHeight) / 2;
+  const map = (point: { x: number; y: number }) => ({
+    x: left + (point.x - rawBounds.minX) * scale,
+    y: top + renderedHeight - (point.y - rawBounds.minY) * scale,
+  });
+  const d = commands.map((command) => {
+    if (command.kind === "close") return "Z";
+    if (command.kind === "cubic") {
+      const control1 = map(command.control1);
+      const control2 = map(command.control2);
+      const to = map(command.to);
+      return `C ${control1.x} ${control1.y} ${control2.x} ${control2.y} ${to.x} ${to.y}`;
+    }
+    const to = map(command.to);
+    return `${command.kind === "move" ? "M" : "L"} ${to.x} ${to.y}`;
+  }).join(" ");
+  return {
+    d,
+    left,
+    right: left + renderedWidth,
+    top,
+    bottom: top + renderedHeight,
+    scale,
+  };
 }
 
-function PartOutline({ part }: { part: HoverDiningTableCutPart }) {
-  const skew = getPartSkew(part);
-  if (part.kind === "stile" || part.kind === "brace") {
-    return (
-      <polygon
-        className="cut-part-outline"
-        points={`${45 + skew},38 ${280 + skew},38 ${280 - skew},100 ${45 - skew},100`}
-      />
-    );
+function PartOutline({
+  part,
+  layout,
+}: {
+  part: HoverDiningTableCutPart;
+  layout: SvgProfileLayout;
+}) {
+  return (
+    <path
+      className="cut-part-outline"
+      data-profile-family={part.fabricationProfile.family}
+      d={layout.d}
+    />
+  );
+}
+
+function PartSection({
+  part,
+  unit,
+}: {
+  part: HoverDiningTableCutPart;
+  unit: LengthUnit;
+}) {
+  const section = layoutProfile(
+    part.fabricationProfile,
+    { x: 326, y: 35, width: 64, height: 56 },
+    true,
+  );
+  const sectionMidY = (section.top + section.bottom) / 2;
+  const pocketTop = part.lap?.face === "top";
+  const clipId = `section-clip-${part.id}`;
+  return (
+    <g
+      className="cut-part-section"
+      data-section-kind={part.lap ? "half-lap" : "edge-treatment"}
+    >
+      <defs>
+        <clipPath id={clipId}>
+          <path d={section.d} />
+        </clipPath>
+      </defs>
+      <text x="358" y="25">{part.lap ? "Lap section" : "Edge section"}</text>
+      <path d={section.d} />
+      {part.lap ? (
+        <>
+          <rect
+            className="cut-part-section-pocket"
+            clipPath={`url(#${clipId})`}
+            fill={`url(#lap-hatch-${part.id})`}
+            height={(section.bottom - section.top) / 2}
+            width={section.right - section.left}
+            x={section.left}
+            y={pocketTop ? section.top : sectionMidY}
+          />
+          <line
+            className="cut-part-section-pocket-line"
+            x1={section.left}
+            x2={section.right}
+            y1={sectionMidY}
+            y2={sectionMidY}
+          />
+        </>
+      ) : null}
+      <line x1={section.left} x2={section.left - 10} y1={section.top} y2={section.top - 9} />
+      <text x="318" y="105">
+        R {formatLength(part.fabricationProfile.section.radius, unit)}
+      </text>
+      <text x="358" y="117">{part.fabricationProfile.section.label}</text>
+    </g>
+  );
+}
+
+function ProfileFeatureLabels({
+  part,
+  unit,
+}: {
+  part: HoverDiningTableCutPart;
+  unit: LengthUnit;
+}) {
+  const bezier = part.fabricationProfile.bezier;
+  if (!bezier) return null;
+  return (
+    <g className="cut-part-feature-labels">
+      <text x="45" y="29">
+        Outer R {formatLength(bezier.outerRadius, unit)} · κ {bezier.outerTension.toFixed(3)}
+      </text>
+      <text x="45" y="124">
+        Inner R {formatLength(bezier.innerRadius, unit)} · κ {bezier.innerTension.toFixed(3)}
+      </text>
+    </g>
+  );
+}
+
+function formatProcessDimension(
+  process: NonNullable<HoverDiningTableCutPart["processDimensions"]>[number],
+  unit: LengthUnit,
+) {
+  if (process.format === "ratio") return `κ ${process.value.toFixed(3)}`;
+  return formatLength(process.value, unit);
+}
+
+function dimensionLabel(part: HoverDiningTableCutPart) {
+  if (part.fabricationProfile.family === "frame-rail") return "profile envelope";
+  if (part.fabricationProfile.family === "frame-stile") return "tangent-to-tangent";
+  if (part.fabricationProfile.family === "brace") return "true member length";
+  if (part.fabricationProfile.family === "support") return "finished member length";
+  return "finished plan";
+}
+
+function lapPolygon(
+  part: HoverDiningTableCutPart,
+  layout: SvgProfileLayout,
+) {
+  if (!part.lap) return "";
+  const lapWidth = part.lap.length * layout.scale;
+  const shoulderShift =
+    part.width /
+    Math.tan((part.lap.shoulderAngleDegrees * Math.PI) / 180) *
+    layout.scale;
+  const centerX = (layout.left + layout.right) / 2;
+  return [
+    `${centerX - lapWidth / 2 + shoulderShift / 2},${layout.top}`,
+    `${centerX + lapWidth / 2 + shoulderShift / 2},${layout.top}`,
+    `${centerX + lapWidth / 2 - shoulderShift / 2},${layout.bottom}`,
+    `${centerX - lapWidth / 2 - shoulderShift / 2},${layout.bottom}`,
+  ].join(" ");
+}
+
+function lengthDimensionY(layout: SvgProfileLayout) {
+  return Math.max(145, layout.bottom + 28);
+}
+
+function widthDimensionX(layout: SvgProfileLayout) {
+  return layout.right + 18;
+}
+
+function sectionRadiusIsVisible(part: HoverDiningTableCutPart) {
+  return part.fabricationProfile.section.radius > 0;
+}
+
+function shouldShowBezierLabels(part: HoverDiningTableCutPart) {
+  return Boolean(part.fabricationProfile.bezier);
+}
+
+function shouldShowLap(part: HoverDiningTableCutPart) {
+  return Boolean(part.lap);
+}
+
+function shouldShowSection(part: HoverDiningTableCutPart) {
+  return sectionRadiusIsVisible(part);
+}
+
+function profileLabel(part: HoverDiningTableCutPart) {
+  switch (part.fabricationProfile.family) {
+    case "frame-rail":
+      return "true routed rail profile";
+    case "frame-stile":
+      return "true splayed stile profile";
+    case "brace":
+      return "mitered plan profile";
+    case "support":
+      return "square-ended member profile";
+    default:
+      return "square-ended plan profile";
   }
-  return <rect className="cut-part-outline" height="62" width="235" x="45" y="38" />;
 }
 
 function HoverCutPartDiagram({
@@ -60,21 +312,22 @@ function HoverCutPartDiagram({
 }) {
   const arrowId = `cut-arrow-${part.id}`;
   const grainArrowId = `grain-arrow-${part.id}`;
-  const skew = getPartSkew(part);
-  const lengthStartX = 45 - skew;
-  const lengthEndX = 280 - skew;
-  const outlineMaxX = 280 + skew;
-  const verticalDimensionX = outlineMaxX + 24;
-  const verticalTextX = verticalDimensionX + 23;
-  const lapWidth = part.lap
-    ? Math.max(12, Math.min(76, (part.lap.length / part.length) * 235))
-    : 0;
-  const lapShoulderShift = part.lap
-    ? lapWidth * Math.cos((part.lap.shoulderAngleDegrees * Math.PI) / 180)
-    : 0;
-  const lapCenterX = 162.5;
+  const layout = layoutProfile(
+    part.fabricationProfile,
+    { x: 45, y: 38, width: 238, height: 82 },
+  );
+  const lengthY = lengthDimensionY(layout);
+  const verticalDimensionX = widthDimensionX(layout);
+  const verticalTextX = verticalDimensionX + 18;
+  const lapCenterX = (layout.left + layout.right) / 2;
+  const isStile = part.fabricationProfile.family === "frame-stile";
   return (
-    <article className="hover-cut-card" data-part-id={part.id}>
+    <article
+      className="hover-cut-card"
+      data-grain-axis={isStile ? "vertical" : "horizontal"}
+      data-length-axis={isStile ? "vertical" : "horizontal"}
+      data-part-id={part.id}
+    >
       <header>
         <span className="hover-cut-part-id">{part.id}</span>
         <div>
@@ -87,7 +340,7 @@ function HoverCutPartDiagram({
         aria-label={`${part.name} dimensioned cut diagram`}
         className="hover-cut-diagram"
         role="img"
-        viewBox="0 0 390 170"
+        viewBox="0 0 420 205"
       >
         <defs>
           <marker
@@ -123,62 +376,62 @@ function HoverCutPartDiagram({
           </pattern>
         </defs>
 
-        <PartOutline part={part} />
-        {part.kind === "tabletop" ? (
-          <g className="cut-part-profile-lines">
-            <line x1="45" x2="280" y1="44" y2="44" />
-            <line x1="45" x2="280" y1="94" y2="94" />
-          </g>
+        <PartOutline layout={layout} part={part} />
+        {shouldShowBezierLabels(part) ? (
+          <ProfileFeatureLabels part={part} unit={unit} />
         ) : null}
-        {part.lap ? (
+        {shouldShowLap(part) ? (
           <g className="cut-part-lap">
             <polygon
               fill={`url(#lap-hatch-${part.id})`}
-              points={[
-                `${lapCenterX - lapWidth / 2 + lapShoulderShift / 2},38`,
-                `${lapCenterX + lapWidth / 2 + lapShoulderShift / 2},38`,
-                `${lapCenterX + lapWidth / 2 - lapShoulderShift / 2},100`,
-                `${lapCenterX - lapWidth / 2 - lapShoulderShift / 2},100`,
-              ].join(" ")}
+              points={lapPolygon(part, layout)}
             />
-            <text x={lapCenterX} y="31">
-              {part.lap.face} half-lap · {part.lap.shoulderAngleDegrees.toFixed(1)}°
+            <text x={lapCenterX} y={layout.top - 16}>
+              {part.lap!.face} half-lap · {part.lap!.shoulderAngleDegrees.toFixed(1)}°
             </text>
           </g>
         ) : null}
-        <GrainArrow markerId={grainArrowId} />
+        {shouldShowSection(part) ? <PartSection part={part} unit={unit} /> : null}
+        <GrainArrow
+          layout={layout}
+          markerId={grainArrowId}
+          vertical={part.fabricationProfile.family === "frame-stile"}
+        />
 
         <g className="cut-dimension-lines">
-          <line x1={lengthStartX} x2={lengthStartX} y1="104" y2="132" />
-          <line x1={lengthEndX} x2={lengthEndX} y1="104" y2="132" />
+          <line x1={layout.left} x2={layout.left} y1={layout.bottom + 4} y2={lengthY + 8} />
+          <line x1={layout.right} x2={layout.right} y1={layout.bottom + 4} y2={lengthY + 8} />
           <line
             markerEnd={`url(#${arrowId})`}
             markerStart={`url(#${arrowId})`}
-            x1={lengthStartX + 3}
-            x2={lengthEndX - 3}
-            y1="124"
-            y2="124"
+            x1={layout.left + 3}
+            x2={layout.right - 3}
+            y1={lengthY}
+            y2={lengthY}
           />
-          <text x={(lengthStartX + lengthEndX) / 2} y="145">
-            L {formatLength(part.length, unit)}
+          <text x={(layout.left + layout.right) / 2} y={lengthY + 19}>
+            {isStile ? "W" : "L"} {formatLength(isStile ? part.width : part.length, unit)}
           </text>
-          <line x1={outlineMaxX + 4} x2={verticalDimensionX + 9} y1="38" y2="38" />
-          <line x1={280 - skew + 4} x2={verticalDimensionX + 9} y1="100" y2="100" />
+          <line x1={layout.right + 4} x2={verticalDimensionX + 7} y1={layout.top} y2={layout.top} />
+          <line x1={layout.right + 4} x2={verticalDimensionX + 7} y1={layout.bottom} y2={layout.bottom} />
           <line
             markerEnd={`url(#${arrowId})`}
             markerStart={`url(#${arrowId})`}
             x1={verticalDimensionX}
             x2={verticalDimensionX}
-            y1="41"
-            y2="97"
+            y1={layout.top + 3}
+            y2={layout.bottom - 3}
           />
           <text
-            transform={`rotate(-90 ${verticalTextX} 69)`}
+            transform={`rotate(-90 ${verticalTextX} ${(layout.top + layout.bottom) / 2})`}
             x={verticalTextX}
-            y="69"
+            y={(layout.top + layout.bottom) / 2}
           >
-            W {formatLength(part.width, unit)}
+            {isStile ? "L" : "W"} {formatLength(isStile ? part.length : part.width, unit)}
           </text>
+        </g>
+        <g className="cut-part-view-label">
+          <text x="45" y="192">{profileLabel(part)} · {dimensionLabel(part)}</text>
         </g>
       </svg>
       <dl className="hover-cut-card-data">
@@ -217,7 +470,7 @@ function HoverCutPartDiagram({
         {part.processDimensions?.map((process) => (
           <div key={process.label}>
             <dt>{process.label}</dt>
-            <dd>{formatLength(process.value, unit)}</dd>
+            <dd>{formatProcessDimension(process, unit)}</dd>
           </div>
         ))}
       </dl>
@@ -238,6 +491,7 @@ export function HoverDiningTableCutList({
   unit: LengthUnit;
 }) {
   const cutList = getHoverDiningTableCutList(params);
+  const hasHalfLaps = cutList.parts.some((part) => part.lap);
   return (
     <section className="hover-cut-sheet" aria-label="X-Hover full-size cut list">
       <div className="hover-cut-sheet-inner">
@@ -303,15 +557,24 @@ export function HoverDiningTableCutList({
         </div>
 
         <footer className="hover-cut-sheet-footer">
-          <p>
-            Brace length is true centerline length between the two parallel
-            end-box contact planes. Half-laps are centered at half the member
-            length; A is relieved from the top and B from the bottom.
-          </p>
+          {hasHalfLaps ? (
+            <p>
+              X-brace length is the true centerline length between the two
+              parallel end-box contact planes. Half-laps are centered at half
+              the member length; A is relieved from the top and B from the bottom.
+            </p>
+          ) : (
+            <p>
+              Straight-support lengths run between the two parallel end-box
+              contact planes; their square ends are ready for the selected joinery.
+            </p>
+          )}
           <p>
             Grain runs with every listed length. The end-box curves are routed
-            after the four-piece frame glue-up, so B1–B3 are blank dimensions,
-            not separate permanently square corner profiles.
+            from the same constrained profiles used by the assembled and
+            exploded models: B1/B2 carry the inner and outer Bézier returns,
+            while B3 runs between their tangent seams. Section views preserve
+            every listed edge treatment.
           </p>
         </footer>
       </div>

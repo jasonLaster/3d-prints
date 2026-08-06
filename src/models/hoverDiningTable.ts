@@ -33,6 +33,67 @@ type BracePlaneSpec = {
   halfLapDepth: number;
 };
 
+export type HoverDiningTableTopSupportStyle = "x" | "stretchers";
+export type HoverDiningTableBottomSupportStyle = "x" | "center-board" | "none";
+
+type StraightSupportSpec = {
+  count: 1 | 2;
+  width: number;
+  thickness: number;
+  endpointInset: number;
+  edgeRadius: number;
+  spanX: number;
+  centerYs: number[];
+  placementBoundaryY?: number;
+  zBottom: number;
+  zTop: number;
+};
+
+export type HoverDiningTableProfilePoint = {
+  x: number;
+  y: number;
+};
+
+export type HoverDiningTableProfileCommand =
+  | { kind: "move"; to: HoverDiningTableProfilePoint }
+  | {
+      kind: "line";
+      to: HoverDiningTableProfilePoint;
+      edgeTreatment?: "roundover" | "square";
+    }
+  | {
+      kind: "cubic";
+      control1: HoverDiningTableProfilePoint;
+      control2: HoverDiningTableProfilePoint;
+      to: HoverDiningTableProfilePoint;
+      edgeTreatment?: "roundover" | "square";
+    }
+  | { kind: "close"; edgeTreatment?: "roundover" | "square" };
+
+export type HoverDiningTableFabricationProfile = {
+  family: "tabletop" | "frame-rail" | "frame-stile" | "brace" | "support";
+  outline: HoverDiningTableProfileCommand[];
+  bounds: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  };
+  section: {
+    width: number;
+    thickness: number;
+    radius: number;
+    label: string;
+    outline: HoverDiningTableProfileCommand[];
+  };
+  bezier?: {
+    outerRadius: number;
+    innerRadius: number;
+    outerTension: number;
+    innerTension: number;
+  };
+};
+
 export type HoverDiningTableSpec = {
   scale: number;
   length: number;
@@ -49,8 +110,10 @@ export type HoverDiningTableSpec = {
   frameBottomRailHeight: number;
   frameTopRailHeight: number;
   frameBottomSpread: number;
-  frameOuterCornerRadius: number;
-  frameInnerCornerRadius: number;
+  frameOuterTopCornerRadius: number;
+  frameOuterBottomCornerRadius: number;
+  frameInnerTopCornerRadius: number;
+  frameInnerBottomCornerRadius: number;
   frameOuterCurveTension: number;
   frameInnerCurveTension: number;
   frameEdgeRoundover: number;
@@ -65,9 +128,24 @@ export type HoverDiningTableSpec = {
   openingTop: number;
   frameCenterX: number;
   braceSpanX: number;
+  topSupportStyle: HoverDiningTableTopSupportStyle;
+  bottomSupportStyle: HoverDiningTableBottomSupportStyle;
   upperBrace: BracePlaneSpec;
   lowerBrace: BracePlaneSpec;
+  upperStretchers: StraightSupportSpec;
+  lowerCenterBoard: StraightSupportSpec;
 };
+
+function topSupportStyle(value: number): HoverDiningTableTopSupportStyle {
+  return value >= 0.5 ? "stretchers" : "x";
+}
+
+function bottomSupportStyle(value: number): HoverDiningTableBottomSupportStyle {
+  const option = Math.round(value);
+  if (option >= 2) return "none";
+  if (option >= 1) return "center-board";
+  return "x";
+}
 
 function createBracePlaneSpec({
   width,
@@ -141,8 +219,21 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
   const frameDepth = getParam(params, "frameDepth");
   const endOverhang = getParam(params, "endOverhang");
   const braceSpanX = length - 2 * (endOverhang + frameDepth);
-  const upperBraceThickness = getParam(params, "upperBraceThickness");
-  const lowerBraceThickness = getParam(params, "lowerBraceThickness");
+  const xBraceWidth = getParam(params, "xBraceWidth");
+  const xBraceThickness = getParam(params, "xBraceThickness");
+  const xBraceEndpointInset = getParam(params, "xBraceEndpointInset");
+  const xBraceEdgeRadius = getParam(params, "xBraceEdgeRadius");
+  const frameInnerTopCornerRadius = getParam(
+    params,
+    "frameInnerTopCornerRadius",
+  );
+  const frameInnerBottomCornerRadius = getParam(
+    params,
+    "frameInnerBottomCornerRadius",
+  );
+  const upperPlacementBoundaryY = frameTopWidth / 2;
+  const upperStretcherCenterY =
+    upperPlacementBoundaryY - xBraceEndpointInset - xBraceWidth / 2;
 
   return {
     scale,
@@ -160,8 +251,13 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
     frameBottomRailHeight,
     frameTopRailHeight,
     frameBottomSpread,
-    frameOuterCornerRadius: getParam(params, "frameOuterCornerRadius"),
-    frameInnerCornerRadius: getParam(params, "frameInnerCornerRadius"),
+    frameOuterTopCornerRadius: getParam(params, "frameOuterTopCornerRadius"),
+    frameOuterBottomCornerRadius: getParam(
+      params,
+      "frameOuterBottomCornerRadius",
+    ),
+    frameInnerTopCornerRadius,
+    frameInnerBottomCornerRadius,
     frameOuterCurveTension: getParam(params, "frameOuterCurveTension"),
     frameInnerCurveTension: getParam(params, "frameInnerCurveTension"),
     frameEdgeRoundover: getParam(params, "frameEdgeRoundover"),
@@ -176,28 +272,55 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
     openingTop,
     frameCenterX: length / 2 - endOverhang - frameDepth / 2,
     braceSpanX,
+    topSupportStyle: topSupportStyle(getParam(params, "topSupportStyle")),
+    bottomSupportStyle: bottomSupportStyle(
+      getParam(params, "bottomSupportStyle"),
+    ),
     upperBrace: createBracePlaneSpec({
-      width: getParam(params, "upperBraceWidth"),
-      thickness: upperBraceThickness,
-      endpointInset: getParam(params, "upperBraceEndpointInset"),
-      edgeRadius: getParam(params, "upperBraceEdgeRadius"),
+      width: xBraceWidth,
+      thickness: xBraceThickness,
+      endpointInset: xBraceEndpointInset,
+      edgeRadius: xBraceEdgeRadius,
       spanX: braceSpanX,
       openingWidth: openingTopWidth,
-      innerCornerRadius: getParam(params, "frameInnerCornerRadius"),
-      zBottom: topBottom - upperBraceThickness,
+      innerCornerRadius: frameInnerTopCornerRadius,
+      zBottom: topBottom - xBraceThickness,
       zTop: topBottom,
     }),
     lowerBrace: createBracePlaneSpec({
-      width: getParam(params, "lowerBraceWidth"),
-      thickness: lowerBraceThickness,
-      endpointInset: getParam(params, "lowerBraceEndpointInset"),
-      edgeRadius: getParam(params, "lowerBraceEdgeRadius"),
+      width: xBraceWidth,
+      thickness: xBraceThickness,
+      endpointInset: xBraceEndpointInset,
+      edgeRadius: xBraceEdgeRadius,
       spanX: braceSpanX,
       openingWidth: openingBottomWidth,
-      innerCornerRadius: getParam(params, "frameInnerCornerRadius"),
+      innerCornerRadius: frameInnerBottomCornerRadius,
       zBottom: 0,
-      zTop: lowerBraceThickness,
+      zTop: xBraceThickness,
     }),
+    upperStretchers: {
+      count: 2,
+      width: xBraceWidth,
+      thickness: xBraceThickness,
+      endpointInset: xBraceEndpointInset,
+      edgeRadius: xBraceEdgeRadius,
+      spanX: braceSpanX,
+      centerYs: [-upperStretcherCenterY, upperStretcherCenterY],
+      placementBoundaryY: upperPlacementBoundaryY,
+      zBottom: topBottom - xBraceThickness,
+      zTop: topBottom,
+    },
+    lowerCenterBoard: {
+      count: 1,
+      width: xBraceWidth,
+      thickness: xBraceThickness,
+      endpointInset: 0,
+      edgeRadius: xBraceEdgeRadius,
+      spanX: braceSpanX,
+      centerYs: [0],
+      zBottom: 0,
+      zTop: xBraceThickness,
+    },
   };
 }
 
@@ -274,6 +397,49 @@ function assertBracePlane(
   }
 }
 
+function assertStraightSupport(
+  support: StraightSupportSpec,
+  spec: HoverDiningTableSpec,
+  label: "Upper stretchers" | "Floor center board",
+  railHeight: number,
+) {
+  for (const [dimensionLabel, value] of [
+    [`${label} width`, support.width],
+    [`${label} thickness`, support.thickness],
+    [`${label} edge radius`, support.edgeRadius],
+    [`${label} longitudinal span`, support.spanX],
+  ] as const) {
+    assertPositive(value, dimensionLabel);
+  }
+  assertNonNegative(support.endpointInset, `${label} endpoint inset`);
+  if (support.centerYs.length !== support.count) {
+    throw new Error(`${label} must retain its declared piece count`);
+  }
+  if (support.spanX < MIN_BRACE_SPAN) {
+    throw new Error(`${label} needs a positive structural span between end boxes`);
+  }
+  if (support.width > spec.frameSideWidth + EPSILON) {
+    throw new Error(`${label} width must fit its end-box member scale`);
+  }
+  if (support.thickness > railHeight + EPSILON) {
+    throw new Error(`${label} thickness must fit its end-box rail zone`);
+  }
+  if (support.edgeRadius * 2 >= Math.min(support.width, support.thickness)) {
+    throw new Error(`${label} edge radius must preserve a flat cross-section`);
+  }
+  const placementBoundaryY = support.placementBoundaryY;
+  if (
+    placementBoundaryY !== undefined &&
+    support.centerYs.some(
+      (centerY) =>
+        Math.abs(centerY) + support.width / 2 + support.endpointInset >
+        placementBoundaryY + EPSILON,
+    )
+  ) {
+    throw new Error(`${label} must stop inside the end-box bearing boundary`);
+  }
+}
+
 /**
  * Central construction assertions. Geometry, audit, and export all pass through
  * this contract so parameter edits cannot silently detach an X, open a contact
@@ -291,8 +457,10 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
     ["frame side width", spec.frameSideWidth],
     ["frame bottom rail", spec.frameBottomRailHeight],
     ["frame top rail", spec.frameTopRailHeight],
-    ["frame outer radius", spec.frameOuterCornerRadius],
-    ["frame inner radius", spec.frameInnerCornerRadius],
+    ["frame outer top radius", spec.frameOuterTopCornerRadius],
+    ["frame outer bottom radius", spec.frameOuterBottomCornerRadius],
+    ["frame inner top radius", spec.frameInnerTopCornerRadius],
+    ["frame inner bottom radius", spec.frameInnerBottomCornerRadius],
     ["frame edge round-over", spec.frameEdgeRoundover],
   ] as const) {
     assertPositive(value, label);
@@ -315,16 +483,20 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
     throw new Error("End-box placement extends beyond the tabletop length");
   }
   if (
-    spec.frameInnerCornerRadius * 2 >=
-    Math.min(spec.openingTopWidth, spec.openingBottomWidth, spec.openingHeight)
+    spec.frameInnerTopCornerRadius * 2 >= spec.openingTopWidth ||
+    spec.frameInnerBottomCornerRadius * 2 >= spec.openingBottomWidth ||
+    spec.frameInnerTopCornerRadius + spec.frameInnerBottomCornerRadius >=
+      spec.openingHeight
   ) {
-    throw new Error("Interior corner radius must fit inside the end-box opening");
+    throw new Error("Interior top and bottom radii must fit inside the end-box opening");
   }
   if (
-    spec.frameOuterCornerRadius * 2 >=
-    Math.min(spec.frameTopWidth, spec.frameBottomWidth, spec.frameHeight)
+    spec.frameOuterTopCornerRadius * 2 >= spec.frameTopWidth ||
+    spec.frameOuterBottomCornerRadius * 2 >= spec.frameBottomWidth ||
+    spec.frameOuterTopCornerRadius + spec.frameOuterBottomCornerRadius >=
+      spec.frameHeight
   ) {
-    throw new Error("Exterior corner radius must fit inside the end-box silhouette");
+    throw new Error("Exterior top and bottom radii must fit inside the end-box silhouette");
   }
   if (
     spec.frameEdgeRoundover * 2 >=
@@ -356,6 +528,29 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
     "Lower",
     spec.frameBottomRailHeight,
   );
+  assertStraightSupport(
+    spec.upperStretchers,
+    spec,
+    "Upper stretchers",
+    spec.frameTopRailHeight,
+  );
+  assertStraightSupport(
+    spec.lowerCenterBoard,
+    spec,
+    "Floor center board",
+    spec.frameBottomRailHeight,
+  );
+  for (const property of [
+    "width",
+    "thickness",
+    "endpointInset",
+    "edgeRadius",
+    "halfLapDepth",
+  ] as const) {
+    if (Math.abs(spec.upperBrace[property] - spec.lowerBrace[property]) > EPSILON) {
+      throw new Error(`Both X planes must share the same ${property}`);
+    }
+  }
   if (Math.abs(spec.upperBrace.zTop - spec.topBottom) > EPSILON) {
     throw new Error("Upper X top envelope must contact the tabletop underside");
   }
@@ -364,6 +559,12 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
   }
   if (Math.abs(spec.lowerBrace.zBottom) > EPSILON) {
     throw new Error("Lower X bottom envelope must contact the floor at Z = 0");
+  }
+  if (Math.abs(spec.upperStretchers.zTop - spec.topBottom) > EPSILON) {
+    throw new Error("Upper stretchers must contact the tabletop underside");
+  }
+  if (Math.abs(spec.lowerCenterBoard.zBottom) > EPSILON) {
+    throw new Error("Floor center board must contact the floor at Z = 0");
   }
   if (
     spec.halfLapClearance >=
@@ -410,6 +611,27 @@ function scaleBrace(brace: BracePlaneSpec, scale: number): BracePlaneSpec {
   };
 }
 
+function scaleStraightSupport(
+  support: StraightSupportSpec,
+  scale: number,
+): StraightSupportSpec {
+  return {
+    ...support,
+    width: support.width / scale,
+    thickness: support.thickness / scale,
+    endpointInset: support.endpointInset / scale,
+    edgeRadius: support.edgeRadius / scale,
+    spanX: support.spanX / scale,
+    centerYs: support.centerYs.map((centerY) => centerY / scale),
+    placementBoundaryY:
+      support.placementBoundaryY === undefined
+        ? undefined
+        : support.placementBoundaryY / scale,
+    zBottom: support.zBottom / scale,
+    zTop: support.zTop / scale,
+  };
+}
+
 export function getHoverDiningTableSpec(params: ModelParams) {
   const fullSize = rawHoverDiningTableSpec(params);
   assertHoverDiningTableSpec(fullSize);
@@ -429,8 +651,10 @@ export function getHoverDiningTableSpec(params: ModelParams) {
     frameBottomRailHeight: fullSize.frameBottomRailHeight / scale,
     frameTopRailHeight: fullSize.frameTopRailHeight / scale,
     frameBottomSpread: fullSize.frameBottomSpread / scale,
-    frameOuterCornerRadius: fullSize.frameOuterCornerRadius / scale,
-    frameInnerCornerRadius: fullSize.frameInnerCornerRadius / scale,
+    frameOuterTopCornerRadius: fullSize.frameOuterTopCornerRadius / scale,
+    frameOuterBottomCornerRadius: fullSize.frameOuterBottomCornerRadius / scale,
+    frameInnerTopCornerRadius: fullSize.frameInnerTopCornerRadius / scale,
+    frameInnerBottomCornerRadius: fullSize.frameInnerBottomCornerRadius / scale,
     frameEdgeRoundover: fullSize.frameEdgeRoundover / scale,
     halfLapClearance: fullSize.halfLapClearance / scale,
     frameHeight: fullSize.frameHeight / scale,
@@ -445,17 +669,41 @@ export function getHoverDiningTableSpec(params: ModelParams) {
     braceSpanX: fullSize.braceSpanX / scale,
     upperBrace: scaleBrace(fullSize.upperBrace, scale),
     lowerBrace: scaleBrace(fullSize.lowerBrace, scale),
+    upperStretchers: scaleStraightSupport(fullSize.upperStretchers, scale),
+    lowerCenterBoard: scaleStraightSupport(fullSize.lowerCenterBoard, scale),
   };
   return { fullSize, scaled };
 }
 
-function addRoundedTrapezoid(
-  path: THREE.Path | THREE.Shape,
+type CubicProfileSegment = {
+  from: THREE.Vector2;
+  control1: THREE.Vector2;
+  control2: THREE.Vector2;
+  to: THREE.Vector2;
+};
+
+type RoundedTrapezoidDefinition = {
+  bottomLeftStart: THREE.Vector2;
+  bottomRightStart: THREE.Vector2;
+  rightLower: THREE.Vector2;
+  rightUpper: THREE.Vector2;
+  topRightEnd: THREE.Vector2;
+  topLeftStart: THREE.Vector2;
+  leftUpper: THREE.Vector2;
+  leftLower: THREE.Vector2;
+  bottomRightCurve: CubicProfileSegment;
+  topRightCurve: CubicProfileSegment;
+  topLeftCurve: CubicProfileSegment;
+  bottomLeftCurve: CubicProfileSegment;
+};
+
+function getRoundedTrapezoidDefinition(
   bottomWidth: number,
   topWidth: number,
   bottom: number,
   top: number,
-  radius: number,
+  bottomRadius: number,
+  topRadius: number,
   tension: number,
 ) {
   const bottomLeft = new THREE.Vector2(-bottomWidth / 2, bottom);
@@ -465,100 +713,717 @@ function addRoundedTrapezoid(
   const rightDirection = topRight.clone().sub(bottomRight).normalize();
   const leftDownDirection = bottomLeft.clone().sub(topLeft).normalize();
 
-  const bottomLeftStart = new THREE.Vector2(bottomLeft.x + radius, bottom);
-  const bottomRightStart = new THREE.Vector2(bottomRight.x - radius, bottom);
-  const rightLower = bottomRight.clone().addScaledVector(rightDirection, radius);
-  const rightUpper = topRight.clone().addScaledVector(rightDirection, -radius);
-  const topRightEnd = new THREE.Vector2(topRight.x - radius, top);
-  const topLeftStart = new THREE.Vector2(topLeft.x + radius, top);
-  const leftUpper = topLeft.clone().addScaledVector(leftDownDirection, radius);
-  const leftLower = bottomLeft.clone().addScaledVector(leftDownDirection, -radius);
+  const bottomLeftStart = new THREE.Vector2(
+    bottomLeft.x + bottomRadius,
+    bottom,
+  );
+  const bottomRightStart = new THREE.Vector2(
+    bottomRight.x - bottomRadius,
+    bottom,
+  );
+  const rightLower = bottomRight
+    .clone()
+    .addScaledVector(rightDirection, bottomRadius);
+  const rightUpper = topRight
+    .clone()
+    .addScaledVector(rightDirection, -topRadius);
+  const topRightEnd = new THREE.Vector2(topRight.x - topRadius, top);
+  const topLeftStart = new THREE.Vector2(topLeft.x + topRadius, top);
+  const leftUpper = topLeft
+    .clone()
+    .addScaledVector(leftDownDirection, topRadius);
+  const leftLower = bottomLeft
+    .clone()
+    .addScaledVector(leftDownDirection, -bottomRadius);
 
-  path.moveTo(bottomLeftStart.x, bottomLeftStart.y);
-  path.lineTo(bottomRightStart.x, bottomRightStart.y);
-  path.bezierCurveTo(
-    bottomRightStart.x + radius * tension,
+  return {
+    bottomLeftStart,
+    bottomRightStart,
+    rightLower,
+    rightUpper,
+    topRightEnd,
+    topLeftStart,
+    leftUpper,
+    leftLower,
+    bottomRightCurve: {
+      from: bottomRightStart,
+      control1: new THREE.Vector2(
+        bottomRightStart.x + bottomRadius * tension,
+        bottom,
+      ),
+      control2: new THREE.Vector2(
+        rightLower.x - rightDirection.x * bottomRadius * tension,
+        rightLower.y - rightDirection.y * bottomRadius * tension,
+      ),
+      to: rightLower,
+    },
+    topRightCurve: {
+      from: rightUpper,
+      control1: new THREE.Vector2(
+        rightUpper.x + rightDirection.x * topRadius * tension,
+        rightUpper.y + rightDirection.y * topRadius * tension,
+      ),
+      control2: new THREE.Vector2(
+        topRightEnd.x + topRadius * tension,
+        top,
+      ),
+      to: topRightEnd,
+    },
+    topLeftCurve: {
+      from: topLeftStart,
+      control1: new THREE.Vector2(
+        topLeftStart.x - topRadius * tension,
+        top,
+      ),
+      control2: new THREE.Vector2(
+        leftUpper.x - leftDownDirection.x * topRadius * tension,
+        leftUpper.y - leftDownDirection.y * topRadius * tension,
+      ),
+      to: leftUpper,
+    },
+    bottomLeftCurve: {
+      from: leftLower,
+      control1: new THREE.Vector2(
+        leftLower.x + leftDownDirection.x * bottomRadius * tension,
+        leftLower.y + leftDownDirection.y * bottomRadius * tension,
+      ),
+      control2: new THREE.Vector2(
+        bottomLeftStart.x - bottomRadius * tension,
+        bottom,
+      ),
+      to: bottomLeftStart,
+    },
+  };
+}
+
+function addRoundedTrapezoid(
+  path: THREE.Path | THREE.Shape,
+  bottomWidth: number,
+  topWidth: number,
+  bottom: number,
+  top: number,
+  bottomRadius: number,
+  topRadius: number,
+  tension: number,
+) {
+  const profile = getRoundedTrapezoidDefinition(
+    bottomWidth,
+    topWidth,
     bottom,
-    rightLower.x - rightDirection.x * radius * tension,
-    rightLower.y - rightDirection.y * radius * tension,
-    rightLower.x,
-    rightLower.y,
-  );
-  path.lineTo(rightUpper.x, rightUpper.y);
-  path.bezierCurveTo(
-    rightUpper.x + rightDirection.x * radius * tension,
-    rightUpper.y + rightDirection.y * radius * tension,
-    topRightEnd.x + radius * tension,
     top,
-    topRightEnd.x,
-    topRightEnd.y,
+    bottomRadius,
+    topRadius,
+    tension,
   );
-  path.lineTo(topLeftStart.x, topLeftStart.y);
-  path.bezierCurveTo(
-    topLeftStart.x - radius * tension,
-    top,
-    leftUpper.x - leftDownDirection.x * radius * tension,
-    leftUpper.y - leftDownDirection.y * radius * tension,
-    leftUpper.x,
-    leftUpper.y,
-  );
-  path.lineTo(leftLower.x, leftLower.y);
-  path.bezierCurveTo(
-    leftLower.x + leftDownDirection.x * radius * tension,
-    leftLower.y + leftDownDirection.y * radius * tension,
-    bottomLeftStart.x - radius * tension,
-    bottom,
-    bottomLeftStart.x,
-    bottomLeftStart.y,
-  );
+  const addCubic = (curve: CubicProfileSegment) => {
+    path.bezierCurveTo(
+      curve.control1.x,
+      curve.control1.y,
+      curve.control2.x,
+      curve.control2.y,
+      curve.to.x,
+      curve.to.y,
+    );
+  };
+
+  path.moveTo(profile.bottomLeftStart.x, profile.bottomLeftStart.y);
+  path.lineTo(profile.bottomRightStart.x, profile.bottomRightStart.y);
+  addCubic(profile.bottomRightCurve);
+  path.lineTo(profile.rightUpper.x, profile.rightUpper.y);
+  addCubic(profile.topRightCurve);
+  path.lineTo(profile.topLeftStart.x, profile.topLeftStart.y);
+  addCubic(profile.topLeftCurve);
+  path.lineTo(profile.leftLower.x, profile.leftLower.y);
+  addCubic(profile.bottomLeftCurve);
   path.closePath();
 }
 
-function createTabletopCrossSection(spec: HoverDiningTableSpec) {
+type EndBoxPartPosition = "top" | "bottom" | "left" | "right";
+
+function profilePoint(point: THREE.Vector2): HoverDiningTableProfilePoint {
+  return { x: point.x, y: point.y };
+}
+
+function moveProfile(point: THREE.Vector2): HoverDiningTableProfileCommand {
+  return { kind: "move", to: profilePoint(point) };
+}
+
+function lineProfile(
+  point: THREE.Vector2,
+  edgeTreatment: "roundover" | "square" = "roundover",
+): HoverDiningTableProfileCommand {
+  return { kind: "line", to: profilePoint(point), edgeTreatment };
+}
+
+function cubicProfile(
+  curve: CubicProfileSegment,
+  reverse = false,
+): HoverDiningTableProfileCommand {
+  return reverse
+    ? {
+        kind: "cubic",
+        control1: profilePoint(curve.control2),
+        control2: profilePoint(curve.control1),
+        to: profilePoint(curve.from),
+      }
+    : {
+        kind: "cubic",
+        control1: profilePoint(curve.control1),
+        control2: profilePoint(curve.control2),
+        to: profilePoint(curve.to),
+      };
+}
+
+function createShapeFromProfile(
+  commands: HoverDiningTableProfileCommand[],
+) {
   const shape = new THREE.Shape();
+  for (const command of commands) {
+    if (command.kind === "move") {
+      shape.moveTo(command.to.x, command.to.y);
+    } else if (command.kind === "line") {
+      shape.lineTo(command.to.x, command.to.y);
+    } else if (command.kind === "cubic") {
+      shape.bezierCurveTo(
+        command.control1.x,
+        command.control1.y,
+        command.control2.x,
+        command.control2.y,
+        command.to.x,
+        command.to.y,
+      );
+    } else {
+      shape.closePath();
+    }
+  }
+  return shape;
+}
+
+function rectangleProfile(
+  width: number,
+  height: number,
+): HoverDiningTableProfileCommand[] {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  return [
+    { kind: "move", to: { x: -halfWidth, y: -halfHeight } },
+    { kind: "line", to: { x: halfWidth, y: -halfHeight } },
+    { kind: "line", to: { x: halfWidth, y: halfHeight } },
+    { kind: "line", to: { x: -halfWidth, y: halfHeight } },
+    { kind: "close" },
+  ];
+}
+
+function roundedRectangleProfile(
+  width: number,
+  height: number,
+  radius: number,
+): HoverDiningTableProfileCommand[] {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const safeRadius = Math.min(radius, halfWidth, halfHeight);
+  const control = safeRadius * 0.5522847498;
+  return [
+    { kind: "move", to: { x: -halfWidth + safeRadius, y: -halfHeight } },
+    { kind: "line", to: { x: halfWidth - safeRadius, y: -halfHeight } },
+    {
+      kind: "cubic",
+      control1: { x: halfWidth - safeRadius + control, y: -halfHeight },
+      control2: { x: halfWidth, y: -halfHeight + safeRadius - control },
+      to: { x: halfWidth, y: -halfHeight + safeRadius },
+    },
+    { kind: "line", to: { x: halfWidth, y: halfHeight - safeRadius } },
+    {
+      kind: "cubic",
+      control1: { x: halfWidth, y: halfHeight - safeRadius + control },
+      control2: { x: halfWidth - safeRadius + control, y: halfHeight },
+      to: { x: halfWidth - safeRadius, y: halfHeight },
+    },
+    { kind: "line", to: { x: -halfWidth + safeRadius, y: halfHeight } },
+    {
+      kind: "cubic",
+      control1: { x: -halfWidth + safeRadius - control, y: halfHeight },
+      control2: { x: -halfWidth, y: halfHeight - safeRadius + control },
+      to: { x: -halfWidth, y: halfHeight - safeRadius },
+    },
+    { kind: "line", to: { x: -halfWidth, y: -halfHeight + safeRadius } },
+    {
+      kind: "cubic",
+      control1: { x: -halfWidth, y: -halfHeight + safeRadius - control },
+      control2: { x: -halfWidth + safeRadius - control, y: -halfHeight },
+      to: { x: -halfWidth + safeRadius, y: -halfHeight },
+    },
+    { kind: "close" },
+  ];
+}
+
+function profileBounds(commands: HoverDiningTableProfileCommand[]) {
+  const points = createShapeFromProfile(commands).getPoints(48);
+  const bounds = new THREE.Box2().setFromPoints(points);
+  return {
+    minX: bounds.min.x,
+    minY: bounds.min.y,
+    maxX: bounds.max.x,
+    maxY: bounds.max.y,
+  };
+}
+
+function sampleClosedProfile(
+  commands: HoverDiningTableProfileCommand[],
+  curveSegments: number,
+) {
+  const points: THREE.Vector2[] = [];
+  const roundedEdges: boolean[] = [];
+  let current: THREE.Vector2 | null = null;
+  for (const command of commands) {
+    if (command.kind === "move") {
+      current = new THREE.Vector2(command.to.x, command.to.y);
+      points.push(current.clone());
+      continue;
+    }
+    if (!current) throw new Error("Fabrication profile must begin with move");
+    if (command.kind === "line") {
+      const next = new THREE.Vector2(command.to.x, command.to.y);
+      points.push(next);
+      roundedEdges.push(command.edgeTreatment !== "square");
+      current = next;
+    } else if (command.kind === "cubic") {
+      const start = current.clone();
+      const control1 = new THREE.Vector2(
+        command.control1.x,
+        command.control1.y,
+      );
+      const control2 = new THREE.Vector2(
+        command.control2.x,
+        command.control2.y,
+      );
+      const end = new THREE.Vector2(command.to.x, command.to.y);
+      for (let index = 1; index <= curveSegments; index += 1) {
+        const t = index / curveSegments;
+        const inverse = 1 - t;
+        points.push(
+          start
+            .clone()
+            .multiplyScalar(inverse ** 3)
+            .addScaledVector(control1, 3 * inverse ** 2 * t)
+            .addScaledVector(control2, 3 * inverse * t ** 2)
+            .addScaledVector(end, t ** 3),
+        );
+        roundedEdges.push(command.edgeTreatment !== "square");
+      }
+      current = end;
+    } else {
+      roundedEdges.push(command.edgeTreatment !== "square");
+    }
+  }
+  if (roundedEdges.length !== points.length) {
+    throw new Error("Closed fabrication profile must classify every edge");
+  }
+  if (polygonArea(points) < 0) {
+    const count = points.length;
+    return {
+      points: points.slice().reverse(),
+      roundedEdges: points.map(
+        (_, index) => roundedEdges[(count - 2 - index + count) % count],
+      ),
+    };
+  }
+  return { points, roundedEdges };
+}
+
+function cross2(a: THREE.Vector2, b: THREE.Vector2) {
+  return a.x * b.y - a.y * b.x;
+}
+
+function offsetProfileEdges(
+  points: THREE.Vector2[],
+  roundedEdges: boolean[],
+  inset: number,
+) {
+  if (inset <= EPSILON) return points.map((point) => point.clone());
+  return points.map((point, index) => {
+    const previousIndex = (index - 1 + points.length) % points.length;
+    const previousDirection = points[index]
+      .clone()
+      .sub(points[previousIndex])
+      .normalize();
+    const currentDirection = points[(index + 1) % points.length]
+      .clone()
+      .sub(points[index])
+      .normalize();
+    const previousNormal = new THREE.Vector2(
+      -previousDirection.y,
+      previousDirection.x,
+    );
+    const currentNormal = new THREE.Vector2(
+      -currentDirection.y,
+      currentDirection.x,
+    );
+    const previousOrigin = point
+      .clone()
+      .addScaledVector(
+        previousNormal,
+        roundedEdges[previousIndex] ? inset : 0,
+      );
+    const currentOrigin = point
+      .clone()
+      .addScaledVector(currentNormal, roundedEdges[index] ? inset : 0);
+    const denominator = cross2(previousDirection, currentDirection);
+    if (Math.abs(denominator) <= EPSILON) {
+      return previousOrigin.add(currentOrigin).multiplyScalar(0.5);
+    }
+    const t = cross2(
+      currentOrigin.clone().sub(previousOrigin),
+      currentDirection,
+    ) / denominator;
+    return previousOrigin.addScaledVector(previousDirection, t);
+  });
+}
+
+/**
+ * Creates a face-edge round-over while leaving rail/stile glue seams square.
+ * Per-edge offsets keep every ring vertex aligned, so changing a Bézier radius,
+ * tension, splay, depth, or round-over regenerates a closed fabrication solid
+ * rather than a beveled visual stand-in.
+ */
+function createSelectivelyRoundedExtrusion(
+  commands: HoverDiningTableProfileCommand[],
+  depth: number,
+  radius: number,
+  curveSegments: number,
+  roundoverSegments: number,
+  xCenter: number,
+) {
+  const sampled = sampleClosedProfile(commands, curveSegments);
+  const halfDepth = depth / 2;
+  const layers: Array<{ x: number; inset: number }> = [];
+  const pushLayer = (x: number, inset: number) => {
+    const previous = layers[layers.length - 1];
+    if (previous && Math.abs(previous.x - x) <= EPSILON) {
+      previous.inset = Math.min(previous.inset, inset);
+    } else {
+      layers.push({ x, inset });
+    }
+  };
+  for (let index = 0; index <= roundoverSegments; index += 1) {
+    const offset = (index / roundoverSegments) * radius;
+    const inset =
+      radius -
+      Math.sqrt(Math.max(0, radius ** 2 - (offset - radius) ** 2));
+    pushLayer(xCenter - halfDepth + offset, inset);
+  }
+  pushLayer(xCenter + halfDepth - radius, 0);
+  for (let index = 1; index <= roundoverSegments; index += 1) {
+    const offset = (index / roundoverSegments) * radius;
+    const inset = radius - Math.sqrt(Math.max(0, radius ** 2 - offset ** 2));
+    pushLayer(xCenter + halfDepth - radius + offset, inset);
+  }
+  const rings = layers.map((layer) => ({
+    x: layer.x,
+    points: offsetProfileEdges(
+      sampled.points,
+      sampled.roundedEdges,
+      layer.inset,
+    ),
+  }));
+  const positions: number[] = [];
+  const addTriangle = (
+    a: THREE.Vector3,
+    b: THREE.Vector3,
+    c: THREE.Vector3,
+  ) => positions.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+  const as3 = (point: THREE.Vector2, x: number) =>
+    new THREE.Vector3(x, point.x, point.y);
+  const perimeterCount = sampled.points.length;
+  for (let ringIndex = 0; ringIndex < rings.length - 1; ringIndex += 1) {
+    const front = rings[ringIndex];
+    const back = rings[ringIndex + 1];
+    for (let index = 0; index < perimeterCount; index += 1) {
+      const next = (index + 1) % perimeterCount;
+      const frontCurrent = as3(front.points[index], front.x);
+      const frontNext = as3(front.points[next], front.x);
+      const backCurrent = as3(back.points[index], back.x);
+      const backNext = as3(back.points[next], back.x);
+      addTriangle(frontCurrent, frontNext, backNext);
+      addTriangle(frontCurrent, backNext, backCurrent);
+    }
+  }
+  const front = rings[0];
+  const back = rings[rings.length - 1];
+  const capTriangles = THREE.ShapeUtils.triangulateShape(front.points, []);
+  for (const [a, b, c] of capTriangles) {
+    addTriangle(
+      as3(front.points[c], front.x),
+      as3(front.points[b], front.x),
+      as3(front.points[a], front.x),
+    );
+    addTriangle(
+      as3(back.points[a], back.x),
+      as3(back.points[b], back.x),
+      as3(back.points[c], back.x),
+    );
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3),
+  );
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+/**
+ * Splits the finished end-box face profile at the four curve-tangent seams.
+ * The two rails own both the inner and outer Bézier corners; the two stiles
+ * retain the exact derived splay between those seams. This is the shared
+ * fabrication profile used by exploded geometry and the cut sheet.
+ */
+function createEndBoxPartProfiles(spec: HoverDiningTableSpec) {
+  const outer = getRoundedTrapezoidDefinition(
+    spec.frameBottomWidth,
+    spec.frameTopWidth,
+    0,
+    spec.frameHeight,
+    spec.frameOuterBottomCornerRadius,
+    spec.frameOuterTopCornerRadius,
+    spec.frameOuterCurveTension,
+  );
+  const inner = getRoundedTrapezoidDefinition(
+    spec.openingBottomWidth,
+    spec.openingTopWidth,
+    spec.openingBottom,
+    spec.openingTop,
+    spec.frameInnerBottomCornerRadius,
+    spec.frameInnerTopCornerRadius,
+    spec.frameInnerCurveTension,
+  );
+  const squareClose = { kind: "close", edgeTreatment: "square" } as const;
+  const profiles: Record<EndBoxPartPosition, HoverDiningTableProfileCommand[]> = {
+    top: [
+      moveProfile(outer.leftUpper),
+      cubicProfile(outer.topLeftCurve, true),
+      lineProfile(outer.topRightEnd),
+      cubicProfile(outer.topRightCurve, true),
+      lineProfile(inner.rightUpper, "square"),
+      cubicProfile(inner.topRightCurve),
+      lineProfile(inner.topLeftStart),
+      cubicProfile(inner.topLeftCurve),
+      squareClose,
+    ],
+    bottom: [
+      moveProfile(outer.leftLower),
+      cubicProfile(outer.bottomLeftCurve),
+      lineProfile(outer.bottomRightStart),
+      cubicProfile(outer.bottomRightCurve),
+      lineProfile(inner.rightLower, "square"),
+      cubicProfile(inner.bottomRightCurve, true),
+      lineProfile(inner.bottomLeftStart),
+      cubicProfile(inner.bottomLeftCurve, true),
+      squareClose,
+    ],
+    right: [
+      moveProfile(outer.rightLower),
+      lineProfile(outer.rightUpper),
+      lineProfile(inner.rightUpper, "square"),
+      lineProfile(inner.rightLower),
+      squareClose,
+    ],
+    left: [
+      moveProfile(outer.leftUpper),
+      lineProfile(outer.leftLower),
+      lineProfile(inner.leftLower, "square"),
+      lineProfile(inner.leftUpper),
+      squareClose,
+    ],
+  };
+  return profiles;
+}
+
+function createEndBoxPartFabricationProfile(
+  spec: HoverDiningTableSpec,
+  position: EndBoxPartPosition,
+): HoverDiningTableFabricationProfile {
+  const outline = createEndBoxPartProfiles(spec)[position];
+  const bounds = profileBounds(outline);
+  const profileWidth = bounds.maxX - bounds.minX;
+  const profileHeight = bounds.maxY - bounds.minY;
+  return {
+    family: position === "top" || position === "bottom"
+      ? "frame-rail"
+      : "frame-stile",
+    outline,
+    bounds,
+    section: {
+      width: Math.min(profileWidth, profileHeight),
+      thickness: spec.frameDepth,
+      radius: spec.frameEdgeRoundover,
+      label: "face-edge round-over",
+      outline: roundedRectangleProfile(
+        Math.min(profileWidth, profileHeight),
+        spec.frameDepth,
+        spec.frameEdgeRoundover,
+      ),
+    },
+    bezier: position === "top" || position === "bottom"
+      ? {
+          outerRadius: position === "top"
+            ? spec.frameOuterTopCornerRadius
+            : spec.frameOuterBottomCornerRadius,
+          innerRadius: position === "top"
+            ? spec.frameInnerTopCornerRadius
+            : spec.frameInnerBottomCornerRadius,
+          outerTension: spec.frameOuterCurveTension,
+          innerTension: spec.frameInnerCurveTension,
+        }
+      : undefined,
+  };
+}
+
+function createTabletopCrossSectionProfile(
+  spec: HoverDiningTableSpec,
+): HoverDiningTableProfileCommand[] {
   const halfWidth = spec.width / 2;
   const halfHeight = spec.topThickness / 2;
   const shoulder = halfWidth - spec.topEdgeRoll;
   const tension = spec.topEdgeTension;
   const height = spec.topThickness;
+  return [
+    { kind: "move", to: { x: -shoulder, y: 0 } },
+    { kind: "line", to: { x: shoulder, y: 0 } },
+    {
+      kind: "cubic",
+      control1: { x: shoulder + spec.topEdgeRoll * tension, y: 0 },
+      control2: { x: halfWidth, y: halfHeight - halfHeight * tension },
+      to: { x: halfWidth, y: halfHeight },
+    },
+    {
+      kind: "cubic",
+      control1: { x: halfWidth, y: halfHeight + halfHeight * tension },
+      control2: { x: shoulder + spec.topEdgeRoll * tension, y: height },
+      to: { x: shoulder, y: height },
+    },
+    { kind: "line", to: { x: -shoulder, y: height } },
+    {
+      kind: "cubic",
+      control1: { x: -shoulder - spec.topEdgeRoll * tension, y: height },
+      control2: { x: -halfWidth, y: halfHeight + halfHeight * tension },
+      to: { x: -halfWidth, y: halfHeight },
+    },
+    {
+      kind: "cubic",
+      control1: { x: -halfWidth, y: halfHeight - halfHeight * tension },
+      control2: { x: -shoulder - spec.topEdgeRoll * tension, y: 0 },
+      to: { x: -shoulder, y: 0 },
+    },
+    { kind: "close" },
+  ];
+}
 
-  shape.moveTo(-shoulder, 0);
-  shape.lineTo(shoulder, 0);
-  shape.bezierCurveTo(
-    shoulder + spec.topEdgeRoll * tension,
-    0,
-    halfWidth,
-    halfHeight - halfHeight * tension,
-    halfWidth,
-    halfHeight,
-  );
-  shape.bezierCurveTo(
-    halfWidth,
-    halfHeight + halfHeight * tension,
-    shoulder + spec.topEdgeRoll * tension,
-    height,
-    shoulder,
-    height,
-  );
-  shape.lineTo(-shoulder, height);
-  shape.bezierCurveTo(
-    -shoulder - spec.topEdgeRoll * tension,
-    height,
-    -halfWidth,
-    halfHeight + halfHeight * tension,
-    -halfWidth,
-    halfHeight,
-  );
-  shape.bezierCurveTo(
-    -halfWidth,
-    halfHeight - halfHeight * tension,
-    -shoulder - spec.topEdgeRoll * tension,
-    0,
-    -shoulder,
-    0,
-  );
-  shape.closePath();
-  return shape;
+function createTabletopEdgeDetailProfile(
+  spec: HoverDiningTableSpec,
+): HoverDiningTableProfileCommand[] {
+  const halfHeight = spec.topThickness / 2;
+  const tension = spec.topEdgeTension;
+  const flat = spec.topEdgeRoll * 0.55;
+  return [
+    { kind: "move", to: { x: -flat, y: 0 } },
+    { kind: "line", to: { x: 0, y: 0 } },
+    {
+      kind: "cubic",
+      control1: { x: spec.topEdgeRoll * tension, y: 0 },
+      control2: {
+        x: spec.topEdgeRoll,
+        y: halfHeight - halfHeight * tension,
+      },
+      to: { x: spec.topEdgeRoll, y: halfHeight },
+    },
+    {
+      kind: "cubic",
+      control1: {
+        x: spec.topEdgeRoll,
+        y: halfHeight + halfHeight * tension,
+      },
+      control2: { x: spec.topEdgeRoll * tension, y: spec.topThickness },
+      to: { x: 0, y: spec.topThickness },
+    },
+    { kind: "line", to: { x: -flat, y: spec.topThickness } },
+    { kind: "close" },
+  ];
+}
+
+function createTabletopFabricationProfile(
+  spec: HoverDiningTableSpec,
+): HoverDiningTableFabricationProfile {
+  const outline = rectangleProfile(spec.length, spec.width);
+  return {
+    family: "tabletop",
+    outline,
+    bounds: profileBounds(outline),
+    section: {
+      width: spec.topEdgeRoll * 1.55,
+      thickness: spec.topThickness,
+      radius: spec.topEdgeRoll,
+      label: "Bézier long-edge roll",
+      outline: createTabletopEdgeDetailProfile(spec),
+    },
+  };
+}
+
+function assertFabricationProfile(
+  profile: HoverDiningTableFabricationProfile,
+  label: string,
+) {
+  const width = profile.bounds.maxX - profile.bounds.minX;
+  const height = profile.bounds.maxY - profile.bounds.minY;
+  if (
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width <= EPSILON ||
+    height <= EPSILON
+  ) {
+    throw new Error(`${label} fabrication outline must have a positive envelope`);
+  }
+  if (
+    profile.outline[0]?.kind !== "move" ||
+    profile.outline[profile.outline.length - 1]?.kind !== "close"
+  ) {
+    throw new Error(`${label} fabrication outline must be a closed profile`);
+  }
+  if (
+    !Number.isFinite(profile.section.radius) ||
+    profile.section.radius <= 0 ||
+    !profile.section.outline.some((command) => command.kind === "cubic")
+  ) {
+    throw new Error(`${label} must retain a curved edge-treatment section`);
+  }
+  const squareEdgeCount = profile.outline.filter(
+    (command) =>
+      command.kind !== "move" && command.edgeTreatment === "square",
+  ).length;
+  const cubicCount = profile.outline.filter(
+    (command) => command.kind === "cubic",
+  ).length;
+  if (profile.family === "frame-rail") {
+    if (cubicCount !== 4 || squareEdgeCount !== 2 || !profile.bezier) {
+      throw new Error(
+        `${label} rail must retain four Bézier returns and two square tangent seams`,
+      );
+    }
+  } else if (profile.family === "frame-stile") {
+    if (cubicCount !== 0 || squareEdgeCount !== 2) {
+      throw new Error(
+        `${label} stile must retain its two square rail-tangent seams`,
+      );
+    }
+  } else if (squareEdgeCount !== 0) {
+    throw new Error(`${label} contains an unexpected square profile edge`);
+  }
+}
+
+function createTabletopCrossSection(spec: HoverDiningTableSpec) {
+  return createShapeFromProfile(createTabletopCrossSectionProfile(spec));
 }
 
 function createTabletopGeometry(
@@ -595,7 +1460,8 @@ function createEndFrameGeometry(
     spec.frameTopWidth,
     0,
     spec.frameHeight,
-    spec.frameOuterCornerRadius,
+    spec.frameOuterBottomCornerRadius,
+    spec.frameOuterTopCornerRadius,
     spec.frameOuterCurveTension,
   );
   const opening = new THREE.Path();
@@ -605,7 +1471,8 @@ function createEndFrameGeometry(
     spec.openingTopWidth,
     spec.openingBottom,
     spec.openingTop,
-    spec.frameInnerCornerRadius,
+    spec.frameInnerBottomCornerRadius,
+    spec.frameInnerTopCornerRadius,
     spec.frameInnerCurveTension,
   );
   shape.holes.push(opening);
@@ -655,6 +1522,65 @@ function miteredBraceFootprint(brace: BracePlaneSpec, slopeSign: -1 | 1) {
     new THREE.Vector2(halfX, rightY + brace.miterHalfWidth),
     new THREE.Vector2(-halfX, leftY + brace.miterHalfWidth),
   ]);
+}
+
+function polygonProfile(
+  points: THREE.Vector2[],
+): HoverDiningTableProfileCommand[] {
+  return [
+    moveProfile(points[0]),
+    ...points.slice(1).map((point) => lineProfile(point)),
+    { kind: "close" as const },
+  ];
+}
+
+function createBraceFabricationProfile(
+  brace: BracePlaneSpec,
+): HoverDiningTableFabricationProfile {
+  const direction = new THREE.Vector2(brace.spanX, brace.spanY).normalize();
+  const normal = new THREE.Vector2(-direction.y, direction.x);
+  const localPoints = miteredBraceFootprint(brace, 1).map(
+    (point) => new THREE.Vector2(point.dot(direction), point.dot(normal)),
+  );
+  const outline = polygonProfile(localPoints);
+  return {
+    family: "brace",
+    outline,
+    bounds: profileBounds(outline),
+    section: {
+      width: brace.width,
+      thickness: brace.thickness,
+      radius: brace.edgeRadius,
+      label: "top/bottom long-edge round-over",
+      outline: roundedRectangleProfile(
+        brace.width,
+        brace.thickness,
+        brace.edgeRadius,
+      ),
+    },
+  };
+}
+
+function createStraightSupportFabricationProfile(
+  support: StraightSupportSpec,
+): HoverDiningTableFabricationProfile {
+  const outline = rectangleProfile(support.spanX, support.width);
+  return {
+    family: "support",
+    outline,
+    bounds: profileBounds(outline),
+    section: {
+      width: support.width,
+      thickness: support.thickness,
+      radius: support.edgeRadius,
+      label: "top/bottom long-edge round-over",
+      outline: roundedRectangleProfile(
+        support.width,
+        support.thickness,
+        support.edgeRadius,
+      ),
+    },
+  };
 }
 
 function clipPolygonHalfPlane(
@@ -994,31 +1920,86 @@ function createHalfLappedXParts(
   ];
 }
 
+function createStraightSupportParts(
+  support: StraightSupportSpec,
+  model: HoverDiningTableModelDefinition,
+) {
+  const halfX = support.spanX / 2;
+  const halfWidth = support.width / 2;
+  const prismSpec: BracePlaneSpec = {
+    width: support.width,
+    thickness: support.thickness,
+    endpointInset: support.endpointInset,
+    edgeRadius: support.edgeRadius,
+    spanX: support.spanX,
+    spanY: 0,
+    endpointY: 0,
+    endpointOuterY: 0,
+    cornerTangentY: support.placementBoundaryY ?? 0,
+    miterHalfWidth: halfWidth,
+    diagonalLength: support.spanX,
+    angleRadians: 0,
+    zBottom: support.zBottom,
+    zTop: support.zTop,
+    halfLapDepth: support.thickness / 2,
+  };
+  return support.centerYs.map((centerY) => {
+    const geometry = createRoundedPlanPrism(
+      ensureCounterClockwise([
+        new THREE.Vector2(-halfX, -halfWidth),
+        new THREE.Vector2(halfX, -halfWidth),
+        new THREE.Vector2(halfX, halfWidth),
+        new THREE.Vector2(-halfX, halfWidth),
+      ]),
+      support.zBottom,
+      support.zTop,
+      prismSpec,
+      1,
+      true,
+      true,
+      model.geometry.braceRoundoverSegments,
+    );
+    if (!geometry) {
+      throw new Error("Unable to create straight support geometry");
+    }
+    geometry.translate(0, centerY, 0);
+    return geometry;
+  });
+}
+
 export function createHoverDiningTableGeometry(
   params: ModelParams,
   model: HoverDiningTableModelDefinition,
 ) {
   const { scaled: spec } = getHoverDiningTableSpec(params);
-  const upperX = createHalfLappedXParts(
-    spec.upperBrace,
-    spec.halfLapClearance,
-    model,
-  );
-  const lowerX = createHalfLappedXParts(
-    spec.lowerBrace,
-    spec.halfLapClearance,
-    model,
-  );
+  const upperSupports =
+    spec.topSupportStyle === "x"
+      ? createHalfLappedXParts(
+          spec.upperBrace,
+          spec.halfLapClearance,
+          model,
+        )
+      : createStraightSupportParts(spec.upperStretchers, model);
+  const lowerSupports =
+    spec.bottomSupportStyle === "x"
+      ? createHalfLappedXParts(
+          spec.lowerBrace,
+          spec.halfLapClearance,
+          model,
+        )
+      : spec.bottomSupportStyle === "center-board"
+        ? createStraightSupportParts(spec.lowerCenterBoard, model)
+        : [];
   const geometries = [
     createTabletopGeometry(spec, model),
     createEndFrameGeometry(spec, model, -spec.frameCenterX),
     createEndFrameGeometry(spec, model, spec.frameCenterX),
-    ...upperX,
-    ...lowerX,
+    ...upperSupports,
+    ...lowerSupports,
   ];
   return mergeGeometryList(
     geometries,
-    "Unable to merge Double-X dining-table geometry",
+    "Unable to merge dining-table support geometry",
   );
 }
 
@@ -1029,21 +2010,31 @@ export type HoverDiningTableExplodedPart = {
     | "end-box-horizontal"
     | "end-box-vertical"
     | "upper-x"
-    | "floor-x";
+    | "floor-x"
+    | "upper-stretcher"
+    | "floor-center-board";
   geometry: THREE.BufferGeometry;
   offset: THREE.Vector3;
+  fabricationProfile: HoverDiningTableFabricationProfile;
 };
 
 export type HoverDiningTableCutPart = {
   id: string;
   name: string;
-  assembly: "tabletop" | "end boxes" | "upper X" | "floor X";
-  kind: "tabletop" | "rail" | "stile" | "brace";
+  assembly:
+    | "tabletop"
+    | "end boxes"
+    | "upper X"
+    | "floor X"
+    | "upper stretchers"
+    | "floor center board";
+  kind: "tabletop" | "rail" | "stile" | "brace" | "support";
   quantity: number;
   length: number;
   width: number;
   thickness: number;
   grainDirection: "length";
+  fabricationProfile: HoverDiningTableFabricationProfile;
   cutAngleDegrees?: number;
   lap?: {
     face: "top" | "bottom";
@@ -1053,14 +2044,18 @@ export type HoverDiningTableCutPart = {
     fitClearance: number;
     shoulderAngleDegrees: number;
   };
-  processDimensions?: Array<{ label: string; value: number }>;
+  processDimensions?: Array<{
+    label: string;
+    value: number;
+    format?: "length" | "ratio";
+  }>;
   notes: string[];
 };
 
 export type HoverDiningTableCutList = {
   material: "Oak";
   dimensionBasis: "full-size finished dimensions";
-  totalPieces: 13;
+  totalPieces: number;
   parts: HoverDiningTableCutPart[];
 };
 
@@ -1080,6 +2075,7 @@ function createBraceCutParts(
     width: brace.width,
     thickness: brace.thickness,
     grainDirection: "length" as const,
+    fabricationProfile: createBraceFabricationProfile(brace),
     cutAngleDegrees: THREE.MathUtils.radToDeg(Math.abs(brace.angleRadians)),
     notes: [
       "Parallel end cuts bear flush on the end-box inside faces.",
@@ -1112,6 +2108,40 @@ function createBraceCutParts(
   ];
 }
 
+function createStraightSupportCutPart(
+  id: "S1" | "C1",
+  name: "Upper lengthwise stretcher" | "Floor center board",
+  assembly: "upper stretchers" | "floor center board",
+  support: StraightSupportSpec,
+): HoverDiningTableCutPart {
+  return {
+    id,
+    name,
+    assembly,
+    kind: "support",
+    quantity: support.count,
+    length: support.spanX,
+    width: support.width,
+    thickness: support.thickness,
+    grainDirection: "length",
+    fabricationProfile: createStraightSupportFabricationProfile(support),
+    cutAngleDegrees: 0,
+    notes: [
+      "Square end faces bear flush on the parallel end-box inside faces.",
+      "Round over the top and bottom long edges to the listed radius.",
+    ],
+    processDimensions: [
+      { label: "Edge round-over", value: support.edgeRadius },
+    ],
+  };
+}
+
+export function getHoverDiningTablePieceCount(params: ModelParams) {
+  const bottomStyle = bottomSupportStyle(getParam(params, "bottomSupportStyle"));
+  return 11 +
+    (bottomStyle === "x" ? 2 : bottomStyle === "center-board" ? 1 : 0);
+}
+
 /**
  * Creates the full-size fabrication schedule. These are finished nominal
  * dimensions rather than rough-milling allowances; the 1:mockScale display
@@ -1121,12 +2151,44 @@ export function getHoverDiningTableCutList(
   params: ModelParams,
 ): HoverDiningTableCutList {
   const { fullSize: spec } = getHoverDiningTableSpec(params);
-  const stileRise = spec.openingHeight;
-  const stileRun = spec.frameBottomSpread / 2;
-  const stileLength = Math.hypot(stileRise, stileRun);
-  const stileCutAngle = THREE.MathUtils.radToDeg(
-    Math.atan2(Math.abs(stileRun), stileRise),
+  const frameProfiles = {
+    top: createEndBoxPartFabricationProfile(spec, "top"),
+    bottom: createEndBoxPartFabricationProfile(spec, "bottom"),
+    left: createEndBoxPartFabricationProfile(spec, "left"),
+  };
+  const outerFrame = getRoundedTrapezoidDefinition(
+    spec.frameBottomWidth,
+    spec.frameTopWidth,
+    0,
+    spec.frameHeight,
+    spec.frameOuterBottomCornerRadius,
+    spec.frameOuterTopCornerRadius,
+    spec.frameOuterCurveTension,
   );
+  const innerFrame = getRoundedTrapezoidDefinition(
+    spec.openingBottomWidth,
+    spec.openingTopWidth,
+    spec.openingBottom,
+    spec.openingTop,
+    spec.frameInnerBottomCornerRadius,
+    spec.frameInnerTopCornerRadius,
+    spec.frameInnerCurveTension,
+  );
+  const stileVector = outerFrame.leftLower.clone().sub(outerFrame.leftUpper);
+  const stileLength = stileVector.length();
+  const stileWidth = Math.max(
+    outerFrame.leftUpper.distanceTo(innerFrame.leftUpper),
+    outerFrame.leftLower.distanceTo(innerFrame.leftLower),
+  );
+  const stileCutAngle = THREE.MathUtils.radToDeg(
+    Math.atan2(Math.abs(stileVector.x), Math.abs(stileVector.y)),
+  );
+  const topRailLength = frameProfiles.top.bounds.maxX - frameProfiles.top.bounds.minX;
+  const topRailWidth = frameProfiles.top.bounds.maxY - frameProfiles.top.bounds.minY;
+  const bottomRailLength =
+    frameProfiles.bottom.bounds.maxX - frameProfiles.bottom.bounds.minX;
+  const bottomRailWidth =
+    frameProfiles.bottom.bounds.maxY - frameProfiles.bottom.bounds.minY;
   const parts: HoverDiningTableCutPart[] = [
     {
       id: "T1",
@@ -1138,11 +2200,17 @@ export function getHoverDiningTableCutList(
       width: spec.width,
       thickness: spec.topThickness,
       grainDirection: "length",
+      fabricationProfile: createTabletopFabricationProfile(spec),
       notes: [
-        "Roll both long edges to the listed depth; keep both ends flat and square.",
+        "Roll both long edges to the listed Bézier profile; keep both ends flat and square.",
       ],
       processDimensions: [
         { label: "Long-edge roll", value: spec.topEdgeRoll },
+        {
+          label: "Edge-curve tension",
+          value: spec.topEdgeTension,
+          format: "ratio",
+        },
       ],
     },
     {
@@ -1151,11 +2219,30 @@ export function getHoverDiningTableCutList(
       assembly: "end boxes",
       kind: "rail",
       quantity: 2,
-      length: spec.frameTopWidth,
-      width: spec.frameTopRailHeight,
+      length: topRailLength,
+      width: topRailWidth,
       thickness: spec.frameDepth,
       grainDirection: "length",
-      notes: ["One per end box; square blank before frame glue-up."],
+      fabricationProfile: frameProfiles.top,
+      notes: [
+        "One finished top rail per end box; profile includes both routed inner and outer corner curves.",
+        "Tangent seams remain square for the stile glue joints.",
+      ],
+      processDimensions: [
+        { label: "Outer top radius", value: spec.frameOuterTopCornerRadius },
+        { label: "Inner top radius", value: spec.frameInnerTopCornerRadius },
+        { label: "Face-edge round-over", value: spec.frameEdgeRoundover },
+        {
+          label: "Outer curve tension",
+          value: spec.frameOuterCurveTension,
+          format: "ratio",
+        },
+        {
+          label: "Inner curve tension",
+          value: spec.frameInnerCurveTension,
+          format: "ratio",
+        },
+      ],
     },
     {
       id: "B2",
@@ -1163,11 +2250,30 @@ export function getHoverDiningTableCutList(
       assembly: "end boxes",
       kind: "rail",
       quantity: 2,
-      length: spec.frameBottomWidth,
-      width: spec.frameBottomRailHeight,
+      length: bottomRailLength,
+      width: bottomRailWidth,
       thickness: spec.frameDepth,
       grainDirection: "length",
-      notes: ["One per end box; square blank before frame glue-up."],
+      fabricationProfile: frameProfiles.bottom,
+      notes: [
+        "One finished bottom rail per end box; profile includes both routed inner and outer corner curves.",
+        "The floor edge remains flat while the curved returns terminate at the stile seams.",
+      ],
+      processDimensions: [
+        { label: "Outer bottom radius", value: spec.frameOuterBottomCornerRadius },
+        { label: "Inner bottom radius", value: spec.frameInnerBottomCornerRadius },
+        { label: "Face-edge round-over", value: spec.frameEdgeRoundover },
+        {
+          label: "Outer curve tension",
+          value: spec.frameOuterCurveTension,
+          format: "ratio",
+        },
+        {
+          label: "Inner curve tension",
+          value: spec.frameInnerCurveTension,
+          format: "ratio",
+        },
+      ],
     },
     {
       id: "B3",
@@ -1176,39 +2282,69 @@ export function getHoverDiningTableCutList(
       kind: "stile",
       quantity: 4,
       length: stileLength,
-      width: spec.frameSideWidth,
+      width: stileWidth,
       thickness: spec.frameDepth,
       grainDirection: "length",
+      fabricationProfile: frameProfiles.left,
       cutAngleDegrees: stileCutAngle,
       notes: [
         "Two mirrored stiles per end box.",
-        "After glue-up, route the listed outer/inner curves and face-edge round-over.",
+        "The profile runs exactly between the rail curve-tangent seams and follows the derived box splay.",
       ],
       processDimensions: [
-        { label: "Outer corner radius", value: spec.frameOuterCornerRadius },
-        { label: "Inner corner radius", value: spec.frameInnerCornerRadius },
         { label: "Face-edge round-over", value: spec.frameEdgeRoundover },
       ],
     },
-    ...createBraceCutParts(
-      "U",
-      "upper X",
-      spec.upperBrace,
-      spec.halfLapClearance,
-    ),
-    ...createBraceCutParts(
-      "F",
-      "floor X",
-      spec.lowerBrace,
-      spec.halfLapClearance,
-    ),
   ];
 
+  if (spec.topSupportStyle === "x") {
+    parts.push(
+      ...createBraceCutParts(
+        "U",
+        "upper X",
+        spec.upperBrace,
+        spec.halfLapClearance,
+      ),
+    );
+  } else {
+    parts.push(
+      createStraightSupportCutPart(
+        "S1",
+        "Upper lengthwise stretcher",
+        "upper stretchers",
+        spec.upperStretchers,
+      ),
+    );
+  }
+  if (spec.bottomSupportStyle === "x") {
+    parts.push(
+      ...createBraceCutParts(
+        "F",
+        "floor X",
+        spec.lowerBrace,
+        spec.halfLapClearance,
+      ),
+    );
+  } else if (spec.bottomSupportStyle === "center-board") {
+    parts.push(
+      createStraightSupportCutPart(
+        "C1",
+        "Floor center board",
+        "floor center board",
+        spec.lowerCenterBoard,
+      ),
+    );
+  }
+
   const totalPieces = parts.reduce((sum, part) => sum + part.quantity, 0);
-  if (totalPieces !== 13) {
-    throw new Error(`X-Hover cut list must account for 13 pieces; received ${totalPieces}`);
+  const expectedPieces = getHoverDiningTablePieceCount(params);
+  if (totalPieces !== expectedPieces) {
+    throw new Error(
+      `Hover-table cut list must account for ${expectedPieces} pieces; received ${totalPieces}`,
+    );
   }
   for (const part of parts) {
+    assertFabricationProfile(part.fabricationProfile, part.id);
     for (const [label, value] of [
       ["length", part.length],
       ["width", part.width],
@@ -1234,72 +2370,33 @@ export function getHoverDiningTableCutList(
   return {
     material: "Oak",
     dimensionBasis: "full-size finished dimensions",
-    totalPieces: 13,
+    totalPieces,
     parts,
   };
 }
 
-function createEndBoxHorizontalBarGeometry(
+function createEndBoxFinishedPartGeometry(
   spec: HoverDiningTableSpec,
+  model: HoverDiningTableModelDefinition,
   x: number,
-  position: "top" | "bottom",
+  position: EndBoxPartPosition,
 ) {
-  const top = position === "top";
-  const width = top ? spec.frameTopWidth : spec.frameBottomWidth;
-  const height = top ? spec.frameTopRailHeight : spec.frameBottomRailHeight;
-  const z = top ? spec.frameHeight - height / 2 : height / 2;
-  const geometry = new THREE.BoxGeometry(spec.frameDepth, width, height);
-  geometry.translate(x, 0, z);
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
-function createEndBoxVerticalBarGeometry(
-  spec: HoverDiningTableSpec,
-  x: number,
-  sideSign: -1 | 1,
-) {
-  const bottom = spec.frameBottomRailHeight;
-  const top = spec.frameHeight - spec.frameTopRailHeight;
-  const outerBottom = sideSign * spec.frameBottomWidth / 2;
-  const innerBottom = outerBottom - sideSign * spec.frameSideWidth;
-  const outerTop = sideSign * spec.frameTopWidth / 2;
-  const innerTop = outerTop - sideSign * spec.frameSideWidth;
-  const shape = new THREE.Shape();
-  const points = ensureCounterClockwise([
-    new THREE.Vector2(innerBottom, bottom),
-    new THREE.Vector2(outerBottom, bottom),
-    new THREE.Vector2(outerTop, top),
-    new THREE.Vector2(innerTop, top),
-  ]);
-  shape.moveTo(points[0].x, points[0].y);
-  for (let index = 1; index < points.length; index += 1) {
-    shape.lineTo(points[index].x, points[index].y);
-  }
-  shape.closePath();
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    bevelEnabled: false,
-    curveSegments: 1,
-    depth: spec.frameDepth,
-    steps: 1,
-  });
-  geometry.applyMatrix4(
-    new THREE.Matrix4().set(
-      0, 0, 1, x - spec.frameDepth / 2,
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 0, 1,
-    ),
+  const commands = createEndBoxPartProfiles(spec)[position];
+  return createSelectivelyRoundedExtrusion(
+    commands,
+    spec.frameDepth,
+    spec.frameEdgeRoundover,
+    model.geometry.curveSegments,
+    model.geometry.bevelSegments,
+    x,
   );
-  geometry.computeVertexNormals();
-  return geometry;
 }
 
 /**
- * Returns the glue-up stock as thirteen independently movable pieces. The
- * assembled model remains the source of truth for its routed inner/outer box
- * curves; this view separates the four rail-and-stile blanks that produce each
- * finished end box after glue-up and routing.
+ * Returns independently movable, fabrication-complete glue-up pieces for the
+ * selected support layout. The four bars of each end box share the assembled
+ * Bézier/tangent constraints, while selective face round-overs leave every
+ * glue seam square.
  */
 export function createHoverDiningTableExplodedParts(
   params: ModelParams,
@@ -1314,6 +2411,7 @@ export function createHoverDiningTableExplodedParts(
       category: "tabletop",
       geometry: createTabletopGeometry(spec, model),
       offset: new THREE.Vector3(0, 0, baseLift + gap * 3),
+      fabricationProfile: createTabletopFabricationProfile(spec),
     },
   ];
 
@@ -1325,26 +2423,30 @@ export function createHoverDiningTableExplodedParts(
       {
         name: `${endLabel}-box-top-rail`,
         category: "end-box-horizontal",
-        geometry: createEndBoxHorizontalBarGeometry(spec, x, "top"),
+        geometry: createEndBoxFinishedPartGeometry(spec, model, x, "top"),
         offset: new THREE.Vector3(xOffset, 0, baseLift + gap),
+        fabricationProfile: createEndBoxPartFabricationProfile(spec, "top"),
       },
       {
         name: `${endLabel}-box-bottom-rail`,
         category: "end-box-horizontal",
-        geometry: createEndBoxHorizontalBarGeometry(spec, x, "bottom"),
+        geometry: createEndBoxFinishedPartGeometry(spec, model, x, "bottom"),
         offset: new THREE.Vector3(xOffset, 0, 0),
+        fabricationProfile: createEndBoxPartFabricationProfile(spec, "bottom"),
       },
       {
         name: `${endLabel}-box-left-vertical`,
         category: "end-box-vertical",
-        geometry: createEndBoxVerticalBarGeometry(spec, x, -1),
+        geometry: createEndBoxFinishedPartGeometry(spec, model, x, "left"),
         offset: new THREE.Vector3(xOffset, -gap, baseLift),
+        fabricationProfile: createEndBoxPartFabricationProfile(spec, "left"),
       },
       {
         name: `${endLabel}-box-right-vertical`,
         category: "end-box-vertical",
-        geometry: createEndBoxVerticalBarGeometry(spec, x, 1),
+        geometry: createEndBoxFinishedPartGeometry(spec, model, x, "right"),
         offset: new THREE.Vector3(xOffset, gap, baseLift),
+        fabricationProfile: createEndBoxPartFabricationProfile(spec, "right"),
       },
     );
   }
@@ -1360,22 +2462,68 @@ export function createHoverDiningTableExplodedParts(
     );
     geometries.forEach((geometry, index) => {
       const direction = index === 0 ? -1 : 1;
+      const pocketSeparationZ =
+        category === "upper-x"
+          ? (index === 0 ? 0 : -gap * 1.25)
+          : (index === 0 ? 0 : gap * 1.25);
       parts.push({
         name: `${category}-bar-${index + 1}`,
         category,
         geometry,
-        offset: new THREE.Vector3(0, direction * gap * 1.5, baseLift),
+        offset: new THREE.Vector3(
+          0,
+          direction * gap * 2.35,
+          baseLift + pocketSeparationZ,
+        ),
+        fabricationProfile: createBraceFabricationProfile(brace),
       });
     });
   };
-  addXParts(spec.upperBrace, "upper-x");
-  addXParts(spec.lowerBrace, "floor-x");
+  const addStraightParts = (
+    support: StraightSupportSpec,
+    category: "upper-stretcher" | "floor-center-board",
+  ) => {
+    const geometries = createStraightSupportParts(support, model);
+    geometries.forEach((geometry, index) => {
+      const separation =
+        category === "upper-stretcher"
+          ? (index === 0 ? -1 : 1) * gap * 1.4
+          : 0;
+      parts.push({
+        name:
+          category === "upper-stretcher"
+            ? `upper-stretcher-${index + 1}`
+            : "floor-center-board",
+        category,
+        geometry,
+        offset: new THREE.Vector3(0, separation, baseLift),
+        fabricationProfile: createStraightSupportFabricationProfile(support),
+      });
+    });
+  };
+  if (spec.topSupportStyle === "x") {
+    addXParts(spec.upperBrace, "upper-x");
+  } else {
+    addStraightParts(spec.upperStretchers, "upper-stretcher");
+  }
+  if (spec.bottomSupportStyle === "x") {
+    addXParts(spec.lowerBrace, "floor-x");
+  } else if (spec.bottomSupportStyle === "center-board") {
+    addStraightParts(spec.lowerCenterBoard, "floor-center-board");
+  }
 
   parts.forEach((part) => addPlanarWoodUvs(part.geometry));
 
-  if (parts.length !== 13) {
+  parts.forEach((part) =>
+    assertFabricationProfile(part.fabricationProfile, part.name),
+  );
+
+  const expectedPieces = getHoverDiningTablePieceCount(params);
+  if (parts.length !== expectedPieces) {
     parts.forEach((part) => part.geometry.dispose());
-    throw new Error(`Exploded X-Hover assembly must contain 13 pieces; received ${parts.length}`);
+    throw new Error(
+      `Exploded Hover-table assembly must contain ${expectedPieces} pieces; received ${parts.length}`,
+    );
   }
   return parts;
 }
@@ -1415,8 +2563,11 @@ export function getHoverDiningTableParameterLimits(
       limits.min,
       2 * spec.sideOverhang +
         2 * spec.frameSideWidth +
-        2 * spec.frameInnerCornerRadius,
-      spec.frameBottomWidth,
+        2 * spec.frameInnerTopCornerRadius,
+      2 * spec.sideOverhang -
+        spec.frameBottomSpread +
+        2 * spec.frameSideWidth +
+        2 * spec.frameInnerBottomCornerRadius,
     );
   } else if (key === "overallHeight") {
     limits.min = Math.max(
@@ -1424,7 +2575,9 @@ export function getHoverDiningTableParameterLimits(
       spec.topThickness +
         spec.frameBottomRailHeight +
         spec.frameTopRailHeight +
-        2 * spec.frameInnerCornerRadius,
+        spec.frameInnerTopCornerRadius +
+        spec.frameInnerBottomCornerRadius +
+        limits.step,
       spec.topThickness + spec.lowerBrace.thickness + spec.upperBrace.thickness,
     );
   } else if (key === "topThickness") {
@@ -1432,12 +2585,20 @@ export function getHoverDiningTableParameterLimits(
   } else if (key === "topEdgeRoll") {
     limits.max = Math.min(limits.max, spec.width / 3);
   } else if (key === "sideOverhang") {
+    limits.min = Math.max(
+      limits.min,
+      Math.max(spec.frameBottomSpread, 0) / 2 + limits.step,
+    );
     limits.max = Math.min(
       limits.max,
       (spec.width -
         2 * spec.frameSideWidth -
-        2 * spec.frameInnerCornerRadius -
-        Math.max(spec.frameBottomSpread, 0)) /
+        2 * spec.frameInnerTopCornerRadius) /
+        2,
+      (spec.width +
+        spec.frameBottomSpread -
+        2 * spec.frameSideWidth -
+        2 * spec.frameInnerBottomCornerRadius) /
         2,
     );
   } else if (key === "endOverhang") {
@@ -1456,13 +2617,11 @@ export function getHoverDiningTableParameterLimits(
       limits.min,
       spec.frameEdgeRoundover * 2 + limits.step,
       spec.upperBrace.width,
-      spec.lowerBrace.width,
     );
     limits.max = Math.min(
       limits.max,
-      (Math.min(spec.frameTopWidth, spec.frameBottomWidth) -
-        2 * spec.frameInnerCornerRadius) /
-        2,
+      (spec.frameTopWidth - 2 * spec.frameInnerTopCornerRadius) / 2,
+      (spec.frameBottomWidth - 2 * spec.frameInnerBottomCornerRadius) / 2,
     );
   } else if (key === "frameBottomRailHeight" || key === "frameTopRailHeight") {
     limits.min = Math.max(
@@ -1478,36 +2637,51 @@ export function getHoverDiningTableParameterLimits(
         : spec.frameBottomRailHeight;
     limits.max = Math.min(
       limits.max,
-      spec.frameHeight - other - 2 * spec.frameInnerCornerRadius,
+      spec.frameHeight -
+        other -
+        spec.frameInnerTopCornerRadius -
+        spec.frameInnerBottomCornerRadius -
+        limits.step,
     );
   } else if (key === "frameBottomSpread") {
     limits.min = Math.max(
       limits.min,
       -spec.frameTopWidth +
         2 * spec.frameSideWidth +
-        2 * spec.frameInnerCornerRadius,
+        2 * spec.frameInnerBottomCornerRadius,
     );
     limits.max = Math.min(limits.max, spec.sideOverhang * 2);
-  } else if (key === "frameOuterCornerRadius") {
+  } else if (key === "frameOuterTopCornerRadius") {
     limits.max = Math.min(
       limits.max,
-      Math.min(spec.frameTopWidth, spec.frameBottomWidth, spec.frameHeight) / 2 -
+      spec.frameTopWidth / 2 - limits.step,
+      spec.frameHeight - spec.frameOuterBottomCornerRadius - limits.step,
+    );
+  } else if (key === "frameOuterBottomCornerRadius") {
+    limits.max = Math.min(
+      limits.max,
+      spec.frameBottomWidth / 2 - limits.step,
+      spec.frameHeight - spec.frameOuterTopCornerRadius - limits.step,
+    );
+  } else if (key === "frameInnerTopCornerRadius") {
+    limits.max = Math.min(
+      limits.max,
+      spec.openingHeight - spec.frameInnerBottomCornerRadius - limits.step,
+      spec.openingTopWidth / 2 -
+        spec.upperBrace.endpointInset -
+        spec.upperBrace.miterHalfWidth -
+        spec.upperBrace.width / 2 -
         limits.step,
     );
-  } else if (key === "frameInnerCornerRadius") {
+  } else if (key === "frameInnerBottomCornerRadius") {
     limits.max = Math.min(
       limits.max,
-      Math.min(
-        spec.openingHeight / 2,
-        spec.openingTopWidth / 2 -
-          spec.upperBrace.endpointInset -
-          spec.upperBrace.miterHalfWidth -
-          spec.upperBrace.width / 2,
-        spec.openingBottomWidth / 2 -
-          spec.lowerBrace.endpointInset -
-          spec.lowerBrace.miterHalfWidth -
-          spec.lowerBrace.width / 2,
-      ) - limits.step,
+      spec.openingHeight - spec.frameInnerTopCornerRadius - limits.step,
+      spec.openingBottomWidth / 2 -
+        spec.lowerBrace.endpointInset -
+        spec.lowerBrace.miterHalfWidth -
+        spec.lowerBrace.width / 2 -
+        limits.step,
     );
   } else if (key === "frameEdgeRoundover") {
     limits.max = Math.min(
@@ -1521,43 +2695,75 @@ export function getHoverDiningTableParameterLimits(
         2 -
         limits.step,
     );
-  } else if (key === "upperBraceWidth" || key === "lowerBraceWidth") {
-    const brace = key === "upperBraceWidth" ? spec.upperBrace : spec.lowerBrace;
-    limits.min = Math.max(limits.min, brace.edgeRadius * 2 + limits.step);
-    limits.max = Math.min(limits.max, spec.frameSideWidth);
-  } else if (key === "upperBraceThickness" || key === "lowerBraceThickness") {
-    const upper = key === "upperBraceThickness";
-    const brace = upper ? spec.upperBrace : spec.lowerBrace;
-    limits.min = Math.max(limits.min, brace.edgeRadius * 2 + limits.step);
-    limits.max = Math.min(
-      limits.max,
-      upper ? spec.frameTopRailHeight : spec.frameBottomRailHeight,
+  } else if (key === "xBraceWidth") {
+    limits.min = Math.max(
+      limits.min,
+      spec.upperBrace.edgeRadius * 2 + limits.step,
     );
-  } else if (
-    key === "upperBraceEndpointInset" ||
-    key === "lowerBraceEndpointInset"
-  ) {
-    const brace =
-      key === "upperBraceEndpointInset" ? spec.upperBrace : spec.lowerBrace;
     limits.max = Math.min(
       limits.max,
-      Math.max(
-        0,
-        brace.cornerTangentY - brace.miterHalfWidth - brace.width / 2,
-      ),
+      (spec.frameTopWidth - 2 * spec.frameInnerTopCornerRadius) / 2,
+      (spec.frameBottomWidth - 2 * spec.frameInnerBottomCornerRadius) / 2,
+      spec.upperBrace.cornerTangentY - spec.upperBrace.endpointInset,
+      spec.lowerBrace.cornerTangentY - spec.lowerBrace.endpointInset,
     );
-  } else if (key === "upperBraceEdgeRadius" || key === "lowerBraceEdgeRadius") {
-    const brace =
-      key === "upperBraceEdgeRadius" ? spec.upperBrace : spec.lowerBrace;
+  } else if (key === "xBraceThickness") {
+    limits.min = Math.max(
+      limits.min,
+      spec.upperBrace.edgeRadius * 2 + limits.step,
+    );
     limits.max = Math.min(
       limits.max,
-      brace.width / 2 - limits.step,
-      brace.halfLapDepth - spec.halfLapClearance / 2 - limits.step,
+      getParameter(model, "frameTopRailHeight").limits.max,
+      getParameter(model, "frameBottomRailHeight").limits.max,
+      (spec.frameHeight -
+        spec.frameInnerTopCornerRadius -
+        spec.frameInnerBottomCornerRadius -
+        limits.step) /
+        2,
+    );
+  } else if (key === "xBraceEndpointInset") {
+    limits.max = Math.min(
+      limits.max,
+      spec.upperBrace.cornerTangentY -
+        spec.upperBrace.miterHalfWidth -
+        spec.upperBrace.width / 2,
+      spec.lowerBrace.cornerTangentY -
+        spec.lowerBrace.miterHalfWidth -
+        spec.lowerBrace.width / 2,
+    );
+  } else if (key === "xBraceEdgeRadius") {
+    limits.max = Math.min(
+      limits.max,
+      spec.upperBrace.width / 2 - limits.step,
+      spec.upperBrace.halfLapDepth -
+        spec.halfLapClearance / 2 -
+        limits.step,
     );
   } else if (key === "halfLapClearance") {
     limits.max = Math.min(
       limits.max,
-      Math.min(spec.upperBrace.thickness, spec.lowerBrace.thickness) / 4,
+      spec.upperBrace.thickness / 4,
+    );
+  } else if (key === "templatePlateLength") {
+    limits.min = Math.max(
+      limits.min,
+      getParam(params, "templateDovetailDepth") * 4 +
+        getParam(params, "templateJointClearance") +
+        limits.step,
+    );
+  } else if (key === "templateDovetailDepth") {
+    limits.max = Math.min(
+      limits.max,
+      (getParam(params, "templatePlateLength") -
+        getParam(params, "templateJointClearance")) /
+        4 -
+        limits.step,
+    );
+  } else if (key === "templateJointClearance") {
+    limits.max = Math.min(
+      limits.max,
+      getParam(params, "templateDovetailDepth") / 3 - limits.step,
     );
   }
 
@@ -1575,6 +2781,22 @@ function item(
 
 function formatBraceAngle(brace: BracePlaneSpec) {
   return `${THREE.MathUtils.radToDeg(brace.angleRadians).toFixed(1)}°`;
+}
+
+function topSupportAuditLabel(spec: HoverDiningTableSpec, unit: LengthUnit) {
+  return spec.topSupportStyle === "x"
+    ? `X · 2 × ${formatLength(spec.upperBrace.diagonalLength, unit)} at ±${formatBraceAngle(spec.upperBrace)}`
+    : `2 original lengthwise stretchers · ${formatLength(spec.upperStretchers.spanX, unit)} long · centers at ±${formatLength(Math.abs(spec.upperStretchers.centerYs[0]), unit)}`;
+}
+
+function bottomSupportAuditLabel(spec: HoverDiningTableSpec, unit: LengthUnit) {
+  if (spec.bottomSupportStyle === "x") {
+    return `X · 2 × ${formatLength(spec.lowerBrace.diagonalLength, unit)} at ±${formatBraceAngle(spec.lowerBrace)}`;
+  }
+  if (spec.bottomSupportStyle === "center-board") {
+    return `1 centered lengthwise board · ${formatLength(spec.lowerCenterBoard.spanX, unit)} long`;
+  }
+  return "None · end boxes remain unconnected at floor level";
 }
 
 export function getHoverDiningTableAuditValue(
@@ -1607,7 +2829,7 @@ export function getHoverDiningTableAuditValue(
     case "hoverCornerCurves":
       return item(
         check.label,
-        `outer r ${formatLength(spec.frameOuterCornerRadius, unit)} κ${spec.frameOuterCurveTension.toFixed(3)} · inner r ${formatLength(spec.frameInnerCornerRadius, unit)} κ${spec.frameInnerCurveTension.toFixed(3)}`,
+        `outer top/bottom ${formatLength(spec.frameOuterTopCornerRadius, unit)} / ${formatLength(spec.frameOuterBottomCornerRadius, unit)} κ${spec.frameOuterCurveTension.toFixed(3)} · inner top/bottom ${formatLength(spec.frameInnerTopCornerRadius, unit)} / ${formatLength(spec.frameInnerBottomCornerRadius, unit)} κ${spec.frameInnerCurveTension.toFixed(3)}`,
       );
     case "hoverBoxSplay":
       return item(
@@ -1617,37 +2839,67 @@ export function getHoverDiningTableAuditValue(
     case "hoverUpperX":
       return item(
         check.label,
-        `2 × ${formatLength(spec.upperBrace.diagonalLength, unit)} at ±${formatBraceAngle(spec.upperBrace)}`,
+        topSupportAuditLabel(spec, unit),
       );
     case "hoverLowerX":
       return item(
         check.label,
-        `2 × ${formatLength(spec.lowerBrace.diagonalLength, unit)} at ±${formatBraceAngle(spec.lowerBrace)}`,
+        bottomSupportAuditLabel(spec, unit),
       );
     case "hoverBraceEndCuts":
-      return item(
-        check.label,
-        `8 box-parallel bearing faces · 4 per X · upper ${formatLength(spec.upperBrace.endpointOuterY, unit)} / ${formatLength(spec.upperBrace.cornerTangentY, unit)} tangent · lower ${formatLength(spec.lowerBrace.endpointOuterY, unit)} / ${formatLength(spec.lowerBrace.cornerTangentY, unit)} tangent · ${formatLength(spec.lowerBrace.edgeRadius, unit)} top/bottom round-over`,
-      );
+      {
+        const bottomFaceCount =
+          spec.bottomSupportStyle === "x"
+            ? 4
+            : spec.bottomSupportStyle === "center-board"
+              ? 2
+              : 0;
+        return item(
+          check.label,
+          `${4 + bottomFaceCount} box-parallel bearing faces · selected members stop on straight contact zones · ${formatLength(spec.upperBrace.edgeRadius, unit)} top/bottom round-over`,
+        );
+      }
     case "hoverHalfLaps":
-      return item(
-        check.label,
-        `2 centered · full width · complementary 50% depth · ${formatLength(spec.halfLapClearance, unit)} fit clearance`,
-      );
+      {
+        const xCount =
+          (spec.topSupportStyle === "x" ? 1 : 0) +
+          (spec.bottomSupportStyle === "x" ? 1 : 0);
+        return item(
+          check.label,
+          xCount === 0
+            ? "Not required by the selected straight-support layouts"
+            : `${xCount} centered · full width · complementary 50% depth · ${formatLength(spec.halfLapClearance, unit)} fit clearance`,
+        );
+      }
     case "hoverDirectContact":
       return item(
         check.label,
-        `upper Z ${formatLength(spec.upperBrace.zTop, unit)} · lower Z ${formatLength(spec.lowerBrace.zBottom, unit)} · zero gaps`,
+        `top supports Z ${formatLength(spec.topBottom, unit)} · ${spec.bottomSupportStyle === "none" ? "no floor support selected" : `floor supports Z ${formatLength(0, unit)}`} · zero support gaps`,
       );
     case "hoverExplodedAssembly":
       return item(
         check.label,
-        "13 pieces · 1 top · 8 end-box bars · 4 X bars",
+        `${getHoverDiningTablePieceCount(params)} constrained solids · profiled top · 4 Bézier rails · 4 tangent-seam stiles · selected finished supports`,
       );
     case "hoverCutList":
+      {
+        const scheduleLines =
+          4 +
+          (spec.topSupportStyle === "x" ? 2 : 1) +
+          (spec.bottomSupportStyle === "x"
+            ? 2
+            : spec.bottomSupportStyle === "center-board"
+              ? 1
+              : 0);
+        return item(
+          check.label,
+          `${scheduleLines} schedule lines · ${getHoverDiningTablePieceCount(params)} oak pieces · exact profiles + edge sections · full-size finished dimensions`,
+        );
+      }
+    case "hoverRoutingTemplates":
       return item(
         check.label,
-        "8 schedule lines · 13 oak pieces · full-size finished dimensions",
+        `2 profiles · ${formatLength(getParam(params, "templateThickness"), unit)} thick · ${formatLength(getParam(params, "templatePlateLength"), unit)} plate · keyed dovetails`,
       );
     case "hoverPrintEnvelope":
       return item(
