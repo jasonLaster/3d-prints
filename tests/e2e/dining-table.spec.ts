@@ -84,7 +84,7 @@ test("renders the oak table and exports the registered two-color 1:10 mock", asy
   await page.goto("/?model=dining-table&unit=in");
   await expect(page.getByRole("heading", { name: "Oak Dining Table" })).toBeVisible();
   await expect(page.getByLabel("Oak Dining Table model viewer")).toBeVisible();
-  await expect(page.locator("canvas").first()).toBeVisible();
+  await expect(page.locator(".scene-panel canvas")).toBeVisible();
   await expect(page.getByLabel("Mock scale denominator")).toHaveValue("10");
   await expect(page.getByLabel("Table length in inches")).toHaveValue("76");
   await expect(page.getByLabel("Table width in inches")).toHaveValue("38");

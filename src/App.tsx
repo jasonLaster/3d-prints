@@ -60,6 +60,7 @@ import {
   SelectValue,
 } from "./components/ui/select";
 import { HoverDiningTableCutList } from "./components/HoverDiningTableCutList";
+import { MiniModelViewer } from "./components/MiniModelViewer";
 import {
   applyHolderMorph,
   applyTrayMorph,
@@ -3152,10 +3153,6 @@ function LoadingShell({ message }: { message: string }) {
   );
 }
 
-function getWorkspaceModelPreviewClass(modelKey: string) {
-  return modelKey.includes("tray") ? "tray" : "holder";
-}
-
 function formatWorkspaceVersionDate(timestamp: number) {
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
@@ -3177,6 +3174,7 @@ type WorkspaceLibrarySidebarProps = {
   isCollapsed: boolean;
   isCompactOpen: boolean;
   selectedModelId: string;
+  theme: ThemeMode;
   onOpenModel: (modelId: string) => void;
   onOpenVersion: (version: SavedLibraryVersion) => void;
   onToggleCollapsed: () => void;
@@ -3190,6 +3188,7 @@ function WorkspaceLibrarySidebar({
   isCollapsed,
   isCompactOpen,
   selectedModelId,
+  theme,
   onOpenModel,
   onOpenVersion,
   onToggleCollapsed,
@@ -3337,28 +3336,32 @@ function WorkspaceLibrarySidebar({
             {filteredModels.map((modelEntry) => {
               const isActive = modelEntry.key === selectedModelId;
               return (
-                <button
-                  aria-current={isActive ? "page" : undefined}
-                  aria-label={`Open ${modelEntry.name}`}
+                <article
                   className={`workspace-model-card${isActive ? " active" : ""}`}
                   key={modelEntry.key}
-                  onClick={() => onOpenModel(modelEntry.key)}
-                  type="button"
                 >
-                  <span
-                    aria-hidden="true"
-                    className={`model-preview ${getWorkspaceModelPreviewClass(modelEntry.key)}`}
+                  <MiniModelViewer
+                    configUrl={modelEntry.configUrl}
+                    modelKey={modelEntry.key}
+                    modelName={modelEntry.name}
+                    theme={theme}
+                  />
+                  <button
+                    aria-current={isActive ? "page" : undefined}
+                    aria-label={`Open ${modelEntry.name}`}
+                    className="workspace-model-card-open"
+                    onClick={() => onOpenModel(modelEntry.key)}
+                    type="button"
                   >
-                    <span />
-                  </span>
-                  <span className="workspace-model-card-copy">
-                    <strong>{modelEntry.name}</strong>
-                    <span>
-                      {modelEntry.description ?? "Parametric STL model"}
+                    <span className="workspace-model-card-copy">
+                      <strong>{modelEntry.name}</strong>
+                      <span>
+                        {modelEntry.description ?? "Parametric STL model"}
+                      </span>
                     </span>
-                  </span>
-                  <ChevronRight aria-hidden="true" />
-                </button>
+                    <ChevronRight aria-hidden="true" />
+                  </button>
+                </article>
               );
             })}
           </div>
@@ -4293,6 +4296,7 @@ export default function App({
           isCollapsed={isCompactWorkspace ? false : isLibrarySidebarCollapsed}
           isCompactOpen={isCompactWorkspace && isCompactLibraryOpen}
           selectedModelId={selectedModelId}
+          theme={theme}
           onOpenModel={openModel}
           onOpenVersion={openLibraryVersion}
           onToggleCollapsed={() =>

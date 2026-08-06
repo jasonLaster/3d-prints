@@ -9,7 +9,7 @@ const THEME_STORAGE_KEY = "3d-prints:theme";
 const PLAYWRIGHT_TEST_VERSION_PREFIX = "Playwright ";
 
 async function expectCanvasHasRenderedModel(page: Page) {
-  const canvas = page.locator("canvas").first();
+  const canvas = page.locator(".scene-panel canvas");
   await expect(canvas).toBeVisible();
   await page.waitForTimeout(350);
 
@@ -220,6 +220,51 @@ test.describe("3D print app", () => {
     await expect(page.getByLabel("Japandi Tray model viewer")).toBeVisible();
     await expect(page.getByLabel("Tray length in inches")).toBeVisible();
     await expectCanvasHasRenderedModel(page);
+  });
+
+  test("renders distinct keyboard-operable 3D previews in the model library", async ({
+    page,
+  }) => {
+    await openReady(page, "/?model=japandi-tray&unit=in");
+
+    const trayPreview = page.getByTestId("model-preview-japandi-tray");
+    const tablePreview = page.getByTestId("model-preview-dining-table");
+    await expect(trayPreview).toHaveAttribute("data-load-state", "ready");
+    await expect(tablePreview).toHaveAttribute("data-load-state", "ready");
+    await expect(trayPreview.locator("canvas")).toBeVisible();
+    await expect(tablePreview.locator("canvas")).toBeVisible();
+
+    const before = await tablePreview.screenshot();
+    await tablePreview.focus();
+    await tablePreview.press("ArrowRight");
+    const after = await tablePreview.screenshot();
+    expect(countChangedPixels(before, after)).toBeGreaterThan(20);
+
+    await expect(page.getByRole("button", { name: "Open Oak Dining Table" })).toBeVisible();
+
+    await page.setViewportSize({ width: 393, height: 852 });
+    await page.getByRole("button", { name: "Open workspace navigation" }).click();
+    await expect(trayPreview).toHaveAttribute("data-load-state", "ready");
+    const compactLayout = await page.evaluate(() => {
+      const preview = document
+        .querySelector<HTMLElement>('[data-testid="model-preview-japandi-tray"]')!
+        .getBoundingClientRect();
+      const openButton = document
+        .querySelector<HTMLElement>('[aria-label="Open Japandi Tray"]')!
+        .getBoundingClientRect();
+      return {
+        documentOverflow:
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+        openButtonHeight: openButton.height,
+        previewHeight: preview.height,
+        previewWidth: preview.width,
+      };
+    });
+    expect(compactLayout.documentOverflow).toBeLessThanOrEqual(0);
+    expect(compactLayout.openButtonHeight).toBeGreaterThanOrEqual(44);
+    expect(compactLayout.previewHeight).toBeGreaterThanOrEqual(44);
+    expect(compactLayout.previewWidth).toBeGreaterThanOrEqual(44);
   });
 
   test("root model opening clears stale parameter query values", async ({ page }) => {
@@ -586,7 +631,7 @@ test.describe("3D print app", () => {
         "false",
       );
 
-      const canvasBox = await page.locator("canvas").first().boundingBox();
+      const canvasBox = await page.locator(".scene-panel canvas").boundingBox();
       expect(canvasBox).not.toBeNull();
       await page.mouse.move(
         canvasBox!.x + canvasBox!.width / 2,
@@ -612,7 +657,7 @@ test.describe("3D print app", () => {
 
     const panButton = page.getByRole("button", { name: "Pan view" });
     const viewer = page.locator(".viewer");
-    const canvas = page.locator("canvas").first();
+    const canvas = page.locator(".scene-panel canvas");
     await panButton.click();
     await expect(panButton).toHaveAttribute("aria-pressed", "true");
     await expect(viewer).toHaveAttribute("data-interaction-mode", "pan");
@@ -647,7 +692,7 @@ test.describe("3D print app", () => {
   }) => {
     await openReady(page, "/?model=japandi-tray&unit=mm");
 
-    const canvas = page.locator("canvas").first();
+    const canvas = page.locator(".scene-panel canvas");
     const orientation = page.locator(".orientation-cube");
     const orientationBefore = await orientation.getAttribute("style");
     const canvasBox = await canvas.boundingBox();
@@ -657,7 +702,7 @@ test.describe("3D print app", () => {
       canvasBox!.y + canvasBox!.height / 2,
     );
     await page.evaluate(() => {
-      const viewerCanvas = document.querySelector("canvas");
+      const viewerCanvas = document.querySelector(".scene-panel canvas");
       viewerCanvas?.addEventListener("wheel", (event) => {
         viewerCanvas.setAttribute(
           "data-wheel-route",
@@ -713,7 +758,7 @@ test.describe("3D print app", () => {
     await openReady(page, "/?model=japandi-tray&unit=mm");
 
     const panButton = page.getByRole("button", { name: "Pan view" });
-    const canvas = page.locator("canvas").first();
+    const canvas = page.locator(".scene-panel canvas");
     await panButton.click();
     await expect(panButton).toHaveAttribute("aria-pressed", "true");
 

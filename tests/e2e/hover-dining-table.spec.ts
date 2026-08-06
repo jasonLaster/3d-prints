@@ -1241,7 +1241,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(
     page.getByLabel("X-Hover Dining Table model viewer"),
   ).toBeVisible();
-  await expect(page.locator("canvas").first()).toBeVisible();
+  await expect(page.locator(".scene-panel canvas")).toBeVisible();
   await expect(
     page.locator(".inspector-body > .panel-section > h2"),
   ).toHaveText(["Assembly", "Model controls", "Rendering"]);
@@ -1790,7 +1790,7 @@ test("switches support layouts associatively across viewer, exploded mode, cut l
   page,
 }) => {
   await page.goto("/?model=hover-dining-table&unit=in");
-  await expect(page.locator("canvas").first()).toBeVisible();
+  await expect(page.locator(".scene-panel canvas")).toBeVisible();
   await page.getByRole("button", { name: "Support layout" }).click();
   await page.evaluate(
     () =>
