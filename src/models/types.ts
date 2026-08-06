@@ -126,13 +126,21 @@ export type DiningTableGeometry = {
   channelCount: 3;
 };
 
+export type HoverDiningTableGeometry = {
+  mainAxis: { x: number; y: number; z: number };
+  curveSegments: number;
+  bevelSegments: number;
+  braceCornerSegments: number;
+};
+
 export type SupportedViewer =
   | "weighted-paper-towel-holder-v1"
   | "japandi-tray-v1"
   | "simple-box-v1"
   | "door-lock-adapter-v1"
   | "concentric-tube-jig-v1"
-  | "dining-table-v1";
+  | "dining-table-v1"
+  | "hover-dining-table-v1";
 
 export type BaseModelDefinition = {
   id: string;
@@ -189,13 +197,19 @@ export type DiningTableModelDefinition = BaseModelDefinition & {
   geometry: DiningTableGeometry;
 };
 
+export type HoverDiningTableModelDefinition = BaseModelDefinition & {
+  viewer: "hover-dining-table-v1";
+  geometry: HoverDiningTableGeometry;
+};
+
 export type ModelDefinition =
   | HolderModelDefinition
   | TrayModelDefinition
   | SimpleBoxModelDefinition
   | DoorLockAdapterModelDefinition
   | ConcentricTubeJigModelDefinition
-  | DiningTableModelDefinition;
+  | DiningTableModelDefinition
+  | HoverDiningTableModelDefinition;
 
 export type ModelDimensions = {
   length: number;

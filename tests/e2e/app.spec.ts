@@ -36,6 +36,25 @@ async function expectCanvasHasRenderedModel(page: Page) {
   expect(variedSamples).toBeGreaterThan(120);
 }
 
+function countChangedPixels(before: Buffer, after: Buffer) {
+  const beforeImage = PNG.sync.read(before);
+  const afterImage = PNG.sync.read(after);
+  expect(afterImage.width).toBe(beforeImage.width);
+  expect(afterImage.height).toBe(beforeImage.height);
+
+  let changedPixels = 0;
+  for (let offset = 0; offset < beforeImage.data.length; offset += 4) {
+    const difference =
+      Math.abs(beforeImage.data[offset] - afterImage.data[offset]) +
+      Math.abs(beforeImage.data[offset + 1] - afterImage.data[offset + 1]) +
+      Math.abs(beforeImage.data[offset + 2] - afterImage.data[offset + 2]);
+    if (difference > 24) {
+      changedPixels += 1;
+    }
+  }
+  return changedPixels;
+}
+
 async function expectNoPageErrors(page: Page, run: () => Promise<void>) {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -584,6 +603,157 @@ test.describe("3D print app", () => {
 
       await expectCanvasHasRenderedModel(page);
     });
+  });
+
+  test("pans with a primary mouse drag without changing camera orientation", async ({
+    page,
+  }) => {
+    await openReady(page, "/?model=japandi-tray&unit=mm");
+
+    const panButton = page.getByRole("button", { name: "Pan view" });
+    const viewer = page.locator(".viewer");
+    const canvas = page.locator("canvas").first();
+    await panButton.click();
+    await expect(panButton).toHaveAttribute("aria-pressed", "true");
+    await expect(viewer).toHaveAttribute("data-interaction-mode", "pan");
+
+    const orientationBefore = await page.locator(".orientation-cube").getAttribute("style");
+    const before = await canvas.screenshot();
+    const canvasBox = await canvas.boundingBox();
+    expect(canvasBox).not.toBeNull();
+    await page.mouse.move(
+      canvasBox!.x + canvasBox!.width / 2,
+      canvasBox!.y + canvasBox!.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      canvasBox!.x + canvasBox!.width / 2 + 100,
+      canvasBox!.y + canvasBox!.height / 2 + 55,
+      { steps: 8 },
+    );
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+
+    const after = await canvas.screenshot();
+    expect(countChangedPixels(before, after)).toBeGreaterThan(1_000);
+    await expect(page.locator(".orientation-cube")).toHaveAttribute(
+      "style",
+      orientationBefore!,
+    );
+  });
+
+  test("distinguishes desktop trackpad pan, pinch zoom, and mouse-wheel zoom", async ({
+    page,
+  }) => {
+    await openReady(page, "/?model=japandi-tray&unit=mm");
+
+    const canvas = page.locator("canvas").first();
+    const orientation = page.locator(".orientation-cube");
+    const orientationBefore = await orientation.getAttribute("style");
+    const canvasBox = await canvas.boundingBox();
+    expect(canvasBox).not.toBeNull();
+    await page.mouse.move(
+      canvasBox!.x + canvasBox!.width / 2,
+      canvasBox!.y + canvasBox!.height / 2,
+    );
+    await page.evaluate(() => {
+      const viewerCanvas = document.querySelector("canvas");
+      viewerCanvas?.addEventListener("wheel", (event) => {
+        viewerCanvas.setAttribute(
+          "data-wheel-route",
+          event.ctrlKey ? "pinch-zoom" : "mouse-wheel-zoom",
+        );
+      });
+    });
+
+    const beforeTrackpadPan = await canvas.screenshot();
+    await page.mouse.wheel(12, 8);
+    await page.waitForTimeout(300);
+    const afterTrackpadPan = await canvas.screenshot();
+    expect(countChangedPixels(beforeTrackpadPan, afterTrackpadPan)).toBeGreaterThan(
+      500,
+    );
+    await expect(canvas).not.toHaveAttribute("data-wheel-route");
+    await expect(orientation).toHaveAttribute("style", orientationBefore!);
+
+    await page.getByRole("button", { name: "Center view" }).click();
+    await page.waitForTimeout(300);
+    const beforePinchZoom = await canvas.screenshot();
+    await canvas.evaluate((element) => {
+      element.dispatchEvent(
+        new WheelEvent("wheel", {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+          deltaMode: WheelEvent.DOM_DELTA_PIXEL,
+          deltaY: -24,
+        }),
+      );
+    });
+    await page.waitForTimeout(300);
+    const afterPinchZoom = await canvas.screenshot();
+    expect(countChangedPixels(beforePinchZoom, afterPinchZoom)).toBeGreaterThan(
+      500,
+    );
+    await expect(canvas).toHaveAttribute("data-wheel-route", "pinch-zoom");
+    await expect(orientation).toHaveAttribute("style", orientationBefore!);
+
+    await page.getByRole("button", { name: "Center view" }).click();
+    await canvas.evaluate((element) => element.removeAttribute("data-wheel-route"));
+    await page.mouse.move(
+      canvasBox!.x + canvasBox!.width / 2,
+      canvasBox!.y + canvasBox!.height / 2,
+    );
+    await page.mouse.wheel(0, 100);
+    await expect(canvas).toHaveAttribute("data-wheel-route", "mouse-wheel-zoom");
+  });
+
+  test("pans with a one-finger drag on mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openReady(page, "/?model=japandi-tray&unit=mm");
+
+    const panButton = page.getByRole("button", { name: "Pan view" });
+    const canvas = page.locator("canvas").first();
+    await panButton.click();
+    await expect(panButton).toHaveAttribute("aria-pressed", "true");
+
+    const orientationBefore = await page.locator(".orientation-cube").getAttribute("style");
+    const before = await canvas.screenshot();
+    const canvasBox = await canvas.boundingBox();
+    expect(canvasBox).not.toBeNull();
+    const start = {
+      x: Math.round(canvasBox!.x + canvasBox!.width * 0.58),
+      y: Math.round(canvasBox!.y + canvasBox!.height * 0.48),
+    };
+    const session = await page.context().newCDPSession(page);
+    await session.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ ...start, id: 1 }],
+    });
+    for (let step = 1; step <= 8; step += 1) {
+      await session.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [
+          {
+            id: 1,
+            x: start.x - step * 10,
+            y: start.y + step * 6,
+          },
+        ],
+      });
+    }
+    await session.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+    await page.waitForTimeout(300);
+
+    const after = await canvas.screenshot();
+    expect(countChangedPixels(before, after)).toBeGreaterThan(500);
+    await expect(page.locator(".orientation-cube")).toHaveAttribute(
+      "style",
+      orientationBefore!,
+    );
   });
 
   test("exports the active generated STL with a parameterized file name", async ({

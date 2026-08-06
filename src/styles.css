@@ -835,6 +835,10 @@ html.dark .model-preview.holder span {
   height: 100%;
 }
 
+.viewer[data-interaction-mode="pan"] canvas {
+  cursor: grab;
+}
+
 .viewer-backdrop {
   position: absolute;
   inset: 0;
@@ -936,9 +940,15 @@ html.dark .viewer-tool-rail {
 }
 
 .viewer-nav button:hover,
-.viewer-nav button:focus-visible {
+.viewer-nav button:focus-visible,
+.viewer-nav button.active {
   background: var(--control-hover);
   outline: 0;
+}
+
+.viewer-nav button.active {
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent-soft);
 }
 
 .viewer-nav svg {
@@ -1313,6 +1323,22 @@ html.dark .panel-section:nth-child(even) {
 
 .number-control + .number-control {
   margin-top: 14px;
+}
+
+.nested-parameter-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.nested-parameter-section h3 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 13px;
+}
+
+.nested-parameter-section .divider-controls-heading {
+  margin-bottom: 14px;
 }
 
 .number-control label {

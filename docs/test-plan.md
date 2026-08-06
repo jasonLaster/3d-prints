@@ -23,9 +23,9 @@ This test plan describes what must be covered before a change is pushed or deplo
 | Workspace Inspector | Collapsible/resizable behavior, parameter controls, weighted-center controls only for paper towel holder, rendering modes, original overlay, and audit rows. |
 | URL State | Model selection, unit, theme, millimeter params, unknown model errors, root param cleanup, and saved-version rehydration. |
 | Units | Millimeters, centimeters, inches, fractional inches, global unit switching, and stable URL millimeter values. |
-| Parameter Limits | Static limits plus dependent holder tube/diameter limits and tray floor/height limits. |
+| Parameter Limits | Static limits plus dependent holder tube/diameter limits, tray floor/height limits, and Double-X table end-box openings, curve radii, brace endpoints, half-lap depth, and direct-contact relationships. |
 | Viewer | Nonblank canvas after load, parameter edit, render mode, original overlay, zoom, cube orientation, reset, center view, and sidebar collapse. |
-| Export | Download starts, file name includes model prefix and parameter keys, and generated STL is non-empty. |
+| Export | Download starts, file name includes model prefix and parameter keys, generated STL is non-empty, and furniture-model exports retain finite nondegenerate triangles plus their scaled envelope. |
 | Persistence | Convex schema/functions, Save, Fork, parent version link, selected-model saved-version list, saved-version open, and no arbitrary STL upload mutation. |
 | Accessibility | Accessible labels for controls, native `select` regressions rejected, keyboard sidebar rails, mobile layout. |
 | Specifications | Product specs and audit docs stay in sync with executable coverage. |

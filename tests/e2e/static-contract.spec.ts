@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(6);
+  expect(catalog.models).toHaveLength(7);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -137,6 +137,19 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "channelLayout",
       "printEnvelope",
       "minimumMockFeature",
+    ],
+    "hover-dining-table-v1": [
+      "hoverTableEnvelope",
+      "hoverTabletopProfile",
+      "hoverEndBoxes",
+      "hoverBoxOpening",
+      "hoverCornerCurves",
+      "hoverBoxSplay",
+      "hoverUpperX",
+      "hoverLowerX",
+      "hoverHalfLaps",
+      "hoverDirectContact",
+      "hoverPrintEnvelope",
     ],
   };
 
@@ -405,6 +418,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   const diningTableDoc = readText(
     path.join(root, "docs/dining-table-audit-specifications.md"),
   );
+  const hoverTableDoc = readText(
+    path.join(root, "docs/hover-dining-table-audit-specifications.md"),
+  );
 
   for (const phrase of [
     "weighted sand chamber",
@@ -457,6 +473,20 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "render materials only",
   ]) {
     expect(diningTableDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "75 × 35.5 × 29.5 in",
+    "flat, square end faces",
+    "normalized cubic Bézier tension",
+    "Zero end-box bottom spread",
+    "Exactly two horizontal X-brace assemblies",
+    "centered 50/50 half-lap",
+    "upperBraceMaxZ",
+    "lowerBraceMinZ",
+    "zero air gap",
+  ]) {
+    expect(hoverTableDoc).toContain(phrase);
   }
 });
 

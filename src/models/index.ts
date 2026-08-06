@@ -25,6 +25,11 @@ import {
   getDiningTableDimensions,
   getDiningTableParameterLimits,
 } from "./diningTable";
+import {
+  getHoverDiningTableAuditValue,
+  getHoverDiningTableDimensions,
+  getHoverDiningTableParameterLimits,
+} from "./hoverDiningTable";
 import type {
   AuditCheckDefinition,
   AuditItem,
@@ -67,6 +72,11 @@ export {
   createDiningTableWoodGeometry,
   updateDiningTableGuide,
 } from "./diningTable";
+export {
+  assertHoverDiningTableSpec,
+  createHoverDiningTableGeometry,
+  updateHoverDiningTableGuide,
+} from "./hoverDiningTable";
 export { getDefaultParams, getParam, getParameter } from "./shared";
 export type {
   AuditItem,
@@ -91,6 +101,9 @@ function getAuditValue(
   }
   if (model.viewer === "dining-table-v1") {
     return getDiningTableAuditValue(check, params, unit);
+  }
+  if (model.viewer === "hover-dining-table-v1") {
+    return getHoverDiningTableAuditValue(check, params, unit);
   }
 
   if (model.viewer !== "weighted-paper-towel-holder-v1") {
@@ -124,6 +137,9 @@ export function getParameterLimits(
   if (model.viewer === "dining-table-v1") {
     return getDiningTableParameterLimits(model, params, key);
   }
+  if (model.viewer === "hover-dining-table-v1") {
+    return getHoverDiningTableParameterLimits(model, params, key);
+  }
 
   if (model.viewer === "weighted-paper-towel-holder-v1") {
     return getHolderParameterLimits(model, params, key);
@@ -145,6 +161,9 @@ export function getModelDimensions(
   if (model.viewer === "dining-table-v1") {
     return getDiningTableDimensions(params);
   }
+  if (model.viewer === "hover-dining-table-v1") {
+    return getHoverDiningTableDimensions(params);
+  }
 
   if (model.viewer === "weighted-paper-towel-holder-v1") {
     return getHolderDimensions(params);
@@ -158,7 +177,10 @@ export function getStatusItems(
   params: ModelParams,
   unit: LengthUnit,
 ) {
-  if (model.viewer === "dining-table-v1") {
+  if (
+    model.viewer === "dining-table-v1" ||
+    model.viewer === "hover-dining-table-v1"
+  ) {
     return [
       `Scale 1:${getParam(params, "mockScale").toFixed(0)}`,
       `Length ${formatLength(getParam(params, "tableLength"), unit)}`,

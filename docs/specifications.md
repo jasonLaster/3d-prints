@@ -9,6 +9,15 @@ This document defines the product and engineering contract for the 3D Prints app
 - The default 1:10 mock is approximately 193 × 97 × 76 mm.
 - See `docs/dining-table-audit-specifications.md` for the construction and audit contract.
 
+## X-Hover Dining Table
+
+- User-approved Double-X variation of the supplied 75 × 35.5 × 29.5 in walnut Hover table.
+- The top remains square-ended while normalized cubic Bézier controls shape only the two rolled long edges.
+- Two sculpted closed end boxes use independent inner and outer radii and curve tensions, an explicit zero-default bottom-spread parameter, and rounded face edges.
+- Exactly four diagonal braces form two horizontal X assemblies between the end boxes: one directly against the tabletop underside and one directly on the floor.
+- Each X crosses at the table center with a derived 50/50 half-lap; there are no parallel lengthwise stretchers, hover pads, or spacer gaps.
+- See `docs/hover-dining-table-audit-specifications.md` for the evidence and invariant contract.
+
 ## Information Architecture
 
 - The root route `/` opens the default model workspace and writes `model=<model-id>` into the URL.
@@ -105,6 +114,18 @@ Concentric tube jig:
 - The default `1/2 in` shared through-bore keeps all tubes concentric and leaves a `1/8 in` radial wall at the smallest step.
 - The tube-step exteriors are clean and uninterrupted, with no markings or recesses.
 - The stack ships with the `1 1/4 in` step on the build plate; each successive step narrows upward, so it prints without support.
+
+X-Hover Dining Table:
+
+- Full-size dimensions remain independent from the manipulation-model scale.
+- Tabletop length and width drive a planar square-ended extrusion; the long-edge profile uses a normalized cubic Bézier handle function.
+- End-box width derives from tabletop width and side overhang, while the opening derives from box width, member widths, and rail heights.
+- Inner and outer corner radii and Bézier tensions remain independently adjustable.
+- Bottom spread is the only splay control and defaults to zero, matching the supplied orthographic drawing.
+- Upper and lower X endpoints, diagonal lengths, and equal-and-opposite plan angles derive from the end-box corner zones; both crossings remain fixed at the table origin.
+- Upper-X top faces remain coplanar with the tabletop underside, and lower-X bottom faces remain coplanar with the floor. Neither direct-contact condition has a gap control.
+- Each X uses one centered half-lap with a nominal depth of half the brace thickness and no overlapping solid volume.
+- The renderer uses procedural walnut grain, but exports remain material-neutral geometry.
 
 ## Viewer Contract
 

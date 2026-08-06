@@ -22,6 +22,7 @@ This project has three verification layers:
 | Sidebar shows models and selected-model saved versions | README model list; `docs/convex-library.md` | Playwright verifies sidebar model buttons, saved-version section behavior, and opening a model from the sidebar |
 | Save, Fork, theme, and export are organized in the top-right actions menu | `docs/convex-library.md`; this coverage document | Playwright verifies the one-column actions menu owns persistence, theme, export, and click-away dismissal |
 | Dining Table exports as a registered support-free two-color STL set | Dining Table model JSON and `docs/dining-table-audit-specifications.md` | Playwright downloads and parses the wood color-1 and plate/C-channel hardware color-2 STLs, verifies finite nondegenerate triangles, confirms the broad tabletop face is on the build plate, and checks shared coordinate registration |
+| X-Hover table preserves the supplied tabletop and end-box silhouette while replacing the base connection with two horizontal X assemblies | Hover table model JSON and `docs/hover-dining-table-audit-specifications.md` | Static audit proves four derived diagonals, two centered 50/50 half-laps, zero parallel stretchers or pads, upper contact at the tabletop underside, lower contact at the floor, and proportional regeneration; Playwright manipulates the X controls and parses finite nondegenerate export geometry. |
 | Orientation cube owns 3D, top, X, and Y views | This coverage document | Playwright clicks cube top, X edge, Y edge, and isometric controls, verifies drag clears the active preset, and verifies the canvas remains nonblank with no page errors |
 | Zoom, reset, and center controls remain easy to use in 3D | This coverage document | Playwright clicks viewer-rail zoom, reset, and center controls and verifies the canvas remains nonblank with no page errors |
 | Rendering options include a solid view plus alternate inspection modes | This coverage document | Playwright selects Solid, X-Ray, and Wire and verifies the active state and viewer status |
@@ -45,6 +46,7 @@ The Playwright suite should fail if:
 - A parameter edit does not update the URL using millimeter values.
 - Unit selection does not update visible values and URL state.
 - Fractional inches do not parse for inch-mode text inputs.
+- Signed fractional dimensions do not remain editable for explicit hypotheses such as end-frame bottom spread.
 - Dark theme does not update the document class, localStorage preference, or remain stable across model changes.
 - The shadcn/Radix select UI regresses to native `select` elements.
 - Rendering, weighted-center, original-overlay, actions menu, viewer camera controls, cube orientation, or zoom controls throw page errors or leave the canvas blank.

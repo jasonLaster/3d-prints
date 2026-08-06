@@ -1,0 +1,245 @@
+{
+  "id": "hover-dining-table",
+  "name": "X-Hover Dining Table",
+  "subtitle": "Parametric Hover-table variation",
+  "description": "A 1:10 manipulation model of the 75-inch walnut X-Hover table: a square-ended Bézier-rolled top, two sculpted closed end boxes, and horizontal half-lapped X braces flush to both the tabletop underside and floor.",
+  "viewer": "hover-dining-table-v1",
+  "stl": {
+    "fileName": "hover-dining-table.stl",
+    "sourceName": "procedural-hover-dining-table-default.stl",
+    "units": "mm",
+    "url": "/models/hover-dining-table/hover-dining-table.stl"
+  },
+  "export": {
+    "filePrefix": "hover-dining-table"
+  },
+  "geometry": {
+    "mainAxis": { "x": 0, "y": 0, "z": 0 },
+    "curveSegments": 16,
+    "bevelSegments": 5,
+    "braceCornerSegments": 5
+  },
+  "parameters": [
+    {
+      "key": "mockScale",
+      "label": "Mock scale denominator",
+      "statusLabel": "Scale 1:",
+      "default": 10,
+      "limits": { "min": 6, "max": 24, "step": 1 }
+    },
+    {
+      "key": "tableLength",
+      "label": "Table length",
+      "statusLabel": "Length",
+      "default": 1905,
+      "limits": { "min": 1524, "max": 2438.4, "step": 25.4 }
+    },
+    {
+      "key": "tableWidth",
+      "label": "Table width",
+      "statusLabel": "Width",
+      "default": 901.7,
+      "limits": { "min": 762, "max": 1219.2, "step": 25.4 }
+    },
+    {
+      "key": "overallHeight",
+      "label": "Overall height",
+      "statusLabel": "Height",
+      "default": 749.3,
+      "limits": { "min": 685.8, "max": 812.8, "step": 6.35 }
+    },
+    {
+      "key": "topThickness",
+      "label": "Tabletop thickness",
+      "default": 31.75,
+      "limits": { "min": 19.05, "max": 50.8, "step": 3.175 }
+    },
+    {
+      "key": "topEdgeRoll",
+      "label": "Long-edge roll depth",
+      "default": 15.875,
+      "limits": { "min": 6.35, "max": 50.8, "step": 1.5875 }
+    },
+    {
+      "key": "topEdgeTension",
+      "label": "Tabletop edge curve tension",
+      "default": 0.552,
+      "limits": { "min": 0.35, "max": 0.8, "step": 0.01 }
+    },
+    {
+      "key": "sideOverhang",
+      "label": "Tabletop side overhang",
+      "default": 44.45,
+      "limits": { "min": 19.05, "max": 101.6, "step": 3.175 }
+    },
+    {
+      "key": "endOverhang",
+      "label": "Tabletop end overhang",
+      "default": 190.5,
+      "limits": { "min": 101.6, "max": 304.8, "step": 6.35 }
+    },
+    {
+      "key": "frameDepth",
+      "label": "End-box depth",
+      "default": 63.5,
+      "limits": { "min": 38.1, "max": 101.6, "step": 3.175 }
+    },
+    {
+      "key": "frameSideWidth",
+      "label": "End-box side width",
+      "default": 57.15,
+      "limits": { "min": 38.1, "max": 88.9, "step": 3.175 }
+    },
+    {
+      "key": "frameBottomRailHeight",
+      "label": "End-box bottom rail height",
+      "default": 44.45,
+      "limits": { "min": 31.75, "max": 76.2, "step": 3.175 }
+    },
+    {
+      "key": "frameTopRailHeight",
+      "label": "End-box top rail height",
+      "default": 31.75,
+      "limits": { "min": 25.4, "max": 63.5, "step": 3.175 }
+    },
+    {
+      "key": "frameBottomSpread",
+      "label": "End-box bottom spread",
+      "default": 0,
+      "limits": { "min": -50.8, "max": 101.6, "step": 3.175 }
+    },
+    {
+      "key": "frameOuterCornerRadius",
+      "label": "End-box outer corner radius",
+      "default": 19.05,
+      "limits": { "min": 6.35, "max": 50.8, "step": 3.175 }
+    },
+    {
+      "key": "frameInnerCornerRadius",
+      "label": "End-box inner corner radius",
+      "default": 63.5,
+      "limits": { "min": 25.4, "max": 101.6, "step": 3.175 }
+    },
+    {
+      "key": "frameOuterCurveTension",
+      "label": "Outer corner curve tension",
+      "default": 0.552,
+      "limits": { "min": 0.35, "max": 0.8, "step": 0.01 }
+    },
+    {
+      "key": "frameInnerCurveTension",
+      "label": "Inner corner curve tension",
+      "default": 0.58,
+      "limits": { "min": 0.35, "max": 0.8, "step": 0.01 }
+    },
+    {
+      "key": "frameEdgeRoundover",
+      "label": "End-box face-edge round-over",
+      "default": 9.525,
+      "limits": { "min": 3.175, "max": 15.875, "step": 1.5875 }
+    },
+    {
+      "key": "upperBraceWidth",
+      "label": "Upper-X brace width",
+      "default": 44.45,
+      "limits": { "min": 31.75, "max": 63.5, "step": 3.175 }
+    },
+    {
+      "key": "upperBraceThickness",
+      "label": "Upper-X brace thickness",
+      "default": 25.4,
+      "limits": { "min": 19.05, "max": 44.45, "step": 3.175 }
+    },
+    {
+      "key": "upperBraceEndpointInset",
+      "label": "Upper-X endpoint inset",
+      "default": 0,
+      "limits": { "min": 0, "max": 12.7, "step": 1.5875 }
+    },
+    {
+      "key": "upperBraceEdgeRadius",
+      "label": "Upper-X plan corner radius",
+      "default": 3.175,
+      "limits": { "min": 1.5875, "max": 9.525, "step": 1.5875 }
+    },
+    {
+      "key": "lowerBraceWidth",
+      "label": "Floor-X brace width",
+      "default": 50.8,
+      "limits": { "min": 31.75, "max": 63.5, "step": 3.175 }
+    },
+    {
+      "key": "lowerBraceThickness",
+      "label": "Floor-X brace thickness",
+      "default": 38.1,
+      "limits": { "min": 25.4, "max": 50.8, "step": 3.175 }
+    },
+    {
+      "key": "lowerBraceEndpointInset",
+      "label": "Floor-X endpoint inset",
+      "default": 0,
+      "limits": { "min": 0, "max": 12.7, "step": 1.5875 }
+    },
+    {
+      "key": "lowerBraceEdgeRadius",
+      "label": "Floor-X plan corner radius",
+      "default": 3.175,
+      "limits": { "min": 1.5875, "max": 12.7, "step": 1.5875 }
+    },
+    {
+      "key": "halfLapClearance",
+      "label": "Half-lap fit clearance",
+      "default": 0,
+      "limits": { "min": 0, "max": 3.175, "step": 0.1 }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.5,
+    "dimensionTargets": [
+      "The image and supplied elevation establish a 75 in long by 35.5 in wide by 29.5 in high table envelope.",
+      "The tabletop has a flat rectangular plan, flat square end faces, and continuous Bézier-rolled long edges rather than rounded plan-view corners.",
+      "The base contains exactly two closed transverse end boxes connected by exactly four diagonal braces grouped into one upper horizontal X and one lower horizontal X.",
+      "Each end box has separately editable outer and inner corner radii, separately editable normalized Bézier tensions, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
+      "Both X assemblies cross at the table center with a derived 50/50 half-lap and no overlapping solid volume.",
+      "The upper X bears directly against the tabletop underside and the lower X bears directly on the floor, both with zero gap or spacer.",
+      "The default 1:10 manipulation model retains the full 75 × 35.5 × 29.5 in proportions."
+    ],
+    "invariants": [
+      "Keep all full-size furniture dimensions independent from the mock-scale denominator.",
+      "Keep the tabletop end faces planar and square while changing only the two continuous long-edge profiles.",
+      "Derive the end-box outer width from tabletop width and side overhang so width edits preserve the relationship.",
+      "Derive both inner openings from outer box dimensions and member widths; never scale the opening independently.",
+      "Derive all four diagonal lengths and equal-and-opposite plan angles from the end-box corner zones; keep both X crossings at the table origin.",
+      "Keep each centered half-lap at half the nominal brace thickness and remove solid overlap between its two braces.",
+      "Keep the upper-X top envelope coplanar with the tabletop underside and the lower-X bottom envelope coplanar with the floor; expose no gap or spacer control.",
+      "Keep inner and outer corner curves as cubic Bézier functions whose control lengths equal radius times normalized tension.",
+      "Keep exterior and interior corner radii independent because the observed curves are not concentric offsets.",
+      "Treat bottom spread as the explicit splay hypothesis; zero means orthogonal frame sides and remains the evidence-backed default.",
+      "Keep frame edge round-over below half the depth, side width, top-rail height, and bottom-rail height.",
+      "Keep end boxes, their bottom spread, and all brace endpoints inside the tabletop width while preserving positive diagonal spans.",
+      "Do not generate parallel lengthwise stretchers, hover pads, or spacer blocks.",
+      "Treat walnut grain and finish as renderer materials only; the STL geometry remains material-neutral."
+    ],
+    "checks": [
+      { "key": "hoverTableEnvelope", "label": "Full-size envelope" },
+      { "key": "hoverTabletopProfile", "label": "Square-ended tabletop" },
+      { "key": "hoverEndBoxes", "label": "Two closed end boxes" },
+      { "key": "hoverBoxOpening", "label": "Derived box opening" },
+      { "key": "hoverCornerCurves", "label": "Independent Bézier corners" },
+      { "key": "hoverBoxSplay", "label": "End-box splay hypothesis" },
+      { "key": "hoverUpperX", "label": "Upper horizontal X" },
+      { "key": "hoverLowerX", "label": "Floor horizontal X" },
+      { "key": "hoverHalfLaps", "label": "Centered half-laps" },
+      { "key": "hoverDirectContact", "label": "Zero-gap contacts" },
+      { "key": "hoverPrintEnvelope", "label": "Manipulation-model envelope" }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/hover-dining-table/audit.mjs",
+      "command": "npm run audit -- hover-dining-table",
+      "description": "Validates the image-derived dimensions, end-box curves, derived Double-X braces, centered half-laps, zero-gap contacts, and procedural source contract."
+    }
+  ]
+}

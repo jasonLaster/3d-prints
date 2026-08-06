@@ -138,11 +138,14 @@ function normalizeFractionText(rawValue: string) {
 }
 
 function parseFractionalNumber(rawValue: string) {
-  const cleaned = normalizeFractionText(rawValue)
+  const normalized = normalizeFractionText(rawValue)
     .toLowerCase()
     .replace(/inches|inch|in|cm|mm|["']/g, "")
     .replace(/(\d+)(st|nd|rd|th)\b/g, "$1")
     .replace(/\bths?\b/g, "")
+    .trim();
+  const sign = normalized.startsWith("-") ? -1 : 1;
+  const cleaned = normalized
     .replace(/[+-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -171,7 +174,7 @@ function parseFractionalNumber(rawValue: string) {
     }
   }
 
-  return total;
+  return total * sign;
 }
 
 export function stepLengthInput(

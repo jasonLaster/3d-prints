@@ -5,6 +5,7 @@ import {
   Download,
   Focus,
   GitFork,
+  Hand,
   Layers3,
   MoreHorizontal,
   Moon,
@@ -62,6 +63,7 @@ import {
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
   createDoorLockAdapterGeometry,
+  createHoverDiningTableGeometry,
   createRoundedTopGeometry,
   createSandChamberFloorGeometry,
   createSandPreviewGeometry,
@@ -79,6 +81,7 @@ import {
   updateDoorLockAdapterGuide,
   updateConcentricTubeJigGuide,
   updateDiningTableGuide,
+  updateHoverDiningTableGuide,
   updateHolderGuide,
   updateTrayGuide,
   updateWeightedCore,
@@ -105,6 +108,7 @@ type RenderMode = "solid" | "xray" | "wire";
 type ThemeMode = "light" | "dark";
 type ViewPreset = "iso" | "top" | "bottom" | "xEdge" | "yEdge";
 type AssemblyMode = "box" | "stacked" | "lid" | "print-layout";
+type ViewerInteractionMode = "orbit" | "pan";
 
 type ViewerHandle = {
   exportStl: () => void;
@@ -175,6 +179,36 @@ const PARAM_QUERY_KEYS = [
   "channelLength",
   "channelWidth",
   "channelDepth",
+  "topEdgeRoll",
+  "topEdgeTension",
+  "sideOverhang",
+  "endOverhang",
+  "frameDepth",
+  "frameSideWidth",
+  "frameBottomRailHeight",
+  "frameTopRailHeight",
+  "frameBottomSpread",
+  "frameOuterCornerRadius",
+  "frameInnerCornerRadius",
+  "frameOuterCurveTension",
+  "frameInnerCurveTension",
+  "frameEdgeRoundover",
+  "upperBraceWidth",
+  "upperBraceThickness",
+  "upperBraceEndpointInset",
+  "upperBraceEdgeRadius",
+  "lowerBraceWidth",
+  "lowerBraceThickness",
+  "lowerBraceEndpointInset",
+  "lowerBraceEdgeRadius",
+  "halfLapClearance",
+  // Retain superseded base keys so older shared URLs are cleaned on load.
+  "hoverGap",
+  "stretcherHeight",
+  "stretcherThickness",
+  "stretcherEdgeRadius",
+  "supportPadLength",
+  "supportPadWidth",
   "length",
   "width",
   "floorThickness",
@@ -187,6 +221,14 @@ const SCALAR_PARAM_KEYS = new Set([
   "gridfinityCompatible",
   "legGrooveEnabled",
   "mockScale",
+  "topEdgeTension",
+  "frameOuterCurveTension",
+  "frameInnerCurveTension",
+]);
+const CURVE_PARAM_KEYS = new Set([
+  "topEdgeTension",
+  "frameOuterCurveTension",
+  "frameInnerCurveTension",
 ]);
 const OPTION_PARAM_KEYS = new Set([
   "gridfinityCompatible",
@@ -237,7 +279,10 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function createOakTexture(renderer: THREE.WebGLRenderer) {
+function createWoodTexture(
+  renderer: THREE.WebGLRenderer,
+  species: "oak" | "walnut",
+) {
   const canvas = document.createElement("canvas");
   canvas.width = 1024;
   canvas.height = 256;
@@ -245,24 +290,28 @@ function createOakTexture(renderer: THREE.WebGLRenderer) {
   if (!context) return null;
 
   const image = context.createImageData(canvas.width, canvas.height);
-  let seed = 0x5f3759df;
+  const walnut = species === "walnut";
+  const base = walnut ? [92, 58, 39] : [205, 181, 145];
+  let seed = walnut ? 0x77616c6e : 0x5f3759df;
   for (let y = 0; y < canvas.height; y += 1) {
     const broad = Math.sin(y * 0.072) * 5 + Math.sin(y * 0.019) * 7;
     for (let x = 0; x < canvas.width; x += 1) {
       seed = (seed * 1664525 + 1013904223) >>> 0;
       const noise = ((seed & 255) / 255 - 0.5) * 7;
       const offset = (y * canvas.width + x) * 4;
-      image.data[offset] = 205 + broad + noise;
-      image.data[offset + 1] = 181 + broad * 0.72 + noise;
-      image.data[offset + 2] = 145 + broad * 0.45 + noise;
+      image.data[offset] = base[0] + broad + noise;
+      image.data[offset + 1] = base[1] + broad * 0.72 + noise;
+      image.data[offset + 2] = base[2] + broad * 0.45 + noise;
       image.data[offset + 3] = 255;
     }
   }
   context.putImageData(image, 0, 0);
   for (let y = 0; y < canvas.height; y += 1) {
     const broad = Math.sin(y * 0.115) * 0.5 + Math.sin(y * 0.031) * 0.5;
-    const lightness = 145 + Math.round(broad * 12);
-    context.strokeStyle = `rgba(${lightness + 24}, ${lightness + 4}, ${Math.max(70, lightness - 28)}, 0.13)`;
+    const lightness = (walnut ? 62 : 145) + Math.round(broad * 12);
+    context.strokeStyle = walnut
+      ? `rgba(${lightness + 20}, ${lightness + 3}, ${Math.max(20, lightness - 18)}, 0.22)`
+      : `rgba(${lightness + 24}, ${lightness + 4}, ${Math.max(70, lightness - 28)}, 0.13)`;
     context.lineWidth = y % 23 === 0 ? 1.1 : 0.42;
     context.beginPath();
     for (let x = 0; x <= canvas.width; x += 8) {
@@ -274,7 +323,9 @@ function createOakTexture(renderer: THREE.WebGLRenderer) {
   }
   for (let index = 0; index < 38; index += 1) {
     const y = (index * 71) % canvas.height;
-    context.strokeStyle = "rgba(80, 50, 26, 0.09)";
+    context.strokeStyle = walnut
+      ? "rgba(28, 14, 9, 0.22)"
+      : "rgba(80, 50, 26, 0.09)";
     context.lineWidth = 0.65;
     context.beginPath();
     context.moveTo(0, y);
@@ -286,7 +337,7 @@ function createOakTexture(renderer: THREE.WebGLRenderer) {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(2.5, 1.35);
+  texture.repeat.set(walnut ? 3.2 : 2.5, walnut ? 1.6 : 1.35);
   texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   texture.needsUpdate = true;
   return texture;
@@ -411,10 +462,28 @@ function getParamsFromUrl(model: ModelDefinition) {
     }
   }
 
+  if (model.viewer === "hover-dining-table-v1") {
+    // Two passes settle limits whose valid ranges depend on other image-derived
+    // dimensions (opening size, member width, radii, and reveal height).
+    for (let pass = 0; pass < 2; pass += 1) {
+      for (const parameter of model.parameters) {
+        const limits = getParameterLimits(model, params, parameter.key);
+        params[parameter.key] = clamp(
+          params[parameter.key],
+          limits.min,
+          limits.max,
+        );
+      }
+    }
+  }
+
   return params;
 }
 
 function serializeUrlParam(key: string, valueMm: number, unit: LengthUnit) {
+  if (CURVE_PARAM_KEYS.has(key)) {
+    return Number(valueMm.toFixed(4)).toString();
+  }
   if (ANGLE_PARAM_KEYS.has(key) || SCALAR_PARAM_KEYS.has(key)) {
     return Number(valueMm.toFixed(1)).toString();
   }
@@ -541,6 +610,9 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
   if (model.viewer === "dining-table-v1") {
     return `${model.export.filePrefix}-scale-1-${getParam(params, "mockScale").toFixed(0)}-length-${getParam(params, "tableLength").toFixed(1)}-width-${getParam(params, "tableWidth").toFixed(1)}.stl`;
   }
+  if (model.viewer === "hover-dining-table-v1") {
+    return `${model.export.filePrefix}-scale-1-${getParam(params, "mockScale").toFixed(0)}-length-${getParam(params, "tableLength").toFixed(1)}-width-${getParam(params, "tableWidth").toFixed(1)}.stl`;
+  }
   const suffix = model.parameters
     .map(
       (parameter) => {
@@ -650,6 +722,10 @@ const HolderViewer = forwardRef<
   const latestRenderModeRef = useRef(renderMode);
   const latestShowOriginalRef = useRef(showOriginal);
   const latestAssemblyModeRef = useRef(assemblyMode);
+  const latestInteractionModeRef = useRef<ViewerInteractionMode>("orbit");
+  const [interactionMode, setInteractionMode] = useState<ViewerInteractionMode>(
+    "orbit",
+  );
   const [activeViewPreset, setActiveViewPreset] = useState<ViewPreset | null>(
     "iso",
   );
@@ -838,6 +914,13 @@ const HolderViewer = forwardRef<
         diningHardwareGroup.add(mesh);
       });
       updateDiningTableGuide(guideMesh, latestParamsRef.current);
+    } else if (model.viewer === "hover-dining-table-v1") {
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createHoverDiningTableGeometry(
+        latestParamsRef.current,
+        model,
+      );
+      updateHoverDiningTableGuide(guideMesh, latestParamsRef.current);
     } else {
       applyTrayMorph(mainMesh.geometry, base, latestParamsRef.current, model);
       updateTrayGuide(guideMesh, latestParamsRef.current);
@@ -933,7 +1016,9 @@ const HolderViewer = forwardRef<
     );
 
     ghostMesh.visible =
-      model.viewer !== "dining-table-v1" && latestShowOriginalRef.current;
+      model.viewer !== "dining-table-v1" &&
+      model.viewer !== "hover-dining-table-v1" &&
+      latestShowOriginalRef.current;
   }, [model]);
 
   const createStlBlob = useCallback(() => {
@@ -1188,12 +1273,67 @@ const HolderViewer = forwardRef<
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
+    controls.enablePan = true;
+    controls.screenSpacePanning = true;
+    controls.mouseButtons.LEFT =
+      latestInteractionModeRef.current === "pan"
+        ? THREE.MOUSE.PAN
+        : THREE.MOUSE.ROTATE;
+    controls.touches.ONE =
+      latestInteractionModeRef.current === "pan"
+        ? THREE.TOUCH.PAN
+        : THREE.TOUCH.ROTATE;
     controls.minDistance =
       model.viewer === "door-lock-adapter-v1" || model.viewer === "concentric-tube-jig-v1" ? 18 : 80;
     controls.maxDistance = 1400;
     controlsRef.current = controls;
     const handleControlChange = () => updateCubeOrientation();
     const handleControlStart = () => setActiveViewPreset(null);
+    let trackpadGestureUntil = 0;
+    const handleTrackpadPan = (event: WheelEvent) => {
+      if (event.ctrlKey) {
+        trackpadGestureUntil = 0;
+        return;
+      }
+
+      const now = performance.now();
+      const isContinuingTrackpadGesture = now < trackpadGestureUntil;
+      const isTrackpadGesture =
+        event.deltaMode === WheelEvent.DOM_DELTA_PIXEL &&
+        (isContinuingTrackpadGesture ||
+          Math.abs(event.deltaX) > 0 ||
+          Math.abs(event.deltaY) <= 12);
+      if (!isTrackpadGesture) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      trackpadGestureUntil = now + 160;
+
+      const cameraOffset = camera.position.clone().sub(controls.target);
+      const worldUnitsPerPixel =
+        (2 *
+          cameraOffset.length() *
+          Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) /
+        Math.max(renderer.domElement.clientHeight, 1);
+      const movement = new THREE.Vector3()
+        .setFromMatrixColumn(camera.matrix, 0)
+        .multiplyScalar(-event.deltaX * worldUnitsPerPixel);
+      movement.add(
+        new THREE.Vector3()
+          .setFromMatrixColumn(camera.matrix, 1)
+          .multiplyScalar(event.deltaY * worldUnitsPerPixel),
+      );
+      camera.position.add(movement);
+      controls.target.add(movement);
+      controls.update();
+      setActiveViewPreset(null);
+    };
+    renderer.domElement.addEventListener("wheel", handleTrackpadPan, {
+      capture: true,
+      passive: false,
+    });
     controls.addEventListener("change", handleControlChange);
     controls.addEventListener("start", handleControlStart);
 
@@ -1270,20 +1410,32 @@ const HolderViewer = forwardRef<
         );
         mainBaseRef.current = normalizedMain.basePositions;
 
-        const oakTexture =
-          model.viewer === "dining-table-v1" ? createOakTexture(renderer) : null;
+        const woodTexture =
+          model.viewer === "dining-table-v1"
+            ? createWoodTexture(renderer, "oak")
+            : model.viewer === "hover-dining-table-v1"
+              ? createWoodTexture(renderer, "walnut")
+              : null;
+        const isWoodFurniture =
+          model.viewer === "dining-table-v1" ||
+          model.viewer === "hover-dining-table-v1";
         const mainMaterial = new THREE.MeshStandardMaterial({
           color:
-            model.viewer === "dining-table-v1"
+            isWoodFurniture
               ? "#ffffff"
               : model.viewer !== "weighted-paper-towel-holder-v1"
                 ? "#d8dee9"
                 : theme === "dark"
                   ? "#202734"
                   : "#111318",
-          map: oakTexture,
-          roughness: model.viewer === "dining-table-v1" ? 0.72 : 0.78,
-          metalness: model.viewer === "dining-table-v1" ? 0 : 0.08,
+          map: woodTexture,
+          roughness:
+            model.viewer === "hover-dining-table-v1"
+              ? 0.62
+              : model.viewer === "dining-table-v1"
+                ? 0.72
+                : 0.78,
+          metalness: isWoodFurniture ? 0 : 0.08,
           side: THREE.DoubleSide,
         });
         mainMaterialRef.current = mainMaterial;
@@ -1324,6 +1476,8 @@ const HolderViewer = forwardRef<
             ? createConcentricTubeJigGeometry(latestParamsRef.current, model)
             : model.viewer === "dining-table-v1"
               ? createDiningTableWoodGeometry(latestParamsRef.current, model)
+            : model.viewer === "hover-dining-table-v1"
+              ? createHoverDiningTableGeometry(latestParamsRef.current, model)
             : normalizedMain.geometry;
         const mainMesh = new THREE.Mesh(displayedGeometry, mainMaterial);
         mainMesh.name = `${model.id}-adjustable-body`;
@@ -1408,7 +1562,8 @@ const HolderViewer = forwardRef<
         if (
           model.viewer === "door-lock-adapter-v1" ||
           model.viewer === "concentric-tube-jig-v1" ||
-          model.viewer === "dining-table-v1"
+          model.viewer === "dining-table-v1" ||
+          model.viewer === "hover-dining-table-v1"
         ) {
           normalizedMain.geometry.dispose();
         }
@@ -1449,6 +1604,7 @@ const HolderViewer = forwardRef<
         cancelAnimationFrame(animationRef.current);
       }
       resizeObserver.disconnect();
+      renderer.domElement.removeEventListener("wheel", handleTrackpadPan, true);
       controls.removeEventListener("change", handleControlChange);
       controls.removeEventListener("start", handleControlStart);
       controls.dispose();
@@ -1468,8 +1624,24 @@ const HolderViewer = forwardRef<
     };
   }, [model, resetCamera, updateCubeOrientation, updateMeshes]);
 
+  useEffect(() => {
+    latestInteractionModeRef.current = interactionMode;
+    const controls = controlsRef.current;
+    if (!controls) {
+      return;
+    }
+    controls.mouseButtons.LEFT =
+      interactionMode === "pan" ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    controls.touches.ONE =
+      interactionMode === "pan" ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+  }, [interactionMode]);
+
   return (
-    <div className="viewer" ref={containerRef}>
+    <div
+      className="viewer"
+      data-interaction-mode={interactionMode}
+      ref={containerRef}
+    >
       <div className="viewer-backdrop" aria-hidden="true" />
       <div className="viewer-status" data-testid="viewer-status">
         {getStatusItems(model, params, unit).map((item) => (
@@ -1494,6 +1666,20 @@ const HolderViewer = forwardRef<
             type="button"
           >
             <ZoomOut aria-hidden="true" />
+          </button>
+          <button
+            aria-label="Pan view"
+            aria-pressed={interactionMode === "pan"}
+            className={interactionMode === "pan" ? "active" : undefined}
+            onClick={() =>
+              setInteractionMode((current) =>
+                current === "pan" ? "orbit" : "pan",
+              )
+            }
+            title="Pan view with a mouse or one finger"
+            type="button"
+          >
+            <Hand aria-hidden="true" />
           </button>
           <button
             aria-label="Center view"
@@ -1718,6 +1904,52 @@ function ScaleControl({
           value={value}
         />
         <span aria-label={`Scale 1 to ${value}`}>1:{value}</span>
+      </div>
+    </div>
+  );
+}
+
+function BezierCurveControl({
+  label,
+  limits,
+  onChange,
+  value,
+}: {
+  label: string;
+  limits: NumberLimits;
+  onChange: (value: number) => void;
+  value: number;
+}) {
+  const id = label.toLowerCase().replace(/\s+/g, "-");
+  const update = (raw: string) => {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return;
+    onChange(clamp(parsed, limits.min, limits.max));
+  };
+  return (
+    <div className="number-control">
+      <label htmlFor={id}>{label}</label>
+      <div className="number-row angle-number-row">
+        <input
+          id={id}
+          max={limits.max}
+          min={limits.min}
+          onChange={(event) => update(event.currentTarget.value)}
+          step={limits.step}
+          type="range"
+          value={value}
+        />
+        <input
+          aria-label={`${label} Bézier tension`}
+          inputMode="decimal"
+          max={limits.max}
+          min={limits.min}
+          onChange={(event) => update(event.currentTarget.value)}
+          step={limits.step}
+          type="number"
+          value={value.toFixed(3)}
+        />
+        <span aria-label={`${label} kappa ${value.toFixed(3)}`}>κ</span>
       </div>
     </div>
   );
@@ -2787,7 +3019,11 @@ export default function App({
         ...current,
         [key]: Number(
           nextValue.toFixed(
-            model.viewer === "concentric-tube-jig-v1" ? 4 : 1,
+            model.viewer === "concentric-tube-jig-v1"
+              ? 4
+              : CURVE_PARAM_KEYS.has(key)
+                ? 3
+                : 1,
           ),
         ),
       };
@@ -3162,19 +3398,22 @@ export default function App({
               <div className="inspector-body">
                 <section className="panel-section">
                   <h2>Parameters</h2>
-                  {model.viewer === "dining-table-v1" ? (
+                  {model.viewer === "dining-table-v1" ||
+                  model.viewer === "hover-dining-table-v1" ? (
                     <>
                       <ScaleControl
                         limits={getParameterLimits(model, params, "mockScale")}
                         onChange={(value) => updateParam("mockScale", value)}
                         value={getParam(params, "mockScale")}
                       />
-                      <PostGrooveToggle
-                        checked={getParam(params, "legGrooveEnabled") >= 0.5}
-                        onChange={(checked) =>
-                          updateParam("legGrooveEnabled", checked ? 1 : 0)
-                        }
-                      />
+                      {model.viewer === "dining-table-v1" ? (
+                        <PostGrooveToggle
+                          checked={getParam(params, "legGrooveEnabled") >= 0.5}
+                          onChange={(checked) =>
+                            updateParam("legGrooveEnabled", checked ? 1 : 0)
+                          }
+                        />
+                      ) : null}
                     </>
                   ) : null}
                   {model.parameters
@@ -3189,6 +3428,7 @@ export default function App({
                       return (
                         parameter.key !== "mockScale" &&
                         !ANGLE_PARAM_KEYS.has(parameter.key) &&
+                        !CURVE_PARAM_KEYS.has(parameter.key) &&
                         !DIVIDER_PARAM_KEYS.has(parameter.key) &&
                         !OPTION_PARAM_KEYS.has(parameter.key)
                       );
@@ -3205,6 +3445,27 @@ export default function App({
                         valueMm={params[parameter.key]}
                       />
                     ))}
+                  {model.viewer === "hover-dining-table-v1" ? (
+                    <section className="nested-parameter-section" aria-label="Bézier curve editor">
+                      <div className="divider-controls-heading">
+                        <div>
+                          <h3>Curve editor</h3>
+                          <p>κ scales each control handle from its radius.</p>
+                        </div>
+                      </div>
+                      {model.parameters
+                        .filter((parameter) => CURVE_PARAM_KEYS.has(parameter.key))
+                        .map((parameter) => (
+                          <BezierCurveControl
+                            key={parameter.key}
+                            label={parameter.label}
+                            limits={getParameterLimits(model, params, parameter.key)}
+                            onChange={(value) => updateParam(parameter.key, value)}
+                            value={getParam(params, parameter.key)}
+                          />
+                        ))}
+                    </section>
+                  ) : null}
                   {model.viewer === "simple-box-v1" ? (
                     <GridfinityToggle
                       checked={params.gridfinityCompatible >= 0.5}
@@ -3277,7 +3538,8 @@ export default function App({
                 <section className="panel-section">
                   <h2>Rendering</h2>
                   <RenderModeControl onChange={setRenderMode} value={renderMode} />
-                  {model.viewer !== "dining-table-v1" ? (
+                  {model.viewer !== "dining-table-v1" &&
+                  model.viewer !== "hover-dining-table-v1" ? (
                     <OriginalOverlayToggle
                       checked={showOriginal}
                       label={

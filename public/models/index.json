@@ -30,6 +30,11 @@
       "id": "dining-table",
       "name": "Oak Dining Table",
       "configUrl": "/models/dining-table/model.json"
+    },
+    {
+      "id": "hover-dining-table",
+      "name": "X-Hover Dining Table",
+      "configUrl": "/models/hover-dining-table/model.json"
     }
   ]
 }
