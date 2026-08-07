@@ -265,6 +265,7 @@ function dimensionLabel(part: HoverDiningTableCutPart) {
   if (part.fabricationProfile.family === "brace") return "true member length";
   if (part.fabricationProfile.family === "support") return "finished member length";
   if (part.fabricationProfile.family === "channel") return "finished channel length";
+  if (part.fabricationProfile.family === "leveling-foot") return "overall hardware height";
   return "finished plan";
 }
 
@@ -326,6 +327,8 @@ function profileLabel(part: HoverDiningTableCutPart) {
       return "square-ended member profile";
     case "channel":
       return "widthwise steel C-channel";
+    case "leveling-foot":
+      return "adjustable pad and threaded rod";
     default:
       return "square-ended plan profile";
   }

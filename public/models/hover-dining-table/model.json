@@ -2,7 +2,7 @@
   "id": "hover-dining-table",
   "name": "X-Hover Dining Table",
   "subtitle": "Parametric Hover-table variation",
-  "description": "A 1:10 manipulation model of the 75-inch oak Hover table: an independently corner-rounded and edge-rolled top, two sculpted closed end boxes, and independently selectable top and floor support layouts.",
+  "description": "A 1:10 manipulation model of the 75-inch oak Hover table: an independently corner-rounded and edge-rolled top, two sculpted closed end boxes, independently selectable support layouts, and four adjustable corner feet.",
   "viewer": "hover-dining-table-v1",
   "stl": {
     "fileName": "hover-dining-table.stl",
@@ -236,6 +236,48 @@
       "limits": { "min": 3.175, "max": 15.875, "step": 1.5875 }
     },
     {
+      "key": "levelingFeetEnabled",
+      "label": "Use adjustable leveling feet",
+      "group": "Adjustable feet",
+      "default": 1,
+      "limits": { "min": 0, "max": 1, "step": 1 }
+    },
+    {
+      "key": "levelingFootPadDiameter",
+      "label": "Leveling-foot pad diameter",
+      "group": "Adjustable feet",
+      "default": 38.1,
+      "limits": { "min": 25.4, "max": 76.2, "step": 3.175 }
+    },
+    {
+      "key": "levelingFootPadThickness",
+      "label": "Leveling-foot pad thickness",
+      "group": "Adjustable feet",
+      "default": 6.35,
+      "limits": { "min": 3.175, "max": 12.7, "step": 1.5875 }
+    },
+    {
+      "key": "levelingFootRodDiameter",
+      "label": "Leveling-foot rod diameter",
+      "group": "Adjustable feet",
+      "default": 9.525,
+      "limits": { "min": 6.35, "max": 15.875, "step": 1.5875 }
+    },
+    {
+      "key": "levelingFootRodLength",
+      "label": "Leveling-foot rod length",
+      "group": "Adjustable feet",
+      "default": 76.2,
+      "limits": { "min": 38.1, "max": 101.6, "step": 3.175 }
+    },
+    {
+      "key": "levelingFootExtension",
+      "label": "Installed floor-to-box extension",
+      "group": "Adjustable feet",
+      "default": 19.05,
+      "limits": { "min": 3.175, "max": 38.1, "step": 1.5875 }
+    },
+    {
       "key": "topSupportStyle",
       "label": "Top support style",
       "group": "Support layout",
@@ -365,9 +407,10 @@
       "Each end box has independently editable top and bottom values for both outer and inner corner radii, independent rail-side and stile-side handles for both cubic Bézier corner families, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
       "Every selected X crosses at the table center with a derived 50/50 half-lap and no overlapping solid volume; straight-support layouts contain no artificial lap.",
       "Top and bottom support width, thickness, bearing-zone inset, and bottom-edge round-over contracts are independently editable; the bottom supports also expose an independent top-edge round-over. An optional shared-dimension mode applies to the matching crossbar dimensions while both layouts are Xs; half-lap fit clearance applies only to selected Xs.",
-      "The selected upper supports bear directly against the tabletop underside and every selected lower support bears directly on the floor, with zero gap or spacer.",
-      "Exploded mode presents 14–16 assembly pieces according to the selected layouts: one profiled tabletop, three steel C-channels, four finished rail-and-stile bars per end box, two upper support members, and zero, one, or two lower support members.",
-      "Cut List mode presents the same selected pieces as six to nine grouped schedule lines with full-size finished dimensions, quantities, material, oak grain direction where applicable, exact constrained profiles, edge-treatment or C-channel section views, and joinery notes.",
+      "Four optional adjustable feet align beneath the end-box stiles; the default hardware has 1.5 in pads and 3 in threaded rods, while pad thickness, rod diameter, and installed floor-to-box extension remain explicit editable assumptions.",
+      "The selected upper supports bear directly against the tabletop underside. Adjustable feet raise both end boxes and the complete selected lower support together while preserving overall tabletop height; disabling them restores direct wood-to-floor contact.",
+      "Exploded mode presents 14–20 assembly pieces according to the selected layouts and feet: one profiled tabletop, three steel C-channels, four finished rail-and-stile bars per end box, two upper support members, zero, one, or two lower support members, and four optional leveling feet.",
+      "Cut List mode presents the same selected pieces as six to ten grouped schedule lines with full-size finished dimensions, quantities, material, oak grain direction where applicable, exact constrained profiles, edge-treatment, hardware, or C-channel section views, and joinery notes.",
       "The default 1:10 manipulation model retains the full 75 × 35.5 × 29.5 in proportions."
     ],
     "invariants": [
@@ -382,7 +425,8 @@
       "Derive each brace endpoint from the straight-rail tangent of the editable inner corner radius, inset the complete angled end face clear of that curve, and keep the support end planar and parallel with the end-box inside face; rail height controls vertical bearing overlap independently of support thickness.",
       "Keep each selected X brace at full nominal width through the crossing, form complementary centered pockets at exactly half the nominal thickness, align every pocket boundary as a planar machining cut, and remove solid overlap between the two braces.",
       "Round over the independently specified bottom long edges of every selected support and the optional top long edge of the selected bottom support while keeping end miters and half-lap shoulders square.",
-      "Keep every selected top-support envelope coplanar with the tabletop underside and every selected floor-support envelope coplanar with the floor; expose no gap or spacer control.",
+      "Keep every selected top-support envelope coplanar with the tabletop underside. Raise every lower wood member with the end boxes when leveling feet are enabled so the four pads are the only floor contacts; return all lower wood to Z = 0 when feet are disabled.",
+      "Center each leveling-foot rod beneath a stile, keep its rounded-bottom entry circle inside solid wood, report its exposed and embedded lengths, and reduce local end-box height by the installed extension while preserving the overall tabletop height.",
       "Keep inner and outer corner curves as cubic Bézier functions whose control lengths equal radius times normalized tension; rail-side and stile-side handles remain independently editable for both curve families.",
       "Keep top and bottom exterior and interior corner radii independently editable because the observed curves are not concentric offsets.",
       "Keep top and bottom support sections and bottom-edge radii independently editable unless crossbar synchronization is explicitly enabled while both layouts are Xs; synchronized edits must update width, thickness, bearing-zone inset, and bottom-edge radius as matched pairs. Keep the lower support top-edge radius independent.",
@@ -390,7 +434,7 @@
       "Keep frame edge round-over below half the depth, side width, top-rail height, and bottom-rail height; keep the end-box side width independently editable down to 1/2 in because support members bear on the horizontal rails rather than setting the stile width.",
       "Keep end boxes, their bottom spread, and all brace endpoints inside the tabletop width while preserving positive diagonal spans.",
       "Derive the exploded rail, stile, tabletop, X-brace, stretcher, and center-board solids from the same Bézier, splay, round-over, contact-plane, and half-lap constraints used by the assembled model; do not substitute proxy blanks.",
-      "Keep exploded offsets presentation-only: parameter edits and layout changes must regenerate the selected 14–16 fully profiled wood and steel pieces without changing the assembled STL contract or resetting the camera.",
+      "Keep exploded offsets presentation-only: parameter edits and layout changes must regenerate the selected 14–20 fully profiled wood and steel pieces without changing the assembled STL contract or resetting the camera.",
       "Keep the cut list full-size and associative to the furniture parameters: changing mock scale must not change a listed fabrication dimension, while dimensional edits must update the schedule, exact SVG profile, section view, radii, tensions, round-overs, end cuts, and half-lap geometry.",
       "Derive separate full-size top-rail, bottom-rail, and mirrored vertical-stile routing templates from the exact finished B1/B2/B3 part profiles used by the assembled, exploded, and cut-list modes; each asymmetric rail owns its Bézier corner returns and each stile runs only tangent-to-tangent.",
       "Split all three routing templates by the editable usable square print-plate span, keep every STL flat and inside that envelope, and join adjacent pieces with complementary in-plane dovetails sized by explicit depth and fit-clearance controls.",
@@ -414,6 +458,7 @@
       { "key": "hoverBraceEndCuts", "label": "Support end faces" },
       { "key": "hoverHalfLaps", "label": "Conditional half-laps" },
       { "key": "hoverDirectContact", "label": "Zero-gap contacts" },
+      { "key": "hoverLevelingFeet", "label": "Adjustable corner feet" },
       { "key": "hoverExplodedAssembly", "label": "Exploded glue-up" },
       { "key": "hoverCutList", "label": "Dimensioned cut list" },
       { "key": "hoverRoutingTemplates", "label": "Segmented routing templates" },

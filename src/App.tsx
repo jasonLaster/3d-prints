@@ -223,6 +223,12 @@ const PARAM_QUERY_KEYS = [
   "frameOuterStileCurveTension",
   "frameInnerRailCurveTension",
   "frameInnerStileCurveTension",
+  "levelingFeetEnabled",
+  "levelingFootPadDiameter",
+  "levelingFootPadThickness",
+  "levelingFootRodDiameter",
+  "levelingFootRodLength",
+  "levelingFootExtension",
   "topSupportStyle",
   "bottomSupportStyle",
   "syncCrossbarDimensions",
@@ -287,6 +293,7 @@ const SCALAR_PARAM_KEYS = new Set([
   "topSupportStyle",
   "bottomSupportStyle",
   "syncCrossbarDimensions",
+  "levelingFeetEnabled",
 ]);
 const CURVE_PARAM_KEYS = new Set([
   "topEdgeTension",
@@ -299,6 +306,7 @@ const OPTION_PARAM_KEYS = new Set([
   "gridfinityCompatible",
   "legGrooveEnabled",
   "syncCrossbarDimensions",
+  "levelingFeetEnabled",
 ]);
 const LEG_GROOVE_PARAM_KEYS = new Set([
   "legGrooveHeight",
@@ -1099,6 +1107,11 @@ const HolderViewer = forwardRef<
         mesh.name = `${model.id}-c-channel-${index + 1}`;
         hoverHardwareGroup.add(mesh);
       });
+      hardware.feet.forEach((geometry, index) => {
+        const mesh = new THREE.Mesh(geometry, diningMetalMaterial);
+        mesh.name = `${model.id}-leveling-foot-${index + 1}`;
+        hoverHardwareGroup.add(mesh);
+      });
       hoverHardwareGroup.visible = !exploded && !cutList && !templates;
       hoverExplodedGroup.visible = exploded || templates;
       if (exploded) {
@@ -1358,10 +1371,15 @@ const HolderViewer = forwardRef<
     if (model.viewer === "hover-dining-table-v1" && hoverHardwareGroup) {
       hoverHardwareGroup.children.forEach((child, index) => {
         if (child instanceof THREE.Mesh) {
-          const channel = new THREE.Mesh(createCleanExportGeometry(child.geometry));
-          channel.name = `${model.id}-c-channel-${index + 1}`;
-          exportHoverHardware.push(channel);
-          group.add(channel);
+          const hardwareMesh = new THREE.Mesh(
+            createCleanExportGeometry(child.geometry),
+          );
+          hardwareMesh.name =
+            index < 3
+              ? `${model.id}-c-channel-${index + 1}`
+              : `${model.id}-leveling-foot-${index - 2}`;
+          exportHoverHardware.push(hardwareMesh);
+          group.add(hardwareMesh);
         }
       });
     }
@@ -1376,7 +1394,9 @@ const HolderViewer = forwardRef<
     sandFloor?.geometry.dispose();
     trayLip?.geometry.dispose();
     exportDividers.forEach((divider) => divider.geometry.dispose());
-    exportHoverHardware.forEach((channel) => channel.geometry.dispose());
+    exportHoverHardware.forEach((hardwareMesh) =>
+      hardwareMesh.geometry.dispose(),
+    );
 
     return blob;
   }, [model]);
@@ -1880,6 +1900,11 @@ const HolderViewer = forwardRef<
           hardware.channels.forEach((geometry, index) => {
             const mesh = new THREE.Mesh(geometry, diningMetalMaterial);
             mesh.name = `${model.id}-c-channel-${index + 1}`;
+            hardwareGroup.add(mesh);
+          });
+          hardware.feet.forEach((geometry, index) => {
+            const mesh = new THREE.Mesh(geometry, diningMetalMaterial);
+            mesh.name = `${model.id}-leveling-foot-${index + 1}`;
             hardwareGroup.add(mesh);
           });
           scene.add(hardwareGroup);
@@ -2450,6 +2475,7 @@ const HOVER_PARAMETER_GROUPS = [
   "Overall",
   "Tabletop",
   "End boxes",
+  "Adjustable feet",
   "Support layout",
   "Top support members",
   "Bottom support members",
@@ -2465,6 +2491,7 @@ function HoverParameterGroupIcon({
   if (group === "Overall") return <SlidersHorizontal aria-hidden="true" />;
   if (group === "Tabletop") return <Layers3 aria-hidden="true" />;
   if (group === "End boxes") return <Box aria-hidden="true" />;
+  if (group === "Adjustable feet") return <SlidersHorizontal aria-hidden="true" />;
   if (group === "Support layout") return <GitFork aria-hidden="true" />;
   if (group === "Support joinery") return <Focus aria-hidden="true" />;
   if (group === "Routing templates") return <Ruler aria-hidden="true" />;
@@ -2555,6 +2582,11 @@ function HoverDiningTableParameterControls({
                   rail-side sweeps shape the horizontal returns; their
                   stile-side sweeps control how long the sides stay straight.
                 </p>
+              ) : group === "Adjustable feet" ? (
+                <p className="parameter-group-description">
+                  Four feet align beneath the stiles. Extension raises the
+                  complete wood base while overall tabletop height stays fixed.
+                </p>
               ) : null}
               {group === "Support layout" ? (
                 <HoverSupportLayoutControl params={params} onChange={onChange} />
@@ -2577,6 +2609,18 @@ function HoverDiningTableParameterControls({
                       )}
                       onChange={(value) => onChange(parameter.key, value)}
                       value={getParam(params, parameter.key)}
+                    />
+                  );
+                }
+                if (parameter.key === "levelingFeetEnabled") {
+                  return (
+                    <OriginalOverlayToggle
+                      checked={getParam(params, parameter.key) >= 0.5}
+                      key={parameter.key}
+                      label={parameter.label}
+                      onChange={(checked) =>
+                        onChange(parameter.key, checked ? 1 : 0)
+                      }
                     />
                   );
                 }
@@ -3040,37 +3084,37 @@ const HOVER_STRUCTURAL_REFERENCES: Record<
   overall: {
     label: "Overall structural score",
     specAnchor: "overall-weighting-and-grades",
-    sourceLines: "L4488-L4511",
+    sourceLines: "L4843-L4866",
   },
   "longitudinal-racking": {
     label: "Lengthwise racking",
     specAnchor: "lengthwise-racking",
-    sourceLines: "L3964-L3974",
+    sourceLines: "L4272-L4291",
   },
   "end-box-racking": {
     label: "End-box racking",
     specAnchor: "end-box-racking",
-    sourceLines: "L3976-L3983",
+    sourceLines: "L4293-L4300",
   },
   torsion: {
     label: "Torsional rigidity",
     specAnchor: "torsional-rigidity",
-    sourceLines: "L3985-L4015",
+    sourceLines: "L4302-L4332",
   },
   tipping: {
     label: "Tipping margin",
     specAnchor: "tipping-margin",
-    sourceLines: "L4017-L4024",
+    sourceLines: "L4334-L4347",
   },
   "floor-rocking": {
     label: "Floor rocking tolerance",
     specAnchor: "floor-rocking-tolerance",
-    sourceLines: "L4026-L4037",
+    sourceLines: "L4349-L4370",
   },
   "member-stiffness": {
     label: "Member stiffness",
     specAnchor: "member-stiffness",
-    sourceLines: "L4039-L4065",
+    sourceLines: "L4372-L4398",
   },
 };
 
@@ -4279,6 +4323,28 @@ export default function App({
         ),
       };
       if (model.viewer === "hover-dining-table-v1") {
+        if (key === "levelingFeetEnabled" && next.levelingFeetEnabled >= 0.5) {
+          const radiusLimits = getParameterLimits(
+            model,
+            next,
+            "frameOuterBottomCornerRadius",
+          );
+          next.frameOuterBottomCornerRadius = clamp(
+            next.frameOuterBottomCornerRadius,
+            radiusLimits.min,
+            radiusLimits.max,
+          );
+          const extensionLimits = getParameterLimits(
+            model,
+            next,
+            "levelingFootExtension",
+          );
+          next.levelingFootExtension = clamp(
+            next.levelingFootExtension,
+            extensionLimits.min,
+            extensionLimits.max,
+          );
+        }
         const syncPair = getHoverSupportSyncPair(key);
         if (syncPair && isHoverCrossbarSyncActive(next)) {
           const partnerKey = syncPair[0] === key ? syncPair[1] : syncPair[0];

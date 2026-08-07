@@ -198,7 +198,7 @@ function centerlineZRange(
   };
 }
 
-test("derives two centered half-lapped Xs with direct tabletop and floor contact", () => {
+test("derives two centered half-lapped Xs above four adjustable feet", () => {
   const { fullSize, scaled } = getHoverDiningTableSpec(defaultParams);
   for (const brace of [fullSize.upperBrace, fullSize.lowerBrace]) {
     expect(brace.endpointOuterY + brace.endpointInset).toBeCloseTo(
@@ -248,9 +248,12 @@ test("derives two centered half-lapped Xs with direct tabletop and floor contact
     fullSize.upperBrace.endpointY,
     6,
   );
-  expect(fullSize.frameHeight).toBeCloseTo(fullSize.topBottom, 6);
+  expect(fullSize.frameBottomZ + fullSize.frameHeight).toBeCloseTo(
+    fullSize.topBottom,
+    6,
+  );
   expect(fullSize.upperBrace.zTop).toBeCloseTo(fullSize.topBottom, 6);
-  expect(fullSize.lowerBrace.zBottom).toBeCloseTo(0, 6);
+  expect(fullSize.lowerBrace.zBottom).toBeCloseTo(fullSize.frameBottomZ, 6);
   expect(fullSize.upperBrace.halfLapDepth).toBeCloseTo(
     fullSize.upperBrace.thickness / 2,
     6,
@@ -290,6 +293,7 @@ test("derives two centered half-lapped Xs with direct tabletop and floor contact
 
   const hardware = createHoverDiningTableHardwareGeometries(defaultParams);
   expect(hardware.channels).toHaveLength(3);
+  expect(hardware.feet).toHaveLength(4);
   hardware.channels.forEach((channel, index) => {
     const inspectedChannel = inspectGeometry(channel);
     expect(inspectedChannel.finite, `channel ${index + 1}`).toBe(true);
@@ -309,15 +313,28 @@ test("derives two centered half-lapped Xs with direct tabletop and floor contact
     expect(inspectedChannel.min.z).toBeCloseTo(scaled.topBottom, 5);
     channel.dispose();
   });
+  hardware.feet.forEach((foot, index) => {
+    const inspectedFoot = inspectGeometry(foot);
+    expect(inspectedFoot.finite, `foot ${index + 1}`).toBe(true);
+    expect(inspectedFoot.min.z, `foot ${index + 1} floor contact`).toBeCloseTo(
+      0,
+      5,
+    );
+    expect(inspectedFoot.size.z, `foot ${index + 1} hardware height`).toBeCloseTo(
+      scaled.levelingFeet.padThickness + scaled.levelingFeet.rodLength,
+      5,
+    );
+    foot.dispose();
+  });
 
   const geometry = createHoverDiningTableGeometry(defaultParams, model);
   const inspected = inspectGeometry(geometry);
   expect(inspected.finite).toBe(true);
   expect(inspected.degenerateTriangles).toBe(0);
-  expect(inspected.min.z).toBeCloseTo(0, 5);
+  expect(inspected.min.z).toBeCloseTo(scaled.frameBottomZ, 5);
   expect(inspected.size.x).toBeCloseTo(scaled.length, 4);
   expect(inspected.size.y).toBeCloseTo(scaled.width, 4);
-  expect(inspected.size.z).toBeCloseTo(scaled.height, 4);
+  expect(inspected.size.z).toBeCloseTo(scaled.height - scaled.frameBottomZ, 4);
   const woodUvs = inspectWoodUvs(geometry);
   expect(woodUvs.finite).toBe(true);
   expect(woodUvs.inUnitRange).toBe(true);
@@ -329,7 +346,7 @@ test("derives two centered half-lapped Xs with direct tabletop and floor contact
     const x = inspected.position.getX(index);
     const z = inspected.position.getZ(index);
     if (Math.abs(x) > scaled.length / 8) continue;
-    if (Math.abs(z) < 1e-4) centralFloorVertices += 1;
+    if (Math.abs(z - scaled.frameBottomZ) < 1e-4) centralFloorVertices += 1;
     if (Math.abs(z - scaled.topBottom) < 1e-4) {
       centralUpperContactVertices += 1;
     }
@@ -337,6 +354,53 @@ test("derives two centered half-lapped Xs with direct tabletop and floor contact
   expect(centralFloorVertices).toBeGreaterThan(0);
   expect(centralUpperContactVertices).toBeGreaterThan(0);
   geometry.dispose();
+});
+
+test("keeps leveling-foot rods inside rounded stile entries and preserves overall height", () => {
+  const { fullSize: spec } = getHoverDiningTableSpec(defaultParams);
+  expect(spec.levelingFeet.enabled).toBe(true);
+  expect(spec.levelingFeet.count).toBe(4);
+  expect(spec.levelingFeet.padDiameter).toBeCloseTo(1.5 * 25.4, 6);
+  expect(spec.levelingFeet.rodLength).toBeCloseTo(3 * 25.4, 6);
+  expect(spec.levelingFeet.exposedRodLength).toBeCloseTo(0.5 * 25.4, 6);
+  expect(spec.levelingFeet.embeddedRodLength).toBeCloseTo(2.5 * 25.4, 6);
+  expect(spec.levelingFeet.outerEntryClearance).toBeGreaterThanOrEqual(0);
+  expect(spec.frameBottomZ + spec.frameHeight + spec.topThickness).toBeCloseTo(
+    spec.height,
+    6,
+  );
+  expect(
+    getHoverDiningTableParameterLimits(
+      model,
+      defaultParams,
+      "frameOuterBottomCornerRadius",
+    ).max,
+  ).toBeCloseTo(
+    spec.frameSideWidth / 2 - spec.levelingFeet.rodDiameter / 2,
+    6,
+  );
+
+  expect(() =>
+    getHoverDiningTableSpec({
+      ...defaultParams,
+      frameOuterBottomCornerRadius:
+        spec.frameSideWidth / 2 - spec.levelingFeet.rodDiameter / 2 + 1,
+    }),
+  ).toThrow(/solid entry face/);
+
+  const disabled = getHoverDiningTableSpec({
+    ...defaultParams,
+    levelingFeetEnabled: 0,
+  }).fullSize;
+  expect(disabled.frameBottomZ).toBe(0);
+  expect(disabled.frameHeight).toBeCloseTo(disabled.topBottom, 6);
+  expect(disabled.lowerBrace.zBottom).toBe(0);
+  expect(
+    createHoverDiningTableHardwareGeometries({
+      ...defaultParams,
+      levelingFeetEnabled: 0,
+    }).feet,
+  ).toHaveLength(0);
 });
 
 test("rounds tabletop plan corners and length-end faces independently", () => {
@@ -352,7 +416,7 @@ test("rounds tabletop plan corners and length-end faces independently", () => {
   expect(inspected.degenerateTriangles).toBe(0);
   expect(inspected.size.x).toBeCloseTo(spec.length, 4);
   expect(inspected.size.y).toBeCloseTo(spec.width, 4);
-  expect(inspected.size.z).toBeCloseTo(spec.height, 4);
+  expect(inspected.size.z).toBeCloseTo(spec.height - spec.frameBottomZ, 4);
 
   let maximumTopEndX = -Infinity;
   let maximumMidFaceY = -Infinity;
@@ -752,6 +816,7 @@ test("supports independent half-inch end-box stiles", () => {
   const halfInch = 0.5 * 25.4;
   const narrowParams = {
     ...defaultParams,
+    levelingFeetEnabled: 0,
     frameSideWidth: halfInch,
   };
   const definitions = Object.fromEntries(
@@ -913,8 +978,28 @@ test("grades wobble risks and responds monotonically to structural parameters", 
   );
   expect(
     openFloor.metrics.find((metric) => metric.key === "floor-rocking")!.score,
-  ).toBeGreaterThan(
+  ).toBe(
     baseline.metrics.find((metric) => metric.key === "floor-rocking")!.score,
+  );
+  const fixedFloorX = getHoverDiningTableStructuralAssessment({
+    ...defaultParams,
+    levelingFeetEnabled: 0,
+  });
+  const fixedOpenFloor = getHoverDiningTableStructuralAssessment({
+    ...defaultParams,
+    levelingFeetEnabled: 0,
+    bottomSupportStyle: 2,
+  });
+  expect(
+    baseline.metrics.find((metric) => metric.key === "floor-rocking")!.score,
+  ).toBeGreaterThan(
+    fixedFloorX.metrics.find((metric) => metric.key === "floor-rocking")!.score,
+  );
+  expect(
+    fixedOpenFloor.metrics.find((metric) => metric.key === "floor-rocking")!
+      .score,
+  ).toBeGreaterThan(
+    fixedFloorX.metrics.find((metric) => metric.key === "floor-rocking")!.score,
   );
 
   const widerBoxes = getHoverDiningTableStructuralAssessment({
@@ -985,13 +1070,13 @@ test("documents each structural formula with its implementation", () => {
     "utf8",
   );
   for (const [heading, sourceLines] of [
-    ["Overall weighting and grades", "L4488-L4511"],
-    ["Lengthwise racking", "L3964-L3974"],
-    ["End-box racking", "L3976-L3983"],
-    ["Torsional rigidity", "L3985-L4015"],
-    ["Tipping margin", "L4017-L4024"],
-    ["Floor rocking tolerance", "L4026-L4037"],
-    ["Member stiffness", "L4039-L4065"],
+    ["Overall weighting and grades", "L4843-L4866"],
+    ["Lengthwise racking", "L4272-L4291"],
+    ["End-box racking", "L4293-L4300"],
+    ["Torsional rigidity", "L4302-L4332"],
+    ["Tipping margin", "L4334-L4347"],
+    ["Floor rocking tolerance", "L4349-L4370"],
+    ["Member stiffness", "L4372-L4398"],
   ] as const) {
     expect(structuralSpec).toContain(`### ${heading}`);
     expect(structuralSpec).toContain(
@@ -1000,7 +1085,7 @@ test("documents each structural formula with its implementation", () => {
   }
   expect(structuralSpec).toContain("### C-channel transformed-section model");
   expect(structuralSpec).toContain(
-    "../src/models/hoverDiningTable.ts#L3864-L3950",
+    "../src/models/hoverDiningTable.ts#L4181-L4267",
   );
 });
 
@@ -1072,11 +1157,11 @@ test("loads one-inch rails with thicker supports", async ({ page }) => {
   expect(pageErrors).toEqual([]);
 });
 
-test("explodes the assembly into one top, three channels, eight box bars, and four X bars", () => {
+test("explodes the assembly into wood parts, channels, and four leveling feet", () => {
   const parts = createHoverDiningTableExplodedParts(defaultParams, model);
   const { scaled: spec } = getHoverDiningTableSpec(defaultParams);
-  expect(parts).toHaveLength(16);
-  expect(new Set(parts.map((part) => part.name)).size).toBe(16);
+  expect(parts).toHaveLength(20);
+  expect(new Set(parts.map((part) => part.name)).size).toBe(20);
   expect(
     Object.fromEntries(
       [...new Set(parts.map((part) => part.category))].map((category) => [
@@ -1091,6 +1176,7 @@ test("explodes the assembly into one top, three channels, eight box bars, and fo
     "end-box-vertical": 4,
     "upper-x": 2,
     "floor-x": 2,
+    "leveling-foot": 4,
   });
 
   const horizontalBoxParts = parts.filter(
@@ -1254,12 +1340,12 @@ test("explodes the assembly into one top, three channels, eight box bars, and fo
 
 test("derives assembled, exploded, and cut-list geometry for all six support layouts", () => {
   const variants = [
-    { top: 0, bottom: 0, pieces: 16, lines: 9, topCategory: "upper-x", bottomCategory: "floor-x" },
-    { top: 0, bottom: 1, pieces: 15, lines: 8, topCategory: "upper-x", bottomCategory: "floor-center-board" },
-    { top: 0, bottom: 2, pieces: 14, lines: 7, topCategory: "upper-x", bottomCategory: null },
-    { top: 1, bottom: 0, pieces: 16, lines: 8, topCategory: "upper-stretcher", bottomCategory: "floor-x" },
-    { top: 1, bottom: 1, pieces: 15, lines: 7, topCategory: "upper-stretcher", bottomCategory: "floor-center-board" },
-    { top: 1, bottom: 2, pieces: 14, lines: 6, topCategory: "upper-stretcher", bottomCategory: null },
+    { top: 0, bottom: 0, pieces: 20, lines: 10, topCategory: "upper-x", bottomCategory: "floor-x" },
+    { top: 0, bottom: 1, pieces: 19, lines: 9, topCategory: "upper-x", bottomCategory: "floor-center-board" },
+    { top: 0, bottom: 2, pieces: 18, lines: 8, topCategory: "upper-x", bottomCategory: null },
+    { top: 1, bottom: 0, pieces: 20, lines: 9, topCategory: "upper-stretcher", bottomCategory: "floor-x" },
+    { top: 1, bottom: 1, pieces: 19, lines: 8, topCategory: "upper-stretcher", bottomCategory: "floor-center-board" },
+    { top: 1, bottom: 2, pieces: 18, lines: 7, topCategory: "upper-stretcher", bottomCategory: null },
   ] as const;
 
   for (const variant of variants) {
@@ -1283,15 +1369,16 @@ test("derives assembled, exploded, and cut-list geometry for all six support lay
     const inspected = inspectGeometry(geometry);
     expect(inspected.finite, `${variant.top}/${variant.bottom} assembled`).toBe(true);
     expect(inspected.degenerateTriangles).toBe(0);
-    expect(inspected.min.z).toBeCloseTo(0, 5);
+    expect(inspected.min.z).toBeCloseTo(spec.frameBottomZ, 5);
     expect(inspected.size.x).toBeCloseTo(spec.length, 4);
     expect(inspected.size.y).toBeCloseTo(spec.width, 4);
-    expect(inspected.size.z).toBeCloseTo(spec.height, 4);
+    expect(inspected.size.z).toBeCloseTo(spec.height - spec.frameBottomZ, 4);
     geometry.dispose();
 
     const exploded = createHoverDiningTableExplodedParts(params, model);
     expect(exploded).toHaveLength(variant.pieces);
     expect(exploded.filter((part) => part.category === "tabletop-hardware")).toHaveLength(3);
+    expect(exploded.filter((part) => part.category === "leveling-foot")).toHaveLength(4);
     expect(exploded.filter((part) => part.category === variant.topCategory)).toHaveLength(2);
     expect(exploded.filter((part) => part.category === "upper-x")).toHaveLength(
       variant.top === 0 ? 2 : 0,
@@ -1310,7 +1397,7 @@ test("derives assembled, exploded, and cut-list geometry for all six support lay
         (candidate) => candidate.category === variant.bottomCategory,
       )) {
         part.geometry.computeBoundingBox();
-        expect(part.geometry.boundingBox!.min.z).toBeCloseTo(0, 5);
+        expect(part.geometry.boundingBox!.min.z).toBeCloseTo(spec.frameBottomZ, 5);
       }
     }
     for (const part of exploded.filter(
@@ -1366,17 +1453,18 @@ test("derives assembled, exploded, and cut-list geometry for all six support lay
   ).toBeCloseTo(originalStretchers.placementBoundaryY!, 6);
 });
 
-test("derives a full-size finished cut schedule for all 16 pieces", () => {
+test("derives a full-size finished cut schedule including four leveling feet", () => {
   const cutList = getHoverDiningTableCutList(defaultParams);
   const { fullSize: spec } = getHoverDiningTableSpec(defaultParams);
   expect(cutList.material).toBe("White oak + blackened steel");
   expect(cutList.dimensionBasis).toBe("full-size finished dimensions");
-  expect(cutList.totalPieces).toBe(16);
-  expect(cutList.parts).toHaveLength(9);
-  expect(cutList.parts.reduce((sum, part) => sum + part.quantity, 0)).toBe(16);
+  expect(cutList.totalPieces).toBe(20);
+  expect(cutList.parts).toHaveLength(10);
+  expect(cutList.parts.reduce((sum, part) => sum + part.quantity, 0)).toBe(20);
   expect(cutList.parts.map((part) => part.id)).toEqual([
     "T1",
     "H1",
+    "L1",
     "B1",
     "B2",
     "B3",
@@ -1410,6 +1498,12 @@ test("derives a full-size finished cut schedule for all 16 pieces", () => {
   expect(channel.fabricationProfile.family).toBe("channel");
   expect(channel.fabricationProfile.section.radius).toBe(0);
   expect(channel.fabricationProfile.section.outline).toHaveLength(9);
+
+  const levelingFoot = cutList.parts.find((part) => part.id === "L1")!;
+  expect(levelingFoot.quantity).toBe(4);
+  expect(levelingFoot.material).toBe("Steel");
+  expect(levelingFoot.fabricationProfile.family).toBe("leveling-foot");
+  expect(levelingFoot.width).toBeCloseTo(spec.levelingFeet.padDiameter, 6);
 
   for (const id of ["B1", "B2"] as const) {
     const rail = cutList.parts.find((part) => part.id === id)!;
@@ -1535,6 +1629,7 @@ test("derives a full-size finished cut schedule for all 16 pieces", () => {
 
   const changedBottomRadii = getHoverDiningTableCutList({
     ...defaultParams,
+    levelingFootRodDiameter: 0.25 * 25.4,
     frameOuterBottomCornerRadius:
       defaultParams.frameOuterBottomCornerRadius + 6.35,
     frameInnerBottomCornerRadius:
@@ -1928,7 +2023,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(viewer).toHaveAttribute("data-assembly-mode", "assembled");
 
   const parameterGroupToggles = page.locator(".parameter-group-toggle");
-  await expect(parameterGroupToggles).toHaveCount(8);
+  await expect(parameterGroupToggles).toHaveCount(9);
   await expect(page.getByLabel("Table length in inches")).toBeHidden();
   for (const toggle of await parameterGroupToggles.all()) {
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -1938,12 +2033,17 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(page.getByLabel("Mock scale denominator")).toHaveValue("10");
   await expect(page.getByLabel("Table length in inches")).toHaveValue("75");
   await expect(page.getByLabel("Table width in inches")).toHaveValue("35 1/2");
+  await expect(page.getByLabel("Use adjustable leveling feet")).toBeChecked();
   await expect(page.getByLabel("Overall height in inches")).toHaveValue("29 1/2");
   await expect(page.getByLabel("Tabletop thickness in inches")).toHaveValue("1 1/4");
   await expect(page.getByLabel("Long-edge roll depth in inches")).toHaveValue("5/8");
   await expect(page.getByLabel("End-box inner top radius in inches")).toHaveValue("2 1/2");
   await expect(page.getByLabel("End-box inner bottom radius in inches")).toHaveValue("2 1/2");
   await expect(page.getByLabel("End-box bottom spread in inches")).toHaveValue("0");
+  await expect(page.getByLabel("Use adjustable leveling feet")).toBeChecked();
+  await expect(page.getByLabel("Leveling-foot pad diameter in inches")).toHaveValue("1 1/2");
+  await expect(page.getByLabel("Leveling-foot rod length in inches")).toHaveValue("3");
+  await expect(page.getByLabel("Installed floor-to-box extension in inches")).toHaveValue("3/4");
   await expect(page.getByLabel("Top support width in inches")).toHaveValue("2");
   await expect(page.getByLabel("Bottom support width in inches")).toHaveValue("2");
   await expect(page.getByLabel("Top support thickness in inches")).toHaveValue("1 1/4");
@@ -1973,6 +2073,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     "Overall",
     "Tabletop",
     "End boxes",
+    "Adjustable feet",
     "Support layout",
     "Top support members",
     "Bottom support members",
@@ -2039,7 +2140,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     "data-assembly-mode",
     "exploded",
   );
-  await expect(page.getByText("Exploded · 16 pieces")).toBeVisible();
+  await expect(page.getByText("Exploded · 20 pieces")).toBeVisible();
   await expect(page.locator(".orientation-cube")).toHaveAttribute(
     "style",
     orientationBeforeExplosion!,
@@ -2055,12 +2156,12 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     ),
   ).toBeVisible();
   await expect(
-    page.getByText(/top supports \+ recessed channel webs Z 28 1\/4 in · \d+% direct oak bearing · floor supports Z 0 in · zero support gaps/),
+    page.getByText(/top supports \+ recessed channel webs Z 28 1\/4 in · \d+% direct oak bearing · lower supports Z 3\/4 in · feet alone contact floor/),
   ).toBeVisible();
   await expect(page.getByText(/8 box-parallel support end faces/)).toBeVisible();
   await expect(
     designChecks.locator(".audit-row .status-dot.pass"),
-  ).toHaveCount(16);
+  ).toHaveCount(17);
 
   const structuralAssessment = designChecks.getByLabel(
     "Structural wobble assessment",
@@ -2101,7 +2202,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     overallCalculation.getByRole("link", {
       name: "Overall structural score formula source code",
     }),
-  ).toHaveAttribute("href", /hoverDiningTable\.ts#L4488-L4511$/);
+  ).toHaveAttribute("href", /hoverDiningTable\.ts#L4843-L4866$/);
   await overallCalculationButton.click();
   await expect(overallCalculation).toBeHidden();
   const calculationButtons = structuralAssessment.locator(
@@ -2133,7 +2234,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     rackingCalculation.getByRole("link", {
       name: "Lengthwise racking formula source code",
     }),
-  ).toHaveAttribute("href", /hoverDiningTable\.ts#L3964-L3974$/);
+  ).toHaveAttribute("href", /hoverDiningTable\.ts#L4272-L4291$/);
   const rackingHeightInput = rackingCalculation
     .locator(".structural-calculation-inputs > div")
     .filter({ hasText: "overallHeight" });
@@ -2215,6 +2316,10 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await page.getByLabel("Top support width in inches").fill("2 1/8");
   await expect(page).toHaveURL(/topSupportWidth=2\.126/);
   await expect(page.getByLabel("Bottom support width in inches")).toHaveValue("2 1/2");
+  await page
+    .getByLabel("Use adjustable leveling feet")
+    .evaluate((input: HTMLInputElement) => input.click());
+  await expect(page).toHaveURL(/levelingFeetEnabled=0/);
   await page.getByLabel("End-box side width in inches").fill("1/2");
   await expect(page).toHaveURL(/frameSideWidth=0\.5/);
   await expect(page.getByLabel("End-box side width in inches")).toHaveValue("1/2");
@@ -2249,7 +2354,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(page).toHaveURL(/frameOuterStileCurveTension=0\.72/);
   await expect(
     designChecks.locator(".audit-row .status-dot.pass"),
-  ).toHaveCount(16);
+  ).toHaveCount(17);
 
   await page.getByRole("button", { name: "Reset parameters" }).click();
   await expect(page.getByLabel("Table width in inches")).toHaveValue("35 1/2");
@@ -2310,14 +2415,14 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     "data-assembly-mode",
     "cut-list",
   );
-  await expect(page.getByText("Cut list · full-size · 16 pieces")).toBeVisible();
+  await expect(page.getByText("Cut list · full-size · 20 pieces")).toBeVisible();
   await expect(page.getByLabel("X-Hover full-size cut list")).toBeVisible();
-  await expect(page.locator(".hover-cut-table tbody tr")).toHaveCount(9);
-  await expect(page.locator(".hover-cut-card")).toHaveCount(9);
-  await expect(page.locator(".hover-cut-3d")).toHaveCount(9);
+  await expect(page.locator(".hover-cut-table tbody tr")).toHaveCount(10);
+  await expect(page.locator(".hover-cut-card")).toHaveCount(10);
+  await expect(page.locator(".hover-cut-3d")).toHaveCount(10);
   await expect(
     page.getByRole("img", { name: /dimensioned cut diagram/ }),
-  ).toHaveCount(9);
+  ).toHaveCount(10);
   await expect(page.locator(".cut-part-section > path")).toHaveCount(9);
   await expect(
     page.locator('.cut-part-section[data-section-kind="half-lap"]'),
@@ -2461,7 +2566,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     "data-assembly-mode",
     "assembled",
   );
-  await expect(page.getByText("Exploded · 16 pieces")).toHaveCount(0);
+  await expect(page.getByText("Exploded · 20 pieces")).toHaveCount(0);
   expect(pageErrors).toEqual([]);
 });
 
@@ -2498,15 +2603,15 @@ test("switches support layouts associatively across viewer, exploded mode, cut l
   );
 
   await page.getByRole("button", { name: "Exploded" }).click();
-  await expect(page.getByText("Exploded · 15 pieces")).toBeVisible();
+  await expect(page.getByText("Exploded · 19 pieces")).toBeVisible();
   await expect(page.locator(".orientation-cube")).toHaveAttribute(
     "style",
     orientationBefore!,
   );
 
   await page.getByRole("button", { name: "Cut list" }).click();
-  await expect(page.getByText("Cut list · full-size · 15 pieces")).toBeVisible();
-  await expect(page.locator(".hover-cut-table tbody tr")).toHaveCount(7);
+  await expect(page.getByText("Cut list · full-size · 19 pieces")).toBeVisible();
+  await expect(page.locator(".hover-cut-table tbody tr")).toHaveCount(8);
   await expect(page.locator('[data-profile-family="support"]')).toHaveCount(2);
   await expect(
     page.locator('.cut-part-section[data-section-kind="half-lap"]'),
@@ -2526,7 +2631,7 @@ test("switches support layouts associatively across viewer, exploded mode, cut l
   await page.getByLabel("Bottom support style").click();
   await page.getByRole("option", { name: "None" }).click();
   await page.getByRole("button", { name: "Exploded" }).click();
-  await expect(page.getByText("Exploded · 14 pieces")).toBeVisible();
+  await expect(page.getByText("Exploded · 18 pieces")).toBeVisible();
   await expect(page.getByText(/None · end boxes remain unconnected/)).toBeVisible();
 });
 
@@ -2634,7 +2739,7 @@ test("loads the narrow end-box shared configuration without crashing", async ({
   await expect(page.locator(".scene-panel canvas")).toBeVisible();
   await expect(
     page.getByLabel("Structural wobble assessment"),
-  ).toHaveAttribute("data-overall-score", "70.5");
+  ).toHaveAttribute("data-overall-score", "73.4");
   await expect(
     page.getByText("2 × 14 1/2 in wide closed boxes"),
   ).toBeVisible();

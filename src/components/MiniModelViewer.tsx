@@ -192,11 +192,10 @@ function createPreviewObject(
         mainMaterial,
       ),
     );
-    createHoverDiningTableHardwareGeometries(params).channels.forEach(
-      (geometry) => {
-        group.add(new THREE.Mesh(geometry, metalMaterial));
-      },
-    );
+    const hardware = createHoverDiningTableHardwareGeometries(params);
+    [...hardware.channels, ...hardware.feet].forEach((geometry) => {
+      group.add(new THREE.Mesh(geometry, metalMaterial));
+    });
   }
 
   group.updateMatrixWorld(true);

@@ -65,6 +65,22 @@ type CChannelSpec = {
   zTop: number;
 };
 
+type LevelingFeetSpec = {
+  enabled: boolean;
+  count: 4;
+  padDiameter: number;
+  padThickness: number;
+  rodDiameter: number;
+  rodLength: number;
+  extension: number;
+  exposedRodLength: number;
+  embeddedRodLength: number;
+  centerYs: [number, number];
+  outerEntryClearance: number;
+  stileClearance: number;
+  depthClearance: number;
+};
+
 export type HoverDiningTableProfilePoint = {
   x: number;
   y: number;
@@ -93,7 +109,8 @@ export type HoverDiningTableFabricationProfile = {
     | "frame-stile"
     | "brace"
     | "support"
-    | "channel";
+    | "channel"
+    | "leveling-foot";
   outline: HoverDiningTableProfileCommand[];
   bounds: {
     minX: number;
@@ -130,6 +147,7 @@ export type HoverDiningTableSpec = {
   height: number;
   topThickness: number;
   topBottom: number;
+  frameBottomZ: number;
   topEdgeRoll: number;
   topEdgeTension: number;
   topPlanCornerRadius: number;
@@ -168,6 +186,7 @@ export type HoverDiningTableSpec = {
   upperStretchers: StraightSupportSpec;
   lowerCenterBoard: StraightSupportSpec;
   channels: CChannelSpec;
+  levelingFeet: LevelingFeetSpec;
 };
 
 export type HoverDiningTableStructuralGrade = "A" | "B" | "C" | "D" | "F";
@@ -289,6 +308,14 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
   const height = getParam(params, "overallHeight");
   const topThickness = getParam(params, "topThickness");
   const topBottom = height - topThickness;
+  const levelingFeetEnabled = getParam(params, "levelingFeetEnabled") >= 0.5;
+  const levelingFootPadDiameter = getParam(params, "levelingFootPadDiameter");
+  const levelingFootPadThickness = getParam(params, "levelingFootPadThickness");
+  const levelingFootRodDiameter = getParam(params, "levelingFootRodDiameter");
+  const levelingFootRodLength = getParam(params, "levelingFootRodLength");
+  const levelingFootExtension = levelingFeetEnabled
+    ? getParam(params, "levelingFootExtension")
+    : 0;
   const sideOverhang = getParam(params, "sideOverhang");
   const topSupportWidth = getParam(params, "topSupportWidth");
   const topSupportThickness = getParam(params, "topSupportThickness");
@@ -316,7 +343,7 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
   const openingBottomWidth = frameBottomWidth - frameSideWidth * 2;
   const frameBottomRailHeight = getParam(params, "frameBottomRailHeight");
   const frameTopRailHeight = getParam(params, "frameTopRailHeight");
-  const frameHeight = topBottom;
+  const frameHeight = topBottom - levelingFootExtension;
   const openingBottom = frameBottomRailHeight;
   const openingTop = frameHeight - frameTopRailHeight;
   const frameDepth = getParam(params, "frameDepth");
@@ -348,6 +375,12 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
   const upperPlacementBoundaryY = frameTopWidth / 2;
   const upperStretcherCenterY =
     upperPlacementBoundaryY - topSupportEndpointInset - topSupportWidth / 2;
+  const levelingFootCenterY = frameBottomWidth / 2 - frameSideWidth / 2;
+  const levelingFootRodRadius = levelingFootRodDiameter / 2;
+  const levelingFootExposedRodLength = Math.max(
+    0,
+    levelingFootExtension - levelingFootPadThickness,
+  );
 
   return {
     scale,
@@ -356,6 +389,7 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
     height,
     topThickness,
     topBottom,
+    frameBottomZ: levelingFootExtension,
     topEdgeRoll: getParam(params, "topEdgeRoll"),
     topEdgeTension: getParam(params, "topEdgeTension"),
     topPlanCornerRadius: getParam(params, "topPlanCornerRadius"),
@@ -427,8 +461,8 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       spanX: braceSpanX,
       openingWidth: openingBottomWidth,
       innerCornerRadius: frameInnerBottomCornerRadius,
-      zBottom: 0,
-      zTop: bottomSupportThickness,
+      zBottom: levelingFootExtension,
+      zTop: levelingFootExtension + bottomSupportThickness,
     }),
     upperStretchers: {
       count: 2,
@@ -452,8 +486,8 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       topEdgeRadius: bottomSupportTopEdgeRadius,
       spanX: braceSpanX,
       centerYs: [0],
-      zBottom: 0,
-      zTop: bottomSupportThickness,
+      zBottom: levelingFootExtension,
+      zTop: levelingFootExtension + bottomSupportThickness,
     },
     channels: {
       count: 3,
@@ -466,6 +500,25 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       centerXs: [-channelOuterCenterX, 0, channelOuterCenterX],
       zBottom: topBottom,
       zTop: topBottom + getParam(params, "channelDepth"),
+    },
+    levelingFeet: {
+      enabled: levelingFeetEnabled,
+      count: 4,
+      padDiameter: levelingFootPadDiameter,
+      padThickness: levelingFootPadThickness,
+      rodDiameter: levelingFootRodDiameter,
+      rodLength: levelingFootRodLength,
+      extension: levelingFootExtension,
+      exposedRodLength: levelingFootExposedRodLength,
+      embeddedRodLength:
+        levelingFootRodLength - levelingFootExposedRodLength,
+      centerYs: [-levelingFootCenterY, levelingFootCenterY],
+      outerEntryClearance:
+        frameSideWidth / 2 -
+        getParam(params, "frameOuterBottomCornerRadius") -
+        levelingFootRodRadius,
+      stileClearance: frameSideWidth / 2 - levelingFootRodRadius,
+      depthClearance: frameDepth / 2 - levelingFootRodRadius,
     },
   };
 }
@@ -740,8 +793,38 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
   ) {
     throw new Error("Outer C-channels must remain clear of both end boxes");
   }
-  if (Math.abs(spec.frameHeight - spec.topBottom) > EPSILON) {
-    throw new Error("End boxes must terminate at the tabletop underside without a hover gap");
+  if (Math.abs(spec.frameBottomZ + spec.frameHeight - spec.topBottom) > EPSILON) {
+    throw new Error("Raised end boxes must terminate at the tabletop underside");
+  }
+
+  const feet = spec.levelingFeet;
+  for (const [label, value] of [
+    ["leveling-foot pad diameter", feet.padDiameter],
+    ["leveling-foot pad thickness", feet.padThickness],
+    ["leveling-foot rod diameter", feet.rodDiameter],
+    ["leveling-foot rod length", feet.rodLength],
+  ] as const) {
+    assertPositive(value, label);
+  }
+  assertNonNegative(feet.extension, "Leveling-foot installed extension");
+  if (feet.enabled) {
+    if (feet.extension < feet.padThickness - EPSILON) {
+      throw new Error("Leveling-foot extension must include the full pad thickness");
+    }
+    if (feet.embeddedRodLength <= 0 || feet.embeddedRodLength > spec.frameHeight) {
+      throw new Error("Leveling-foot rod must retain a positive embedded length inside each stile");
+    }
+    if (feet.outerEntryClearance < -EPSILON) {
+      throw new Error(
+        "Outer bottom radius leaves no solid entry face for the leveling-foot rod",
+      );
+    }
+    if (feet.stileClearance < -EPSILON) {
+      throw new Error("Leveling-foot rod is wider than the supporting stile");
+    }
+    if (feet.depthClearance < -EPSILON) {
+      throw new Error("Leveling-foot rod is wider than the end-box depth");
+    }
   }
 
   assertBracePlane(spec.upperBrace, spec, "Upper");
@@ -754,14 +837,14 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
   if (spec.upperBrace.zBottom < spec.lowerBrace.zTop + EPSILON) {
     throw new Error("Upper and lower X assemblies must remain vertically separate");
   }
-  if (Math.abs(spec.lowerBrace.zBottom) > EPSILON) {
-    throw new Error("Lower X bottom envelope must contact the floor at Z = 0");
+  if (Math.abs(spec.lowerBrace.zBottom - spec.frameBottomZ) > EPSILON) {
+    throw new Error("Lower X must share the raised end-box underside plane");
   }
   if (Math.abs(spec.upperStretchers.zTop - spec.topBottom) > EPSILON) {
     throw new Error("Upper stretchers must contact the tabletop underside");
   }
-  if (Math.abs(spec.lowerCenterBoard.zBottom) > EPSILON) {
-    throw new Error("Floor center board must contact the floor at Z = 0");
+  if (Math.abs(spec.lowerCenterBoard.zBottom - spec.frameBottomZ) > EPSILON) {
+    throw new Error("Floor center board must share the raised end-box underside plane");
   }
   if (
     spec.halfLapClearance >=
@@ -857,6 +940,29 @@ function scaleCChannel(channel: CChannelSpec, scale: number): CChannelSpec {
   };
 }
 
+function scaleLevelingFeet(
+  feet: LevelingFeetSpec,
+  scale: number,
+): LevelingFeetSpec {
+  return {
+    ...feet,
+    padDiameter: feet.padDiameter / scale,
+    padThickness: feet.padThickness / scale,
+    rodDiameter: feet.rodDiameter / scale,
+    rodLength: feet.rodLength / scale,
+    extension: feet.extension / scale,
+    exposedRodLength: feet.exposedRodLength / scale,
+    embeddedRodLength: feet.embeddedRodLength / scale,
+    centerYs: feet.centerYs.map((centerY) => centerY / scale) as [
+      number,
+      number,
+    ],
+    outerEntryClearance: feet.outerEntryClearance / scale,
+    stileClearance: feet.stileClearance / scale,
+    depthClearance: feet.depthClearance / scale,
+  };
+}
+
 export function getHoverDiningTableSpec(params: ModelParams) {
   const fullSize = rawHoverDiningTableSpec(params);
   assertHoverDiningTableSpec(fullSize);
@@ -868,6 +974,7 @@ export function getHoverDiningTableSpec(params: ModelParams) {
     height: fullSize.height / scale,
     topThickness: fullSize.topThickness / scale,
     topBottom: fullSize.topBottom / scale,
+    frameBottomZ: fullSize.frameBottomZ / scale,
     topEdgeRoll: fullSize.topEdgeRoll / scale,
     topPlanCornerRadius: fullSize.topPlanCornerRadius / scale,
     topEndFaceRoundover: fullSize.topEndFaceRoundover / scale,
@@ -899,6 +1006,7 @@ export function getHoverDiningTableSpec(params: ModelParams) {
     upperStretchers: scaleStraightSupport(fullSize.upperStretchers, scale),
     lowerCenterBoard: scaleStraightSupport(fullSize.lowerCenterBoard, scale),
     channels: scaleCChannel(fullSize.channels, scale),
+    levelingFeet: scaleLevelingFeet(fullSize.levelingFeet, scale),
   };
   return { fullSize, scaled };
 }
@@ -1875,6 +1983,13 @@ function assertFabricationProfile(
     ) {
       throw new Error(`${label} channel must retain its square U-section`);
     }
+  } else if (profile.family === "leveling-foot") {
+    if (
+      profile.section.radius !== 0 ||
+      !profile.section.outline.some((command) => command.kind === "cubic")
+    ) {
+      throw new Error(`${label} leveling foot must retain its circular pad section`);
+    }
   } else if (
     !Number.isFinite(profile.section.radius) ||
     profile.section.radius <= 0 ||
@@ -2150,12 +2265,77 @@ function createCChannelGeometry(channel: CChannelSpec, centerX: number) {
   return geometry;
 }
 
+function createLevelingFootFabricationProfile(
+  feet: LevelingFeetSpec,
+): HoverDiningTableFabricationProfile {
+  const totalHeight = feet.padThickness + feet.rodLength;
+  const outline = rectangleProfile(feet.padDiameter, totalHeight);
+  return {
+    family: "leveling-foot",
+    outline,
+    bounds: profileBounds(outline),
+    section: {
+      width: feet.padDiameter,
+      thickness: feet.padThickness,
+      radius: 0,
+      label: "pad + threaded rod",
+      outline: roundedRectangleProfile(
+        feet.padDiameter,
+        feet.padDiameter,
+        feet.padDiameter / 2,
+      ),
+    },
+  };
+}
+
+function createLevelingFootGeometry(
+  feet: LevelingFeetSpec,
+  centerX: number,
+  centerY: number,
+) {
+  const pad = new THREE.CylinderGeometry(
+    feet.padDiameter / 2,
+    feet.padDiameter / 2,
+    feet.padThickness,
+    32,
+  );
+  pad.rotateX(Math.PI / 2);
+  pad.translate(centerX, centerY, feet.padThickness / 2);
+  const rod = new THREE.CylinderGeometry(
+    feet.rodDiameter / 2,
+    feet.rodDiameter / 2,
+    feet.rodLength,
+    24,
+  );
+  rod.rotateX(Math.PI / 2);
+  rod.translate(
+    centerX,
+    centerY,
+    feet.padThickness + feet.rodLength / 2,
+  );
+  return mergeGeometryList(
+    [pad, rod],
+    "Unable to merge leveling-foot geometry",
+  );
+}
+
 export function createHoverDiningTableHardwareGeometries(params: ModelParams) {
   const { scaled: spec } = getHoverDiningTableSpec(params);
   return {
     channels: spec.channels.centerXs.map((centerX) =>
       createCChannelGeometry(spec.channels, centerX),
     ),
+    feet: spec.levelingFeet.enabled
+      ? ([-1, 1] as const).flatMap((endSign) =>
+          spec.levelingFeet.centerYs.map((centerY) =>
+            createLevelingFootGeometry(
+              spec.levelingFeet,
+              endSign * spec.frameCenterX,
+              centerY,
+            ),
+          ),
+        )
+      : [],
   };
 }
 
@@ -2206,7 +2386,7 @@ function createEndFrameGeometry(
     new THREE.Matrix4().set(
       0, 0, 1, x - depth / 2,
       1, 0, 0, 0,
-      0, 1, 0, 0,
+      0, 1, 0, spec.frameBottomZ,
       0, 0, 0, 1,
     ),
   );
@@ -2749,7 +2929,8 @@ export type HoverDiningTableExplodedPart = {
     | "upper-x"
     | "floor-x"
     | "upper-stretcher"
-    | "floor-center-board";
+    | "floor-center-board"
+    | "leveling-foot";
   material: "Oak" | "Steel";
   geometry: THREE.BufferGeometry;
   offset: THREE.Vector3;
@@ -2766,8 +2947,16 @@ export type HoverDiningTableCutPart = {
     | "upper X"
     | "floor X"
     | "upper stretchers"
-    | "floor center board";
-  kind: "tabletop" | "rail" | "stile" | "brace" | "support" | "channel";
+    | "floor center board"
+    | "leveling feet";
+  kind:
+    | "tabletop"
+    | "rail"
+    | "stile"
+    | "brace"
+    | "support"
+    | "channel"
+    | "leveling-foot";
   material: "Oak" | "Steel";
   quantity: number;
   length: number;
@@ -2890,7 +3079,8 @@ function createStraightSupportCutPart(
 
 export function getHoverDiningTablePieceCount(params: ModelParams) {
   const bottomStyle = bottomSupportStyle(getParam(params, "bottomSupportStyle"));
-  return 14 +
+  const footCount = getParam(params, "levelingFeetEnabled") >= 0.5 ? 4 : 0;
+  return 14 + footCount +
     (bottomStyle === "x" ? 2 : bottomStyle === "center-board" ? 1 : 0);
 }
 
@@ -3087,6 +3277,37 @@ export function getHoverDiningTableCutList(
     },
   ];
 
+  if (spec.levelingFeet.enabled) {
+    parts.splice(2, 0, {
+      id: "L1",
+      name: "Adjustable leveling foot",
+      assembly: "leveling feet",
+      kind: "leveling-foot",
+      material: "Steel",
+      quantity: spec.levelingFeet.count,
+      length: spec.levelingFeet.rodLength + spec.levelingFeet.padThickness,
+      width: spec.levelingFeet.padDiameter,
+      thickness: spec.levelingFeet.padThickness,
+      grainDirection: "n/a",
+      fabricationProfile: createLevelingFootFabricationProfile(
+        spec.levelingFeet,
+      ),
+      notes: [
+        "One threaded leveling foot mounts beneath each end-box stile.",
+        "Installed extension is measured from the floor to the wood underside; the remaining rod length embeds vertically in solid stile material.",
+      ],
+      processDimensions: [
+        { label: "Pad diameter", value: spec.levelingFeet.padDiameter },
+        { label: "Pad thickness", value: spec.levelingFeet.padThickness },
+        { label: "Threaded rod diameter", value: spec.levelingFeet.rodDiameter },
+        { label: "Threaded rod length", value: spec.levelingFeet.rodLength },
+        { label: "Installed extension", value: spec.levelingFeet.extension },
+        { label: "Embedded rod", value: spec.levelingFeet.embeddedRodLength },
+        { label: "Outer-radius entry clearance", value: spec.levelingFeet.outerEntryClearance },
+      ],
+    });
+  }
+
   if (spec.topSupportStyle === "x") {
     parts.push(
       ...createBraceCutParts(
@@ -3172,7 +3393,7 @@ function createEndBoxFinishedPartGeometry(
   position: EndBoxPartPosition,
 ) {
   const commands = createEndBoxPartProfiles(spec)[position];
-  return createSelectivelyRoundedExtrusion(
+  const geometry = createSelectivelyRoundedExtrusion(
     commands,
     spec.frameDepth,
     spec.frameEdgeRoundover,
@@ -3180,6 +3401,8 @@ function createEndBoxFinishedPartGeometry(
     model.geometry.bevelSegments,
     x,
   );
+  geometry.translate(0, 0, spec.frameBottomZ);
+  return geometry;
 }
 
 /**
@@ -3200,6 +3423,11 @@ export function createHoverDiningTableCutPartGeometry(
     geometry = createTabletopGeometry(spec, model);
   } else if (partId === "H1") {
     geometry = createCChannelGeometry(spec.channels, 0);
+  } else if (partId === "L1") {
+    if (!spec.levelingFeet.enabled) {
+      throw new Error("L1 requires adjustable leveling feet");
+    }
+    geometry = createLevelingFootGeometry(spec.levelingFeet, 0, 0);
   } else if (partId === "B1") {
     geometry = createEndBoxFinishedPartGeometry(
       spec,
@@ -3267,7 +3495,7 @@ export function createHoverDiningTableCutPartGeometry(
     throw new Error(`Unknown Hover-table cut-list item: ${partId}`);
   }
 
-  if (partId !== "H1") addPlanarWoodUvs(geometry);
+  if (partId !== "H1" && partId !== "L1") addPlanarWoodUvs(geometry);
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return geometry;
@@ -3307,6 +3535,31 @@ export function createHoverDiningTableExplodedParts(
       fabricationProfile: createCChannelFabricationProfile(spec.channels),
     });
   });
+
+  if (spec.levelingFeet.enabled) {
+    for (const endSign of [-1, 1] as const) {
+      spec.levelingFeet.centerYs.forEach((centerY, sideIndex) => {
+        parts.push({
+          name: `${endSign < 0 ? "left" : "right"}-box-leveling-foot-${sideIndex + 1}`,
+          category: "leveling-foot",
+          material: "Steel",
+          geometry: createLevelingFootGeometry(
+            spec.levelingFeet,
+            endSign * spec.frameCenterX,
+            centerY,
+          ),
+          offset: new THREE.Vector3(
+            endSign * gap * 1.5,
+            sideIndex === 0 ? -gap * 1.4 : gap * 1.4,
+            -gap,
+          ),
+          fabricationProfile: createLevelingFootFabricationProfile(
+            spec.levelingFeet,
+          ),
+        });
+      });
+    }
+  }
 
   for (const endSign of [-1, 1] as const) {
     const x = endSign * spec.frameCenterX;
@@ -3491,6 +3744,13 @@ export function getHoverDiningTableParameterLimits(
         spec.frameInnerBottomCornerRadius +
         limits.step,
       spec.topThickness + spec.lowerBrace.thickness + spec.upperBrace.thickness,
+      spec.topThickness +
+        spec.levelingFeet.extension +
+        spec.frameBottomRailHeight +
+        spec.frameTopRailHeight +
+        spec.frameInnerTopCornerRadius +
+        spec.frameInnerBottomCornerRadius +
+        limits.step,
     );
   } else if (key === "topThickness") {
     limits.min = Math.max(
@@ -3556,7 +3816,11 @@ export function getHoverDiningTableParameterLimits(
         2,
     );
   } else if (key === "frameDepth") {
-    limits.min = Math.max(limits.min, spec.frameEdgeRoundover * 2 + limits.step);
+    limits.min = Math.max(
+      limits.min,
+      spec.frameEdgeRoundover * 2 + limits.step,
+      ...(spec.levelingFeet.enabled ? [spec.levelingFeet.rodDiameter] : []),
+    );
     limits.max = Math.min(
       limits.max,
       (spec.length - 2 * spec.endOverhang - MIN_BRACE_SPAN) / 2,
@@ -3609,6 +3873,14 @@ export function getHoverDiningTableParameterLimits(
       spec.channels.width / 2 - limits.step,
     );
   } else if (key === "frameSideWidth") {
+    if (spec.levelingFeet.enabled) {
+      limits.min = Math.max(
+        limits.min,
+        2 *
+          (spec.frameOuterBottomCornerRadius +
+            spec.levelingFeet.rodDiameter / 2),
+      );
+    }
     limits.max = Math.min(
       limits.max,
       (spec.frameTopWidth - 2 * spec.frameInnerTopCornerRadius) / 2,
@@ -3650,6 +3922,12 @@ export function getHoverDiningTableParameterLimits(
       limits.max,
       spec.frameBottomWidth / 2 - limits.step,
       spec.frameHeight - spec.frameOuterTopCornerRadius - limits.step,
+      ...(spec.levelingFeet.enabled
+        ? [
+            spec.frameSideWidth / 2 -
+              spec.levelingFeet.rodDiameter / 2,
+          ]
+        : []),
     );
   } else if (key === "frameInnerTopCornerRadius") {
     limits.max = Math.min(
@@ -3763,6 +4041,45 @@ export function getHoverDiningTableParameterLimits(
       spec.upperBrace.thickness / 4,
       spec.lowerBrace.thickness / 4,
     );
+  } else if (key === "levelingFootPadThickness") {
+    if (spec.levelingFeet.enabled) {
+      limits.max = Math.min(limits.max, spec.levelingFeet.extension);
+    }
+  } else if (key === "levelingFootRodDiameter") {
+    if (spec.levelingFeet.enabled) {
+      limits.max = Math.min(
+        limits.max,
+        spec.frameSideWidth - 2 * spec.frameOuterBottomCornerRadius,
+        spec.frameDepth,
+      );
+    }
+  } else if (key === "levelingFootRodLength") {
+    if (spec.levelingFeet.enabled) {
+      limits.min = Math.max(
+        limits.min,
+        spec.levelingFeet.exposedRodLength + limits.step,
+      );
+      limits.max = Math.min(
+        limits.max,
+        spec.frameHeight + spec.levelingFeet.exposedRodLength,
+      );
+    }
+  } else if (key === "levelingFootExtension") {
+    if (spec.levelingFeet.enabled) {
+      limits.min = Math.max(limits.min, spec.levelingFeet.padThickness);
+      limits.max = Math.min(
+        limits.max,
+        spec.levelingFeet.padThickness +
+          spec.levelingFeet.rodLength -
+          limits.step,
+        spec.topBottom -
+          spec.frameBottomRailHeight -
+          spec.frameTopRailHeight -
+          spec.frameInnerTopCornerRadius -
+          spec.frameInnerBottomCornerRadius -
+          limits.step,
+      );
+    }
   } else if (key === "templatePlateLength") {
     limits.min = Math.max(
       limits.min,
@@ -3997,7 +4314,7 @@ function evaluateHoverDiningTableStructure(
           Math.min(
             1,
             (spec.topBottom - spec.upperBrace.thickness / 2 -
-              spec.lowerBrace.thickness / 2) /
+              (spec.lowerBrace.zBottom + spec.lowerBrace.thickness / 2)) /
               spec.height,
           ),
         );
@@ -4014,8 +4331,14 @@ function evaluateHoverDiningTableStructure(
       Math.sqrt(widthEngagement) *
       Math.sqrt(channelTopStiffness.channelTorsionFactor);
 
-  const footprintLength = spec.length - 2 * spec.endOverhang;
-  const lateralTippingRatio = spec.frameBottomWidth / (2 * spec.height);
+  const footprintLength = spec.levelingFeet.enabled
+    ? spec.frameCenterX * 2 + spec.levelingFeet.padDiameter
+    : spec.length - 2 * spec.endOverhang;
+  const footprintWidth = spec.levelingFeet.enabled
+    ? Math.abs(spec.levelingFeet.centerYs[1]) * 2 +
+      spec.levelingFeet.padDiameter
+    : spec.frameBottomWidth;
+  const lateralTippingRatio = footprintWidth / (2 * spec.height);
   const longitudinalTippingRatio = footprintLength / (2 * spec.height);
   const controllingTippingRatio = Math.min(
     lateralTippingRatio,
@@ -4034,7 +4357,17 @@ function evaluateHoverDiningTableStructure(
       : spec.bottomSupportStyle === "center-board"
         ? 62
         : 84;
-  const floorRocking = rockingBase + 10 * Math.min(1, flatBottomRun);
+  const levelingClearanceFactor = Math.max(
+    0,
+    Math.min(
+      1,
+      spec.levelingFeet.outerEntryClearance /
+        Math.max(spec.levelingFeet.rodDiameter, EPSILON),
+    ),
+  );
+  const floorRocking = spec.levelingFeet.enabled
+    ? 96 + 2 * levelingClearanceFactor
+    : rockingBase + 10 * Math.min(1, flatBottomRun);
 
   const stileSlenderness =
     spec.openingHeight /
@@ -4293,9 +4626,9 @@ function evaluateHoverDiningTableStructure(
       `controlling half-footprint / height ${controllingTippingRatio.toFixed(2)}`,
       {
         rationale:
-          "The smaller of the lateral and longitudinal half-footprints controls how far the center of mass can move before passing the support polygon. A taller table reduces that geometric margin.",
+          "The smaller of the lateral and longitudinal half-footprints controls how far the center of mass can move before passing the support polygon. When leveling feet are enabled, their pad edges define that polygon instead of the full wood-box edges. A taller table reduces the geometric margin.",
         formula:
-          "20 + 80 × min(1, min(bottomWidth ÷ 2 ÷ height, footprintLength ÷ 2 ÷ height) ÷ 0.65)",
+          "20 + 80 × min(1, min(contactWidth ÷ 2 ÷ height, contactLength ÷ 2 ÷ height) ÷ 0.65)",
         inputs: [
           {
             key: "overallHeight",
@@ -4316,9 +4649,9 @@ function evaluateHoverDiningTableStructure(
             format: "length",
           },
           {
-            key: "frameBottomWidth",
-            label: "End-box bottom width",
-            value: spec.frameBottomWidth,
+            key: "footprintWidth",
+            label: "Derived lateral contact footprint",
+            value: footprintWidth,
             format: "length",
           },
           {
@@ -4341,17 +4674,27 @@ function evaluateHoverDiningTableStructure(
       "floor-rocking",
       "Floor rocking tolerance",
       floorRocking,
-      spec.bottomSupportStyle === "none"
+      spec.levelingFeet.enabled
+        ? "four independently adjustable corner contacts"
+        : spec.bottomSupportStyle === "none"
         ? "two end-box floor contacts"
         : spec.bottomSupportStyle === "center-board"
           ? "end boxes + one center floor contact"
           : "end boxes + crossing floor-contact network",
       {
         rationale:
-          "Rocking tolerance rewards long flat end-box bearing runs and fewer over-constrained floor contacts. A floor X is structurally useful for racking but is more sensitive to an uneven floor than two end boxes alone.",
+          "With leveling feet enabled, four independently adjustable corner contacts replace the long wood and lower-support floor contacts; solid rod-entry clearance adds a small confidence margin. Without feet, rocking tolerance rewards long flat end-box bearing runs and fewer over-constrained contacts.",
         formula:
-          "contactBase + 10 × min(1, (bottomWidth − 2 × outerBottomRadius) ÷ bottomWidth), where contactBase = X 52, center board 62, none 84",
+          spec.levelingFeet.enabled
+            ? "96 + 2 × clamp(outerEntryClearance ÷ rodDiameter, 0, 1)"
+            : "contactBase + 10 × min(1, (bottomWidth − 2 × outerBottomRadius) ÷ bottomWidth), where contactBase = X 52, center board 62, none 84",
         inputs: [
+          {
+            key: "levelingFeetEnabled",
+            label: "Adjustable feet",
+            value: spec.levelingFeet.enabled ? "four enabled" : "disabled",
+            format: "choice",
+          },
           {
             key: "bottomSupportStyle",
             label: "Floor contact topology",
@@ -4375,6 +4718,18 @@ function evaluateHoverDiningTableStructure(
             key: "frameOuterBottomCornerRadius",
             label: "Outer bottom radius",
             value: spec.frameOuterBottomCornerRadius,
+            format: "length",
+          },
+          {
+            key: "levelingFootExtension",
+            label: "Floor-to-box extension",
+            value: spec.levelingFeet.extension,
+            format: "length",
+          },
+          {
+            key: "levelingFootOuterEntryClearance",
+            label: "Rod clearance at rounded entry",
+            value: spec.levelingFeet.outerEntryClearance,
             format: "length",
           },
           {
@@ -4648,17 +5003,25 @@ export function getHoverDiningTableAuditValue(
     case "hoverDirectContact":
       return item(
         check.label,
-        `top supports + recessed channel webs Z ${formatLength(spec.topBottom, unit)} · ${(upperSupportOakBearingFraction(spec) * 100).toFixed(0)}% direct oak bearing · ${spec.bottomSupportStyle === "none" ? "no floor support selected" : `floor supports Z ${formatLength(0, unit)}`} · zero support gaps`,
+        `top supports + recessed channel webs Z ${formatLength(spec.topBottom, unit)} · ${(upperSupportOakBearingFraction(spec) * 100).toFixed(0)}% direct oak bearing · ${spec.bottomSupportStyle === "none" ? "no lower support selected" : `lower supports Z ${formatLength(spec.frameBottomZ, unit)}`} · ${spec.levelingFeet.enabled ? "feet alone contact floor" : "wood base contacts floor"}`,
+      );
+    case "hoverLevelingFeet":
+      return item(
+        check.label,
+        spec.levelingFeet.enabled
+          ? `4 × ${formatLength(spec.levelingFeet.padDiameter, unit)} pads · ${formatLength(spec.levelingFeet.rodLength, unit)} × ${formatLength(spec.levelingFeet.rodDiameter, unit)} rods · ${formatLength(spec.levelingFeet.extension, unit)} floor-to-box · ${formatLength(spec.levelingFeet.embeddedRodLength, unit)} embedded · ${formatLength(spec.levelingFeet.outerEntryClearance, unit)} radius-entry clearance · end boxes ${formatLength(spec.frameHeight, unit)} high`
+          : `Disabled · ${formatLength(spec.frameHeight, unit)} end boxes bear directly at floor level`,
       );
     case "hoverExplodedAssembly":
       return item(
         check.label,
-        `${getHoverDiningTablePieceCount(params)} constrained solids · mortised profiled top · 3 steel C-channels · 4 Bézier rails · 4 tangent-seam stiles · selected finished supports`,
+        `${getHoverDiningTablePieceCount(params)} constrained solids · mortised profiled top · 3 steel C-channels · 4 Bézier rails · 4 tangent-seam stiles · selected finished supports${spec.levelingFeet.enabled ? " · 4 leveling feet" : ""}`,
       );
     case "hoverCutList":
       {
         const scheduleLines =
           5 +
+          (spec.levelingFeet.enabled ? 1 : 0) +
           (spec.topSupportStyle === "x" ? 2 : 1) +
           (spec.bottomSupportStyle === "x"
             ? 2

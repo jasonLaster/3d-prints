@@ -50,6 +50,12 @@ close(params.frameOuterBottomCornerRadius, 0.75 * inch, "outer bottom radius");
 close(params.frameInnerTopCornerRadius, 2.5 * inch, "inner top radius");
 close(params.frameInnerBottomCornerRadius, 2.5 * inch, "inner bottom radius");
 close(params.frameEdgeRoundover, 0.375 * inch, "end-box face-edge round-over");
+assert.equal(params.levelingFeetEnabled, 1, "four leveling feet are enabled by default");
+close(params.levelingFootPadDiameter, 1.5 * inch, "leveling-foot pad diameter");
+close(params.levelingFootPadThickness, 0.25 * inch, "leveling-foot pad thickness");
+close(params.levelingFootRodDiameter, 0.375 * inch, "leveling-foot rod diameter");
+close(params.levelingFootRodLength, 3 * inch, "leveling-foot rod length");
+close(params.levelingFootExtension, 0.75 * inch, "installed floor-to-box extension");
 close(params.topSupportWidth, 2 * inch, "top support width");
 close(params.bottomSupportWidth, 2 * inch, "bottom support width");
 close(params.topSupportThickness, 1.25 * inch, "top support thickness");
@@ -124,7 +130,8 @@ assert.notEqual(
 );
 
 const topBottom = params.overallHeight - params.topThickness;
-const frameHeight = topBottom;
+const frameBottomZ = params.levelingFeetEnabled ? params.levelingFootExtension : 0;
+const frameHeight = topBottom - frameBottomZ;
 const frameTopWidth = params.tableWidth - 2 * params.sideOverhang;
 const frameBottomWidth = frameTopWidth + params.frameBottomSpread;
 const openingTopWidth = frameTopWidth - 2 * params.frameSideWidth;
@@ -218,9 +225,18 @@ close(
 );
 close(params.topSupportThickness / 2, 0.625 * inch, "top half-lap depth");
 close(params.bottomSupportThickness / 2, 0.625 * inch, "bottom half-lap depth");
-close(topBottom, frameHeight, "end boxes terminate at the tabletop underside");
+close(frameBottomZ + frameHeight, topBottom, "raised end boxes terminate at the tabletop underside");
 close(topBottom, topBottom, "upper-X top contact");
-close(0, 0, "lower-X floor contact");
+close(frameBottomZ, params.levelingFootExtension, "lower-X raised contact plane");
+const exposedRod = params.levelingFootExtension - params.levelingFootPadThickness;
+const embeddedRod = params.levelingFootRodLength - exposedRod;
+close(exposedRod, 0.5 * inch, "exposed leveling-foot rod");
+close(embeddedRod, 2.5 * inch, "embedded leveling-foot rod");
+assert.ok(
+  params.frameOuterBottomCornerRadius + params.levelingFootRodDiameter / 2 <=
+    params.frameSideWidth / 2,
+  "rounded bottom must retain a solid rod-entry circle beneath each stile",
+);
 assert.equal(
   model.parameters.find((p) => p.key === "frameSideWidth").limits.min,
   0.5 * inch,
@@ -267,6 +283,8 @@ for (const required of [
   "createHalfLappedX",
   "createHoverDiningTableExplodedParts",
   "createHoverDiningTableHardwareGeometries",
+  "createLevelingFootGeometry",
+  "outerEntryClearance",
   "createCChannelGeometry",
   "createMortisedTabletopCrossSectionProfile",
   "createRoundedTabletopEndGeometry",
@@ -334,12 +352,13 @@ for (const phrase of [
   "50/50 half-lap",
   "no overlapping solid volume",
   "directly against the tabletop underside",
-  "directly on the floor",
+  "only floor contacts",
   "Generate parallel upper lengthwise stretchers only when selected",
   "cubic Bézier",
   "straight-rail tangent",
   "optional top long edge of the selected bottom support",
-  "14–16 assembly pieces",
+  "14–20 assembly pieces",
+  "1.5 in pads and 3 in threaded rods",
   "Exactly three blackened-steel C-channels",
   "presentation-only",
   "do not substitute proxy blanks",
