@@ -1993,6 +1993,77 @@ test("migrates legacy split-brace and shared-radius links to canonical parameter
   await expect(page).not.toHaveURL(/frameInnerCornerRadius=/);
 });
 
+test("loads the narrow end-box shared configuration without crashing", async ({
+  page,
+}) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") pageErrors.push(message.text());
+  });
+  const search = new URLSearchParams({
+    model: "hover-dining-table",
+    unit: "in",
+    channelEndClearance: "4",
+    channelSideInset: "2",
+    channelWallThickness: "0.125",
+    mockScale: "10",
+    tableLength: "75",
+    tableWidth: "35.5",
+    overallHeight: "29.5",
+    topThickness: "1.25",
+    topEdgeRoll: "0.625",
+    topEdgeTension: "0.552",
+    sideOverhang: "10.5",
+    endOverhang: "8.248",
+    channelWidth: "2",
+    channelDepth: "0.375",
+    frameDepth: "3",
+    frameSideWidth: "2",
+    frameBottomRailHeight: "1.252",
+    frameTopRailHeight: "1.748",
+    frameBottomSpread: "0",
+    frameOuterTopCornerRadius: "0.75",
+    frameOuterBottomCornerRadius: "0.75",
+    frameInnerTopCornerRadius: "2.5",
+    frameInnerBottomCornerRadius: "2.5",
+    frameOuterCurveTension: "0.552",
+    frameInnerCurveTension: "0.58",
+    frameEdgeRoundover: "0.375",
+    topSupportStyle: "0",
+    bottomSupportStyle: "1",
+    topSupportWidth: "2",
+    topSupportThickness: "1.25",
+    topSupportEndpointInset: "0",
+    topSupportEdgeRadius: "0.125",
+    bottomSupportWidth: "2.5",
+    bottomSupportThickness: "1.25",
+    bottomSupportEndpointInset: "0",
+    bottomSupportEdgeRadius: "0.5315",
+    halfLapClearance: "0",
+    templateThickness: "0.125",
+    templatePlateLength: "9",
+    templateDovetailDepth: "0.5",
+    templateJointClearance: "0.0079",
+  });
+
+  await page.goto(`/?${search.toString()}`);
+  await expect(
+    page.getByLabel("X-Hover Dining Table model viewer"),
+  ).toBeVisible();
+  await expect(page.locator(".scene-panel canvas")).toBeVisible();
+  await expect(
+    page.getByLabel("Structural wobble assessment"),
+  ).toHaveAttribute("data-overall-score", "70.5");
+  await expect(
+    page.getByText("2 × 14 1/2 in wide closed boxes"),
+  ).toBeVisible();
+  await expect(
+    page.getByText("1 centered lengthwise board · 52 1/2 in long"),
+  ).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});
+
 test("keeps the fabrication sheet usable in narrow center panes and on phones", async ({
   page,
 }) => {
