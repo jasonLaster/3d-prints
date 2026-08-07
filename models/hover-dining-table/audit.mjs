@@ -87,7 +87,8 @@ for (const key of [
   "topEdgeTension",
   "frameOuterRailCurveTension",
   "frameOuterStileCurveTension",
-  "frameInnerCurveTension",
+  "frameInnerRailCurveTension",
+  "frameInnerStileCurveTension",
 ]) {
   assert.ok(params[key] >= 0.35 && params[key] <= 0.8, `${key} must be normalized`);
 }
@@ -102,6 +103,18 @@ close(
   params.frameOuterStileCurveTension,
   0.552,
   "outer stile-side Bézier sweep",
+  0.001,
+);
+close(
+  params.frameInnerRailCurveTension,
+  0.58,
+  "inner rail-side Bézier sweep",
+  0.001,
+);
+close(
+  params.frameInnerStileCurveTension,
+  0.58,
+  "inner stile-side Bézier sweep",
   0.001,
 );
 assert.notEqual(

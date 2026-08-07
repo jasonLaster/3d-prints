@@ -243,7 +243,9 @@ function ProfileFeatureLabels({
         {bezier.outerStileTension.toFixed(3)}
       </text>
       <text x="45" y="124">
-        Inner R {formatLength(bezier.innerRadius, unit)} · κ {bezier.innerTension.toFixed(3)}
+        Inner R {formatLength(bezier.innerRadius, unit)} · κ rail{" "}
+        {bezier.innerRailTension.toFixed(3)} / stile{" "}
+        {bezier.innerStileTension.toFixed(3)}
       </text>
     </g>
   );

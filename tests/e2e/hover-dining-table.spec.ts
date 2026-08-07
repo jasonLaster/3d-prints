@@ -985,13 +985,13 @@ test("documents each structural formula with its implementation", () => {
     "utf8",
   );
   for (const [heading, sourceLines] of [
-    ["Overall weighting and grades", "L4305-L4324"],
-    ["Lengthwise racking", "L3772-L3791"],
-    ["End-box racking", "L3793-L3800"],
-    ["Torsional rigidity", "L3802-L3832"],
-    ["Tipping margin", "L3834-L3841"],
-    ["Floor rocking tolerance", "L3843-L3854"],
-    ["Member stiffness", "L3856-L3882"],
+    ["Overall weighting and grades", "L4488-L4511"],
+    ["Lengthwise racking", "L3964-L3974"],
+    ["End-box racking", "L3976-L3983"],
+    ["Torsional rigidity", "L3985-L4015"],
+    ["Tipping margin", "L4017-L4024"],
+    ["Floor rocking tolerance", "L4026-L4037"],
+    ["Member stiffness", "L4039-L4065"],
   ] as const) {
     expect(structuralSpec).toContain(`### ${heading}`);
     expect(structuralSpec).toContain(
@@ -1000,7 +1000,7 @@ test("documents each structural formula with its implementation", () => {
   }
   expect(structuralSpec).toContain("### C-channel transformed-section model");
   expect(structuralSpec).toContain(
-    "../src/models/hoverDiningTable.ts#L3681-L3767",
+    "../src/models/hoverDiningTable.ts#L3864-L3950",
   );
 });
 
@@ -1437,7 +1437,8 @@ test("derives a full-size finished cut schedule for all 16 pieces", () => {
         : spec.frameInnerBottomCornerRadius,
       outerRailTension: spec.frameOuterRailCurveTension,
       outerStileTension: spec.frameOuterStileCurveTension,
-      innerTension: spec.frameInnerCurveTension,
+      innerRailTension: spec.frameInnerRailCurveTension,
+      innerStileTension: spec.frameInnerStileCurveTension,
     });
     expect(rail.fabricationProfile.section.radius).toBeCloseTo(
       spec.frameEdgeRoundover,
@@ -1517,7 +1518,8 @@ test("derives a full-size finished cut schedule for all 16 pieces", () => {
     ...defaultParams,
     frameInnerTopCornerRadius:
       defaultParams.frameInnerTopCornerRadius + 12.7,
-    frameInnerCurveTension: 0.64,
+    frameInnerRailCurveTension: 0.64,
+    frameInnerStileCurveTension: 0.64,
   });
   const changedTopRail = changedCurves.parts.find((part) => part.id === "B1")!;
   expect(changedTopRail.width).toBeGreaterThan(topRail.width);
@@ -1528,7 +1530,8 @@ test("derives a full-size finished cut schedule for all 16 pieces", () => {
     spec.frameInnerTopCornerRadius + 12.7,
     6,
   );
-  expect(changedTopRail.fabricationProfile.bezier?.innerTension).toBe(0.64);
+  expect(changedTopRail.fabricationProfile.bezier?.innerRailTension).toBe(0.64);
+  expect(changedTopRail.fabricationProfile.bezier?.innerStileTension).toBe(0.64);
 
   const changedBottomRadii = getHoverDiningTableCutList({
     ...defaultParams,
@@ -1587,6 +1590,44 @@ test("derives a full-size finished cut schedule for all 16 pieces", () => {
   expect(railSweepChanged.bezier.outerStileTension).toBe(0.552);
   expect(stileSweepChanged.bezier.outerRailTension).toBe(0.552);
   expect(stileSweepChanged.bezier.outerStileTension).toBe(0.72);
+
+  const firstInnerCubic = (params: ModelParams) => {
+    const rail = getHoverDiningTableCutList(params).parts.find(
+      (part) => part.id === "B1",
+    )!;
+    const command = rail.fabricationProfile.outline.filter(
+      (candidate) => candidate.kind === "cubic",
+    )[2];
+    if (!command || command.kind !== "cubic") {
+      throw new Error("Top rail must retain its inner cubic return");
+    }
+    return { command, bezier: rail.fabricationProfile.bezier! };
+  };
+  const baseInner = firstInnerCubic(defaultParams);
+  const innerRailSweepChanged = firstInnerCubic({
+    ...defaultParams,
+    frameInnerRailCurveTension: 0.72,
+  });
+  const innerStileSweepChanged = firstInnerCubic({
+    ...defaultParams,
+    frameInnerStileCurveTension: 0.72,
+  });
+  expect(innerRailSweepChanged.command.control1).toEqual(
+    baseInner.command.control1,
+  );
+  expect(innerRailSweepChanged.command.control2).not.toEqual(
+    baseInner.command.control2,
+  );
+  expect(innerStileSweepChanged.command.control1).not.toEqual(
+    baseInner.command.control1,
+  );
+  expect(innerStileSweepChanged.command.control2).toEqual(
+    baseInner.command.control2,
+  );
+  expect(innerRailSweepChanged.bezier.innerRailTension).toBe(0.72);
+  expect(innerRailSweepChanged.bezier.innerStileTension).toBe(0.58);
+  expect(innerStileSweepChanged.bezier.innerRailTension).toBe(0.58);
+  expect(innerStileSweepChanged.bezier.innerStileTension).toBe(0.72);
 });
 
 test("builds three full-size routing templates as plate-safe dovetailed STLs", () => {
@@ -1738,7 +1779,8 @@ test("builds three full-size routing templates as plate-safe dovetailed STLs", (
     frameInnerTopCornerRadius: 3 * 25.4,
     frameOuterRailCurveTension: 0.62,
     frameOuterStileCurveTension: 0.71,
-    frameInnerCurveTension: 0.51,
+    frameInnerRailCurveTension: 0.51,
+    frameInnerStileCurveTension: 0.51,
   };
   expectTemplateParity(splayedParams);
   const splayedSegments = createHoverDiningTableTemplateSegments(
@@ -1963,7 +2005,10 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     page.getByLabel("Outer corner stile-side sweep Bézier tension"),
   ).toHaveValue("0.552");
   await expect(
-    page.getByLabel("Inner corner curve tension Bézier tension"),
+    page.getByLabel("Inner corner rail-side sweep Bézier tension"),
+  ).toHaveValue("0.580");
+  await expect(
+    page.getByLabel("Inner corner stile-side sweep Bézier tension"),
   ).toHaveValue("0.580");
   await expect(page.getByLabel("X-Hover assembly view")).toBeVisible();
   const assembledButton = page.getByRole("button", { name: "Assembled" });
@@ -2056,7 +2101,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     overallCalculation.getByRole("link", {
       name: "Overall structural score formula source code",
     }),
-  ).toHaveAttribute("href", /hoverDiningTable\.ts#L4305-L4324$/);
+  ).toHaveAttribute("href", /hoverDiningTable\.ts#L4488-L4511$/);
   await overallCalculationButton.click();
   await expect(overallCalculation).toBeHidden();
   const calculationButtons = structuralAssessment.locator(
@@ -2088,7 +2133,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     rackingCalculation.getByRole("link", {
       name: "Lengthwise racking formula source code",
     }),
-  ).toHaveAttribute("href", /hoverDiningTable\.ts#L3772-L3791$/);
+  ).toHaveAttribute("href", /hoverDiningTable\.ts#L3964-L3974$/);
   const rackingHeightInput = rackingCalculation
     .locator(".structural-calculation-inputs > div")
     .filter({ hasText: "overallHeight" });
@@ -2187,9 +2232,13 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await page.getByLabel("Half-lap fit clearance in inches").fill("1/32");
   await expect(page).toHaveURL(/halfLapClearance=0\.0315/);
   await page
-    .getByLabel("Inner corner curve tension Bézier tension")
-    .fill("0.65");
-  await expect(page).toHaveURL(/frameInnerCurveTension=0\.65/);
+    .getByLabel("Inner corner rail-side sweep Bézier tension")
+    .fill("0.48");
+  await page
+    .getByLabel("Inner corner stile-side sweep Bézier tension")
+    .fill("0.72");
+  await expect(page).toHaveURL(/frameInnerRailCurveTension=0\.48/);
+  await expect(page).toHaveURL(/frameInnerStileCurveTension=0\.72/);
   await page
     .getByLabel("Outer corner rail-side sweep Bézier tension")
     .fill("0.48");
@@ -2208,7 +2257,10 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(page.getByLabel("Top support width in inches")).toHaveValue("2");
   await expect(page.getByLabel("Half-lap fit clearance in inches")).toHaveValue("0");
   await expect(
-    page.getByLabel("Inner corner curve tension Bézier tension"),
+    page.getByLabel("Inner corner rail-side sweep Bézier tension"),
+  ).toHaveValue("0.580");
+  await expect(
+    page.getByLabel("Inner corner stile-side sweep Bézier tension"),
   ).toHaveValue("0.580");
   await expect(
     page.getByLabel("Outer corner rail-side sweep Bézier tension"),
@@ -2482,7 +2534,7 @@ test("migrates legacy split-brace and shared-radius links to canonical parameter
   page,
 }) => {
   await page.goto(
-    "/?model=hover-dining-table&unit=in&frameTopRailHeight=1.5&frameBottomRailHeight=1.5&frameSideWidth=2.5&frameInnerCornerRadius=3&frameOuterCornerRadius=1&frameOuterCurveTension=0.64&upperBraceWidth=1.75&lowerBraceWidth=2.25&upperBraceThickness=1&lowerBraceThickness=1.5&upperBraceEdgeRadius=0.125&lowerBraceEdgeRadius=0.25",
+    "/?model=hover-dining-table&unit=in&frameTopRailHeight=1.5&frameBottomRailHeight=1.5&frameSideWidth=2.5&frameInnerCornerRadius=3&frameOuterCornerRadius=1&frameOuterCurveTension=0.64&frameInnerCurveTension=0.66&upperBraceWidth=1.75&lowerBraceWidth=2.25&upperBraceThickness=1&lowerBraceThickness=1.5&upperBraceEdgeRadius=0.125&lowerBraceEdgeRadius=0.25",
   );
   await expect(page.getByLabel("End-box inner top radius in inches")).toHaveValue("3");
   await expect(page.getByLabel("End-box inner bottom radius in inches")).toHaveValue("3");
@@ -2500,6 +2552,12 @@ test("migrates legacy split-brace and shared-radius links to canonical parameter
   await expect(
     page.getByLabel("Outer corner stile-side sweep Bézier tension"),
   ).toHaveValue("0.640");
+  await expect(
+    page.getByLabel("Inner corner rail-side sweep Bézier tension"),
+  ).toHaveValue("0.660");
+  await expect(
+    page.getByLabel("Inner corner stile-side sweep Bézier tension"),
+  ).toHaveValue("0.660");
   await expect(page).toHaveURL(/topSupportWidth=1\.75/);
   await expect(page).toHaveURL(/bottomSupportWidth=2\.25/);
   await expect(page).toHaveURL(/topSupportThickness=1/);
@@ -2507,9 +2565,12 @@ test("migrates legacy split-brace and shared-radius links to canonical parameter
   await expect(page).toHaveURL(/frameInnerTopCornerRadius=3/);
   await expect(page).toHaveURL(/frameOuterRailCurveTension=0\.64/);
   await expect(page).toHaveURL(/frameOuterStileCurveTension=0\.64/);
+  await expect(page).toHaveURL(/frameInnerRailCurveTension=0\.66/);
+  await expect(page).toHaveURL(/frameInnerStileCurveTension=0\.66/);
   await expect(page).not.toHaveURL(/lowerBraceWidth=/);
   await expect(page).not.toHaveURL(/frameInnerCornerRadius=/);
   await expect(page).not.toHaveURL(/frameOuterCurveTension=/);
+  await expect(page).not.toHaveURL(/frameInnerCurveTension=/);
 });
 
 test("loads the narrow end-box shared configuration without crashing", async ({

@@ -114,7 +114,8 @@ export type HoverDiningTableFabricationProfile = {
     innerRadius: number;
     outerRailTension: number;
     outerStileTension: number;
-    innerTension: number;
+    innerRailTension: number;
+    innerStileTension: number;
   };
   tabletop?: {
     planCornerRadius: number;
@@ -146,7 +147,8 @@ export type HoverDiningTableSpec = {
   frameInnerBottomCornerRadius: number;
   frameOuterRailCurveTension: number;
   frameOuterStileCurveTension: number;
-  frameInnerCurveTension: number;
+  frameInnerRailCurveTension: number;
+  frameInnerStileCurveTension: number;
   frameEdgeRoundover: number;
   halfLapClearance: number;
   frameHeight: number;
@@ -380,7 +382,14 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       params,
       "frameOuterStileCurveTension",
     ),
-    frameInnerCurveTension: getParam(params, "frameInnerCurveTension"),
+    frameInnerRailCurveTension: getParam(
+      params,
+      "frameInnerRailCurveTension",
+    ),
+    frameInnerStileCurveTension: getParam(
+      params,
+      "frameInnerStileCurveTension",
+    ),
     frameEdgeRoundover,
     halfLapClearance: getParam(params, "halfLapClearance"),
     frameHeight,
@@ -777,7 +786,8 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
     ["tabletop edge", spec.topEdgeTension],
     ["outer frame rail-side handle", spec.frameOuterRailCurveTension],
     ["outer frame stile-side handle", spec.frameOuterStileCurveTension],
-    ["inner frame corner", spec.frameInnerCurveTension],
+    ["inner frame rail-side handle", spec.frameInnerRailCurveTension],
+    ["inner frame stile-side handle", spec.frameInnerStileCurveTension],
   ] as const) {
     if (tension < 0.3 || tension > 0.9) {
       throw new Error(`${label} Bézier tension must stay between 0.3 and 0.9`);
@@ -1517,8 +1527,8 @@ function createEndBoxPartProfiles(spec: HoverDiningTableSpec) {
     spec.openingTop,
     spec.frameInnerBottomCornerRadius,
     spec.frameInnerTopCornerRadius,
-    spec.frameInnerCurveTension,
-    spec.frameInnerCurveTension,
+    spec.frameInnerRailCurveTension,
+    spec.frameInnerStileCurveTension,
   );
   const squareClose = { kind: "close", edgeTreatment: "square" } as const;
   const profiles: Record<EndBoxPartPosition, HoverDiningTableProfileCommand[]> = {
@@ -1597,7 +1607,8 @@ function createEndBoxPartFabricationProfile(
             : spec.frameInnerBottomCornerRadius,
           outerRailTension: spec.frameOuterRailCurveTension,
           outerStileTension: spec.frameOuterStileCurveTension,
-          innerTension: spec.frameInnerCurveTension,
+          innerRailTension: spec.frameInnerRailCurveTension,
+          innerStileTension: spec.frameInnerStileCurveTension,
         }
       : undefined,
   };
@@ -2174,8 +2185,8 @@ function createEndFrameGeometry(
     spec.openingTop,
     spec.frameInnerBottomCornerRadius,
     spec.frameInnerTopCornerRadius,
-    spec.frameInnerCurveTension,
-    spec.frameInnerCurveTension,
+    spec.frameInnerRailCurveTension,
+    spec.frameInnerStileCurveTension,
   );
   shape.holes.push(opening);
 
@@ -3000,8 +3011,13 @@ export function getHoverDiningTableCutList(
           format: "ratio",
         },
         {
-          label: "Inner curve tension",
-          value: spec.frameInnerCurveTension,
+          label: "Inner rail-side sweep",
+          value: spec.frameInnerRailCurveTension,
+          format: "ratio",
+        },
+        {
+          label: "Inner stile-side sweep",
+          value: spec.frameInnerStileCurveTension,
           format: "ratio",
         },
       ],
@@ -3037,8 +3053,13 @@ export function getHoverDiningTableCutList(
           format: "ratio",
         },
         {
-          label: "Inner curve tension",
-          value: spec.frameInnerCurveTension,
+          label: "Inner rail-side sweep",
+          value: spec.frameInnerRailCurveTension,
+          format: "ratio",
+        },
+        {
+          label: "Inner stile-side sweep",
+          value: spec.frameInnerStileCurveTension,
           format: "ratio",
         },
       ],
@@ -4582,7 +4603,7 @@ export function getHoverDiningTableAuditValue(
     case "hoverCornerCurves":
       return item(
         check.label,
-        `outer top/bottom ${formatLength(spec.frameOuterTopCornerRadius, unit)} / ${formatLength(spec.frameOuterBottomCornerRadius, unit)} κ rail ${spec.frameOuterRailCurveTension.toFixed(3)} / stile ${spec.frameOuterStileCurveTension.toFixed(3)} · inner top/bottom ${formatLength(spec.frameInnerTopCornerRadius, unit)} / ${formatLength(spec.frameInnerBottomCornerRadius, unit)} κ${spec.frameInnerCurveTension.toFixed(3)}`,
+        `outer top/bottom ${formatLength(spec.frameOuterTopCornerRadius, unit)} / ${formatLength(spec.frameOuterBottomCornerRadius, unit)} κ rail ${spec.frameOuterRailCurveTension.toFixed(3)} / stile ${spec.frameOuterStileCurveTension.toFixed(3)} · inner top/bottom ${formatLength(spec.frameInnerTopCornerRadius, unit)} / ${formatLength(spec.frameInnerBottomCornerRadius, unit)} κ rail ${spec.frameInnerRailCurveTension.toFixed(3)} / stile ${spec.frameInnerStileCurveTension.toFixed(3)}`,
       );
     case "hoverBoxSplay":
       return item(

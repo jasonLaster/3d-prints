@@ -221,6 +221,8 @@ const PARAM_QUERY_KEYS = [
   "frameInnerBottomCornerRadius",
   "frameOuterRailCurveTension",
   "frameOuterStileCurveTension",
+  "frameInnerRailCurveTension",
+  "frameInnerStileCurveTension",
   "topSupportStyle",
   "bottomSupportStyle",
   "syncCrossbarDimensions",
@@ -280,7 +282,8 @@ const SCALAR_PARAM_KEYS = new Set([
   "topEdgeTension",
   "frameOuterRailCurveTension",
   "frameOuterStileCurveTension",
-  "frameInnerCurveTension",
+  "frameInnerRailCurveTension",
+  "frameInnerStileCurveTension",
   "topSupportStyle",
   "bottomSupportStyle",
   "syncCrossbarDimensions",
@@ -289,7 +292,8 @@ const CURVE_PARAM_KEYS = new Set([
   "topEdgeTension",
   "frameOuterRailCurveTension",
   "frameOuterStileCurveTension",
-  "frameInnerCurveTension",
+  "frameInnerRailCurveTension",
+  "frameInnerStileCurveTension",
 ]);
 const OPTION_PARAM_KEYS = new Set([
   "gridfinityCompatible",
@@ -500,6 +504,8 @@ function getParamsFromUrl(model: ModelDefinition) {
       frameInnerBottomCornerRadius: ["frameInnerCornerRadius"],
       frameOuterRailCurveTension: ["frameOuterCurveTension"],
       frameOuterStileCurveTension: ["frameOuterCurveTension"],
+      frameInnerRailCurveTension: ["frameInnerCurveTension"],
+      frameInnerStileCurveTension: ["frameInnerCurveTension"],
       topSupportWidth: ["upperBraceWidth", "xBraceWidth", "lowerBraceWidth"],
       bottomSupportWidth: ["lowerBraceWidth", "xBraceWidth", "upperBraceWidth"],
       topSupportThickness: [
@@ -2545,9 +2551,9 @@ function HoverDiningTableParameterControls({
                 </p>
               ) : group === "End boxes" ? (
                 <p className="parameter-group-description">
-                  Top and bottom radii are independent. Outer rail-side sweep
-                  shapes the horizontal roll; stile-side sweep keeps the side
-                  tangent straighter for longer.
+                  Top and bottom radii are independent. Inner and outer
+                  rail-side sweeps shape the horizontal returns; their
+                  stile-side sweeps control how long the sides stay straight.
                 </p>
               ) : null}
               {group === "Support layout" ? (
@@ -3034,37 +3040,37 @@ const HOVER_STRUCTURAL_REFERENCES: Record<
   overall: {
     label: "Overall structural score",
     specAnchor: "overall-weighting-and-grades",
-    sourceLines: "L4305-L4324",
+    sourceLines: "L4488-L4511",
   },
   "longitudinal-racking": {
     label: "Lengthwise racking",
     specAnchor: "lengthwise-racking",
-    sourceLines: "L3772-L3791",
+    sourceLines: "L3964-L3974",
   },
   "end-box-racking": {
     label: "End-box racking",
     specAnchor: "end-box-racking",
-    sourceLines: "L3793-L3800",
+    sourceLines: "L3976-L3983",
   },
   torsion: {
     label: "Torsional rigidity",
     specAnchor: "torsional-rigidity",
-    sourceLines: "L3802-L3832",
+    sourceLines: "L3985-L4015",
   },
   tipping: {
     label: "Tipping margin",
     specAnchor: "tipping-margin",
-    sourceLines: "L3834-L3841",
+    sourceLines: "L4017-L4024",
   },
   "floor-rocking": {
     label: "Floor rocking tolerance",
     specAnchor: "floor-rocking-tolerance",
-    sourceLines: "L3843-L3854",
+    sourceLines: "L4026-L4037",
   },
   "member-stiffness": {
     label: "Member stiffness",
     specAnchor: "member-stiffness",
-    sourceLines: "L3856-L3882",
+    sourceLines: "L4039-L4065",
   },
 };
 

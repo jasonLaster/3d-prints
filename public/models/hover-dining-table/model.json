@@ -215,8 +215,15 @@
       "limits": { "min": 0.35, "max": 0.8, "step": 0.01 }
     },
     {
-      "key": "frameInnerCurveTension",
-      "label": "Inner corner curve tension",
+      "key": "frameInnerRailCurveTension",
+      "label": "Inner corner rail-side sweep",
+      "group": "End boxes",
+      "default": 0.58,
+      "limits": { "min": 0.35, "max": 0.8, "step": 0.01 }
+    },
+    {
+      "key": "frameInnerStileCurveTension",
+      "label": "Inner corner stile-side sweep",
       "group": "End boxes",
       "default": 0.58,
       "limits": { "min": 0.35, "max": 0.8, "step": 0.01 }
@@ -355,7 +362,7 @@
       "The tabletop has independently editable plan-view corner radii, length-end face round-overs, and continuous Bézier-rolled long edges.",
       "Exactly three blackened-steel C-channels run widthwise in flush underside mortises: one centered and two symmetrically derived between the end boxes, all clear of the rolled long edges.",
       "The base contains exactly two closed transverse end boxes with independently selectable support layouts: an upper horizontal X or two original lengthwise stretchers, plus a floor X, one centered lengthwise board, or no floor connector.",
-      "Each end box has independently editable top and bottom values for both outer and inner corner radii, independent rail-side and stile-side handles for the outer cubic Bézier corners, a normalized inner-corner tension, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
+      "Each end box has independently editable top and bottom values for both outer and inner corner radii, independent rail-side and stile-side handles for both cubic Bézier corner families, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
       "Every selected X crosses at the table center with a derived 50/50 half-lap and no overlapping solid volume; straight-support layouts contain no artificial lap.",
       "Top and bottom support width, thickness, bearing-zone inset, and bottom-edge round-over contracts are independently editable; the bottom supports also expose an independent top-edge round-over. An optional shared-dimension mode applies to the matching crossbar dimensions while both layouts are Xs; half-lap fit clearance applies only to selected Xs.",
       "The selected upper supports bear directly against the tabletop underside and every selected lower support bears directly on the floor, with zero gap or spacer.",
@@ -376,7 +383,7 @@
       "Keep each selected X brace at full nominal width through the crossing, form complementary centered pockets at exactly half the nominal thickness, align every pocket boundary as a planar machining cut, and remove solid overlap between the two braces.",
       "Round over the independently specified bottom long edges of every selected support and the optional top long edge of the selected bottom support while keeping end miters and half-lap shoulders square.",
       "Keep every selected top-support envelope coplanar with the tabletop underside and every selected floor-support envelope coplanar with the floor; expose no gap or spacer control.",
-      "Keep inner and outer corner curves as cubic Bézier functions whose control lengths equal radius times normalized tension; outer rail-side and stile-side handles remain independently editable while the inner curve retains one shared tension.",
+      "Keep inner and outer corner curves as cubic Bézier functions whose control lengths equal radius times normalized tension; rail-side and stile-side handles remain independently editable for both curve families.",
       "Keep top and bottom exterior and interior corner radii independently editable because the observed curves are not concentric offsets.",
       "Keep top and bottom support sections and bottom-edge radii independently editable unless crossbar synchronization is explicitly enabled while both layouts are Xs; synchronized edits must update width, thickness, bearing-zone inset, and bottom-edge radius as matched pairs. Keep the lower support top-edge radius independent.",
       "Treat bottom spread as the explicit splay hypothesis; zero means orthogonal frame sides and remains the evidence-backed default.",
