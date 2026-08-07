@@ -363,7 +363,7 @@ test("request coverage document tracks the app behaviors under Playwright", () =
     "Unit control appears as contextual text with a caret",
     "Sidebar shows models and selected-model saved versions",
     "Save, Fork, theme, and export are organized in the top-right actions menu",
-    "Orientation cube owns 3D, top, X, and Y views",
+    "Orientation cube is a non-interactive camera indicator",
     "Zoom, reset, and center controls remain easy to use in 3D",
     "Rendering options include a solid view",
     "Original inlay/source overlay can be toggled",

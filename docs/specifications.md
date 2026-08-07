@@ -140,13 +140,13 @@ X-Hover Dining Table:
 
 - The primary viewer is a Three.js canvas with OrbitControls.
 - Zoom, center, and parameter-reset controls remain available in the viewer rail.
-- The orientation cube owns isometric, top, X-edge, and Y-edge presets, reflects the current camera orientation, and clears its active preset after free camera movement.
+- The orientation cube is a non-interactive indicator that reflects the current camera orientation without adding view-preset buttons.
 - The top-right workspace actions menu owns Save, Fork, theme, and export, with Save/Fork name entry handled in a modal.
 - Rendering modes include Solid, X-Ray, and Wire.
 - X-Hover assembly mode switches between the assembled table and its selected 14–16-piece pre-assembly layout without resetting the camera.
 - X-Hover Cut List is a third assembly mode and remains live under parameter and unit changes while preserving the assembled STL export.
 - X-Hover Templates is a fourth assembly mode showing the plate-split routing patterns without changing camera state or the assembled table export.
-- The viewer should remain nonblank after parameter edits, render-mode changes, unit changes, zoom, orientation presets, reset, center view, and sidebar collapse.
+- The viewer should remain nonblank after parameter edits, render-mode changes, unit changes, zoom, camera movement, reset, center view, and sidebar collapse.
 
 ## Persistence Contract
 
