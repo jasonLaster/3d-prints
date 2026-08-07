@@ -708,13 +708,13 @@ test("documents each structural formula with its implementation", () => {
     "utf8",
   );
   for (const [heading, sourceLines] of [
-    ["Overall weighting and grades", "L4119-L4138"],
-    ["Lengthwise racking", "L3586-L3605"],
-    ["End-box racking", "L3607-L3614"],
-    ["Torsional rigidity", "L3616-L3646"],
-    ["Tipping margin", "L3648-L3655"],
-    ["Floor rocking tolerance", "L3657-L3668"],
-    ["Member stiffness", "L3670-L3696"],
+    ["Overall weighting and grades", "L4081-L4100"],
+    ["Lengthwise racking", "L3548-L3567"],
+    ["End-box racking", "L3569-L3576"],
+    ["Torsional rigidity", "L3578-L3608"],
+    ["Tipping margin", "L3610-L3617"],
+    ["Floor rocking tolerance", "L3619-L3630"],
+    ["Member stiffness", "L3632-L3658"],
   ] as const) {
     expect(structuralSpec).toContain(`### ${heading}`);
     expect(structuralSpec).toContain(
@@ -723,11 +723,11 @@ test("documents each structural formula with its implementation", () => {
   }
   expect(structuralSpec).toContain("### C-channel transformed-section model");
   expect(structuralSpec).toContain(
-    "../src/models/hoverDiningTable.ts#L3495-L3580",
+    "../src/models/hoverDiningTable.ts#L3457-L3542",
   );
 });
 
-test("atomically settles transient support-member and mating-box dimensions", () => {
+test("keeps one-inch rail heights independent from thicker supports", () => {
   const transientParams = {
     ...defaultParams,
     frameSideWidth: 4 * 25.4,
@@ -741,20 +741,58 @@ test("atomically settles transient support-member and mating-box dimensions", ()
 
   const spec = getHoverDiningTableSpec(transientParams).fullSize;
   expect(spec.frameSideWidth).toBeCloseTo(transientParams.frameSideWidth, 6);
-  expect(spec.frameTopRailHeight).toBeCloseTo(
-    transientParams.topSupportThickness,
-    6,
-  );
-  expect(spec.frameBottomRailHeight).toBeCloseTo(
-    transientParams.bottomSupportThickness,
-    6,
-  );
+  expect(
+    getHoverDiningTableParameterLimits(
+      model,
+      transientParams,
+      "frameTopRailHeight",
+    ).min,
+  ).toBeCloseTo(1 * 25.4, 6);
+  expect(
+    getHoverDiningTableParameterLimits(
+      model,
+      transientParams,
+      "frameBottomRailHeight",
+    ).min,
+  ).toBeCloseTo(1 * 25.4, 6);
+  expect(spec.frameTopRailHeight).toBeCloseTo(1 * 25.4, 6);
+  expect(spec.frameBottomRailHeight).toBeCloseTo(1 * 25.4, 6);
+  expect(spec.upperBrace.thickness).toBeCloseTo(2 * 25.4, 6);
+  expect(spec.lowerBrace.thickness).toBeCloseTo(1.5 * 25.4, 6);
 
   const geometry = createHoverDiningTableGeometry(transientParams, model);
   const inspected = inspectGeometry(geometry);
   expect(inspected.finite).toBe(true);
   expect(inspected.degenerateTriangles).toBe(0);
   geometry.dispose();
+});
+
+test("loads one-inch rails with thicker supports", async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") pageErrors.push(message.text());
+  });
+
+  await page.goto(
+    "/?model=hover-dining-table&unit=in&frameTopRailHeight=1&frameBottomRailHeight=1&topSupportThickness=1.5&bottomSupportThickness=1.5",
+  );
+  await page.getByRole("button", { name: "End boxes" }).click();
+
+  await expect(page.getByLabel("End-box top rail height in inches")).toHaveValue(
+    "1",
+  );
+  await expect(
+    page.getByLabel("End-box bottom rail height in inches"),
+  ).toHaveValue("1");
+  await expect(page).toHaveURL(/frameTopRailHeight=1/);
+  await expect(page).toHaveURL(/frameBottomRailHeight=1/);
+  await expect(page).toHaveURL(/topSupportThickness=1\.5/);
+  await expect(page).toHaveURL(/bottomSupportThickness=1\.5/);
+  await expect(
+    page.getByLabel("X-Hover Dining Table model viewer"),
+  ).toBeVisible();
+  expect(pageErrors).toEqual([]);
 });
 
 test("explodes the assembly into one top, three channels, eight box bars, and four X bars", () => {
@@ -1650,7 +1688,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(
     page.getByText(/top supports \+ recessed channel webs Z 28 1\/4 in · \d+% direct oak bearing · floor supports Z 0 in · zero support gaps/),
   ).toBeVisible();
-  await expect(page.getByText(/8 box-parallel bearing faces/)).toBeVisible();
+  await expect(page.getByText(/8 box-parallel support end faces/)).toBeVisible();
   await expect(
     designChecks.locator(".audit-row .status-dot.pass"),
   ).toHaveCount(16);
@@ -1694,7 +1732,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     overallCalculation.getByRole("link", {
       name: "Overall structural score formula source code",
     }),
-  ).toHaveAttribute("href", /hoverDiningTable\.ts#L4119-L4138$/);
+  ).toHaveAttribute("href", /hoverDiningTable\.ts#L4081-L4100$/);
   await overallCalculationButton.click();
   await expect(overallCalculation).toBeHidden();
   const calculationButtons = structuralAssessment.locator(
@@ -1726,7 +1764,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     rackingCalculation.getByRole("link", {
       name: "Lengthwise racking formula source code",
     }),
-  ).toHaveAttribute("href", /hoverDiningTable\.ts#L3586-L3605$/);
+  ).toHaveAttribute("href", /hoverDiningTable\.ts#L3548-L3567$/);
   const rackingHeightInput = rackingCalculation
     .locator(".structural-calculation-inputs > div")
     .filter({ hasText: "overallHeight" });
@@ -1786,7 +1824,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(page).toHaveURL(/frameInnerTopCornerRadius=3/);
   await page.getByLabel("End-box inner bottom radius in inches").fill("2 3/4");
   await expect(page).toHaveURL(/frameInnerBottomCornerRadius=2\.748/);
-  await expect(page.getByText(/8 box-parallel bearing faces/)).toBeVisible();
+  await expect(page.getByText(/8 box-parallel support end faces/)).toBeVisible();
   await expect(page.locator(".viewer")).toHaveAttribute(
     "data-assembly-mode",
     "exploded",
@@ -2062,7 +2100,7 @@ test("switches support layouts associatively across viewer, exploded mode, cut l
   await expect(page.getByLabel("Half-lap fit clearance in inches")).toHaveCount(0);
   await expect(page.getByText(/2 original lengthwise stretchers/)).toBeVisible();
   await expect(page.getByText(/1 centered lengthwise board/)).toBeVisible();
-  await expect(page.getByText(/6 box-parallel bearing faces/)).toBeVisible();
+  await expect(page.getByText(/6 box-parallel support end faces/)).toBeVisible();
   await expect(page.getByText("Not required by the selected straight-support layouts")).toBeVisible();
   await expect(page.locator(".orientation-cube")).toHaveAttribute(
     "style",

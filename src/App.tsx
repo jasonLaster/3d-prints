@@ -2937,37 +2937,37 @@ const HOVER_STRUCTURAL_REFERENCES: Record<
   overall: {
     label: "Overall structural score",
     specAnchor: "overall-weighting-and-grades",
-    sourceLines: "L4119-L4138",
+    sourceLines: "L4081-L4100",
   },
   "longitudinal-racking": {
     label: "Lengthwise racking",
     specAnchor: "lengthwise-racking",
-    sourceLines: "L3586-L3605",
+    sourceLines: "L3548-L3567",
   },
   "end-box-racking": {
     label: "End-box racking",
     specAnchor: "end-box-racking",
-    sourceLines: "L3607-L3614",
+    sourceLines: "L3569-L3576",
   },
   torsion: {
     label: "Torsional rigidity",
     specAnchor: "torsional-rigidity",
-    sourceLines: "L3616-L3646",
+    sourceLines: "L3578-L3608",
   },
   tipping: {
     label: "Tipping margin",
     specAnchor: "tipping-margin",
-    sourceLines: "L3648-L3655",
+    sourceLines: "L3610-L3617",
   },
   "floor-rocking": {
     label: "Floor rocking tolerance",
     specAnchor: "floor-rocking-tolerance",
-    sourceLines: "L3657-L3668",
+    sourceLines: "L3619-L3630",
   },
   "member-stiffness": {
     label: "Member stiffness",
     specAnchor: "member-stiffness",
-    sourceLines: "L3670-L3696",
+    sourceLines: "L3632-L3658",
   },
 };
 

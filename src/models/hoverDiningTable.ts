@@ -294,14 +294,8 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
   const frameSideWidth = getParam(params, "frameSideWidth");
   const openingTopWidth = frameTopWidth - frameSideWidth * 2;
   const openingBottomWidth = frameBottomWidth - frameSideWidth * 2;
-  const frameBottomRailHeight = Math.max(
-    getParam(params, "frameBottomRailHeight"),
-    bottomSupportThickness,
-  );
-  const frameTopRailHeight = Math.max(
-    getParam(params, "frameTopRailHeight"),
-    topSupportThickness,
-  );
+  const frameBottomRailHeight = getParam(params, "frameBottomRailHeight");
+  const frameTopRailHeight = getParam(params, "frameTopRailHeight");
   const frameHeight = topBottom;
   const openingBottom = frameBottomRailHeight;
   const openingTop = frameHeight - frameTopRailHeight;
@@ -460,7 +454,6 @@ function assertBracePlane(
   brace: BracePlaneSpec,
   spec: HoverDiningTableSpec,
   label: "Upper" | "Lower",
-  railHeight: number,
 ) {
   for (const [dimensionLabel, value] of [
     [`${label} brace width`, brace.width],
@@ -489,9 +482,6 @@ function assertBracePlane(
   ) {
     throw new Error(`${label} mitered end must stop at the inner-corner tangent`);
   }
-  if (brace.thickness > railHeight + EPSILON) {
-    throw new Error(`${label} brace thickness must fit its end-box rail zone`);
-  }
   if (brace.edgeRadius * 2 >= brace.width) {
     throw new Error(`${label} brace edge radius must preserve a flat cross-section`);
   }
@@ -516,9 +506,7 @@ function assertBracePlane(
 
 function assertStraightSupport(
   support: StraightSupportSpec,
-  spec: HoverDiningTableSpec,
   label: "Upper stretchers" | "Floor center board",
-  railHeight: number,
 ) {
   for (const [dimensionLabel, value] of [
     [`${label} width`, support.width],
@@ -534,9 +522,6 @@ function assertStraightSupport(
   }
   if (support.spanX < MIN_BRACE_SPAN) {
     throw new Error(`${label} needs a positive structural span between end boxes`);
-  }
-  if (support.thickness > railHeight + EPSILON) {
-    throw new Error(`${label} thickness must fit its end-box rail zone`);
   }
   if (support.edgeRadius * 2 >= Math.min(support.width, support.thickness)) {
     throw new Error(`${label} edge radius must preserve a flat cross-section`);
@@ -691,30 +676,10 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
     throw new Error("End boxes must terminate at the tabletop underside without a hover gap");
   }
 
-  assertBracePlane(
-    spec.upperBrace,
-    spec,
-    "Upper",
-    spec.frameTopRailHeight,
-  );
-  assertBracePlane(
-    spec.lowerBrace,
-    spec,
-    "Lower",
-    spec.frameBottomRailHeight,
-  );
-  assertStraightSupport(
-    spec.upperStretchers,
-    spec,
-    "Upper stretchers",
-    spec.frameTopRailHeight,
-  );
-  assertStraightSupport(
-    spec.lowerCenterBoard,
-    spec,
-    "Floor center board",
-    spec.frameBottomRailHeight,
-  );
+  assertBracePlane(spec.upperBrace, spec, "Upper");
+  assertBracePlane(spec.lowerBrace, spec, "Lower");
+  assertStraightSupport(spec.upperStretchers, "Upper stretchers");
+  assertStraightSupport(spec.lowerCenterBoard, "Floor center board");
   if (Math.abs(spec.upperBrace.zTop - spec.topBottom) > EPSILON) {
     throw new Error("Upper X top envelope must contact the tabletop underside");
   }
@@ -3273,9 +3238,6 @@ export function getHoverDiningTableParameterLimits(
     limits.min = Math.max(
       limits.min,
       spec.frameEdgeRoundover * 2 + limits.step,
-      key === "frameBottomRailHeight"
-        ? spec.lowerBrace.thickness
-        : spec.upperBrace.thickness,
     );
     const other =
       key === "frameBottomRailHeight"
@@ -4261,7 +4223,7 @@ export function getHoverDiningTableAuditValue(
               : 0;
         return item(
           check.label,
-          `${4 + bottomFaceCount} box-parallel bearing faces · selected members stop on straight contact zones · ${formatLength(spec.upperBrace.edgeRadius, unit)} bottom-edge round-over`,
+          `${4 + bottomFaceCount} box-parallel support end faces · selected members stop on straight contact zones · ${formatLength(spec.upperBrace.edgeRadius, unit)} bottom-edge round-over`,
         );
       }
     case "hoverHalfLaps":
