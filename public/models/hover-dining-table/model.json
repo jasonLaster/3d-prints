@@ -275,7 +275,7 @@
       "label": "Bottom support bottom round-over",
       "group": "Bottom support members",
       "default": 3.175,
-      "limits": { "min": 0.79375, "max": 19.05, "step": 1.5875 }
+      "limits": { "min": 0.79375, "max": 38.1, "step": 1.5875 }
     },
     {
       "key": "halfLapClearance",

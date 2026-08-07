@@ -354,6 +354,10 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
     12 * 25.4,
     6,
   );
+  expect(definitions.bottomSupportEdgeRadius.limits.max).toBeCloseTo(
+    1.5 * 25.4,
+    6,
+  );
   expect(
     getHoverDiningTableParameterLimits(
       model,
@@ -411,9 +415,31 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   expect(insetLowerSupport.lowerBrace.endpointOuterY).toBeLessThanOrEqual(
     insetLowerSupport.lowerBrace.cornerTangentY,
   );
+
+  const expandedBottomSupportParams = {
+    ...defaultParams,
+    frameBottomRailHeight: 2.5 * 25.4,
+    bottomSupportWidth: 3 * 25.4,
+    bottomSupportThickness: 2.5 * 25.4,
+  };
+  expect(
+    getHoverDiningTableParameterLimits(
+      model,
+      expandedBottomSupportParams,
+      "bottomSupportEdgeRadius",
+    ).max,
+  ).toBeGreaterThan(1 * 25.4);
+  const roundedLowerSupport = getHoverDiningTableSpec({
+    ...expandedBottomSupportParams,
+    bottomSupportEdgeRadius: 1 * 25.4,
+  }).fullSize;
+  expect(roundedLowerSupport.lowerBrace.edgeRadius).toBeCloseTo(1 * 25.4, 6);
+  expect(roundedLowerSupport.lowerBrace.edgeRadius).toBeLessThan(
+    roundedLowerSupport.lowerBrace.halfLapDepth,
+  );
 });
 
-test("accepts an expanded bottom support bearing-zone inset", async ({
+test("accepts expanded bottom support controls", async ({
   page,
 }) => {
   const pageErrors: string[] = [];
@@ -422,15 +448,23 @@ test("accepts an expanded bottom support bearing-zone inset", async ({
     if (message.type() === "error") pageErrors.push(message.text());
   });
 
-  await page.goto("/?model=hover-dining-table&unit=in");
+  await page.goto(
+    "/?model=hover-dining-table&unit=in&frameBottomRailHeight=2.5&bottomSupportWidth=3&bottomSupportThickness=2.5",
+  );
   await page.getByRole("button", { name: "Bottom support members" }).click();
   const insetInput = page.getByLabel(
     "Bottom support bearing-zone inset in inches",
   );
+  const roundOverInput = page.getByLabel(
+    "Bottom support bottom round-over in inches",
+  );
   await insetInput.fill("8");
+  await roundOverInput.fill("1");
 
   await expect(insetInput).toHaveValue("8");
+  await expect(roundOverInput).toHaveValue("1");
   await expect(page).toHaveURL(/bottomSupportEndpointInset=8/);
+  await expect(page).toHaveURL(/bottomSupportEdgeRadius=1/);
   await expect(
     page.getByLabel("X-Hover Dining Table model viewer"),
   ).toBeVisible();
