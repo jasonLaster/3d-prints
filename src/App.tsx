@@ -3705,7 +3705,6 @@ function WorkspaceHeader({
   onOpenNavigation: () => void;
   showNavigationTrigger: boolean;
 }) {
-  const isDark = theme === "dark";
   return (
     <header className="workspace-header">
       <div className="workspace-title">
@@ -3726,15 +3725,6 @@ function WorkspaceHeader({
             <PanelLeftOpen aria-hidden="true" />
           </button>
         ) : null}
-        <button
-          aria-label="Toggle workspace appearance"
-          className="workspace-quick-action"
-          onClick={() => onThemeChange(isDark ? "light" : "dark")}
-          title={isDark ? "Use light theme" : "Use dark theme"}
-          type="button"
-        >
-          {isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
-        </button>
         <button
           aria-label="Download current model STL"
           className="workspace-quick-action workspace-export-action"

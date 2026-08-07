@@ -332,6 +332,9 @@ test.describe("3D print app", () => {
       await expect(page.getByLabel("Paper Towel Holder model viewer")).toBeVisible();
       await expect(page.getByRole("button", { name: "Dashboard" })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Workspace actions" })).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Toggle workspace appearance" }),
+      ).toHaveCount(0);
       await expect(page.getByRole("heading", { name: "Library" })).toHaveCount(0);
       await expect(page.getByRole("combobox", { name: "Model" })).toHaveCount(0);
       await expect(page.locator("select")).toHaveCount(0);
