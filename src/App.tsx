@@ -801,9 +801,6 @@ const HolderViewer = forwardRef<
         : null,
     [model, params],
   );
-  const [activeViewPreset, setActiveViewPreset] = useState<ViewPreset | null>(
-    "iso",
-  );
   const [cubeTransform, setCubeTransform] = useState(
     "rotateX(-28deg) rotateY(34deg)",
   );
@@ -885,7 +882,6 @@ const HolderViewer = forwardRef<
     camera.updateProjectionMatrix();
     controls.target.copy(target);
     controls.update();
-    setActiveViewPreset(preset);
     updateCubeOrientation();
   }, [model, updateCubeOrientation]);
 
@@ -908,7 +904,6 @@ const HolderViewer = forwardRef<
     offset.setLength(nextDistance);
     camera.position.copy(controls.target).add(offset);
     camera.updateProjectionMatrix();
-    setActiveViewPreset(null);
     controls.update();
   }, []);
 
@@ -1545,7 +1540,6 @@ const HolderViewer = forwardRef<
     controls.maxDistance = 1400;
     controlsRef.current = controls;
     const handleControlChange = () => updateCubeOrientation();
-    const handleControlStart = () => setActiveViewPreset(null);
     let trackpadGestureUntil = 0;
     const handleTrackpadPan = (event: WheelEvent) => {
       if (event.ctrlKey) {
@@ -1585,14 +1579,12 @@ const HolderViewer = forwardRef<
       camera.position.add(movement);
       controls.target.add(movement);
       controls.update();
-      setActiveViewPreset(null);
     };
     renderer.domElement.addEventListener("wheel", handleTrackpadPan, {
       capture: true,
       passive: false,
     });
     controls.addEventListener("change", handleControlChange);
-    controls.addEventListener("start", handleControlStart);
 
     scene.add(new THREE.HemisphereLight("#ffffff", "#aeb7c4", 2.1));
     const keyLight = new THREE.DirectionalLight("#ffffff", 2.4);
@@ -1882,7 +1874,6 @@ const HolderViewer = forwardRef<
       resizeObserver.disconnect();
       renderer.domElement.removeEventListener("wheel", handleTrackpadPan, true);
       controls.removeEventListener("change", handleControlChange);
-      controls.removeEventListener("start", handleControlStart);
       controls.dispose();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {
@@ -2033,10 +2024,11 @@ const HolderViewer = forwardRef<
         </div>
       </div>
       <div
-        aria-label="Orientation controls"
+        aria-label="Current camera orientation"
         className="orientation-cube-control"
+        role="img"
       >
-        <span className="orientation-cube-scene" aria-hidden="true">
+        <span aria-hidden="true" className="orientation-cube-scene">
           <span
             className="orientation-cube"
             style={{ transform: cubeTransform }}
@@ -2060,29 +2052,6 @@ const HolderViewer = forwardRef<
               Left
             </span>
           </span>
-        </span>
-        <span className="orientation-cube-tabs">
-          {[
-            { label: "3D", preset: "iso", ariaLabel: "Isometric view" },
-            { label: "Top", preset: "top", ariaLabel: "Top view" },
-            ...(model.viewer === "dining-table-v1" ||
-            model.viewer === "hover-dining-table-v1"
-              ? [{ label: "Bottom", preset: "bottom", ariaLabel: "Bottom view" }]
-              : []),
-            { label: "X", preset: "xEdge", ariaLabel: "Align X edge to view" },
-            { label: "Y", preset: "yEdge", ariaLabel: "Align Y edge to view" },
-          ].map((option) => (
-            <button
-              aria-label={option.ariaLabel}
-              aria-pressed={activeViewPreset === option.preset}
-              className={activeViewPreset === option.preset ? "active" : ""}
-              key={option.preset}
-              onClick={() => setCameraView(option.preset as ViewPreset)}
-              type="button"
-            >
-              {option.label}
-            </button>
-          ))}
         </span>
       </div>
     </div>
@@ -2288,39 +2257,102 @@ function HoverSupportLayoutControl({
   params: ModelParams;
   onChange: (key: string, value: number) => void;
 }) {
+  const topSupportOptions = [
+    {
+      value: "0",
+      label: "Cross bars (X)",
+      description: "Diagonal X-brace layout",
+      symbol: "X",
+    },
+    {
+      value: "1",
+      label: "Original stretchers",
+      description: "Two lengthwise members",
+      symbol: "Ⅱ",
+    },
+  ];
+  const bottomSupportOptions = [
+    {
+      value: "0",
+      label: "Cross bars (X)",
+      description: "Diagonal X-brace layout",
+      symbol: "X",
+    },
+    {
+      value: "1",
+      label: "Single center board",
+      description: "One lengthwise member",
+      symbol: "Ⅰ",
+    },
+    {
+      value: "2",
+      label: "None",
+      description: "No floor-level support",
+      symbol: "—",
+    },
+  ];
+
+  const supportSelect = (
+    label: string,
+    parameterKey: "topSupportStyle" | "bottomSupportStyle",
+    options: typeof topSupportOptions,
+  ) => {
+    const id = `${parameterKey === "topSupportStyle" ? "top" : "bottom"}-support-style`;
+    const value = String(Math.round(getParam(params, parameterKey)));
+    const selected = options.find((option) => option.value === value) ?? options[0];
+
+    return (
+      <div className="select-control">
+        <label htmlFor={id}>{label}</label>
+        <Select
+          onValueChange={(nextValue) => onChange(parameterKey, Number(nextValue))}
+          value={value}
+        >
+          <SelectTrigger
+            aria-label={`${label} style`}
+            className="support-style-select-trigger"
+            id={id}
+          >
+            <span className="support-style-select-value">
+              <span aria-hidden="true" className="support-style-symbol">
+                {selected.symbol}
+              </span>
+              <span className="support-style-copy">
+                <strong>{selected.label}</strong>
+                <small>{selected.description}</small>
+              </span>
+            </span>
+          </SelectTrigger>
+          <SelectContent
+            align="start"
+            className="support-style-select-content"
+            sideOffset={6}
+          >
+            {options.map((option) => (
+              <SelectItem
+                className="support-style-select-item"
+                key={option.value}
+                value={option.value}
+              >
+                <span aria-hidden="true" className="support-style-symbol">
+                  {option.symbol}
+                </span>
+                <span className="support-style-copy">
+                  <strong>{option.label}</strong>
+                  <small>{option.description}</small>
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  };
+
   return (
     <div className="hover-support-layout-controls">
-      <div className="select-control">
-        <label htmlFor="top-support-style">Top support</label>
-        <Select
-          onValueChange={(value) => onChange("topSupportStyle", Number(value))}
-          value={String(Math.round(getParam(params, "topSupportStyle")))}
-        >
-          <SelectTrigger aria-label="Top support style" id="top-support-style">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="0">Cross bars (X)</SelectItem>
-            <SelectItem value="1">Original stretchers</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="select-control">
-        <label htmlFor="bottom-support-style">Bottom support</label>
-        <Select
-          onValueChange={(value) => onChange("bottomSupportStyle", Number(value))}
-          value={String(Math.round(getParam(params, "bottomSupportStyle")))}
-        >
-          <SelectTrigger aria-label="Bottom support style" id="bottom-support-style">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="0">Cross bars (X)</SelectItem>
-            <SelectItem value="1">Single center board</SelectItem>
-            <SelectItem value="2">None</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {supportSelect("Top support", "topSupportStyle", topSupportOptions)}
+      {supportSelect("Bottom support", "bottomSupportStyle", bottomSupportOptions)}
     </div>
   );
 }

@@ -1376,7 +1376,15 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(page.getByLabel("Bottom support bottom round-over in inches")).toHaveValue("1/8");
   await expect(page.getByLabel("Half-lap fit clearance in inches")).toHaveValue("0");
   await expect(page.getByLabel("Top support style")).toContainText("Cross bars (X)");
+  await expect(page.getByLabel("Top support style")).toContainText(
+    "Diagonal X-brace layout",
+  );
   await expect(page.getByLabel("Bottom support style")).toContainText("Cross bars (X)");
+  await page.getByLabel("Top support style").click();
+  await expect(
+    page.getByRole("option", { name: /Original stretchers/ }),
+  ).toContainText("Two lengthwise members");
+  await page.keyboard.press("Escape");
   await expect(page.getByLabel("Routing-template thickness in inches")).toHaveValue("1/8");
   await expect(page.getByLabel("Usable square print-plate span in inches")).toHaveValue("9");
   await expect(page.getByLabel("Template dovetail depth in inches")).toHaveValue("1/2");

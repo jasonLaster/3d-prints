@@ -1853,9 +1853,8 @@ html.dark .tray-orientation-snap-control {
   left: 18px;
   z-index: 3;
   display: grid;
-  gap: 8px;
-  width: 132px;
-  min-height: 116px;
+  width: 94px;
+  min-height: 88px;
   padding: 10px;
   border: 1px solid rgba(148, 163, 184, 0.55);
   border-radius: 12px;
@@ -1869,12 +1868,6 @@ html.dark .orientation-cube-control {
   border-color: rgba(132, 146, 166, 0.36);
   background: rgba(19, 24, 33, 0.84);
   box-shadow: 0 16px 42px var(--shadow);
-}
-
-.orientation-cube-control:hover,
-.orientation-cube-control:focus-visible {
-  border-color: var(--accent);
-  outline: 0;
 }
 
 .orientation-cube-scene {
@@ -1967,35 +1960,6 @@ html.dark .orientation-cube-face-back {
 
 html.dark .orientation-cube-face-left {
   background: linear-gradient(145deg, #374252, #19212d);
-}
-
-.orientation-cube-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
-}
-
-.orientation-cube-tabs button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  min-height: 32px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--panel-muted);
-  color: var(--muted-strong);
-  font-size: 11px;
-  font-weight: 780;
-}
-
-.orientation-cube-tabs button:hover,
-.orientation-cube-tabs button:focus-visible,
-.orientation-cube-tabs button.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-  outline: 0;
 }
 
 .sidebar-resizer {
@@ -2382,8 +2346,8 @@ html.dark .panel-section:nth-child(even) {
 
 .hover-support-layout-controls {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
 }
 
 .hover-support-layout-controls .select-control {
@@ -2392,15 +2356,146 @@ html.dark .panel-section:nth-child(even) {
 
 .hover-support-layout-controls label {
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: 6px;
   color: var(--muted-strong);
-  font-size: 12px;
-  font-weight: 780;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .hover-support-layout-controls .ui-select-trigger {
   width: 100%;
   min-width: 0;
+}
+
+.support-style-select-trigger {
+  min-height: 58px;
+  padding: 7px 10px 7px 8px;
+  border-radius: 11px;
+  background:
+    linear-gradient(135deg, var(--accent-soft), transparent 48%),
+    var(--surface);
+  box-shadow: 0 1px 2px var(--shadow);
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.support-style-select-trigger:hover,
+.support-style-select-trigger[data-state="open"] {
+  border-color: color-mix(in srgb, var(--accent) 68%, var(--border-strong));
+  box-shadow: 0 8px 24px var(--shadow);
+}
+
+.support-style-select-trigger[data-state="open"] {
+  transform: translateY(-1px);
+}
+
+.support-style-select-trigger > svg {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+}
+
+.support-style-select-value,
+.support-style-select-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.support-style-select-value {
+  flex: 1;
+}
+
+.support-style-symbol {
+  display: inline-grid;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.08em;
+}
+
+.support-style-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  text-align: left;
+}
+
+.support-style-copy strong,
+.support-style-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.support-style-copy strong {
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.support-style-copy small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 620;
+  line-height: 1.25;
+}
+
+.support-style-select-content {
+  width: var(--radix-select-trigger-width);
+  padding: 3px;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px var(--shadow-strong);
+}
+
+.support-style-select-content .ui-select-viewport {
+  padding: 2px;
+}
+
+.support-style-select-content .support-style-select-item {
+  min-height: 54px;
+  padding: 6px 10px 6px 34px;
+  border-radius: 8px;
+}
+
+.support-style-select-content .support-style-select-item > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+}
+
+.support-style-select-content .support-style-copy {
+  flex: 1;
+}
+
+.support-style-select-content .support-style-select-item[data-highlighted] {
+  background: var(--accent-soft);
+}
+
+.support-style-select-content .support-style-select-item[data-state="checked"] {
+  background: color-mix(in srgb, var(--accent-soft) 72%, transparent);
+}
+
+.support-style-select-content .support-style-symbol {
+  flex-basis: 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
 }
 
 @media (max-width: 520px) {
@@ -3306,14 +3401,9 @@ html.dark .segmented-control button.active {
   .orientation-cube-control {
     bottom: 10px;
     left: 10px;
-    width: 140px;
-    min-height: 104px;
+    width: 90px;
+    min-height: 84px;
     padding: 8px;
-  }
-
-  .orientation-cube-tabs button {
-    min-height: 32px;
-    font-size: 10px;
   }
 
   .inspector-header h1,

@@ -610,7 +610,7 @@ test.describe("3D print app", () => {
     await expectCanvasHasRenderedModel(page);
   });
 
-  test("cube orientation, workspace actions, and zoom keep the 3D canvas alive", async ({
+  test("orientation indicator, workspace actions, and zoom keep the 3D canvas alive", async ({
     page,
   }) => {
     await expectNoPageErrors(page, async () => {
@@ -633,14 +633,15 @@ test.describe("3D print app", () => {
         "Zoom in",
         "Zoom out",
         "Center view",
-        "Top view",
-        "Align X edge to view",
-        "Align Y edge to view",
-        "Isometric view",
       ]) {
         await page.getByRole("button", { name: label }).first().click();
       }
 
+      const orientationIndicator = page.getByRole("img", {
+        name: "Current camera orientation",
+      });
+      await expect(orientationIndicator).toBeVisible();
+      await expect(orientationIndicator.getByRole("button")).toHaveCount(0);
       await expect(page.locator(".orientation-cube-face")).toHaveText([
         "Top",
         "Front",
@@ -650,32 +651,33 @@ test.describe("3D print app", () => {
         "Left",
       ]);
 
-      const topView = page.getByRole("button", { name: "Top view" });
-      await topView.click();
-      await expect(topView).toHaveAttribute("aria-pressed", "true");
-      await expect(page.locator(".orientation-cube")).toHaveAttribute(
-        "style",
-        /rotateX\(-82(?:\.0)?deg\) rotateY\(0(?:\.0)?deg\)/,
-      );
+      for (const label of [
+        "Top view",
+        "Bottom view",
+        "Align X edge to view",
+        "Align Y edge to view",
+        "Isometric view",
+      ]) {
+        await expect(page.getByRole("button", { name: label })).toHaveCount(0);
+      }
 
+      const orientationBeforeParameterEdit = await page
+        .locator(".orientation-cube")
+        .getAttribute("style");
       await trayLength.fill("200");
       await trayLength.blur();
-      await expect(topView).toHaveAttribute("aria-pressed", "true");
       await expect(page.locator(".orientation-cube")).toHaveAttribute(
         "style",
-        /rotateX\(-82(?:\.0)?deg\) rotateY\(0(?:\.0)?deg\)/,
+        orientationBeforeParameterEdit!,
       );
 
       await page.getByRole("button", { name: "Zoom in" }).click();
-      await expect(topView).toHaveAttribute("aria-pressed", "false");
       await trayLength.fill("210");
       await trayLength.blur();
-      await expect(topView).toHaveAttribute("aria-pressed", "false");
-      await expect(page.getByRole("button", { name: "Isometric view" })).toHaveAttribute(
-        "aria-pressed",
-        "false",
-      );
 
+      const orientationBeforeDrag = await page
+        .locator(".orientation-cube")
+        .getAttribute("style");
       const canvasBox = await page.locator(".scene-panel canvas").boundingBox();
       expect(canvasBox).not.toBeNull();
       await page.mouse.move(
@@ -689,8 +691,20 @@ test.describe("3D print app", () => {
         { steps: 6 },
       );
       await page.mouse.up();
-      await expect(topView).toHaveAttribute("aria-pressed", "false");
+      await expect
+        .poll(() =>
+          page.locator(".orientation-cube").getAttribute("style"),
+        )
+        .not.toBe(orientationBeforeDrag);
 
+      await expectCanvasHasRenderedModel(page);
+
+      await openReady(page, "/?model=dining-table&unit=in");
+      await expect(
+        page.getByRole("img", { name: "Current camera orientation" }),
+      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "Top view" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Bottom view" })).toHaveCount(0);
       await expectCanvasHasRenderedModel(page);
     });
   });
