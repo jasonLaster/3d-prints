@@ -4313,6 +4313,18 @@ export default function App({
           key === "topSupportStyle" ||
           key === "bottomSupportStyle"
         ) {
+          if (key === "topSupportStyle" || key === "bottomSupportStyle") {
+            const radiusKey =
+              key === "topSupportStyle"
+                ? "topSupportEdgeRadius"
+                : "bottomSupportEdgeRadius";
+            const radiusLimits = getParameterLimits(model, next, radiusKey);
+            next[radiusKey] = clamp(
+              next[radiusKey],
+              radiusLimits.min,
+              radiusLimits.max,
+            );
+          }
           return synchronizeHoverCrossbarDimensions(model, next);
         }
       }

@@ -540,7 +540,10 @@ function assertStraightSupport(
   if (support.spanX < MIN_BRACE_SPAN) {
     throw new Error(`${label} needs a positive structural span between end boxes`);
   }
-  if (support.edgeRadius * 2 >= Math.min(support.width, support.thickness)) {
+  if (
+    support.edgeRadius * 2 >= support.width ||
+    support.edgeRadius >= support.thickness
+  ) {
     throw new Error(`${label} edge radius must preserve a flat cross-section`);
   }
   const placementBoundaryY = support.placementBoundaryY;
@@ -736,11 +739,14 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
   ) {
     throw new Error("Half-lap clearance must leave positive mating material in both Xs");
   }
-  for (const [label, brace] of [
-    ["Upper", spec.upperBrace],
-    ["Lower", spec.lowerBrace],
+  for (const [label, brace, isCrossbar] of [
+    ["Upper", spec.upperBrace, spec.topSupportStyle === "x"],
+    ["Lower", spec.lowerBrace, spec.bottomSupportStyle === "x"],
   ] as const) {
-    if (brace.edgeRadius >= brace.halfLapDepth - spec.halfLapClearance / 2) {
+    if (
+      isCrossbar &&
+      brace.edgeRadius >= brace.halfLapDepth - spec.halfLapClearance / 2
+    ) {
       throw new Error(`${label} brace round-over must leave square half-lap shoulders`);
     }
   }
@@ -1154,7 +1160,7 @@ function bottomRoundedRectangleProfile(
 ): HoverDiningTableProfileCommand[] {
   const halfWidth = width / 2;
   const halfHeight = height / 2;
-  const safeRadius = Math.min(radius, halfWidth, halfHeight);
+  const safeRadius = Math.min(radius, halfWidth, height);
   const control = safeRadius * 0.5522847498;
   return [
     { kind: "move", to: { x: -halfWidth + safeRadius, y: -halfHeight } },
@@ -3542,9 +3548,13 @@ export function getHoverDiningTableParameterLimits(
     );
   } else if (key === "topSupportThickness" || key === "bottomSupportThickness") {
     const brace = key === "topSupportThickness" ? spec.upperBrace : spec.lowerBrace;
+    const isCrossbar =
+      key === "topSupportThickness"
+        ? spec.topSupportStyle === "x"
+        : spec.bottomSupportStyle === "x";
     limits.min = Math.max(
       limits.min,
-      brace.edgeRadius * 2 + limits.step,
+      brace.edgeRadius * (isCrossbar ? 2 : 1) + limits.step,
     );
     limits.max = Math.min(
       limits.max,
@@ -3567,12 +3577,18 @@ export function getHoverDiningTableParameterLimits(
     );
   } else if (key === "topSupportEdgeRadius" || key === "bottomSupportEdgeRadius") {
     const brace = key === "topSupportEdgeRadius" ? spec.upperBrace : spec.lowerBrace;
+    const isCrossbar =
+      key === "topSupportEdgeRadius"
+        ? spec.topSupportStyle === "x"
+        : spec.bottomSupportStyle === "x";
     limits.max = Math.min(
       limits.max,
       brace.width / 2 - limits.step,
-      brace.halfLapDepth -
-        spec.halfLapClearance / 2 -
-        limits.step,
+      isCrossbar
+        ? brace.halfLapDepth -
+            spec.halfLapClearance / 2 -
+            limits.step
+        : brace.thickness - limits.step,
     );
   } else if (key === "halfLapClearance") {
     limits.max = Math.min(

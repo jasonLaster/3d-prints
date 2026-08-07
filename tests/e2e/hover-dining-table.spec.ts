@@ -424,7 +424,7 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
     6,
   );
   expect(definitions.bottomSupportEdgeRadius.limits.max).toBeCloseTo(
-    1.5 * 25.4,
+    2 * 25.4,
     6,
   );
   expect(
@@ -528,6 +528,57 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   expect(roundedLowerSupport.lowerBrace.edgeRadius).toBeLessThan(
     roundedLowerSupport.lowerBrace.halfLapDepth,
   );
+
+  const centerBoardParams = {
+    ...defaultParams,
+    bottomSupportStyle: 1,
+    bottomSupportWidth: 2.4409 * 25.4,
+    bottomSupportThickness: 1.4409 * 25.4,
+  };
+  expect(
+    getHoverDiningTableParameterLimits(
+      model,
+      centerBoardParams,
+      "bottomSupportEdgeRadius",
+    ).max,
+  ).toBeCloseTo((2.4409 / 2 - 1 / 16) * 25.4, 6);
+  const deepRoundedCenterBoard = getHoverDiningTableSpec({
+    ...centerBoardParams,
+    bottomSupportEdgeRadius: 1 * 25.4,
+  }).fullSize;
+  expect(deepRoundedCenterBoard.lowerCenterBoard.edgeRadius).toBeCloseTo(
+    1 * 25.4,
+    6,
+  );
+  expect(deepRoundedCenterBoard.lowerCenterBoard.edgeRadius).toBeGreaterThan(
+    deepRoundedCenterBoard.lowerBrace.halfLapDepth,
+  );
+  const centerBoardCutPart = getHoverDiningTableCutList(
+    {
+      ...centerBoardParams,
+      bottomSupportEdgeRadius: 1 * 25.4,
+    },
+    model,
+  ).parts.find((part) => part.id === "C1");
+  expect(centerBoardCutPart).toBeDefined();
+  expect(centerBoardCutPart!.fabricationProfile.section.radius).toBeCloseTo(
+    1 * 25.4,
+    6,
+  );
+  expect(
+    centerBoardCutPart!.fabricationProfile.section.outline.filter(
+      (command) => command.kind === "cubic",
+    ),
+  ).toHaveLength(2);
+  const centerBoardGeometry = createHoverDiningTableGeometry(
+    {
+      ...centerBoardParams,
+      bottomSupportEdgeRadius: 1 * 25.4,
+    },
+    model,
+  );
+  expect(inspectGeometry(centerBoardGeometry).finite).toBe(true);
+  centerBoardGeometry.dispose();
 });
 
 test("accepts expanded top and bottom support controls", async ({
@@ -540,7 +591,7 @@ test("accepts expanded top and bottom support controls", async ({
   });
 
   await page.goto(
-    "/?model=hover-dining-table&unit=in&frameBottomRailHeight=2.5&bottomSupportWidth=3&bottomSupportThickness=2.5",
+    "/?model=hover-dining-table&unit=in&frameBottomRailHeight=2.5&bottomSupportStyle=1&bottomSupportWidth=2.4409&bottomSupportThickness=1.4409",
   );
   await page.getByRole("button", { name: "Top support members" }).click();
   const topInsetInput = page.getByLabel(
@@ -563,6 +614,14 @@ test("accepts expanded top and bottom support controls", async ({
   await expect(page).toHaveURL(/topSupportEndpointInset=8/);
   await expect(page).toHaveURL(/bottomSupportEndpointInset=8/);
   await expect(page).toHaveURL(/bottomSupportEdgeRadius=1/);
+  await expect(
+    page.getByLabel("X-Hover Dining Table model viewer"),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Support layout" }).click();
+  await page.getByLabel("Bottom support style").click();
+  await page.getByRole("option", { name: /Cross bars \(X\)/ }).click();
+  await expect(roundOverInput).not.toHaveValue("1");
   await expect(
     page.getByLabel("X-Hover Dining Table model viewer"),
   ).toBeVisible();
