@@ -507,6 +507,78 @@ test("accepts expanded top and bottom support controls", async ({
   expect(pageErrors).toEqual([]);
 });
 
+test("optionally keeps top and bottom X crossbar dimensions synchronized", async ({
+  page,
+}) => {
+  await page.goto(
+    "/?model=hover-dining-table&unit=in&topSupportWidth=2.25&bottomSupportWidth=3&topSupportThickness=1.25&bottomSupportThickness=1.5&topSupportEndpointInset=0.5&bottomSupportEndpointInset=1&topSupportEdgeRadius=0.125&bottomSupportEdgeRadius=0.25",
+  );
+  await page.getByRole("button", { name: "Support layout" }).click();
+  const syncToggle = page.getByLabel(
+    "Keep top and bottom crossbars in sync",
+  );
+  await expect(syncToggle).toBeVisible();
+  await expect(syncToggle).not.toBeChecked();
+  await page
+    .getByText("Keep top and bottom crossbars in sync", { exact: true })
+    .click();
+  await expect(syncToggle).toBeChecked();
+  await expect(page).toHaveURL(/syncCrossbarDimensions=1/);
+
+  await page.getByRole("button", { name: "Top support members" }).click();
+  await page.getByRole("button", { name: "Bottom support members" }).click();
+  const topWidth = page.getByLabel("Top support width in inches");
+  const bottomWidth = page.getByLabel("Bottom support width in inches");
+  const topThickness = page.getByLabel("Top support thickness in inches");
+  const bottomThickness = page.getByLabel("Bottom support thickness in inches");
+  const topInset = page.getByLabel(
+    "Top support bearing-zone inset in inches",
+  );
+  const bottomInset = page.getByLabel(
+    "Bottom support bearing-zone inset in inches",
+  );
+  const topRadius = page.getByLabel(
+    "Top support bottom round-over in inches",
+  );
+  const bottomRadius = page.getByLabel(
+    "Bottom support bottom round-over in inches",
+  );
+
+  await expect(bottomWidth).toHaveValue("2 1/4");
+  await expect(bottomThickness).toHaveValue("1 1/4");
+  await expect(bottomInset).toHaveValue("1/2");
+  await expect(bottomRadius).toHaveValue("1/8");
+
+  await bottomWidth.fill("2 1/2");
+  await expect(topWidth).toHaveValue("2 1/2");
+  await topThickness.fill("1 1/2");
+  await expect(bottomThickness).toHaveValue("1 1/2");
+  await topInset.fill("8");
+  await expect(bottomInset).toHaveValue("8");
+  await bottomRadius.fill("1/4");
+  await expect(topRadius).toHaveValue("1/4");
+  await expect(page).toHaveURL(/topSupportWidth=2\.5/);
+  await expect(page).toHaveURL(/bottomSupportWidth=2\.5/);
+  await expect(page).toHaveURL(/topSupportEndpointInset=8/);
+  await expect(page).toHaveURL(/bottomSupportEndpointInset=8/);
+
+  await page.reload();
+  await page.getByRole("button", { name: "Support layout" }).click();
+  await expect(syncToggle).toBeChecked();
+  await page.getByLabel("Bottom support style").click();
+  await page.getByRole("option", { name: /Single center board/ }).click();
+  await expect(syncToggle).toHaveCount(0);
+  await page.getByRole("button", { name: "Bottom support members" }).click();
+  await page.getByLabel("Bottom support width in inches").fill("3");
+  await page.getByLabel("Bottom support style").click();
+  await page.getByRole("option", { name: /Cross bars \(X\)/ }).click();
+  await expect(syncToggle).toBeVisible();
+  await expect(syncToggle).toBeChecked();
+  await expect(page.getByLabel("Bottom support width in inches")).toHaveValue(
+    "2 1/2",
+  );
+});
+
 test("supports independent half-inch end-box stiles", () => {
   const halfInch = 0.5 * 25.4;
   const narrowParams = {

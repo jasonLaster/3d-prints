@@ -2730,6 +2730,18 @@ html.dark .segmented-control button.active {
   outline-offset: 3px;
 }
 
+.crossbar-sync-option {
+  padding-top: 2px;
+}
+
+.crossbar-sync-option small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .gridfinity-option {
   margin-top: 18px;
   padding-top: 4px;

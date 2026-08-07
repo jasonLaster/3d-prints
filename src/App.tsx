@@ -221,6 +221,7 @@ const PARAM_QUERY_KEYS = [
   "frameOuterStileCurveTension",
   "topSupportStyle",
   "bottomSupportStyle",
+  "syncCrossbarDimensions",
   "topSupportWidth",
   "topSupportThickness",
   "topSupportEndpointInset",
@@ -279,6 +280,7 @@ const SCALAR_PARAM_KEYS = new Set([
   "frameInnerCurveTension",
   "topSupportStyle",
   "bottomSupportStyle",
+  "syncCrossbarDimensions",
 ]);
 const CURVE_PARAM_KEYS = new Set([
   "topEdgeTension",
@@ -289,6 +291,7 @@ const CURVE_PARAM_KEYS = new Set([
 const OPTION_PARAM_KEYS = new Set([
   "gridfinityCompatible",
   "legGrooveEnabled",
+  "syncCrossbarDimensions",
 ]);
 const LEG_GROOVE_PARAM_KEYS = new Set([
   "legGrooveHeight",
@@ -301,6 +304,61 @@ const DIVIDER_PARAM_KEYS = new Set([
   "dividerPosition3",
   "dividerPosition4",
 ]);
+const HOVER_SUPPORT_SYNC_PAIRS = [
+  ["topSupportWidth", "bottomSupportWidth"],
+  ["topSupportThickness", "bottomSupportThickness"],
+  ["topSupportEndpointInset", "bottomSupportEndpointInset"],
+  ["topSupportEdgeRadius", "bottomSupportEdgeRadius"],
+] as const;
+
+function getHoverSupportSyncPair(key: string) {
+  return HOVER_SUPPORT_SYNC_PAIRS.find(
+    ([topKey, bottomKey]) => topKey === key || bottomKey === key,
+  );
+}
+
+function isHoverCrossbarSyncActive(params: ModelParams) {
+  return (
+    getParam(params, "syncCrossbarDimensions") >= 0.5 &&
+    getParam(params, "topSupportStyle") < 0.5 &&
+    getParam(params, "bottomSupportStyle") < 0.5
+  );
+}
+
+function getHoverSyncedParameterLimits(
+  model: ModelDefinition,
+  params: ModelParams,
+  key: string,
+) {
+  const limits = getParameterLimits(model, params, key);
+  const pair = getHoverSupportSyncPair(key);
+  if (!pair || !isHoverCrossbarSyncActive(params)) return limits;
+  const partnerKey = pair[0] === key ? pair[1] : pair[0];
+  const partnerLimits = getParameterLimits(model, params, partnerKey);
+  const min = Math.max(limits.min, partnerLimits.min);
+  return {
+    ...limits,
+    min,
+    max: Math.max(min, Math.min(limits.max, partnerLimits.max)),
+  };
+}
+
+function synchronizeHoverCrossbarDimensions(
+  model: ModelDefinition,
+  params: ModelParams,
+) {
+  if (!isHoverCrossbarSyncActive(params)) return params;
+  const next = { ...params };
+  for (const [topKey, bottomKey] of HOVER_SUPPORT_SYNC_PAIRS) {
+    const limits = getHoverSyncedParameterLimits(model, next, topKey);
+    const value = Number(
+      clamp(getParam(next, topKey), limits.min, limits.max).toFixed(1),
+    );
+    next[topKey] = value;
+    next[bottomKey] = value;
+  }
+  return next;
+}
 const SIDEBAR_WIDTH_KEY = "3d-prints:sidebar-width";
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 620;
@@ -547,6 +605,7 @@ function getParamsFromUrl(model: ModelDefinition) {
         );
       }
     }
+    return synchronizeHoverCrossbarDimensions(model, params);
   }
 
   return params;
@@ -2263,6 +2322,9 @@ function HoverSupportLayoutControl({
   params: ModelParams;
   onChange: (key: string, value: number) => void;
 }) {
+  const bothSupportsAreCrossbars =
+    getParam(params, "topSupportStyle") < 0.5 &&
+    getParam(params, "bottomSupportStyle") < 0.5;
   const topSupportOptions = [
     {
       value: "0",
@@ -2359,6 +2421,18 @@ function HoverSupportLayoutControl({
     <div className="hover-support-layout-controls">
       {supportSelect("Top support", "topSupportStyle", topSupportOptions)}
       {supportSelect("Bottom support", "bottomSupportStyle", bottomSupportOptions)}
+      {bothSupportsAreCrossbars ? (
+        <div className="crossbar-sync-option">
+          <OriginalOverlayToggle
+            checked={getParam(params, "syncCrossbarDimensions") >= 0.5}
+            label="Keep top and bottom crossbars in sync"
+            onChange={(checked) =>
+              onChange("syncCrossbarDimensions", checked ? 1 : 0)
+            }
+          />
+          <small>Enabling uses the current top crossbar dimensions.</small>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -2487,7 +2561,11 @@ function HoverDiningTableParameterControls({
                   return (
                     <ScaleControl
                       key={parameter.key}
-                      limits={getParameterLimits(model, params, parameter.key)}
+                      limits={getHoverSyncedParameterLimits(
+                        model,
+                        params,
+                        parameter.key,
+                      )}
                       onChange={(value) => onChange(parameter.key, value)}
                       value={getParam(params, parameter.key)}
                     />
@@ -2498,7 +2576,11 @@ function HoverDiningTableParameterControls({
                     <BezierCurveControl
                       key={parameter.key}
                       label={parameter.label}
-                      limits={getParameterLimits(model, params, parameter.key)}
+                      limits={getHoverSyncedParameterLimits(
+                        model,
+                        params,
+                        parameter.key,
+                      )}
                       onChange={(value) => onChange(parameter.key, value)}
                       value={getParam(params, parameter.key)}
                     />
@@ -2508,7 +2590,11 @@ function HoverDiningTableParameterControls({
                   <NumberControl
                     key={parameter.key}
                     label={parameter.label}
-                    limits={getParameterLimits(model, params, parameter.key)}
+                    limits={getHoverSyncedParameterLimits(
+                      model,
+                      params,
+                      parameter.key,
+                    )}
                     onChange={(value) => onChange(parameter.key, value)}
                     onUnitChange={onUnitChange}
                     preferFineStep={parameter.key.endsWith("Clearance")}
@@ -4154,7 +4240,10 @@ export default function App({
       if (!current) {
         return current;
       }
-      const limits = getParameterLimits(model, current, key);
+      const limits =
+        model.viewer === "hover-dining-table-v1"
+          ? getHoverSyncedParameterLimits(model, current, key)
+          : getParameterLimits(model, current, key);
       let nextValue = Math.min(limits.max, Math.max(limits.min, value));
       if (
         model.viewer === "simple-box-v1" &&
@@ -4181,6 +4270,11 @@ export default function App({
         ),
       };
       if (model.viewer === "hover-dining-table-v1") {
+        const syncPair = getHoverSupportSyncPair(key);
+        if (syncPair && isHoverCrossbarSyncActive(next)) {
+          const partnerKey = syncPair[0] === key ? syncPair[1] : syncPair[0];
+          next[partnerKey] = next[key];
+        }
         if (key === "frameSideWidth") {
           const roundoverLimits = getParameterLimits(
             model,
@@ -4192,13 +4286,32 @@ export default function App({
             roundoverLimits.min,
             roundoverLimits.max,
           );
-        } else if (key === "topSupportThickness") {
-          next.frameTopRailHeight = Math.max(current.frameTopRailHeight, nextValue);
-        } else if (key === "bottomSupportThickness") {
+        } else if (
+          key === "topSupportThickness" ||
+          (syncPair?.[0] === "topSupportThickness" &&
+            isHoverCrossbarSyncActive(next))
+        ) {
+          next.frameTopRailHeight = Math.max(
+            current.frameTopRailHeight,
+            next.topSupportThickness,
+          );
+        }
+        if (
+          key === "bottomSupportThickness" ||
+          (syncPair?.[1] === "bottomSupportThickness" &&
+            isHoverCrossbarSyncActive(next))
+        ) {
           next.frameBottomRailHeight = Math.max(
             current.frameBottomRailHeight,
-            nextValue,
+            next.bottomSupportThickness,
           );
+        }
+        if (
+          key === "syncCrossbarDimensions" ||
+          key === "topSupportStyle" ||
+          key === "bottomSupportStyle"
+        ) {
+          return synchronizeHoverCrossbarDimensions(model, next);
         }
       }
       return next;

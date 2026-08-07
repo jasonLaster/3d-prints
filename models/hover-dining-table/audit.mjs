@@ -57,6 +57,11 @@ close(params.bottomSupportEdgeRadius, 0.125 * inch, "bottom support round-over")
 close(params.halfLapClearance, 0, "nominal half-lap clearance");
 assert.equal(params.topSupportStyle, 0, "upper X remains the default support layout");
 assert.equal(params.bottomSupportStyle, 0, "floor X remains the default support layout");
+assert.equal(
+  params.syncCrossbarDimensions,
+  0,
+  "crossbar synchronization remains an explicit opt-in",
+);
 close(params.templateThickness, 0.125 * inch, "routing-template thickness");
 close(params.templatePlateLength, 9 * inch, "usable routing-template print span");
 close(params.templateDovetailDepth, 0.5 * inch, "routing-template dovetail depth");

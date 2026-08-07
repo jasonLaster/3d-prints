@@ -229,6 +229,13 @@
       "limits": { "min": 0, "max": 2, "step": 1 }
     },
     {
+      "key": "syncCrossbarDimensions",
+      "label": "Keep top and bottom crossbars in sync",
+      "group": "Support layout",
+      "default": 0,
+      "limits": { "min": 0, "max": 1, "step": 1 }
+    },
+    {
       "key": "topSupportWidth",
       "label": "Top support width",
       "group": "Top support members",
@@ -329,7 +336,7 @@
       "The base contains exactly two closed transverse end boxes with independently selectable support layouts: an upper horizontal X or two original lengthwise stretchers, plus a floor X, one centered lengthwise board, or no floor connector.",
       "Each end box has independently editable top and bottom values for both outer and inner corner radii, independent rail-side and stile-side handles for the outer cubic Bézier corners, a normalized inner-corner tension, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
       "Every selected X crosses at the table center with a derived 50/50 half-lap and no overlapping solid volume; straight-support layouts contain no artificial lap.",
-      "Top and bottom support width, thickness, bearing-zone inset, and edge round-over contracts are independently editable while half-lap fit clearance applies only to selected Xs.",
+      "Top and bottom support width, thickness, bearing-zone inset, and edge round-over contracts are independently editable, with an optional shared-dimension mode while both layouts are X crossbars; half-lap fit clearance applies only to selected Xs.",
       "The selected upper supports bear directly against the tabletop underside and every selected lower support bears directly on the floor, with zero gap or spacer.",
       "Exploded mode presents 14–16 assembly pieces according to the selected layouts: one profiled tabletop, three steel C-channels, four finished rail-and-stile bars per end box, two upper support members, and zero, one, or two lower support members.",
       "Cut List mode presents the same selected pieces as six to nine grouped schedule lines with full-size finished dimensions, quantities, material, oak grain direction where applicable, exact constrained profiles, edge-treatment or C-channel section views, and joinery notes.",
@@ -350,7 +357,7 @@
       "Keep every selected top-support envelope coplanar with the tabletop underside and every selected floor-support envelope coplanar with the floor; expose no gap or spacer control.",
       "Keep inner and outer corner curves as cubic Bézier functions whose control lengths equal radius times normalized tension; outer rail-side and stile-side handles remain independently editable while the inner curve retains one shared tension.",
       "Keep top and bottom exterior and interior corner radii independently editable because the observed curves are not concentric offsets.",
-      "Keep top and bottom support sections and edge radii independently editable; each selected support derives radius-aware placement and selected joinery from its own member contract.",
+      "Keep top and bottom support sections and edge radii independently editable unless crossbar synchronization is explicitly enabled while both layouts are Xs; synchronized edits must update width, thickness, bearing-zone inset, and edge radius as matched pairs.",
       "Treat bottom spread as the explicit splay hypothesis; zero means orthogonal frame sides and remains the evidence-backed default.",
       "Keep frame edge round-over below half the depth, side width, top-rail height, and bottom-rail height; keep the end-box side width independently editable down to 1/2 in because support members bear on the horizontal rails rather than setting the stile width.",
       "Keep end boxes, their bottom spread, and all brace endpoints inside the tabletop width while preserving positive diagonal spans.",
