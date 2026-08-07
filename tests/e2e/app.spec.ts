@@ -230,8 +230,9 @@ test.describe("3D print app", () => {
     const trayPreview = page.getByTestId("model-preview-japandi-tray");
     const tablePreview = page.getByTestId("model-preview-dining-table");
     await expect(trayPreview).toHaveAttribute("data-load-state", "ready");
-    await expect(tablePreview).toHaveAttribute("data-load-state", "ready");
     await expect(trayPreview.locator("canvas")).toBeVisible();
+    await tablePreview.scrollIntoViewIfNeeded();
+    await expect(tablePreview).toHaveAttribute("data-load-state", "ready");
     await expect(tablePreview.locator("canvas")).toBeVisible();
 
     const before = await tablePreview.screenshot();
@@ -252,19 +253,45 @@ test.describe("3D print app", () => {
       const openButton = document
         .querySelector<HTMLElement>('[aria-label="Open Japandi Tray"]')!
         .getBoundingClientRect();
+      const navigationTargets = [
+        ...document.querySelectorAll<HTMLElement>(
+          ".workspace-library-nav button",
+        ),
+      ].map((element) => element.getBoundingClientRect().height);
       return {
         documentOverflow:
           document.documentElement.scrollWidth -
           document.documentElement.clientWidth,
+        minimumNavigationTarget: Math.min(...navigationTargets),
         openButtonHeight: openButton.height,
         previewHeight: preview.height,
         previewWidth: preview.width,
       };
     });
     expect(compactLayout.documentOverflow).toBeLessThanOrEqual(0);
+    expect(compactLayout.minimumNavigationTarget).toBeGreaterThanOrEqual(44);
     expect(compactLayout.openButtonHeight).toBeGreaterThanOrEqual(44);
-    expect(compactLayout.previewHeight).toBeGreaterThanOrEqual(44);
-    expect(compactLayout.previewWidth).toBeGreaterThanOrEqual(44);
+    expect(compactLayout.previewHeight).toBeGreaterThanOrEqual(72);
+    expect(compactLayout.previewWidth).toBeGreaterThanOrEqual(72);
+
+    await page.getByRole("button", { name: "Saved Versions" }).click();
+    await expect(
+      page.locator(".workspace-sidebar-section-heading strong"),
+    ).toHaveText("Japandi Tray");
+    const savedVersionLayout = await page.evaluate(() => {
+      const heading = document
+        .querySelector<HTMLElement>(".workspace-sidebar-section-heading")!
+        .getBoundingClientRect();
+      const message = document
+        .querySelector<HTMLElement>(".workspace-version-content .library-note")!
+        .getBoundingClientRect();
+      return {
+        clearance: message.top - heading.bottom,
+        messageHeight: message.height,
+      };
+    });
+    expect(savedVersionLayout.clearance).toBeGreaterThanOrEqual(8);
+    expect(savedVersionLayout.messageHeight).toBeLessThan(100);
   });
 
   test("root model opening clears stale parameter query values", async ({ page }) => {

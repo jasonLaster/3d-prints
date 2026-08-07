@@ -375,9 +375,11 @@ function getStoredSidebarWidth() {
 }
 
 function getStoredLibrarySidebarWidth() {
-  const storedWidth = Number(
-    window.localStorage.getItem(LIBRARY_SIDEBAR_WIDTH_KEY),
-  );
+  const storedValue = window.localStorage.getItem(LIBRARY_SIDEBAR_WIDTH_KEY);
+  if (storedValue === null || storedValue.trim() === "") {
+    return LIBRARY_SIDEBAR_DEFAULT_WIDTH;
+  }
+  const storedWidth = Number(storedValue);
   if (!Number.isFinite(storedWidth)) {
     return LIBRARY_SIDEBAR_DEFAULT_WIDTH;
   }
@@ -3202,6 +3204,9 @@ function WorkspaceLibrarySidebar({
     () => filterLibraryModels(catalogModels, query),
     [catalogModels, query],
   );
+  const selectedModelName =
+    catalogModels.find((modelEntry) => modelEntry.key === selectedModelId)?.name ??
+    "Selected model";
 
   useEffect(() => {
     if (hasDesignChecks) {
@@ -3317,7 +3322,7 @@ function WorkspaceLibrarySidebar({
       </nav>
 
       {activeSection === "models" ? (
-        <div className="workspace-sidebar-section">
+        <div className="workspace-sidebar-section workspace-models-section">
           <div className="workspace-sidebar-section-heading">
             <span>Models</span>
           </div>
@@ -3371,6 +3376,7 @@ function WorkspaceLibrarySidebar({
           activeVersionId={activeVersionId}
           convexEnabled={convexEnabled}
           selectedModelId={selectedModelId}
+          selectedModelName={selectedModelName}
           onOpenVersion={onOpenVersion}
         />
       ) : (
@@ -3408,11 +3414,13 @@ function WorkspaceSavedVersions({
   activeVersionId,
   convexEnabled,
   selectedModelId,
+  selectedModelName,
   onOpenVersion,
 }: {
   activeVersionId: Id<"versions"> | null;
   convexEnabled: boolean;
   selectedModelId: string;
+  selectedModelName: string;
   onOpenVersion: (version: SavedLibraryVersion) => void;
 }) {
   if (!convexEnabled) {
@@ -3420,10 +3428,13 @@ function WorkspaceSavedVersions({
       <div className="workspace-sidebar-section">
         <div className="workspace-sidebar-section-heading">
           <span>Saved versions</span>
+          <strong title={selectedModelName}>{selectedModelName}</strong>
         </div>
-        <LibraryUnavailableMessage>
-          Connect Convex to browse saved versions for this model.
-        </LibraryUnavailableMessage>
+        <div className="workspace-version-content">
+          <LibraryUnavailableMessage>
+            Connect Convex to browse saved versions for this model.
+          </LibraryUnavailableMessage>
+        </div>
       </div>
     );
   }
@@ -3434,16 +3445,20 @@ function WorkspaceSavedVersions({
         <div className="workspace-sidebar-section">
           <div className="workspace-sidebar-section-heading">
             <span>Saved versions</span>
+            <strong title={selectedModelName}>{selectedModelName}</strong>
           </div>
-          <LibraryUnavailableMessage>
-            Saved versions could not load. The model is still editable and exportable.
-          </LibraryUnavailableMessage>
+          <div className="workspace-version-content">
+            <LibraryUnavailableMessage>
+              Saved versions could not load. The model is still editable and exportable.
+            </LibraryUnavailableMessage>
+          </div>
         </div>
       }
     >
       <ConnectedWorkspaceSavedVersions
         activeVersionId={activeVersionId}
         selectedModelId={selectedModelId}
+        selectedModelName={selectedModelName}
         onOpenVersion={onOpenVersion}
       />
     </WorkspaceVersionsErrorBoundary>
@@ -3453,10 +3468,12 @@ function WorkspaceSavedVersions({
 function ConnectedWorkspaceSavedVersions({
   activeVersionId,
   selectedModelId,
+  selectedModelName,
   onOpenVersion,
 }: {
   activeVersionId: Id<"versions"> | null;
   selectedModelId: string;
+  selectedModelName: string;
   onOpenVersion: (version: SavedLibraryVersion) => void;
 }) {
   const connectionState = useConvexConnectionState();
@@ -3477,45 +3494,48 @@ function ConnectedWorkspaceSavedVersions({
     <div className="workspace-sidebar-section">
       <div className="workspace-sidebar-section-heading">
         <span>Saved versions</span>
+        <strong title={selectedModelName}>{selectedModelName}</strong>
       </div>
-      {hasConnectionIssue ? (
-        <LibraryUnavailableMessage>
-          Saved versions are reconnecting. You can keep editing the model.
-        </LibraryUnavailableMessage>
-      ) : null}
-      {library === undefined ? (
-        <p className="library-empty">Loading saved versions...</p>
-      ) : versions.length === 0 ? (
-        <p className="library-empty">No saved versions for this model yet.</p>
-      ) : (
-        <div className="workspace-version-list">
-          {versions.map((version) => {
-            const isActive = activeVersionId === version._id;
-            return (
-              <button
-                aria-current={isActive ? "page" : undefined}
-                aria-label={`Open ${version.title}`}
-                className={`workspace-version-row${isActive ? " active" : ""}`}
-                key={version._id}
-                onClick={() => onOpenVersion(version)}
-                type="button"
-              >
-                <span className="workspace-version-icon" aria-hidden="true">
-                  {version.source === "fork" ? <GitFork /> : <Clock3 />}
-                </span>
-                <span className="workspace-version-copy">
-                  <strong>{version.title}</strong>
-                  <span>
-                    {version.source === "fork" ? "Fork" : "Saved"} ·{" "}
-                    {formatWorkspaceVersionDate(version.updatedAt)}
+      <div className="workspace-version-content">
+        {hasConnectionIssue ? (
+          <LibraryUnavailableMessage>
+            Saved versions are reconnecting. You can keep editing the model.
+          </LibraryUnavailableMessage>
+        ) : null}
+        {library === undefined ? (
+          <p className="library-empty">Loading saved versions...</p>
+        ) : versions.length === 0 ? (
+          <p className="library-empty">No saved versions for this model yet.</p>
+        ) : (
+          <div className="workspace-version-list">
+            {versions.map((version) => {
+              const isActive = activeVersionId === version._id;
+              return (
+                <button
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={`Open ${version.title}`}
+                  className={`workspace-version-row${isActive ? " active" : ""}`}
+                  key={version._id}
+                  onClick={() => onOpenVersion(version)}
+                  type="button"
+                >
+                  <span className="workspace-version-icon" aria-hidden="true">
+                    {version.source === "fork" ? <GitFork /> : <Clock3 />}
                   </span>
-                </span>
-                <ChevronRight aria-hidden="true" />
-              </button>
-            );
-          })}
-        </div>
-      )}
+                  <span className="workspace-version-copy">
+                    <strong>{version.title}</strong>
+                    <span>
+                      {version.source === "fork" ? "Fork" : "Saved"} ·{" "}
+                      {formatWorkspaceVersionDate(version.updatedAt)}
+                    </span>
+                  </span>
+                  <ChevronRight aria-hidden="true" />
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
