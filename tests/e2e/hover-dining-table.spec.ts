@@ -350,6 +350,17 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   expect(definitions.bottomSupportWidth.limits.max).toBeGreaterThan(2 * 25.4);
   expect(definitions.topSupportThickness.limits.max).toBeGreaterThan(1.5 * 25.4);
   expect(definitions.bottomSupportThickness.limits.max).toBeGreaterThan(1.5 * 25.4);
+  expect(definitions.bottomSupportEndpointInset.limits.max).toBeCloseTo(
+    12 * 25.4,
+    6,
+  );
+  expect(
+    getHoverDiningTableParameterLimits(
+      model,
+      defaultParams,
+      "bottomSupportEndpointInset",
+    ).max,
+  ).toBeGreaterThan(8 * 25.4);
   expect(
     getHoverDiningTableParameterLimits(
       model,
@@ -391,6 +402,39 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   expect(expanded.lowerBrace.width).toBeCloseTo(3 * 25.4, 6);
   expect(expanded.upperBrace.thickness).toBeCloseTo(2 * 25.4, 6);
   expect(expanded.lowerBrace.thickness).toBeCloseTo(1.75 * 25.4, 6);
+
+  const insetLowerSupport = getHoverDiningTableSpec({
+    ...defaultParams,
+    bottomSupportEndpointInset: 8 * 25.4,
+  }).fullSize;
+  expect(insetLowerSupport.lowerBrace.endpointInset).toBeCloseTo(8 * 25.4, 6);
+  expect(insetLowerSupport.lowerBrace.endpointOuterY).toBeLessThanOrEqual(
+    insetLowerSupport.lowerBrace.cornerTangentY,
+  );
+});
+
+test("accepts an expanded bottom support bearing-zone inset", async ({
+  page,
+}) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") pageErrors.push(message.text());
+  });
+
+  await page.goto("/?model=hover-dining-table&unit=in");
+  await page.getByRole("button", { name: "Bottom support members" }).click();
+  const insetInput = page.getByLabel(
+    "Bottom support bearing-zone inset in inches",
+  );
+  await insetInput.fill("8");
+
+  await expect(insetInput).toHaveValue("8");
+  await expect(page).toHaveURL(/bottomSupportEndpointInset=8/);
+  await expect(
+    page.getByLabel("X-Hover Dining Table model viewer"),
+  ).toBeVisible();
+  expect(pageErrors).toEqual([]);
 });
 
 test("supports independent half-inch end-box stiles", () => {
