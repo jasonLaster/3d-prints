@@ -247,7 +247,7 @@
       "label": "Top support bearing-zone inset",
       "group": "Top support members",
       "default": 0,
-      "limits": { "min": 0, "max": 101.6, "step": 1.5875 }
+      "limits": { "min": 0, "max": 304.8, "step": 1.5875 }
     },
     {
       "key": "topSupportEdgeRadius",

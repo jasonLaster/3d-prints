@@ -350,6 +350,13 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   expect(definitions.bottomSupportWidth.limits.max).toBeGreaterThan(2 * 25.4);
   expect(definitions.topSupportThickness.limits.max).toBeGreaterThan(1.5 * 25.4);
   expect(definitions.bottomSupportThickness.limits.max).toBeGreaterThan(1.5 * 25.4);
+  expect(definitions.topSupportEndpointInset.limits).toEqual(
+    definitions.bottomSupportEndpointInset.limits,
+  );
+  expect(definitions.topSupportEndpointInset.limits.max).toBeCloseTo(
+    12 * 25.4,
+    6,
+  );
   expect(definitions.bottomSupportEndpointInset.limits.max).toBeCloseTo(
     12 * 25.4,
     6,
@@ -362,7 +369,21 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
     getHoverDiningTableParameterLimits(
       model,
       defaultParams,
+      "topSupportEndpointInset",
+    ).max,
+  ).toBeCloseTo(
+    getHoverDiningTableParameterLimits(
+      model,
+      defaultParams,
       "bottomSupportEndpointInset",
+    ).max,
+    6,
+  );
+  expect(
+    getHoverDiningTableParameterLimits(
+      model,
+      defaultParams,
+      "topSupportEndpointInset",
     ).max,
   ).toBeGreaterThan(8 * 25.4);
   expect(
@@ -415,6 +436,14 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   expect(insetLowerSupport.lowerBrace.endpointOuterY).toBeLessThanOrEqual(
     insetLowerSupport.lowerBrace.cornerTangentY,
   );
+  const insetUpperSupport = getHoverDiningTableSpec({
+    ...defaultParams,
+    topSupportEndpointInset: 8 * 25.4,
+  }).fullSize;
+  expect(insetUpperSupport.upperBrace.endpointInset).toBeCloseTo(8 * 25.4, 6);
+  expect(insetUpperSupport.upperBrace.endpointOuterY).toBeLessThanOrEqual(
+    insetUpperSupport.upperBrace.cornerTangentY,
+  );
 
   const expandedBottomSupportParams = {
     ...defaultParams,
@@ -439,7 +468,7 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   );
 });
 
-test("accepts expanded bottom support controls", async ({
+test("accepts expanded top and bottom support controls", async ({
   page,
 }) => {
   const pageErrors: string[] = [];
@@ -451,6 +480,11 @@ test("accepts expanded bottom support controls", async ({
   await page.goto(
     "/?model=hover-dining-table&unit=in&frameBottomRailHeight=2.5&bottomSupportWidth=3&bottomSupportThickness=2.5",
   );
+  await page.getByRole("button", { name: "Top support members" }).click();
+  const topInsetInput = page.getByLabel(
+    "Top support bearing-zone inset in inches",
+  );
+  await topInsetInput.fill("8");
   await page.getByRole("button", { name: "Bottom support members" }).click();
   const insetInput = page.getByLabel(
     "Bottom support bearing-zone inset in inches",
@@ -461,8 +495,10 @@ test("accepts expanded bottom support controls", async ({
   await insetInput.fill("8");
   await roundOverInput.fill("1");
 
+  await expect(topInsetInput).toHaveValue("8");
   await expect(insetInput).toHaveValue("8");
   await expect(roundOverInput).toHaveValue("1");
+  await expect(page).toHaveURL(/topSupportEndpointInset=8/);
   await expect(page).toHaveURL(/bottomSupportEndpointInset=8/);
   await expect(page).toHaveURL(/bottomSupportEdgeRadius=1/);
   await expect(
