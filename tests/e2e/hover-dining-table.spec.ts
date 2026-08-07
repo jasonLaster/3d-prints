@@ -474,6 +474,11 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   expect(definitions.frameBottomSpread.limits.min).toBeLessThan(-2 * 25.4);
   expect(definitions.topSupportWidth.limits.max).toBeGreaterThan(2 * 25.4);
   expect(definitions.bottomSupportWidth.limits.max).toBeGreaterThan(2 * 25.4);
+  expect(definitions.topSupportThickness.limits.min).toBeCloseTo(1 * 25.4, 6);
+  expect(definitions.bottomSupportThickness.limits.min).toBeCloseTo(
+    1 * 25.4,
+    6,
+  );
   expect(definitions.topSupportThickness.limits.max).toBeGreaterThan(1.5 * 25.4);
   expect(definitions.bottomSupportThickness.limits.max).toBeGreaterThan(1.5 * 25.4);
   expect(definitions.topSupportEndpointInset.limits).toEqual(
@@ -654,6 +659,30 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   );
   expect(inspectGeometry(centerBoardGeometry).finite).toBe(true);
   centerBoardGeometry.dispose();
+});
+
+test("clamps top and bottom support thicknesses at one inch", async ({
+  page,
+}) => {
+  await page.goto("/?model=hover-dining-table&unit=in");
+  await page.getByRole("button", { name: "Top support members" }).click();
+  const topThickness = page.getByLabel("Top support thickness in inches");
+  await topThickness.fill("3/4");
+
+  await expect(topThickness).toHaveValue("1");
+  await expect(page).toHaveURL(/topSupportThickness=1/);
+
+  await page.getByRole("button", { name: "Bottom support members" }).click();
+  const bottomThickness = page.getByLabel(
+    "Bottom support thickness in inches",
+  );
+  await bottomThickness.fill("3/4");
+
+  await expect(bottomThickness).toHaveValue("1");
+  await expect(page).toHaveURL(/bottomSupportThickness=1/);
+  await expect(
+    page.getByLabel("X-Hover Dining Table model viewer"),
+  ).toBeVisible();
 });
 
 test("accepts expanded support controls and a lower top round-over", async ({

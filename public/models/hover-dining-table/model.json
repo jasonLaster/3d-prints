@@ -310,7 +310,7 @@
       "label": "Top support thickness",
       "group": "Top support members",
       "default": 31.75,
-      "limits": { "min": 12.7, "max": 76.2, "step": 3.175 }
+      "limits": { "min": 25.4, "max": 76.2, "step": 3.175 }
     },
     {
       "key": "topSupportEndpointInset",
@@ -338,7 +338,7 @@
       "label": "Bottom support thickness",
       "group": "Bottom support members",
       "default": 31.75,
-      "limits": { "min": 12.7, "max": 76.2, "step": 3.175 }
+      "limits": { "min": 25.4, "max": 76.2, "step": 3.175 }
     },
     {
       "key": "bottomSupportEndpointInset",
