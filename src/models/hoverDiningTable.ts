@@ -113,6 +113,10 @@ export type HoverDiningTableFabricationProfile = {
     outerStileTension: number;
     innerTension: number;
   };
+  tabletop?: {
+    planCornerRadius: number;
+    endFaceRoundover: number;
+  };
 };
 
 export type HoverDiningTableSpec = {
@@ -124,6 +128,8 @@ export type HoverDiningTableSpec = {
   topBottom: number;
   topEdgeRoll: number;
   topEdgeTension: number;
+  topPlanCornerRadius: number;
+  topEndFaceRoundover: number;
   sideOverhang: number;
   endOverhang: number;
   frameDepth: number;
@@ -340,6 +346,8 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
     topBottom,
     topEdgeRoll: getParam(params, "topEdgeRoll"),
     topEdgeTension: getParam(params, "topEdgeTension"),
+    topPlanCornerRadius: getParam(params, "topPlanCornerRadius"),
+    topEndFaceRoundover: getParam(params, "topEndFaceRoundover"),
     sideOverhang,
     endOverhang,
     frameDepth,
@@ -579,6 +587,8 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
   ] as const) {
     assertPositive(value, label);
   }
+  assertNonNegative(spec.topPlanCornerRadius, "Tabletop plan corner radius");
+  assertNonNegative(spec.topEndFaceRoundover, "Tabletop end-face round-over");
   assertNonNegative(spec.halfLapClearance, "Half-lap fit clearance");
 
   if (spec.topThickness >= spec.height) {
@@ -625,6 +635,22 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
   }
   if (spec.topEdgeRoll * 2 >= spec.width) {
     throw new Error("Tabletop edge roll must leave a positive flat top width");
+  }
+  if (
+    spec.topPlanCornerRadius + spec.topEdgeRoll >= spec.width / 2 - EPSILON
+  ) {
+    throw new Error("Tabletop plan corners must leave a positive flat top width");
+  }
+  if (
+    spec.topPlanCornerRadius + spec.topEndFaceRoundover >
+    spec.endOverhang + EPSILON
+  ) {
+    throw new Error(
+      "Tabletop end treatments must finish before the end-box bearing zone",
+    );
+  }
+  if (spec.topEndFaceRoundover * 2 >= spec.topThickness) {
+    throw new Error("Tabletop end-face round-over must leave flat end material");
   }
   if (spec.channels.count !== 3 || spec.channels.centerXs.length !== 3) {
     throw new Error("The tabletop must retain exactly three C-channels");
@@ -802,6 +828,8 @@ export function getHoverDiningTableSpec(params: ModelParams) {
     topThickness: fullSize.topThickness / scale,
     topBottom: fullSize.topBottom / scale,
     topEdgeRoll: fullSize.topEdgeRoll / scale,
+    topPlanCornerRadius: fullSize.topPlanCornerRadius / scale,
+    topEndFaceRoundover: fullSize.topEndFaceRoundover / scale,
     sideOverhang: fullSize.sideOverhang / scale,
     endOverhang: fullSize.endOverhang / scale,
     frameDepth: fullSize.frameDepth / scale,
@@ -1639,11 +1667,21 @@ function createTabletopEdgeDetailProfile(
 function createTabletopFabricationProfile(
   spec: HoverDiningTableSpec,
 ): HoverDiningTableFabricationProfile {
-  const outline = rectangleProfile(spec.length, spec.width);
+  const outline = spec.topPlanCornerRadius > EPSILON
+    ? roundedRectangleProfile(
+        spec.length,
+        spec.width,
+        spec.topPlanCornerRadius,
+      )
+    : rectangleProfile(spec.length, spec.width);
   return {
     family: "tabletop",
     outline,
     bounds: profileBounds(outline),
+    tabletop: {
+      planCornerRadius: spec.topPlanCornerRadius,
+      endFaceRoundover: spec.topEndFaceRoundover,
+    },
     section: {
       width: spec.topEdgeRoll * 1.55,
       thickness: spec.topThickness,
@@ -1811,12 +1849,142 @@ function createTabletopSegmentGeometry(
   return geometry;
 }
 
+function tabletopEndFaceSetback(
+  localZ: number,
+  thickness: number,
+  radius: number,
+) {
+  if (radius <= EPSILON) return 0;
+  const faceDistance = Math.min(localZ, thickness - localZ);
+  if (faceDistance >= radius) return 0;
+  const circleOffset = radius - faceDistance;
+  return radius - Math.sqrt(Math.max(0, radius ** 2 - circleOffset ** 2));
+}
+
+function tabletopPlanCornerSetback(distanceFromEnd: number, radius: number) {
+  if (radius <= EPSILON || distanceFromEnd >= radius) return 0;
+  const circleOffset = radius - Math.max(0, distanceFromEnd);
+  return radius - Math.sqrt(Math.max(0, radius ** 2 - circleOffset ** 2));
+}
+
+/**
+ * Builds one rounded length end as a shared sweep of the exact long-edge
+ * cross-section. The longitudinal endpoint varies by Z for the end-face
+ * round-over, while the Y envelope varies by distance from that endpoint for
+ * the plan corner. At the inner seam both effects reach zero and match the
+ * ordinary mortise-ready tabletop extrusion exactly.
+ */
+function createRoundedTabletopEndGeometry(
+  spec: HoverDiningTableSpec,
+  model: HoverDiningTableModelDefinition,
+  endSign: -1 | 1,
+) {
+  const transitionLength =
+    spec.topPlanCornerRadius + spec.topEndFaceRoundover;
+  const sampled = sampleClosedProfile(
+    createTabletopCrossSectionProfile(spec),
+    model.geometry.curveSegments,
+  );
+  const perimeter = sampled.points.slice();
+  if (
+    perimeter.length > 1 &&
+    perimeter[0].distanceTo(perimeter[perimeter.length - 1]) <= EPSILON
+  ) {
+    perimeter.pop();
+  }
+  const ringCount = Math.max(6, model.geometry.curveSegments);
+  const innerAbsX = spec.length / 2 - transitionLength;
+  const rings: THREE.Vector3[][] = [];
+  for (let ringIndex = 0; ringIndex <= ringCount; ringIndex += 1) {
+    const progress = ringIndex / ringCount;
+    rings.push(
+      perimeter.map((point) => {
+        const endFaceSetback = tabletopEndFaceSetback(
+          point.y,
+          spec.topThickness,
+          spec.topEndFaceRoundover,
+        );
+        const endAbsX = spec.length / 2 - endFaceSetback;
+        const absX = endAbsX + (innerAbsX - endAbsX) * progress;
+        const distanceFromEnd = endAbsX - absX;
+        const planSetback = tabletopPlanCornerSetback(
+          distanceFromEnd,
+          spec.topPlanCornerRadius,
+        );
+        const y = point.x === 0
+          ? 0
+          : Math.sign(point.x) * (Math.abs(point.x) - planSetback);
+        return new THREE.Vector3(
+          endSign * absX,
+          y,
+          spec.topBottom + point.y,
+        );
+      }),
+    );
+  }
+
+  const positions: number[] = [];
+  const addTriangle = (
+    a: THREE.Vector3,
+    b: THREE.Vector3,
+    c: THREE.Vector3,
+  ) => positions.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+  const perimeterCount = perimeter.length;
+  for (let ringIndex = 0; ringIndex < ringCount; ringIndex += 1) {
+    const outer = rings[ringIndex];
+    const inner = rings[ringIndex + 1];
+    for (let index = 0; index < perimeterCount; index += 1) {
+      const next = (index + 1) % perimeterCount;
+      if (endSign > 0) {
+        addTriangle(outer[index], inner[next], outer[next]);
+        addTriangle(outer[index], inner[index], inner[next]);
+      } else {
+        addTriangle(outer[index], outer[next], inner[next]);
+        addTriangle(outer[index], inner[next], inner[index]);
+      }
+    }
+  }
+
+  const addCap = (ring: THREE.Vector3[], outer: boolean) => {
+    const center = new THREE.Vector3(
+      outer ? endSign * spec.length / 2 : endSign * innerAbsX,
+      0,
+      spec.topBottom + spec.topThickness / 2,
+    );
+    for (let index = 0; index < perimeterCount; index += 1) {
+      const next = (index + 1) % perimeterCount;
+      const forward = (outer && endSign > 0) || (!outer && endSign < 0);
+      if (forward) addTriangle(center, ring[index], ring[next]);
+      else addTriangle(center, ring[next], ring[index]);
+    }
+  };
+  addCap(rings[0], true);
+  addCap(rings[rings.length - 1], false);
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3),
+  );
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
 function createTabletopGeometry(
   spec: HoverDiningTableSpec,
   model: HoverDiningTableModelDefinition,
 ) {
   const segments: THREE.BufferGeometry[] = [];
+  const transitionLength =
+    spec.topPlanCornerRadius + spec.topEndFaceRoundover;
   let cursor = -spec.length / 2;
+  const tableEnd = spec.length / 2;
+  if (transitionLength > EPSILON) {
+    segments.push(createRoundedTabletopEndGeometry(spec, model, -1));
+    cursor += transitionLength;
+  }
   for (const centerX of spec.channels.centerXs) {
     const channelStart = centerX - spec.channels.width / 2;
     const channelEnd = centerX + spec.channels.width / 2;
@@ -1830,10 +1998,14 @@ function createTabletopGeometry(
     );
     cursor = channelEnd;
   }
-  if (cursor < spec.length / 2 - EPSILON) {
+  const finalFlatEnd = tableEnd - transitionLength;
+  if (cursor < finalFlatEnd - EPSILON) {
     segments.push(
-      createTabletopSegmentGeometry(spec, model, cursor, spec.length / 2, false),
+      createTabletopSegmentGeometry(spec, model, cursor, finalFlatEnd, false),
     );
+  }
+  if (transitionLength > EPSILON) {
+    segments.push(createRoundedTabletopEndGeometry(spec, model, 1));
   }
   return mergeGeometryList(
     segments,
@@ -2622,11 +2794,16 @@ export function getHoverDiningTableCutList(
       grainDirection: "length",
       fabricationProfile: createTabletopFabricationProfile(spec),
       notes: [
-        "Roll both long edges to the listed Bézier profile; keep both ends flat and square.",
+        "Shape the plan corners and both length-end faces to the listed radii, independently from the Bézier-rolled long edges.",
         "Route all three channel mortises upward from the underside so their installed webs finish exactly flush; the upper supports stay at the original underside plane.",
       ],
       processDimensions: [
         { label: "Long-edge roll", value: spec.topEdgeRoll },
+        { label: "Plan corner radius", value: spec.topPlanCornerRadius },
+        {
+          label: "Length-end face round-over",
+          value: spec.topEndFaceRoundover,
+        },
         {
           label: "Edge-curve tension",
           value: spec.topEdgeTension,
@@ -3146,6 +3323,7 @@ export function getHoverDiningTableParameterLimits(
       spec.channels.sideInset * 2 +
         spec.channels.wallThickness * 2 +
         limits.step,
+      2 * (spec.topPlanCornerRadius + spec.topEdgeRoll + limits.step),
     );
   } else if (key === "overallHeight") {
     limits.min = Math.max(
@@ -3162,6 +3340,7 @@ export function getHoverDiningTableParameterLimits(
     limits.min = Math.max(
       limits.min,
       spec.channels.depth + limits.step,
+      spec.topEndFaceRoundover * 2 + limits.step,
     );
     limits.max = Math.min(limits.max, spec.height / 5);
   } else if (key === "topEdgeRoll") {
@@ -3169,6 +3348,19 @@ export function getHoverDiningTableParameterLimits(
       limits.max,
       spec.width / 3,
       spec.channels.sideInset,
+      spec.width / 2 - spec.topPlanCornerRadius - limits.step,
+    );
+  } else if (key === "topPlanCornerRadius") {
+    limits.max = Math.min(
+      limits.max,
+      spec.width / 2 - spec.topEdgeRoll - limits.step,
+      spec.endOverhang - spec.topEndFaceRoundover,
+    );
+  } else if (key === "topEndFaceRoundover") {
+    limits.max = Math.min(
+      limits.max,
+      spec.topThickness / 2 - limits.step,
+      spec.endOverhang - spec.topPlanCornerRadius,
     );
   } else if (key === "sideOverhang") {
     limits.min = Math.max(
@@ -3188,6 +3380,10 @@ export function getHoverDiningTableParameterLimits(
         2,
     );
   } else if (key === "endOverhang") {
+    limits.min = Math.max(
+      limits.min,
+      spec.topPlanCornerRadius + spec.topEndFaceRoundover,
+    );
     limits.max = Math.min(
       limits.max,
       (spec.length - 2 * spec.frameDepth - MIN_BRACE_SPAN) / 2,
@@ -4199,7 +4395,7 @@ export function getHoverDiningTableAuditValue(
     case "hoverTabletopProfile":
       return item(
         check.label,
-        `${formatLength(spec.topThickness, unit)} top · ${formatLength(spec.topEdgeRoll, unit)} long-edge roll · flat ends`,
+        `${formatLength(spec.topThickness, unit)} top · ${formatLength(spec.topEdgeRoll, unit)} long-edge roll · ${formatLength(spec.topPlanCornerRadius, unit)} plan corners · ${formatLength(spec.topEndFaceRoundover, unit)} length-end round-over`,
       );
     case "hoverChannels":
       {

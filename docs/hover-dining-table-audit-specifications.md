@@ -16,7 +16,7 @@ This document is the authoritative design and executable audit contract for `hov
 ## Default design
 
 - Full-size envelope: 75 × 35.5 × 29.5 in.
-- 1 1/4 in tabletop with a flat rectangular plan and flat, square end faces.
+- 1 1/4 in tabletop with zero-radius plan corners and length-end face edges by default, plus independent controls for rounding both treatments.
 - Continuous 5/8 in deep rolled profiles on only the two long edges, controlled by a normalized cubic Bézier tension.
 - Three blackened-steel widthwise C-channels in rectangular underside mortises: one centered and two symmetrically derived between the end boxes. Each 2 in wide × 3/8 in deep U-section has a 1/8 in wall, stops 2 in from each long edge, and presents its web flush with the original underside plane.
 - Two closed transverse end boxes, inset 7 1/2 in from the tabletop ends and 1 3/4 in from the tabletop sides.
@@ -36,15 +36,17 @@ This document is the authoritative design and executable audit contract for `hov
 
 ## Tabletop contract
 
-The tabletop remains a square-ended extrusion. Its two short end faces stay planar and vertical. Only the two long edges receive the rolled profile. The long-edge cross-section is a normalized cubic Bézier function whose control lengths equal the roll radius or depth multiplied by the editable tension.
+The tabletop retains three independent edge families. The existing long-edge cross-section is a normalized cubic Bézier function whose control lengths equal the roll radius or depth multiplied by the editable tension. `topPlanCornerRadius` rounds all four corners in plan without changing the center width or length. `topEndFaceRoundover` rounds the top and bottom boundaries of both faces located at the length ends. Their zero defaults reproduce the former square-ended top exactly.
 
-The selected upper supports contact the tabletop underside but must not change the tabletop envelope, long-edge curve, or flat end faces. The C-channel mortises are the only permitted underside recesses. Their center positions are derived from table length, end-box inside faces, channel width, and editable box clearance; their length derives from table width and long-edge inset. The three channels remain distinct, symmetric, inside the tabletop, and clear of both rolled edges. The steel profile is a true U-section with a bottom web and two positive flanges, not a dark rectangular proxy. The exposed steel web is exactly coplanar with the surrounding oak underside—never proud—so an upper X or stretcher remains on its original contact plane. Channel width and spacing must leave at least 50% of each upper member's length bearing directly on uninterrupted oak; attachment fasteners belong in those oak runs.
+When either new radius is positive, the finished end is one shared swept surface rather than a decorative overlay. The long-edge Bézier section is preserved around the end; its longitudinal endpoint varies through the tabletop thickness for the end-face round-over, while its lateral envelope varies through the end transition for the plan radius. Both effects return to zero before the end-box bearing plane. The plan radius plus end-face round-over may not exceed the end overhang, and the end-face round-over must leave positive flat material through the tabletop thickness.
+
+The selected upper supports contact the tabletop underside but must not change the tabletop envelope or any of the three editable edge treatments. The C-channel mortises are the only permitted underside recesses. Their center positions are derived from table length, end-box inside faces, channel width, and editable box clearance; their length derives from table width and long-edge inset. The three channels remain distinct, symmetric, inside the tabletop, and clear of both rolled edges and rounded length ends. The steel profile is a true U-section with a bottom web and two positive flanges, not a dark rectangular proxy. The exposed steel web is exactly coplanar with the surrounding oak underside—never proud—so an upper X or stretcher remains on its original contact plane. Channel width and spacing must leave at least 50% of each upper member's length bearing directly on uninterrupted oak; attachment fasteners belong in those oak runs.
 
 The renderer and exploded/cut-list modes show the channels as separate blackened-steel parts. Slotted screw-hole locations and fasteners remain field-engineering details because their layout depends on the selected hardware and must allow seasonal tabletop movement across the grain.
 
 ## End-box contract
 
-The end-box outer width is derived from tabletop width minus two side overhangs. Each interior opening is derived from the outer box, the two side-member widths, and the top- and bottom-rail heights. Inner and outer curves remain separate cubic Bézier families with independently editable top and bottom radii. The inner family uses one normalized tension. The outer family exposes two normalized handle lengths: `outer rail-side sweep` controls the handle tangent to the horizontal rail, while `outer stile-side sweep` controls the handle tangent to the vertical or splayed stile. Equal outer values reproduce the former single-κ curve exactly. Increasing the stile-side value keeps the side tangent visually straight for longer before the corner turns; changing the rail-side value adjusts how broadly the curve runs beneath the tabletop. Each handle length is its corner radius multiplied by its corresponding normalized value. See the [shared outer-corner control-point construction](../src/models/hoverDiningTable.ts#L859-L957).
+The end-box outer width is derived from tabletop width minus two side overhangs. Each interior opening is derived from the outer box, the two side-member widths, and the top- and bottom-rail heights. Inner and outer curves remain separate cubic Bézier families with independently editable top and bottom radii. The inner family uses one normalized tension. The outer family exposes two normalized handle lengths: `outer rail-side sweep` controls the handle tangent to the horizontal rail, while `outer stile-side sweep` controls the handle tangent to the vertical or splayed stile. Equal outer values reproduce the former single-κ curve exactly. Increasing the stile-side value keeps the side tangent visually straight for longer before the corner turns; changing the rail-side value adjusts how broadly the curve runs beneath the tabletop. Each handle length is its corner radius multiplied by its corresponding normalized value. See the [shared outer-corner control-point construction](../src/models/hoverDiningTable.ts#L887-L985).
 
 Bottom spread is the only splay hypothesis. Zero spread produces orthogonal side members. A nonzero value changes the bottom outer and inner widths symmetrically. X endpoints derive independently from the selected top or bottom opening; upper-stretcher centers derive from the outside bearing edge of each top rail; and the centered floor board remains at `Y = 0`.
 
@@ -119,7 +121,7 @@ Exploded offsets are presentation-only. Switching between Assembled and Exploded
 
 Cut List is a third assembly view, alongside Assembled and Exploded. It combines six to nine grouped schedule lines with true-shape SVG views for the selected 14–16 pieces: T1 tabletop (qty 1), H1 C-channel (qty 3), B1 top rails (qty 2), B2 bottom rails (qty 2), B3 mirrored stiles (qty 4), then either U1/U2 or S1 (qty 2) above and either F1/F2, C1 (qty 1), or no floor row below. Every row and drawing uses full-size finished dimensions, regardless of mock scale. Separating each X member remains required because one lap is cut from the top face and its mate from the bottom.
 
-Every row and drawing is associative to the full-size furniture parameters, not the manipulation-model scale. Each part shows material, finished nominal length, width, thickness, quantity, lengthwise oak grain where applicable, its exact constrained main profile, and a separate section. The H1 drawing has no grain arrow and shows the true U-section, wall, mortise depth, long-edge inset, and end-box clearance. The tabletop section shows the actual Bézier edge roll. Rail drawings show all four inner/outer cubic returns. Stile drawings show the tangent-to-tangent splayed profile. X drawings show true length, box-parallel angle, rounded section, and complete lap dimensions. Straight-support drawings show their square-ended plan profile, rounded section, and absence of false joinery.
+Every row and drawing is associative to the full-size furniture parameters, not the manipulation-model scale. Each part shows material, finished nominal length, width, thickness, quantity, lengthwise oak grain where applicable, its exact constrained main profile, and a separate section. The H1 drawing has no grain arrow and shows the true U-section, wall, mortise depth, long-edge inset, and end-box clearance. The tabletop plan drawing shows the actual corner radius; its section shows the Bézier edge roll, while process dimensions list the independent length-end face round-over. Rail drawings show all four inner/outer cubic returns. Stile drawings show the tangent-to-tangent splayed profile. X drawings show true length, box-parallel angle, rounded section, and complete lap dimensions. Straight-support drawings show their square-ended plan profile, rounded section, and absence of false joinery.
 
 The sheet deliberately distinguishes finished nominal dimensions from rough stock. It tells the builder to add their own rough-milling allowance rather than silently increasing dimensions because allowance depends on stock condition and shop process. B1–B3 schedule sizes describe the bounding stock envelopes of the finished routed profiles; their drawings may not collapse those pieces back into square blanks.
 
@@ -149,7 +151,7 @@ The on-screen template preview uses `mockScale` only for display. Export always 
 The manipulation model must expose or derive these control families:
 
 - envelope and scale: mock scale, table length, table width, overall height, and tabletop thickness;
-- tabletop profile and hardware: long-edge roll depth, normalized Bézier tension, plus C-channel width, mortise depth, steel wall, long-edge inset, and clearance from the end boxes;
+- tabletop profile and hardware: plan corner radius, length-end face round-over, long-edge roll depth, normalized Bézier tension, plus C-channel width, mortise depth, steel wall, long-edge inset, and clearance from the end boxes;
 - end-box placement: side overhang, end overhang, and box depth;
 - end-box silhouette: side-member width, top- and bottom-rail heights, bottom spread, independent top/bottom inner and outer radii, independent outer rail-side and stile-side Bézier sweeps, inner Bézier tension, and face-edge round-over;
 - support layout: top X or original stretchers; floor X, centered board, or nothing;
@@ -163,7 +165,7 @@ There is no hover-gap control or support-pad control. Stretcher count and floor-
 
 The inspector includes a live, geometry-only structural screen. It is intentionally not a certification, finite-element analysis, or substitute for testing the assembled table. Joint geometry, glue quality, grain defects, moisture, tabletop fasteners, floor flatness, and cyclic degradation are not known by this CAD model.
 
-The screen reports six independently visible 0–100 scores plus a weighted overall grade. The executable reference dimensions, material moduli, weights, grade thresholds, and score clamping are defined beside the formulas in [`hoverDiningTable.ts`](../src/models/hoverDiningTable.ts#L3421-L3483). Every UI rationale links back to the corresponding section below and to its implementation block.
+The screen reports six independently visible 0–100 scores plus a weighted overall grade. The executable reference dimensions, material moduli, weights, grade thresholds, and score clamping are defined beside the formulas in [`hoverDiningTable.ts`](../src/models/hoverDiningTable.ts#L3617-L3679). Every UI rationale links back to the corresponding section below and to its implementation block.
 
 ### Overall weighting and grades
 
@@ -171,11 +173,11 @@ The overall score is the weighted sum
 
 `0.23 × lengthwiseRacking + 0.20 × endBoxRacking + 0.18 × torsion + 0.14 × tipping + 0.12 × floorRocking + 0.13 × memberStiffness`.
 
-Each metric and the final sum are clamped to 0–100 and rounded to one decimal place. Grades are A at 85 or above, B at 75, C at 65, D at 50, and F below 50. Weighting emphasizes motion that is likely to be perceived as table wobble without allowing any one proxy to represent the complete design. See the [weight and grade constants](../src/models/hoverDiningTable.ts#L3434-L3455) and [weighted-sum implementation](../src/models/hoverDiningTable.ts#L4109-L4128).
+Each metric and the final sum are clamped to 0–100 and rounded to one decimal place. Grades are A at 85 or above, B at 75, C at 65, D at 50, and F below 50. Weighting emphasizes motion that is likely to be perceived as table wobble without allowing any one proxy to represent the complete design. See the [weight and grade constants](../src/models/hoverDiningTable.ts#L3630-L3651) and [weighted-sum implementation](../src/models/hoverDiningTable.ts#L4305-L4324).
 
 ### Shared reference factors
 
-The relative factors use a 29.5 in reference height, 2.25 in end-box side width, 2.5 in end-box depth, 1.5 in average rail height, and 2.5 in² support reference area. These are comparison baselines rather than code-minimum dimensions. White oak is held at 12.27 GPa modulus of elasticity and steel at 200 GPa. See the [reference and material constants](../src/models/hoverDiningTable.ts#L3421-L3432).
+The relative factors use a 29.5 in reference height, 2.25 in end-box side width, 2.5 in end-box depth, 1.5 in average rail height, and 2.5 in² support reference area. These are comparison baselines rather than code-minimum dimensions. White oak is held at 12.27 GPa modulus of elasticity and steel at 200 GPa. See the [reference and material constants](../src/models/hoverDiningTable.ts#L3617-L3628).
 
 ### C-channel transformed-section model
 
@@ -191,47 +193,47 @@ The outer-channel center spread produces a separate 0–1 distribution factor. T
 
 `channelTorsionFactor = 1 + (topPlaneStiffnessFactor − 1) × (0.5 + 0.5 × distributionFactor)`.
 
-The effective tabletop thickness is `topThickness × ∛topPlaneStiffnessFactor`, preserving the cubic relationship between thickness and second moment of area. This is a relative screen that assumes meaningful oak/steel load transfer around a shared neutral axis. It does not calculate slotted-fastener slip, contact gaps, screw withdrawal, allowable stress, local mortise splitting, or long-direction tabletop sag. See [`getCChannelTopStiffness`](../src/models/hoverDiningTable.ts#L3485-L3570).
+The effective tabletop thickness is `topThickness × ∛topPlaneStiffnessFactor`, preserving the cubic relationship between thickness and second moment of area. This is a relative screen that assumes meaningful oak/steel load transfer around a shared neutral axis. It does not calculate slotted-fastener slip, contact gaps, screw withdrawal, allowable stress, local mortise splitting, or long-direction tabletop sag. See [`getCChannelTopStiffness`](../src/models/hoverDiningTable.ts#L3681-L3767).
 
 ### Lengthwise racking
 
 `30 + 35 × topTopology × topAreaFactor × heightFactor^1.4 + 25 × bottomTopology × bottomAreaFactor × heightFactor^1.4`
 
-Here `heightFactor = 29.5 in / overallHeight`; each area factor is the square root of support cross-sectional area divided by the 2.5 in² reference. Top topology is 1.00 for an X and 0.72 for parallel stretchers. Bottom topology is 1.00 for an X, 0.55 for a center board, and 0.12 for no connector. The base 30 represents the two end boxes before longitudinal members contribute. This rewards triangulation, larger support sections, and lower height but does not calculate connection rotation. See the [lengthwise-racking implementation](../src/models/hoverDiningTable.ts#L3576-L3595).
+Here `heightFactor = 29.5 in / overallHeight`; each area factor is the square root of support cross-sectional area divided by the 2.5 in² reference. Top topology is 1.00 for an X and 0.72 for parallel stretchers. Bottom topology is 1.00 for an X, 0.55 for a center board, and 0.12 for no connector. The base 30 represents the two end boxes before longitudinal members contribute. This rewards triangulation, larger support sections, and lower height but does not calculate connection rotation. See the [lengthwise-racking implementation](../src/models/hoverDiningTable.ts#L3772-L3791).
 
 ### End-box racking
 
 `78 × (sideWidth / 2.25 in)^1.2 × (boxDepth / 2.5 in)^0.8 × (averageRailHeight / 1.5 in)^0.4 × heightFactor^2`
 
-Each end box is treated as a relative portal-frame proxy. Wider stiles, deeper members, and taller rails improve the score; height is penalized quadratically because it increases the lateral lever arm. The proxy does not assign rotational stiffness to the rail/stile joints. See the [end-box-racking implementation](../src/models/hoverDiningTable.ts#L3597-L3604).
+Each end box is treated as a relative portal-frame proxy. Wider stiles, deeper members, and taller rails improve the score; height is penalized quadratically because it increases the lateral lever arm. The proxy does not assign rotational stiffness to the rail/stile joints. See the [end-box-racking implementation](../src/models/hoverDiningTable.ts#L3793-L3800).
 
 ### Torsional rigidity
 
 `15 + 75 × √(topTopology × bottomTopology) × planeSeparation^0.6 × √widthEngagement × √channelTorsionFactor`
 
-Top topology is 1.00 for an X and 0.65 for parallel stretchers. Bottom topology is 1.00 for an X, 0.55 for a center board, and 0.15 with no lower connector. `planeSeparation` is the normalized vertical distance between the active upper and lower support centroids; the no-lower-support case receives a fixed 0.35 proxy. `widthEngagement` compares the end-box bottom width with 90% of tabletop width and is bounded from 0.5 to 1.1. The C-channel multiplier comes from the shared helper above and remains bounded by strip coverage and distribution. The channels improve the top plane but never count as end-box, leg, or joint bracing. See the [torsional-rigidity implementation](../src/models/hoverDiningTable.ts#L3606-L3636) and [C-channel helper](../src/models/hoverDiningTable.ts#L3485-L3570).
+Top topology is 1.00 for an X and 0.65 for parallel stretchers. Bottom topology is 1.00 for an X, 0.55 for a center board, and 0.15 with no lower connector. `planeSeparation` is the normalized vertical distance between the active upper and lower support centroids; the no-lower-support case receives a fixed 0.35 proxy. `widthEngagement` compares the end-box bottom width with 90% of tabletop width and is bounded from 0.5 to 1.1. The C-channel multiplier comes from the shared helper above and remains bounded by strip coverage and distribution. The channels improve the top plane but never count as end-box, leg, or joint bracing. See the [torsional-rigidity implementation](../src/models/hoverDiningTable.ts#L3802-L3832) and [C-channel helper](../src/models/hoverDiningTable.ts#L3681-L3767).
 
 ### Tipping margin
 
 `20 + 80 × min(1, controllingTippingRatio / 0.65)`
 
-`controllingTippingRatio` is the smaller of `bottomWidth / (2 × height)` and `(tableLength − 2 × endOverhang) / (2 × height)`. This compares support-polygon geometry with height; it does not model a particular load case, occupant behavior, floor friction, or the assembled center of mass. See the [tipping implementation](../src/models/hoverDiningTable.ts#L3638-L3645).
+`controllingTippingRatio` is the smaller of `bottomWidth / (2 × height)` and `(tableLength − 2 × endOverhang) / (2 × height)`. This compares support-polygon geometry with height; it does not model a particular load case, occupant behavior, floor friction, or the assembled center of mass. See the [tipping implementation](../src/models/hoverDiningTable.ts#L3834-L3841).
 
 ### Floor rocking tolerance
 
 `contactBase + 10 × min(1, (bottomWidth − 2 × outerBottomRadius) / bottomWidth)`
 
-The topology base is 52 for a floor X, 62 for a center board, and 84 for two end boxes with no lower floor connector. The remaining term rewards a long flat bearing run. This deliberately represents sensitivity to an uneven floor: an X can improve racking while introducing more coplanar contacts that require shimming or leveling. It is not a floor-flatness measurement. See the [floor-rocking implementation](../src/models/hoverDiningTable.ts#L3647-L3658).
+The topology base is 52 for a floor X, 62 for a center board, and 84 for two end boxes with no lower floor connector. The remaining term rewards a long flat bearing run. This deliberately represents sensitivity to an uneven floor: an X can improve racking while introducing more coplanar contacts that require shimming or leveling. It is not a floor-flatness measurement. See the [floor-rocking implementation](../src/models/hoverDiningTable.ts#L3843-L3854).
 
 ### Member stiffness
 
 `100 − max(0, stileSlenderness − 8) × 2 − max(0, supportSlenderness − 25) × 0.9 − max(0, tabletopSlenderness − 24) × 0.8`
 
-Stile slenderness is opening height divided by the square root of the stile face area. Active-support slenderness is member length divided by the square root of member cross-sectional area, using the most slender selected upper or lower support. Tabletop slenderness is tabletop width divided by the C-channel-reinforced effective thickness from the transformed-section helper. The result is a relative geometric screen at fixed material moduli; it does not calculate load deflection, buckling, allowable stress, fastener transfer, or joint capacity. See the [member-stiffness implementation](../src/models/hoverDiningTable.ts#L3660-L3686) and [C-channel helper](../src/models/hoverDiningTable.ts#L3485-L3570).
+Stile slenderness is opening height divided by the square root of the stile face area. Active-support slenderness is member length divided by the square root of member cross-sectional area, using the most slender selected upper or lower support. Tabletop slenderness is tabletop width divided by the C-channel-reinforced effective thickness from the transformed-section helper. The result is a relative geometric screen at fixed material moduli; it does not calculate load deflection, buckling, allowable stress, fastener transfer, or joint capacity. See the [member-stiffness implementation](../src/models/hoverDiningTable.ts#L3856-L3882) and [C-channel helper](../src/models/hoverDiningTable.ts#L3681-L3767).
 
 ### Sensitivity and executable checks
 
-The UI shows a one-parameter overall-height sensitivity at ±1 in with every other input fixed; see the [height-sensitivity implementation](../src/models/hoverDiningTable.ts#L4135-L4152). Increasing height must not improve the overall, end-box-racking, tipping, or member-stiffness scores. Enlarging the end-box side width or depth must not reduce end-box racking. Removing triangulated support must reduce racking or torsional scores even if it improves uneven-floor tolerance. Increasing C-channel section and coverage must improve torsional and tabletop/member stiffness scores, while moving the outer channels toward the center must reduce only their torsional distribution contribution. These behaviors and the transparent calculation inputs are covered by the [structural assessment tests](../tests/e2e/hover-dining-table.spec.ts#L637-L811).
+The UI shows a one-parameter overall-height sensitivity at ±1 in with every other input fixed; see the [height-sensitivity implementation](../src/models/hoverDiningTable.ts#L4331-L4348). Increasing height must not improve the overall, end-box-racking, tipping, or member-stiffness scores. Enlarging the end-box side width or depth must not reduce end-box racking. Removing triangulated support must reduce racking or torsional scores even if it improves uneven-floor tolerance. Increasing C-channel section and coverage must improve torsional and tabletop/member stiffness scores, while moving the outer channels toward the center must reduce only their torsional distribution contribution. These behaviors and the transparent calculation inputs are covered by the [structural assessment tests](../tests/e2e/hover-dining-table.spec.ts#L731-L905).
 
 The research boundary follows [ISO 19682:2023](https://www.iso.org/standard/73590.html), which separates table stability, strength, and durability test methods; [ANSI/BIFMA X5.5-2021](https://www.bifma.org/news/551679/BIFMA-Revises-Desk-and-Table-Products-Standard.htm), which emphasizes table stability and leg strength; and the USDA Forest Products Laboratory's published white-oak reference values of approximately 12.27 GPa modulus of elasticity and 104.8 MPa modulus of rupture in clear bending specimens. These sources motivate the categories and oak reference only; this app does not claim conformance with either furniture standard.
 
@@ -244,6 +246,7 @@ Runtime construction checks must reject parameter combinations that would:
 - eliminate either end-box opening or required support span;
 - push an end-box silhouette or brace endpoint outside the tabletop plan;
 - make inner or outer end-box corner radii self-intersect;
+- let the tabletop plan radius and length-end round-over reach the end-box bearing zone, consume the tabletop thickness, or collapse either end transition;
 - make an end-box face round-over consume a side member or rail;
 - merge two C-channel mortises, move the outer pair asymmetrically, run a channel into an end box or rolled edge, consume the tabletop thickness, or collapse its U-section web or flanges;
 - move either diagonal centerline away from the table origin;
@@ -278,7 +281,7 @@ The static model audit and browser tests must eventually prove:
 - derived brace endpoint attachment after representative length, width, overhang, box-width, and endpoint-inset edits;
 - independent inward endpoint migration after increasing either editable top or bottom inner corner radius, with only the corresponding X moving and the complete angled end remaining tangent-clear;
 - bottom-edge brace round-overs with flat end cuts and square half-lap shoulders;
-- preserved square tabletop ends and independently editable Bézier curve families, including independent rail-side and stile-side outer-corner handles;
+- preserved full tabletop envelope with independently editable plan corners, length-end face round-overs, and Bézier long-edge curves;
 - exactly three finite, nondegenerate widthwise C-channels in matching tabletop mortises, with a centered/symmetric layout, true U-sections, long-edge clearance, and flush underside webs;
 - finite, nondegenerate exported triangles and the exact scaled outer envelope; and
 - 14–16 exploded pieces according to layout, including three steel C-channels, true straight-support geometry where selected, and exactly 16 for default X/X;
@@ -292,6 +295,6 @@ The static model audit and browser tests must eventually prove:
 
 ## Source-of-truth boundary
 
-The supplied product images remain authoritative for the tabletop, end boxes, and original upper stretchers. The three recessed widthwise C-channels, horizontal X assemblies, optional centered floor board, no-floor-support option, direct-contact elevations, and conditional half-laps are user-approved variations and supersede the photographs wherever selected.
+The supplied product images remain authoritative for the tabletop, end boxes, and original upper stretchers. The editable tabletop plan corners and length-end face round-overs, three recessed widthwise C-channels, horizontal X assemblies, optional centered floor board, no-floor-support option, direct-contact elevations, and conditional half-laps are user-approved variations and supersede the photographs wherever selected.
 
 The images do not establish concealed brace-to-box fastening, C-channel screw slots or fasteners, floor-flatness accommodation, or fabrication clearances. Those details must remain explicit engineering decisions rather than inferred product facts. Oak grain, finish, and blackened-steel appearance are renderer materials only and never change exported geometry.

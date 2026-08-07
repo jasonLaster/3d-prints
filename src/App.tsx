@@ -206,6 +206,8 @@ const PARAM_QUERY_KEYS = [
   "channelDepth",
   "topEdgeRoll",
   "topEdgeTension",
+  "topPlanCornerRadius",
+  "topEndFaceRoundover",
   "sideOverhang",
   "endOverhang",
   "frameDepth",
@@ -3031,37 +3033,37 @@ const HOVER_STRUCTURAL_REFERENCES: Record<
   overall: {
     label: "Overall structural score",
     specAnchor: "overall-weighting-and-grades",
-    sourceLines: "L4109-L4128",
+    sourceLines: "L4305-L4324",
   },
   "longitudinal-racking": {
     label: "Lengthwise racking",
     specAnchor: "lengthwise-racking",
-    sourceLines: "L3576-L3595",
+    sourceLines: "L3772-L3791",
   },
   "end-box-racking": {
     label: "End-box racking",
     specAnchor: "end-box-racking",
-    sourceLines: "L3597-L3604",
+    sourceLines: "L3793-L3800",
   },
   torsion: {
     label: "Torsional rigidity",
     specAnchor: "torsional-rigidity",
-    sourceLines: "L3606-L3636",
+    sourceLines: "L3802-L3832",
   },
   tipping: {
     label: "Tipping margin",
     specAnchor: "tipping-margin",
-    sourceLines: "L3638-L3645",
+    sourceLines: "L3834-L3841",
   },
   "floor-rocking": {
     label: "Floor rocking tolerance",
     specAnchor: "floor-rocking-tolerance",
-    sourceLines: "L3647-L3658",
+    sourceLines: "L3843-L3854",
   },
   "member-stiffness": {
     label: "Member stiffness",
     specAnchor: "member-stiffness",
-    sourceLines: "L3660-L3686",
+    sourceLines: "L3856-L3882",
   },
 };
 

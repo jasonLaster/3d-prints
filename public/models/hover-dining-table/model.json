@@ -2,7 +2,7 @@
   "id": "hover-dining-table",
   "name": "X-Hover Dining Table",
   "subtitle": "Parametric Hover-table variation",
-  "description": "A 1:10 manipulation model of the 75-inch oak Hover table: a square-ended Bézier-rolled top, two sculpted closed end boxes, and independently selectable top and floor support layouts.",
+  "description": "A 1:10 manipulation model of the 75-inch oak Hover table: an independently corner-rounded and edge-rolled top, two sculpted closed end boxes, and independently selectable top and floor support layouts.",
   "viewer": "hover-dining-table-v1",
   "stl": {
     "fileName": "hover-dining-table.stl",
@@ -73,6 +73,20 @@
       "group": "Tabletop",
       "default": 0.552,
       "limits": { "min": 0.35, "max": 0.8, "step": 0.01 }
+    },
+    {
+      "key": "topPlanCornerRadius",
+      "label": "Tabletop plan corner radius",
+      "group": "Tabletop",
+      "default": 0,
+      "limits": { "min": 0, "max": 152.4, "step": 3.175 }
+    },
+    {
+      "key": "topEndFaceRoundover",
+      "label": "Tabletop length-end face round-over",
+      "group": "Tabletop",
+      "default": 0,
+      "limits": { "min": 0, "max": 25.4, "step": 1.5875 }
     },
     {
       "key": "sideOverhang",
@@ -331,7 +345,7 @@
     "toleranceMm": 0.5,
     "dimensionTargets": [
       "The image and supplied elevation establish a 75 in long by 35.5 in wide by 29.5 in high table envelope.",
-      "The tabletop has a flat rectangular plan, flat square end faces, and continuous Bézier-rolled long edges rather than rounded plan-view corners.",
+      "The tabletop has independently editable plan-view corner radii, length-end face round-overs, and continuous Bézier-rolled long edges.",
       "Exactly three blackened-steel C-channels run widthwise in flush underside mortises: one centered and two symmetrically derived between the end boxes, all clear of the rolled long edges.",
       "The base contains exactly two closed transverse end boxes with independently selectable support layouts: an upper horizontal X or two original lengthwise stretchers, plus a floor X, one centered lengthwise board, or no floor connector.",
       "Each end box has independently editable top and bottom values for both outer and inner corner radii, independent rail-side and stile-side handles for the outer cubic Bézier corners, a normalized inner-corner tension, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
@@ -344,7 +358,7 @@
     ],
     "invariants": [
       "Keep all full-size furniture dimensions independent from the mock-scale denominator.",
-      "Keep the tabletop end faces planar and square while changing only the two continuous long-edge profiles.",
+      "Keep tabletop plan corners, length-end face edges, and the two continuous long-edge profiles independently editable from one shared watertight geometry contract.",
       "Keep exactly three widthwise C-channels flush with the tabletop underside; derive the center channel at table center and the outer pair symmetrically from the end-box inside faces, channel width, and editable clearance.",
       "Keep every C-channel inside the tabletop, clear of both rolled long edges and both end boxes, with a positive U-section web and two positive flanges that fit within the tabletop thickness.",
       "Keep the exposed C-channel webs and every selected upper-support top face on the same tabletop-underside plane, with no proud hardware and at least half of each support length retaining direct oak bearing for attachment.",
@@ -375,7 +389,7 @@
     ],
     "checks": [
       { "key": "hoverTableEnvelope", "label": "Full-size envelope" },
-      { "key": "hoverTabletopProfile", "label": "Square-ended tabletop" },
+      { "key": "hoverTabletopProfile", "label": "Profiled tabletop edges" },
       { "key": "hoverChannels", "label": "Three flush C-channels" },
       { "key": "hoverEndBoxes", "label": "Two closed end boxes" },
       { "key": "hoverBoxOpening", "label": "Derived box opening" },

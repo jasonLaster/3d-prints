@@ -32,6 +32,8 @@ close(params.tableWidth, 35.5 * inch, "table width");
 close(params.overallHeight, 29.5 * inch, "overall height");
 close(params.topThickness, 1.25 * inch, "tabletop thickness");
 close(params.topEdgeRoll, 0.625 * inch, "long-edge roll depth");
+close(params.topPlanCornerRadius, 0, "default plan corner radius");
+close(params.topEndFaceRoundover, 0, "default length-end face round-over");
 close(params.sideOverhang, 1.75 * inch, "side overhang");
 close(params.endOverhang, 7.5 * inch, "end overhang");
 close(params.channelEndClearance, 4 * inch, "channel clearance from end boxes");
@@ -244,6 +246,9 @@ for (const required of [
   "createHoverDiningTableHardwareGeometries",
   "createCChannelGeometry",
   "createMortisedTabletopCrossSectionProfile",
+  "createRoundedTabletopEndGeometry",
+  "tabletopPlanCornerSetback",
+  "tabletopEndFaceSetback",
   "createEndBoxPartProfiles",
   "createSelectivelyRoundedExtrusion",
   "assertFabricationProfile",

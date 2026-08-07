@@ -17,7 +17,9 @@ function formatProcessing(part: HoverDiningTableCutPart) {
   if (part.kind === "brace" && part.lap) {
     return `${formatAngle(part.cutAngleDegrees)} box-parallel ends · ${part.lap.face} half-lap`;
   }
-  if (part.kind === "tabletop") return "square ends · Bézier-roll long edges";
+  if (part.kind === "tabletop") {
+    return "rounded plan corners · rounded end faces · Bézier-roll long edges";
+  }
   if (part.kind === "channel") {
     return "flush underside mortise · U-channel web + flanges";
   }

@@ -339,6 +339,68 @@ test("derives two centered half-lapped Xs with direct tabletop and floor contact
   geometry.dispose();
 });
 
+test("rounds tabletop plan corners and length-end faces independently", () => {
+  const params = {
+    ...defaultParams,
+    topPlanCornerRadius: 2 * 25.4,
+    topEndFaceRoundover: 0.25 * 25.4,
+  };
+  const { scaled: spec } = getHoverDiningTableSpec(params);
+  const geometry = createHoverDiningTableGeometry(params, model);
+  const inspected = inspectGeometry(geometry);
+  expect(inspected.finite).toBe(true);
+  expect(inspected.degenerateTriangles).toBe(0);
+  expect(inspected.size.x).toBeCloseTo(spec.length, 4);
+  expect(inspected.size.y).toBeCloseTo(spec.width, 4);
+  expect(inspected.size.z).toBeCloseTo(spec.height, 4);
+
+  let maximumTopEndX = -Infinity;
+  let maximumMidFaceY = -Infinity;
+  const midZ = spec.topBottom + spec.topThickness / 2;
+  for (let index = 0; index < inspected.position.count; index += 1) {
+    const x = inspected.position.getX(index);
+    const y = inspected.position.getY(index);
+    const z = inspected.position.getZ(index);
+    if (Math.abs(z - spec.height) <= 1e-4) {
+      maximumTopEndX = Math.max(maximumTopEndX, x);
+    }
+    if (
+      Math.abs(x - spec.length / 2) <= 1e-4 &&
+      Math.abs(z - midZ) <= 1e-4
+    ) {
+      maximumMidFaceY = Math.max(maximumMidFaceY, y);
+    }
+  }
+  expect(maximumTopEndX).toBeCloseTo(
+    spec.length / 2 - spec.topEndFaceRoundover,
+    4,
+  );
+  expect(maximumMidFaceY).toBeCloseTo(
+    spec.width / 2 - spec.topPlanCornerRadius,
+    4,
+  );
+
+  const tabletop = getHoverDiningTableCutList(params).parts.find(
+    (part) => part.id === "T1",
+  )!;
+  expect(tabletop.fabricationProfile.tabletop).toEqual({
+    planCornerRadius: 2 * 25.4,
+    endFaceRoundover: 0.25 * 25.4,
+  });
+  expect(
+    tabletop.fabricationProfile.outline.filter(
+      (command) => command.kind === "cubic",
+    ),
+  ).toHaveLength(4);
+  expect(
+    getHoverDiningTableParameterLimits(model, params, "endOverhang").min,
+  ).toBeGreaterThanOrEqual(2.25 * 25.4);
+  expect(
+    getHoverDiningTableParameterLimits(model, params, "topThickness").min,
+  ).toBeGreaterThan(0.5 * 25.4);
+  geometry.dispose();
+});
+
 test("keeps widened parameter ranges inside the shared geometric contract", () => {
   const definitions = Object.fromEntries(
     model.parameters.map((parameter) => [parameter.key, parameter]),
@@ -501,6 +563,38 @@ test("accepts expanded top and bottom support controls", async ({
   await expect(page).toHaveURL(/topSupportEndpointInset=8/);
   await expect(page).toHaveURL(/bottomSupportEndpointInset=8/);
   await expect(page).toHaveURL(/bottomSupportEdgeRadius=1/);
+  await expect(
+    page.getByLabel("X-Hover Dining Table model viewer"),
+  ).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});
+
+test("edits and reloads both tabletop end treatments", async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") pageErrors.push(message.text());
+  });
+  await page.goto("/?model=hover-dining-table&unit=in");
+  await page.getByRole("button", { name: "Tabletop" }).click();
+  const planRadius = page.getByLabel(
+    "Tabletop plan corner radius in inches",
+  );
+  const endRoundover = page.getByLabel(
+    "Tabletop length-end face round-over in inches",
+  );
+  await expect(planRadius).toHaveValue("0");
+  await expect(endRoundover).toHaveValue("0");
+  await planRadius.fill("2");
+  await endRoundover.fill("1/4");
+  await expect(page).toHaveURL(/topPlanCornerRadius=2/);
+  await expect(page).toHaveURL(/topEndFaceRoundover=0\.248/);
+  await expect(page.getByText(/2 in plan corners/)).toBeVisible();
+  await expect(page.getByText(/1\/4 in length-end round-over/)).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Tabletop" }).click();
+  await expect(planRadius).toHaveValue("2");
+  await expect(endRoundover).toHaveValue("1/4");
   await expect(
     page.getByLabel("X-Hover Dining Table model viewer"),
   ).toBeVisible();
@@ -816,13 +910,13 @@ test("documents each structural formula with its implementation", () => {
     "utf8",
   );
   for (const [heading, sourceLines] of [
-    ["Overall weighting and grades", "L4109-L4128"],
-    ["Lengthwise racking", "L3576-L3595"],
-    ["End-box racking", "L3597-L3604"],
-    ["Torsional rigidity", "L3606-L3636"],
-    ["Tipping margin", "L3638-L3645"],
-    ["Floor rocking tolerance", "L3647-L3658"],
-    ["Member stiffness", "L3660-L3686"],
+    ["Overall weighting and grades", "L4305-L4324"],
+    ["Lengthwise racking", "L3772-L3791"],
+    ["End-box racking", "L3793-L3800"],
+    ["Torsional rigidity", "L3802-L3832"],
+    ["Tipping margin", "L3834-L3841"],
+    ["Floor rocking tolerance", "L3843-L3854"],
+    ["Member stiffness", "L3856-L3882"],
   ] as const) {
     expect(structuralSpec).toContain(`### ${heading}`);
     expect(structuralSpec).toContain(
@@ -831,7 +925,7 @@ test("documents each structural formula with its implementation", () => {
   }
   expect(structuralSpec).toContain("### C-channel transformed-section model");
   expect(structuralSpec).toContain(
-    "../src/models/hoverDiningTable.ts#L3485-L3570",
+    "../src/models/hoverDiningTable.ts#L3681-L3767",
   );
 });
 
@@ -1886,7 +1980,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     overallCalculation.getByRole("link", {
       name: "Overall structural score formula source code",
     }),
-  ).toHaveAttribute("href", /hoverDiningTable\.ts#L4109-L4128$/);
+  ).toHaveAttribute("href", /hoverDiningTable\.ts#L4305-L4324$/);
   await overallCalculationButton.click();
   await expect(overallCalculation).toBeHidden();
   const calculationButtons = structuralAssessment.locator(
@@ -1918,7 +2012,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     rackingCalculation.getByRole("link", {
       name: "Lengthwise racking formula source code",
     }),
-  ).toHaveAttribute("href", /hoverDiningTable\.ts#L3576-L3595$/);
+  ).toHaveAttribute("href", /hoverDiningTable\.ts#L3772-L3791$/);
   const rackingHeightInput = rackingCalculation
     .locator(".structural-calculation-inputs > div")
     .filter({ hasText: "overallHeight" });
