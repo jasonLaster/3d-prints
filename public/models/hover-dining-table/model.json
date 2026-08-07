@@ -187,8 +187,15 @@
       "limits": { "min": 12.7, "max": 203.2, "step": 3.175 }
     },
     {
-      "key": "frameOuterCurveTension",
-      "label": "Outer corner curve tension",
+      "key": "frameOuterRailCurveTension",
+      "label": "Outer corner rail-side sweep",
+      "group": "End boxes",
+      "default": 0.552,
+      "limits": { "min": 0.35, "max": 0.8, "step": 0.01 }
+    },
+    {
+      "key": "frameOuterStileCurveTension",
+      "label": "Outer corner stile-side sweep",
       "group": "End boxes",
       "default": 0.552,
       "limits": { "min": 0.35, "max": 0.8, "step": 0.01 }
@@ -320,7 +327,7 @@
       "The tabletop has a flat rectangular plan, flat square end faces, and continuous Bézier-rolled long edges rather than rounded plan-view corners.",
       "Exactly three blackened-steel C-channels run widthwise in flush underside mortises: one centered and two symmetrically derived between the end boxes, all clear of the rolled long edges.",
       "The base contains exactly two closed transverse end boxes with independently selectable support layouts: an upper horizontal X or two original lengthwise stretchers, plus a floor X, one centered lengthwise board, or no floor connector.",
-      "Each end box has independently editable top and bottom values for both outer and inner corner radii, separately editable normalized Bézier tensions, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
+      "Each end box has independently editable top and bottom values for both outer and inner corner radii, independent rail-side and stile-side handles for the outer cubic Bézier corners, a normalized inner-corner tension, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
       "Every selected X crosses at the table center with a derived 50/50 half-lap and no overlapping solid volume; straight-support layouts contain no artificial lap.",
       "Top and bottom support width, thickness, bearing-zone inset, and edge round-over contracts are independently editable while half-lap fit clearance applies only to selected Xs.",
       "The selected upper supports bear directly against the tabletop underside and every selected lower support bears directly on the floor, with zero gap or spacer.",
@@ -341,7 +348,7 @@
       "Keep each selected X brace at full nominal width through the crossing, form complementary centered pockets at exactly half the nominal thickness, align every pocket boundary as a planar machining cut, and remove solid overlap between the two braces.",
       "Round over only the bottom long edge of every selected support while keeping the top edge, end miters, and half-lap shoulders square.",
       "Keep every selected top-support envelope coplanar with the tabletop underside and every selected floor-support envelope coplanar with the floor; expose no gap or spacer control.",
-      "Keep inner and outer corner curves as cubic Bézier functions whose control lengths equal radius times normalized tension.",
+      "Keep inner and outer corner curves as cubic Bézier functions whose control lengths equal radius times normalized tension; outer rail-side and stile-side handles remain independently editable while the inner curve retains one shared tension.",
       "Keep top and bottom exterior and interior corner radii independently editable because the observed curves are not concentric offsets.",
       "Keep top and bottom support sections and edge radii independently editable; each selected support derives radius-aware placement and selected joinery from its own member contract.",
       "Treat bottom spread as the explicit splay hypothesis; zero means orthogonal frame sides and remains the evidence-backed default.",

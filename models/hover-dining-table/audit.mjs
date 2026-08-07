@@ -73,13 +73,25 @@ assert.equal("supportPadLength" in params, false, "support pads are superseded")
 
 for (const key of [
   "topEdgeTension",
-  "frameOuterCurveTension",
+  "frameOuterRailCurveTension",
+  "frameOuterStileCurveTension",
   "frameInnerCurveTension",
 ]) {
   assert.ok(params[key] >= 0.35 && params[key] <= 0.8, `${key} must be normalized`);
 }
 close(params.topEdgeTension, 0.552, "tabletop near-circular Bézier tension", 0.001);
-close(params.frameOuterCurveTension, 0.552, "outer near-circular Bézier tension", 0.001);
+close(
+  params.frameOuterRailCurveTension,
+  0.552,
+  "outer rail-side Bézier sweep",
+  0.001,
+);
+close(
+  params.frameOuterStileCurveTension,
+  0.552,
+  "outer stile-side Bézier sweep",
+  0.001,
+);
 assert.notEqual(
   params.frameOuterTopCornerRadius,
   params.frameInnerTopCornerRadius,

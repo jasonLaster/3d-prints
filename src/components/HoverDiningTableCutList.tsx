@@ -233,7 +233,9 @@ function ProfileFeatureLabels({
   return (
     <g className="cut-part-feature-labels">
       <text x="45" y="29">
-        Outer R {formatLength(bezier.outerRadius, unit)} · κ {bezier.outerTension.toFixed(3)}
+        Outer R {formatLength(bezier.outerRadius, unit)} · κ rail{" "}
+        {bezier.outerRailTension.toFixed(3)} / stile{" "}
+        {bezier.outerStileTension.toFixed(3)}
       </text>
       <text x="45" y="124">
         Inner R {formatLength(bezier.innerRadius, unit)} · κ {bezier.innerTension.toFixed(3)}

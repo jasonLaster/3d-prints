@@ -217,6 +217,8 @@ const PARAM_QUERY_KEYS = [
   "frameOuterBottomCornerRadius",
   "frameInnerTopCornerRadius",
   "frameInnerBottomCornerRadius",
+  "frameOuterRailCurveTension",
+  "frameOuterStileCurveTension",
   "topSupportStyle",
   "bottomSupportStyle",
   "topSupportWidth",
@@ -272,14 +274,16 @@ const SCALAR_PARAM_KEYS = new Set([
   "legGrooveEnabled",
   "mockScale",
   "topEdgeTension",
-  "frameOuterCurveTension",
+  "frameOuterRailCurveTension",
+  "frameOuterStileCurveTension",
   "frameInnerCurveTension",
   "topSupportStyle",
   "bottomSupportStyle",
 ]);
 const CURVE_PARAM_KEYS = new Set([
   "topEdgeTension",
-  "frameOuterCurveTension",
+  "frameOuterRailCurveTension",
+  "frameOuterStileCurveTension",
   "frameInnerCurveTension",
 ]);
 const OPTION_PARAM_KEYS = new Set([
@@ -433,6 +437,8 @@ function getParamsFromUrl(model: ModelDefinition) {
       frameOuterBottomCornerRadius: ["frameOuterCornerRadius"],
       frameInnerTopCornerRadius: ["frameInnerCornerRadius"],
       frameInnerBottomCornerRadius: ["frameInnerCornerRadius"],
+      frameOuterRailCurveTension: ["frameOuterCurveTension"],
+      frameOuterStileCurveTension: ["frameOuterCurveTension"],
       topSupportWidth: ["upperBraceWidth", "xBraceWidth", "lowerBraceWidth"],
       bottomSupportWidth: ["lowerBraceWidth", "xBraceWidth", "upperBraceWidth"],
       topSupportThickness: [
@@ -2462,7 +2468,9 @@ function HoverDiningTableParameterControls({
                 </p>
               ) : group === "End boxes" ? (
                 <p className="parameter-group-description">
-                  Top and bottom corner radii remain independently editable.
+                  Top and bottom radii are independent. Outer rail-side sweep
+                  shapes the horizontal roll; stile-side sweep keeps the side
+                  tangent straighter for longer.
                 </p>
               ) : null}
               {group === "Support layout" ? (
@@ -2937,37 +2945,37 @@ const HOVER_STRUCTURAL_REFERENCES: Record<
   overall: {
     label: "Overall structural score",
     specAnchor: "overall-weighting-and-grades",
-    sourceLines: "L4081-L4100",
+    sourceLines: "L4109-L4128",
   },
   "longitudinal-racking": {
     label: "Lengthwise racking",
     specAnchor: "lengthwise-racking",
-    sourceLines: "L3548-L3567",
+    sourceLines: "L3576-L3595",
   },
   "end-box-racking": {
     label: "End-box racking",
     specAnchor: "end-box-racking",
-    sourceLines: "L3569-L3576",
+    sourceLines: "L3597-L3604",
   },
   torsion: {
     label: "Torsional rigidity",
     specAnchor: "torsional-rigidity",
-    sourceLines: "L3578-L3608",
+    sourceLines: "L3606-L3636",
   },
   tipping: {
     label: "Tipping margin",
     specAnchor: "tipping-margin",
-    sourceLines: "L3610-L3617",
+    sourceLines: "L3638-L3645",
   },
   "floor-rocking": {
     label: "Floor rocking tolerance",
     specAnchor: "floor-rocking-tolerance",
-    sourceLines: "L3619-L3630",
+    sourceLines: "L3647-L3658",
   },
   "member-stiffness": {
     label: "Member stiffness",
     specAnchor: "member-stiffness",
-    sourceLines: "L3632-L3658",
+    sourceLines: "L3660-L3686",
   },
 };
 

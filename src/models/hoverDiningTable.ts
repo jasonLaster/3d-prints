@@ -109,7 +109,8 @@ export type HoverDiningTableFabricationProfile = {
   bezier?: {
     outerRadius: number;
     innerRadius: number;
-    outerTension: number;
+    outerRailTension: number;
+    outerStileTension: number;
     innerTension: number;
   };
 };
@@ -134,7 +135,8 @@ export type HoverDiningTableSpec = {
   frameOuterBottomCornerRadius: number;
   frameInnerTopCornerRadius: number;
   frameInnerBottomCornerRadius: number;
-  frameOuterCurveTension: number;
+  frameOuterRailCurveTension: number;
+  frameOuterStileCurveTension: number;
   frameInnerCurveTension: number;
   frameEdgeRoundover: number;
   halfLapClearance: number;
@@ -352,7 +354,14 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
     ),
     frameInnerTopCornerRadius,
     frameInnerBottomCornerRadius,
-    frameOuterCurveTension: getParam(params, "frameOuterCurveTension"),
+    frameOuterRailCurveTension: getParam(
+      params,
+      "frameOuterRailCurveTension",
+    ),
+    frameOuterStileCurveTension: getParam(
+      params,
+      "frameOuterStileCurveTension",
+    ),
     frameInnerCurveTension: getParam(params, "frameInnerCurveTension"),
     frameEdgeRoundover,
     halfLapClearance: getParam(params, "halfLapClearance"),
@@ -711,7 +720,8 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
   }
   for (const [label, tension] of [
     ["tabletop edge", spec.topEdgeTension],
-    ["outer frame corner", spec.frameOuterCurveTension],
+    ["outer frame rail-side handle", spec.frameOuterRailCurveTension],
+    ["outer frame stile-side handle", spec.frameOuterStileCurveTension],
     ["inner frame corner", spec.frameInnerCurveTension],
   ] as const) {
     if (tension < 0.3 || tension > 0.9) {
@@ -853,7 +863,8 @@ function getRoundedTrapezoidDefinition(
   top: number,
   bottomRadius: number,
   topRadius: number,
-  tension: number,
+  railTension: number,
+  stileTension: number,
 ) {
   const bottomLeft = new THREE.Vector2(-bottomWidth / 2, bottom);
   const bottomRight = new THREE.Vector2(bottomWidth / 2, bottom);
@@ -897,23 +908,23 @@ function getRoundedTrapezoidDefinition(
     bottomRightCurve: {
       from: bottomRightStart,
       control1: new THREE.Vector2(
-        bottomRightStart.x + bottomRadius * tension,
+        bottomRightStart.x + bottomRadius * railTension,
         bottom,
       ),
       control2: new THREE.Vector2(
-        rightLower.x - rightDirection.x * bottomRadius * tension,
-        rightLower.y - rightDirection.y * bottomRadius * tension,
+        rightLower.x - rightDirection.x * bottomRadius * stileTension,
+        rightLower.y - rightDirection.y * bottomRadius * stileTension,
       ),
       to: rightLower,
     },
     topRightCurve: {
       from: rightUpper,
       control1: new THREE.Vector2(
-        rightUpper.x + rightDirection.x * topRadius * tension,
-        rightUpper.y + rightDirection.y * topRadius * tension,
+        rightUpper.x + rightDirection.x * topRadius * stileTension,
+        rightUpper.y + rightDirection.y * topRadius * stileTension,
       ),
       control2: new THREE.Vector2(
-        topRightEnd.x + topRadius * tension,
+        topRightEnd.x + topRadius * railTension,
         top,
       ),
       to: topRightEnd,
@@ -921,23 +932,23 @@ function getRoundedTrapezoidDefinition(
     topLeftCurve: {
       from: topLeftStart,
       control1: new THREE.Vector2(
-        topLeftStart.x - topRadius * tension,
+        topLeftStart.x - topRadius * railTension,
         top,
       ),
       control2: new THREE.Vector2(
-        leftUpper.x - leftDownDirection.x * topRadius * tension,
-        leftUpper.y - leftDownDirection.y * topRadius * tension,
+        leftUpper.x - leftDownDirection.x * topRadius * stileTension,
+        leftUpper.y - leftDownDirection.y * topRadius * stileTension,
       ),
       to: leftUpper,
     },
     bottomLeftCurve: {
       from: leftLower,
       control1: new THREE.Vector2(
-        leftLower.x + leftDownDirection.x * bottomRadius * tension,
-        leftLower.y + leftDownDirection.y * bottomRadius * tension,
+        leftLower.x + leftDownDirection.x * bottomRadius * stileTension,
+        leftLower.y + leftDownDirection.y * bottomRadius * stileTension,
       ),
       control2: new THREE.Vector2(
-        bottomLeftStart.x - bottomRadius * tension,
+        bottomLeftStart.x - bottomRadius * railTension,
         bottom,
       ),
       to: bottomLeftStart,
@@ -953,7 +964,8 @@ function addRoundedTrapezoid(
   top: number,
   bottomRadius: number,
   topRadius: number,
-  tension: number,
+  railTension: number,
+  stileTension: number,
 ) {
   const profile = getRoundedTrapezoidDefinition(
     bottomWidth,
@@ -962,7 +974,8 @@ function addRoundedTrapezoid(
     top,
     bottomRadius,
     topRadius,
-    tension,
+    railTension,
+    stileTension,
   );
   const addCubic = (curve: CubicProfileSegment) => {
     path.bezierCurveTo(
@@ -1368,7 +1381,8 @@ function createEndBoxPartProfiles(spec: HoverDiningTableSpec) {
     spec.frameHeight,
     spec.frameOuterBottomCornerRadius,
     spec.frameOuterTopCornerRadius,
-    spec.frameOuterCurveTension,
+    spec.frameOuterRailCurveTension,
+    spec.frameOuterStileCurveTension,
   );
   const inner = getRoundedTrapezoidDefinition(
     spec.openingBottomWidth,
@@ -1377,6 +1391,7 @@ function createEndBoxPartProfiles(spec: HoverDiningTableSpec) {
     spec.openingTop,
     spec.frameInnerBottomCornerRadius,
     spec.frameInnerTopCornerRadius,
+    spec.frameInnerCurveTension,
     spec.frameInnerCurveTension,
   );
   const squareClose = { kind: "close", edgeTreatment: "square" } as const;
@@ -1454,7 +1469,8 @@ function createEndBoxPartFabricationProfile(
           innerRadius: position === "top"
             ? spec.frameInnerTopCornerRadius
             : spec.frameInnerBottomCornerRadius,
-          outerTension: spec.frameOuterCurveTension,
+          outerRailTension: spec.frameOuterRailCurveTension,
+          outerStileTension: spec.frameOuterStileCurveTension,
           innerTension: spec.frameInnerCurveTension,
         }
       : undefined,
@@ -1872,7 +1888,8 @@ function createEndFrameGeometry(
     spec.frameHeight,
     spec.frameOuterBottomCornerRadius,
     spec.frameOuterTopCornerRadius,
-    spec.frameOuterCurveTension,
+    spec.frameOuterRailCurveTension,
+    spec.frameOuterStileCurveTension,
   );
   const opening = new THREE.Path();
   addRoundedTrapezoid(
@@ -1883,6 +1900,7 @@ function createEndFrameGeometry(
     spec.openingTop,
     spec.frameInnerBottomCornerRadius,
     spec.frameInnerTopCornerRadius,
+    spec.frameInnerCurveTension,
     spec.frameInnerCurveTension,
   );
   shape.holes.push(opening);
@@ -2660,8 +2678,13 @@ export function getHoverDiningTableCutList(
         { label: "Inner top radius", value: spec.frameInnerTopCornerRadius },
         { label: "Face-edge round-over", value: spec.frameEdgeRoundover },
         {
-          label: "Outer curve tension",
-          value: spec.frameOuterCurveTension,
+          label: "Outer rail-side sweep",
+          value: spec.frameOuterRailCurveTension,
+          format: "ratio",
+        },
+        {
+          label: "Outer stile-side sweep",
+          value: spec.frameOuterStileCurveTension,
           format: "ratio",
         },
         {
@@ -2692,8 +2715,13 @@ export function getHoverDiningTableCutList(
         { label: "Inner bottom radius", value: spec.frameInnerBottomCornerRadius },
         { label: "Face-edge round-over", value: spec.frameEdgeRoundover },
         {
-          label: "Outer curve tension",
-          value: spec.frameOuterCurveTension,
+          label: "Outer rail-side sweep",
+          value: spec.frameOuterRailCurveTension,
+          format: "ratio",
+        },
+        {
+          label: "Outer stile-side sweep",
+          value: spec.frameOuterStileCurveTension,
           format: "ratio",
         },
         {
@@ -4196,7 +4224,7 @@ export function getHoverDiningTableAuditValue(
     case "hoverCornerCurves":
       return item(
         check.label,
-        `outer top/bottom ${formatLength(spec.frameOuterTopCornerRadius, unit)} / ${formatLength(spec.frameOuterBottomCornerRadius, unit)} κ${spec.frameOuterCurveTension.toFixed(3)} · inner top/bottom ${formatLength(spec.frameInnerTopCornerRadius, unit)} / ${formatLength(spec.frameInnerBottomCornerRadius, unit)} κ${spec.frameInnerCurveTension.toFixed(3)}`,
+        `outer top/bottom ${formatLength(spec.frameOuterTopCornerRadius, unit)} / ${formatLength(spec.frameOuterBottomCornerRadius, unit)} κ rail ${spec.frameOuterRailCurveTension.toFixed(3)} / stile ${spec.frameOuterStileCurveTension.toFixed(3)} · inner top/bottom ${formatLength(spec.frameInnerTopCornerRadius, unit)} / ${formatLength(spec.frameInnerBottomCornerRadius, unit)} κ${spec.frameInnerCurveTension.toFixed(3)}`,
       );
     case "hoverBoxSplay":
       return item(
