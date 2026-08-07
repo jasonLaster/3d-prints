@@ -16,7 +16,7 @@ This document defines the product and engineering contract for the 3D Prints app
 - Two sculpted closed end boxes use independent inner and outer radii and curve tensions, an explicit zero-default bottom-spread parameter, and rounded face edges.
 - Exactly four diagonal braces form two horizontal X assemblies between the end boxes: one directly against the tabletop underside and one directly on the floor.
 - Every brace has a full-section planar angled end parallel and flush with the end-box inside face. Its complete cut face derives from and stays inward of the editable inner-corner tangent, so increasing the radius automatically pushes the X inward.
-- Brace top and bottom long edges are rounded over, while the flush end cuts and half-lap shoulders remain square.
+- Support bottom long edges are rounded over; lower supports also expose an independent top long-edge round-over. Flush end cuts and half-lap shoulders remain square.
 - Each X crosses at the table center with a derived 50/50 half-lap. Both boards retain full plan width, complementary half-depth pockets preserve one continuous assembled thickness, and there are no parallel lengthwise stretchers, hover pads, or spacer gaps.
 - See `docs/hover-dining-table-audit-specifications.md` for the evidence and invariant contract.
 
@@ -126,9 +126,9 @@ X-Hover Dining Table:
 - Inner and outer corner radii remain independently adjustable at the top and bottom of each box; each curve family retains its normalized Bézier-tension control.
 - Bottom spread is the only splay control and defaults to zero, matching the supplied orthographic drawing.
 - Top support is selectable between the current X and the two original lengthwise stretchers. Bottom support is independently selectable between the current X, one centered lengthwise board, and nothing. Missing URL values preserve the X/X default.
-- Top and bottom support members have independent width, thickness, bearing-zone inset, and edge-radius contracts. Larger values grow only the matching box bearing members. X endpoints derive from their corresponding inner-corner tangencies; upper stretchers track the outside edge of the top end-box rail; the floor board remains centered.
+- Top and bottom support members have independent width, thickness, bearing-zone inset, and bottom-edge-radius contracts. Lower supports also have an independent top-edge radius. Larger values grow only the matching box bearing members. X endpoints derive from their corresponding inner-corner tangencies; upper stretchers track the outside edge of the top end-box rail; the floor board remains centered.
 - Angled brace ends are coplanar with the inside faces of the end boxes and migrate inward when inner radius, opening width, brace width, endpoint inset, or bottom spread changes.
-- Each top or bottom support edge-radius control rounds over both long-edge pairs on that support plane without rounding the plan ends or centered half-lap shoulders.
+- Each support bottom-edge-radius control rounds only its bottom long-edge pair. The lower support top-edge control independently rounds its top long-edge pair without rounding plan ends or centered half-lap shoulders.
 - Selected top supports remain coplanar with the tabletop underside; selected floor supports remain coplanar with the floor. Neither contact condition has a gap control.
 - Each selected X uses one centered half-lap with a nominal depth of half the brace thickness and no overlapping solid volume. Straight supports have no false lap.
 - Assembled/Exploded mode separates the assembly into 14–16 fully profiled oak and steel pieces according to layout (16 for X/X), including three C-channels and the same curved boxes, true rounded support sections, contact ends, and conditional half-laps as the assembled geometry.

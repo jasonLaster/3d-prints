@@ -303,7 +303,14 @@
       "label": "Bottom support bottom round-over",
       "group": "Bottom support members",
       "default": 3.175,
-      "limits": { "min": 0.79375, "max": 50.8, "step": 1.5875 }
+      "limits": { "min": 0.79375, "max": 38.1, "step": 1.5875 }
+    },
+    {
+      "key": "bottomSupportTopEdgeRadius",
+      "label": "Bottom support top round-over",
+      "group": "Bottom support members",
+      "default": 0,
+      "limits": { "min": 0, "max": 50.8, "step": 1.5875 }
     },
     {
       "key": "halfLapClearance",
@@ -350,7 +357,7 @@
       "The base contains exactly two closed transverse end boxes with independently selectable support layouts: an upper horizontal X or two original lengthwise stretchers, plus a floor X, one centered lengthwise board, or no floor connector.",
       "Each end box has independently editable top and bottom values for both outer and inner corner radii, independent rail-side and stile-side handles for the outer cubic Bézier corners, a normalized inner-corner tension, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
       "Every selected X crosses at the table center with a derived 50/50 half-lap and no overlapping solid volume; straight-support layouts contain no artificial lap.",
-      "Top and bottom support width, thickness, bearing-zone inset, and edge round-over contracts are independently editable, with an optional shared-dimension mode while both layouts are X crossbars; half-lap fit clearance applies only to selected Xs.",
+      "Top and bottom support width, thickness, bearing-zone inset, and bottom-edge round-over contracts are independently editable; the bottom supports also expose an independent top-edge round-over. An optional shared-dimension mode applies to the matching crossbar dimensions while both layouts are Xs; half-lap fit clearance applies only to selected Xs.",
       "The selected upper supports bear directly against the tabletop underside and every selected lower support bears directly on the floor, with zero gap or spacer.",
       "Exploded mode presents 14–16 assembly pieces according to the selected layouts: one profiled tabletop, three steel C-channels, four finished rail-and-stile bars per end box, two upper support members, and zero, one, or two lower support members.",
       "Cut List mode presents the same selected pieces as six to nine grouped schedule lines with full-size finished dimensions, quantities, material, oak grain direction where applicable, exact constrained profiles, edge-treatment or C-channel section views, and joinery notes.",
@@ -367,11 +374,11 @@
       "For each selected X, derive both diagonal lengths and equal-and-opposite plan angles from the end-box corner zones and keep the crossing at the table origin.",
       "Derive each brace endpoint from the straight-rail tangent of the editable inner corner radius, inset the complete angled end face clear of that curve, and keep the support end planar and parallel with the end-box inside face; rail height controls vertical bearing overlap independently of support thickness.",
       "Keep each selected X brace at full nominal width through the crossing, form complementary centered pockets at exactly half the nominal thickness, align every pocket boundary as a planar machining cut, and remove solid overlap between the two braces.",
-      "Round over only the bottom long edge of every selected support while keeping the top edge, end miters, and half-lap shoulders square.",
+      "Round over the independently specified bottom long edges of every selected support and the optional top long edge of the selected bottom support while keeping end miters and half-lap shoulders square.",
       "Keep every selected top-support envelope coplanar with the tabletop underside and every selected floor-support envelope coplanar with the floor; expose no gap or spacer control.",
       "Keep inner and outer corner curves as cubic Bézier functions whose control lengths equal radius times normalized tension; outer rail-side and stile-side handles remain independently editable while the inner curve retains one shared tension.",
       "Keep top and bottom exterior and interior corner radii independently editable because the observed curves are not concentric offsets.",
-      "Keep top and bottom support sections and edge radii independently editable unless crossbar synchronization is explicitly enabled while both layouts are Xs; synchronized edits must update width, thickness, bearing-zone inset, and edge radius as matched pairs.",
+      "Keep top and bottom support sections and bottom-edge radii independently editable unless crossbar synchronization is explicitly enabled while both layouts are Xs; synchronized edits must update width, thickness, bearing-zone inset, and bottom-edge radius as matched pairs. Keep the lower support top-edge radius independent.",
       "Treat bottom spread as the explicit splay hypothesis; zero means orthogonal frame sides and remains the evidence-backed default.",
       "Keep frame edge round-over below half the depth, side width, top-rail height, and bottom-rail height; keep the end-box side width independently editable down to 1/2 in because support members bear on the horizontal rails rather than setting the stile width.",
       "Keep end boxes, their bottom spread, and all brace endpoints inside the tabletop width while preserving positive diagonal spans.",

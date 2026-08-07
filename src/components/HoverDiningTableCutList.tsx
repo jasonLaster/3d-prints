@@ -215,7 +215,10 @@ function PartSection({
       <line x1={section.left} x2={section.left - 10} y1={section.top} y2={section.top - 9} />
       {part.kind !== "channel" ? (
         <text x="318" y="105">
-          R {formatLength(part.fabricationProfile.section.radius, unit)}
+          Bottom R {formatLength(part.fabricationProfile.section.radius, unit)}
+          {(part.fabricationProfile.section.topRadius ?? 0) > 0
+            ? ` · Top R ${formatLength(part.fabricationProfile.section.topRadius!, unit)}`
+            : ""}
         </text>
       ) : null}
       <text x="358" y="117">{part.fabricationProfile.section.label}</text>
@@ -291,7 +294,10 @@ function widthDimensionX(layout: SvgProfileLayout) {
 }
 
 function sectionRadiusIsVisible(part: HoverDiningTableCutPart) {
-  return part.fabricationProfile.section.radius > 0;
+  return (
+    part.fabricationProfile.section.radius > 0 ||
+    (part.fabricationProfile.section.topRadius ?? 0) > 0
+  );
 }
 
 function shouldShowBezierLabels(part: HoverDiningTableCutPart) {

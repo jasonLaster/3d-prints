@@ -21,6 +21,7 @@ type BracePlaneSpec = {
   thickness: number;
   endpointInset: number;
   edgeRadius: number;
+  topEdgeRadius: number;
   spanX: number;
   spanY: number;
   endpointY: number;
@@ -43,6 +44,7 @@ type StraightSupportSpec = {
   thickness: number;
   endpointInset: number;
   edgeRadius: number;
+  topEdgeRadius: number;
   spanX: number;
   centerYs: number[];
   placementBoundaryY?: number;
@@ -103,6 +105,7 @@ export type HoverDiningTableFabricationProfile = {
     width: number;
     thickness: number;
     radius: number;
+    topRadius?: number;
     label: string;
     outline: HoverDiningTableProfileCommand[];
   };
@@ -229,6 +232,7 @@ function createBracePlaneSpec({
   thickness,
   endpointInset,
   edgeRadius,
+  topEdgeRadius,
   spanX,
   openingWidth,
   innerCornerRadius,
@@ -239,6 +243,7 @@ function createBracePlaneSpec({
   thickness: number;
   endpointInset: number;
   edgeRadius: number;
+  topEdgeRadius: number;
   spanX: number;
   openingWidth: number;
   innerCornerRadius: number;
@@ -260,6 +265,7 @@ function createBracePlaneSpec({
     thickness,
     endpointInset,
     edgeRadius,
+    topEdgeRadius,
     spanX,
     spanY,
     endpointY,
@@ -293,6 +299,10 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
     "bottomSupportEndpointInset",
   );
   const bottomSupportEdgeRadius = getParam(params, "bottomSupportEdgeRadius");
+  const bottomSupportTopEdgeRadius = getParam(
+    params,
+    "bottomSupportTopEdgeRadius",
+  );
   const frameTopWidth = width - sideOverhang * 2;
   const frameBottomSpread = getParam(params, "frameBottomSpread");
   const frameBottomWidth = frameTopWidth + frameBottomSpread;
@@ -392,6 +402,7 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       thickness: topSupportThickness,
       endpointInset: topSupportEndpointInset,
       edgeRadius: topSupportEdgeRadius,
+      topEdgeRadius: 0,
       spanX: braceSpanX,
       openingWidth: openingTopWidth,
       innerCornerRadius: frameInnerTopCornerRadius,
@@ -403,6 +414,7 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       thickness: bottomSupportThickness,
       endpointInset: bottomSupportEndpointInset,
       edgeRadius: bottomSupportEdgeRadius,
+      topEdgeRadius: bottomSupportTopEdgeRadius,
       spanX: braceSpanX,
       openingWidth: openingBottomWidth,
       innerCornerRadius: frameInnerBottomCornerRadius,
@@ -415,6 +427,7 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       thickness: topSupportThickness,
       endpointInset: topSupportEndpointInset,
       edgeRadius: topSupportEdgeRadius,
+      topEdgeRadius: 0,
       spanX: braceSpanX,
       centerYs: [-upperStretcherCenterY, upperStretcherCenterY],
       placementBoundaryY: upperPlacementBoundaryY,
@@ -427,6 +440,7 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       thickness: bottomSupportThickness,
       endpointInset: bottomSupportEndpointInset,
       edgeRadius: bottomSupportEdgeRadius,
+      topEdgeRadius: bottomSupportTopEdgeRadius,
       spanX: braceSpanX,
       centerYs: [0],
       zBottom: 0,
@@ -482,6 +496,7 @@ function assertBracePlane(
   ] as const) {
     assertPositive(value, dimensionLabel);
   }
+  assertNonNegative(brace.topEdgeRadius, `${label} brace top edge radius`);
   assertNonNegative(brace.endpointInset, `${label} brace endpoint inset`);
   if (brace.spanX < MIN_BRACE_SPAN) {
     throw new Error(`${label} X needs a positive structural span between end boxes`);
@@ -501,6 +516,9 @@ function assertBracePlane(
   }
   if (brace.edgeRadius * 2 >= brace.width) {
     throw new Error(`${label} brace edge radius must preserve a flat cross-section`);
+  }
+  if (brace.topEdgeRadius * 2 >= brace.width) {
+    throw new Error(`${label} brace top edge radius must preserve a flat cross-section`);
   }
   const directionX = Math.cos(brace.angleRadians);
   const expectedMiterHalfWidth = brace.width / (2 * directionX);
@@ -533,6 +551,7 @@ function assertStraightSupport(
   ] as const) {
     assertPositive(value, dimensionLabel);
   }
+  assertNonNegative(support.topEdgeRadius, `${label} top edge radius`);
   assertNonNegative(support.endpointInset, `${label} endpoint inset`);
   if (support.centerYs.length !== support.count) {
     throw new Error(`${label} must retain its declared piece count`);
@@ -542,7 +561,9 @@ function assertStraightSupport(
   }
   if (
     support.edgeRadius * 2 >= support.width ||
-    support.edgeRadius >= support.thickness
+    support.topEdgeRadius * 2 >= support.width ||
+    support.edgeRadius * 2 >= support.thickness ||
+    support.edgeRadius + support.topEdgeRadius >= support.thickness
   ) {
     throw new Error(`${label} edge radius must preserve a flat cross-section`);
   }
@@ -745,7 +766,9 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
   ] as const) {
     if (
       isCrossbar &&
-      brace.edgeRadius >= brace.halfLapDepth - spec.halfLapClearance / 2
+      (brace.edgeRadius >= brace.halfLapDepth - spec.halfLapClearance / 2 ||
+        brace.topEdgeRadius >=
+          brace.halfLapDepth - spec.halfLapClearance / 2)
     ) {
       throw new Error(`${label} brace round-over must leave square half-lap shoulders`);
     }
@@ -769,6 +792,7 @@ function scaleBrace(brace: BracePlaneSpec, scale: number): BracePlaneSpec {
     thickness: brace.thickness / scale,
     endpointInset: brace.endpointInset / scale,
     edgeRadius: brace.edgeRadius / scale,
+    topEdgeRadius: brace.topEdgeRadius / scale,
     spanX: brace.spanX / scale,
     spanY: brace.spanY / scale,
     endpointY: brace.endpointY / scale,
@@ -792,6 +816,7 @@ function scaleStraightSupport(
     thickness: support.thickness / scale,
     endpointInset: support.endpointInset / scale,
     edgeRadius: support.edgeRadius / scale,
+    topEdgeRadius: support.topEdgeRadius / scale,
     spanX: support.spanX / scale,
     centerYs: support.centerYs.map((centerY) => centerY / scale),
     placementBoundaryY:
@@ -1153,35 +1178,102 @@ function roundedRectangleProfile(
   ];
 }
 
-function bottomRoundedRectangleProfile(
+function supportRoundedRectangleProfile(
   width: number,
   height: number,
-  radius: number,
+  bottomRadius: number,
+  topRadius: number,
 ): HoverDiningTableProfileCommand[] {
   const halfWidth = width / 2;
   const halfHeight = height / 2;
-  const safeRadius = Math.min(radius, halfWidth, height);
-  const control = safeRadius * 0.5522847498;
-  return [
-    { kind: "move", to: { x: -halfWidth + safeRadius, y: -halfHeight } },
-    { kind: "line", to: { x: halfWidth - safeRadius, y: -halfHeight } },
+  const safeBottomRadius = Math.min(bottomRadius, halfWidth, height);
+  const safeTopRadius = Math.min(
+    topRadius,
+    halfWidth,
+    height - safeBottomRadius,
+  );
+  const bottomControl = safeBottomRadius * 0.5522847498;
+  const topControl = safeTopRadius * 0.5522847498;
+  const commands: HoverDiningTableProfileCommand[] = [
     {
-      kind: "cubic",
-      control1: { x: halfWidth - safeRadius + control, y: -halfHeight },
-      control2: { x: halfWidth, y: -halfHeight + safeRadius - control },
-      to: { x: halfWidth, y: -halfHeight + safeRadius },
+      kind: "move",
+      to: { x: -halfWidth + safeBottomRadius, y: -halfHeight },
     },
-    { kind: "line", to: { x: halfWidth, y: halfHeight } },
-    { kind: "line", to: { x: -halfWidth, y: halfHeight } },
-    { kind: "line", to: { x: -halfWidth, y: -halfHeight + safeRadius } },
     {
-      kind: "cubic",
-      control1: { x: -halfWidth, y: -halfHeight + safeRadius - control },
-      control2: { x: -halfWidth + safeRadius - control, y: -halfHeight },
-      to: { x: -halfWidth + safeRadius, y: -halfHeight },
+      kind: "line",
+      to: { x: halfWidth - safeBottomRadius, y: -halfHeight },
     },
-    { kind: "close" },
   ];
+  if (safeBottomRadius > EPSILON) {
+    commands.push({
+      kind: "cubic",
+      control1: {
+        x: halfWidth - safeBottomRadius + bottomControl,
+        y: -halfHeight,
+      },
+      control2: {
+        x: halfWidth,
+        y: -halfHeight + safeBottomRadius - bottomControl,
+      },
+      to: { x: halfWidth, y: -halfHeight + safeBottomRadius },
+    });
+  }
+  commands.push({
+    kind: "line",
+    to: { x: halfWidth, y: halfHeight - safeTopRadius },
+  });
+  if (safeTopRadius > EPSILON) {
+    commands.push({
+      kind: "cubic",
+      control1: {
+        x: halfWidth,
+        y: halfHeight - safeTopRadius + topControl,
+      },
+      control2: {
+        x: halfWidth - safeTopRadius + topControl,
+        y: halfHeight,
+      },
+      to: { x: halfWidth - safeTopRadius, y: halfHeight },
+    });
+  }
+  commands.push({
+    kind: "line",
+    to: { x: -halfWidth + safeTopRadius, y: halfHeight },
+  });
+  if (safeTopRadius > EPSILON) {
+    commands.push({
+      kind: "cubic",
+      control1: {
+        x: -halfWidth + safeTopRadius - topControl,
+        y: halfHeight,
+      },
+      control2: {
+        x: -halfWidth,
+        y: halfHeight - safeTopRadius + topControl,
+      },
+      to: { x: -halfWidth, y: halfHeight - safeTopRadius },
+    });
+  }
+  commands.push({
+    kind: "line",
+    to: { x: -halfWidth, y: -halfHeight + safeBottomRadius },
+  });
+  if (safeBottomRadius > EPSILON) {
+    commands.push({
+      kind: "cubic",
+      control1: {
+        x: -halfWidth,
+        y: -halfHeight + safeBottomRadius - bottomControl,
+      },
+      control2: {
+        x: -halfWidth + safeBottomRadius - bottomControl,
+        y: -halfHeight,
+      },
+      to: { x: -halfWidth + safeBottomRadius, y: -halfHeight },
+    });
+  }
+  commands.push({ kind: "close" });
+  return commands;
 }
 
 function profileBounds(commands: HoverDiningTableProfileCommand[]) {
@@ -1761,6 +1853,10 @@ function assertFabricationProfile(
   ) {
     throw new Error(`${label} must retain a closed section profile`);
   }
+  const sectionTopRadius = profile.section.topRadius ?? 0;
+  if (!Number.isFinite(sectionTopRadius) || sectionTopRadius < 0) {
+    throw new Error(`${label} top edge radius must be finite and non-negative`);
+  }
   if (profile.family === "channel") {
     if (
       profile.section.radius !== 0 ||
@@ -2157,11 +2253,16 @@ function createBraceFabricationProfile(
       width: brace.width,
       thickness: brace.thickness,
       radius: brace.edgeRadius,
-      label: "bottom long-edge round-over",
-      outline: bottomRoundedRectangleProfile(
+      topRadius: brace.topEdgeRadius,
+      label:
+        brace.topEdgeRadius > EPSILON
+          ? "bottom + top long-edge round-overs"
+          : "bottom long-edge round-over",
+      outline: supportRoundedRectangleProfile(
         brace.width,
         brace.thickness,
         brace.edgeRadius,
+        brace.topEdgeRadius,
       ),
     },
   };
@@ -2179,11 +2280,16 @@ function createStraightSupportFabricationProfile(
       width: support.width,
       thickness: support.thickness,
       radius: support.edgeRadius,
-      label: "bottom long-edge round-over",
-      outline: bottomRoundedRectangleProfile(
+      topRadius: support.topEdgeRadius,
+      label:
+        support.topEdgeRadius > EPSILON
+          ? "bottom + top long-edge round-overs"
+          : "bottom long-edge round-over",
+      outline: supportRoundedRectangleProfile(
         support.width,
         support.thickness,
         support.edgeRadius,
+        support.topEdgeRadius,
       ),
     },
   };
@@ -2267,11 +2373,20 @@ function createRoundedPlanPrism(
 ) {
   const height = zTop - zBottom;
   if (points.length < 3 || height <= EPSILON) return null;
-  const radius = Math.min(
-    brace.edgeRadius,
-    brace.width / 2 - EPSILON,
-    height - EPSILON,
-  );
+  const bottomRadius = roundBottom
+    ? Math.min(
+        brace.edgeRadius,
+        brace.width / 2 - EPSILON,
+        height - EPSILON,
+      )
+    : 0;
+  const topRadius = roundTop
+    ? Math.min(
+        brace.topEdgeRadius,
+        brace.width / 2 - EPSILON,
+        height - bottomRadius - EPSILON,
+      )
+    : 0;
   const layers: Array<{ z: number; inset: number }> = [];
   const pushLayer = (z: number, inset: number) => {
     const previous = layers[layers.length - 1];
@@ -2281,24 +2396,27 @@ function createRoundedPlanPrism(
       layers.push({ z, inset });
     }
   };
-  if (roundBottom && radius > EPSILON) {
+  if (bottomRadius > EPSILON) {
     for (let index = 0; index <= roundoverSegments; index += 1) {
-      const offset = (index / roundoverSegments) * radius;
+      const offset = (index / roundoverSegments) * bottomRadius;
       const inset =
-        radius -
-        Math.sqrt(Math.max(0, radius ** 2 - (offset - radius) ** 2));
+        bottomRadius -
+        Math.sqrt(
+          Math.max(0, bottomRadius ** 2 - (offset - bottomRadius) ** 2),
+        );
       pushLayer(zBottom + offset, inset);
     }
   } else {
     pushLayer(zBottom, 0);
   }
-  if (roundTop && radius > EPSILON) {
-    pushLayer(zTop - radius, 0);
+  if (topRadius > EPSILON) {
+    pushLayer(zTop - topRadius, 0);
     for (let index = 1; index <= roundoverSegments; index += 1) {
-      const offset = (index / roundoverSegments) * radius;
+      const offset = (index / roundoverSegments) * topRadius;
       const inset =
-        radius - Math.sqrt(Math.max(0, radius ** 2 - offset ** 2));
-      pushLayer(zTop - radius + offset, inset);
+        topRadius -
+        Math.sqrt(Math.max(0, topRadius ** 2 - offset ** 2));
+      pushLayer(zTop - topRadius + offset, inset);
     }
   } else {
     pushLayer(zTop, 0);
@@ -2475,7 +2593,7 @@ function createHalfLappedXParts(
       brace,
       slopeSign,
       Math.abs(zBottom - brace.zBottom) <= EPSILON,
-      false,
+      Math.abs(zTop - brace.zTop) <= EPSILON,
       model.geometry.braceRoundoverSegments,
     );
     if (geometry) target.push(geometry);
@@ -2537,6 +2655,7 @@ function createStraightSupportParts(
     thickness: support.thickness,
     endpointInset: support.endpointInset,
     edgeRadius: support.edgeRadius,
+    topEdgeRadius: support.topEdgeRadius,
     spanX: support.spanX,
     spanY: 0,
     endpointY: 0,
@@ -2562,7 +2681,7 @@ function createStraightSupportParts(
       prismSpec,
       1,
       true,
-      false,
+      true,
       model.geometry.braceRoundoverSegments,
     );
     if (!geometry) {
@@ -2690,10 +2809,15 @@ function createBraceCutParts(
     cutAngleDegrees: THREE.MathUtils.radToDeg(Math.abs(brace.angleRadians)),
     notes: [
       "Parallel end cuts bear flush on the end-box inside faces.",
-      "Round over the bottom long edge to the listed radius; leave the top edge square.",
+      brace.topEdgeRadius > EPSILON
+        ? "Round over the bottom and top long edges to their independently listed radii."
+        : "Round over the bottom long edge to the listed radius; leave the top edge square.",
     ],
     processDimensions: [
-      { label: "Edge round-over", value: brace.edgeRadius },
+      { label: "Bottom edge round-over", value: brace.edgeRadius },
+      ...(brace.topEdgeRadius > EPSILON
+        ? [{ label: "Top edge round-over", value: brace.topEdgeRadius }]
+        : []),
     ],
   };
   const lap = {
@@ -2740,10 +2864,15 @@ function createStraightSupportCutPart(
     cutAngleDegrees: 0,
     notes: [
       "Square end faces bear flush on the parallel end-box inside faces.",
-      "Round over the bottom long edge to the listed radius; leave the top edge square.",
+      support.topEdgeRadius > EPSILON
+        ? "Round over the bottom and top long edges to their independently listed radii."
+        : "Round over the bottom long edge to the listed radius; leave the top edge square.",
     ],
     processDimensions: [
-      { label: "Edge round-over", value: support.edgeRadius },
+      { label: "Bottom edge round-over", value: support.edgeRadius },
+      ...(support.topEdgeRadius > EPSILON
+        ? [{ label: "Top edge round-over", value: support.topEdgeRadius }]
+        : []),
     ],
   };
 }
@@ -3537,7 +3666,7 @@ export function getHoverDiningTableParameterLimits(
     const brace = key === "topSupportWidth" ? spec.upperBrace : spec.lowerBrace;
     limits.min = Math.max(
       limits.min,
-      brace.edgeRadius * 2 + limits.step,
+      Math.max(brace.edgeRadius, brace.topEdgeRadius) * 2 + limits.step,
     );
     limits.max = Math.min(
       limits.max,
@@ -3554,7 +3683,12 @@ export function getHoverDiningTableParameterLimits(
         : spec.bottomSupportStyle === "x";
     limits.min = Math.max(
       limits.min,
-      brace.edgeRadius * (isCrossbar ? 2 : 1) + limits.step,
+      (isCrossbar
+        ? Math.max(brace.edgeRadius, brace.topEdgeRadius) * 2
+        : Math.max(
+            brace.edgeRadius * 2,
+            brace.edgeRadius + brace.topEdgeRadius,
+          )) + limits.step,
     );
     limits.max = Math.min(
       limits.max,
@@ -3588,7 +3722,19 @@ export function getHoverDiningTableParameterLimits(
         ? brace.halfLapDepth -
             spec.halfLapClearance / 2 -
             limits.step
-        : brace.thickness - limits.step,
+        : brace.halfLapDepth - limits.step,
+      brace.thickness - brace.topEdgeRadius - limits.step,
+    );
+  } else if (key === "bottomSupportTopEdgeRadius") {
+    const brace = spec.lowerBrace;
+    limits.max = Math.min(
+      limits.max,
+      brace.width / 2 - limits.step,
+      spec.bottomSupportStyle === "x"
+        ? brace.halfLapDepth -
+            spec.halfLapClearance / 2 -
+            limits.step
+        : brace.thickness - brace.edgeRadius - limits.step,
     );
   } else if (key === "halfLapClearance") {
     limits.max = Math.min(

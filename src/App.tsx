@@ -232,6 +232,7 @@ const PARAM_QUERY_KEYS = [
   "bottomSupportThickness",
   "bottomSupportEndpointInset",
   "bottomSupportEdgeRadius",
+  "bottomSupportTopEdgeRadius",
   // Legacy shared/split support keys are retained only for URL migration.
   "xBraceWidth",
   "xBraceThickness",
@@ -4314,16 +4315,18 @@ export default function App({
           key === "bottomSupportStyle"
         ) {
           if (key === "topSupportStyle" || key === "bottomSupportStyle") {
-            const radiusKey =
+            const radiusKeys =
               key === "topSupportStyle"
-                ? "topSupportEdgeRadius"
-                : "bottomSupportEdgeRadius";
-            const radiusLimits = getParameterLimits(model, next, radiusKey);
-            next[radiusKey] = clamp(
-              next[radiusKey],
-              radiusLimits.min,
-              radiusLimits.max,
-            );
+                ? ["topSupportEdgeRadius"]
+                : ["bottomSupportEdgeRadius", "bottomSupportTopEdgeRadius"];
+            for (const radiusKey of radiusKeys) {
+              const radiusLimits = getParameterLimits(model, next, radiusKey);
+              next[radiusKey] = clamp(
+                next[radiusKey],
+                radiusLimits.min,
+                radiusLimits.max,
+              );
+            }
           }
           return synchronizeHoverCrossbarDimensions(model, next);
         }

@@ -424,6 +424,10 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
     6,
   );
   expect(definitions.bottomSupportEdgeRadius.limits.max).toBeCloseTo(
+    1.5 * 25.4,
+    6,
+  );
+  expect(definitions.bottomSupportTopEdgeRadius.limits.max).toBeCloseTo(
     2 * 25.4,
     6,
   );
@@ -541,27 +545,34 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
       centerBoardParams,
       "bottomSupportEdgeRadius",
     ).max,
+  ).toBeCloseTo((1.4409 / 2 - 1 / 16) * 25.4, 6);
+  expect(
+    getHoverDiningTableParameterLimits(
+      model,
+      centerBoardParams,
+      "bottomSupportTopEdgeRadius",
+    ).max,
   ).toBeCloseTo((2.4409 / 2 - 1 / 16) * 25.4, 6);
   const deepRoundedCenterBoard = getHoverDiningTableSpec({
     ...centerBoardParams,
-    bottomSupportEdgeRadius: 1 * 25.4,
+    bottomSupportTopEdgeRadius: 1 * 25.4,
   }).fullSize;
-  expect(deepRoundedCenterBoard.lowerCenterBoard.edgeRadius).toBeCloseTo(
+  expect(deepRoundedCenterBoard.lowerCenterBoard.topEdgeRadius).toBeCloseTo(
     1 * 25.4,
     6,
   );
-  expect(deepRoundedCenterBoard.lowerCenterBoard.edgeRadius).toBeGreaterThan(
+  expect(deepRoundedCenterBoard.lowerCenterBoard.topEdgeRadius).toBeGreaterThan(
     deepRoundedCenterBoard.lowerBrace.halfLapDepth,
   );
   const centerBoardCutPart = getHoverDiningTableCutList(
     {
       ...centerBoardParams,
-      bottomSupportEdgeRadius: 1 * 25.4,
+      bottomSupportTopEdgeRadius: 1 * 25.4,
     },
     model,
   ).parts.find((part) => part.id === "C1");
   expect(centerBoardCutPart).toBeDefined();
-  expect(centerBoardCutPart!.fabricationProfile.section.radius).toBeCloseTo(
+  expect(centerBoardCutPart!.fabricationProfile.section.topRadius).toBeCloseTo(
     1 * 25.4,
     6,
   );
@@ -569,11 +580,11 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
     centerBoardCutPart!.fabricationProfile.section.outline.filter(
       (command) => command.kind === "cubic",
     ),
-  ).toHaveLength(2);
+  ).toHaveLength(4);
   const centerBoardGeometry = createHoverDiningTableGeometry(
     {
       ...centerBoardParams,
-      bottomSupportEdgeRadius: 1 * 25.4,
+      bottomSupportTopEdgeRadius: 1 * 25.4,
     },
     model,
   );
@@ -581,7 +592,7 @@ test("keeps widened parameter ranges inside the shared geometric contract", () =
   centerBoardGeometry.dispose();
 });
 
-test("accepts expanded top and bottom support controls", async ({
+test("accepts expanded support controls and a lower top round-over", async ({
   page,
 }) => {
   const pageErrors: string[] = [];
@@ -602,26 +613,31 @@ test("accepts expanded top and bottom support controls", async ({
   const insetInput = page.getByLabel(
     "Bottom support bearing-zone inset in inches",
   );
-  const roundOverInput = page.getByLabel(
-    "Bottom support bottom round-over in inches",
+  const topRoundOverInput = page.getByLabel(
+    "Bottom support top round-over in inches",
   );
   await insetInput.fill("8");
-  await roundOverInput.fill("1");
+  await topRoundOverInput.fill("1");
 
   await expect(topInsetInput).toHaveValue("8");
   await expect(insetInput).toHaveValue("8");
-  await expect(roundOverInput).toHaveValue("1");
+  await expect(topRoundOverInput).toHaveValue("1");
   await expect(page).toHaveURL(/topSupportEndpointInset=8/);
   await expect(page).toHaveURL(/bottomSupportEndpointInset=8/);
-  await expect(page).toHaveURL(/bottomSupportEdgeRadius=1/);
+  await expect(page).toHaveURL(/bottomSupportTopEdgeRadius=1/);
   await expect(
     page.getByLabel("X-Hover Dining Table model viewer"),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Cut list" }).click();
+  await expect(page.locator('.hover-cut-card[data-part-id="C1"]')).toContainText(
+    "Top edge round-over",
+  );
+  await page.getByRole("button", { name: "Assembled" }).click();
 
   await page.getByRole("button", { name: "Support layout" }).click();
   await page.getByLabel("Bottom support style").click();
   await page.getByRole("option", { name: /Cross bars \(X\)/ }).click();
-  await expect(roundOverInput).not.toHaveValue("1");
+  await expect(topRoundOverInput).not.toHaveValue("1");
   await expect(
     page.getByLabel("X-Hover Dining Table model viewer"),
   ).toBeVisible();
@@ -1892,6 +1908,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(page.getByLabel("Bottom support thickness in inches")).toHaveValue("1 1/4");
   await expect(page.getByLabel("Top support bottom round-over in inches")).toHaveValue("1/8");
   await expect(page.getByLabel("Bottom support bottom round-over in inches")).toHaveValue("1/8");
+  await expect(page.getByLabel("Bottom support top round-over in inches")).toHaveValue("0");
   await expect(page.getByLabel("Half-lap fit clearance in inches")).toHaveValue("0");
   await expect(page.getByLabel("Top support style")).toContainText("Cross bars (X)");
   await expect(page.getByLabel("Top support style")).toContainText(

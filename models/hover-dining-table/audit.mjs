@@ -56,6 +56,11 @@ close(params.topSupportThickness, 1.25 * inch, "top support thickness");
 close(params.bottomSupportThickness, 1.25 * inch, "bottom support thickness");
 close(params.topSupportEdgeRadius, 0.125 * inch, "top support round-over");
 close(params.bottomSupportEdgeRadius, 0.125 * inch, "bottom support round-over");
+close(
+  params.bottomSupportTopEdgeRadius,
+  0,
+  "default bottom-support top round-over",
+);
 close(params.halfLapClearance, 0, "nominal half-lap clearance");
 assert.equal(params.topSupportStyle, 0, "upper X remains the default support layout");
 assert.equal(params.bottomSupportStyle, 0, "floor X remains the default support layout");
@@ -217,6 +222,11 @@ assert.ok(model.parameters.find((p) => p.key === "topSupportWidth").limits.max >
 assert.ok(model.parameters.find((p) => p.key === "bottomSupportWidth").limits.max > 2 * inch);
 assert.ok(model.parameters.find((p) => p.key === "topSupportThickness").limits.max > 1.5 * inch);
 assert.ok(model.parameters.find((p) => p.key === "bottomSupportThickness").limits.max > 1.5 * inch);
+assert.ok(
+  model.parameters.find((p) => p.key === "bottomSupportTopEdgeRadius").limits
+    .max >=
+    2 * inch,
+);
 
 const mockEnvelope = [
   params.tableLength / params.mockScale,
@@ -266,6 +276,8 @@ for (const required of [
   "miteredBraceFootprint",
   "alignConvexPolygon",
   "createRoundedPlanPrism",
+  "bottomSupportTopEdgeRadius",
+  "topEdgeRadius",
   "Rounded X-brace layers must preserve aligned cut planes",
   "clipPolygonHalfPlane",
   "halfLapDepth: thickness / 2",
@@ -313,7 +325,7 @@ for (const phrase of [
   "Generate parallel upper lengthwise stretchers only when selected",
   "cubic Bézier",
   "straight-rail tangent",
-  "only the bottom long edge",
+  "optional top long edge of the selected bottom support",
   "14–16 assembly pieces",
   "Exactly three blackened-steel C-channels",
   "presentation-only",
