@@ -2922,6 +2922,84 @@ function CollapsiblePanelSection({
 type StructuralCalculationInput =
   HoverDiningTableStructuralMetric["calculation"]["inputs"][number];
 
+type StructuralReferenceKey =
+  | HoverDiningTableStructuralMetric["key"]
+  | "overall";
+
+const HOVER_STRUCTURAL_SPEC_URL =
+  "https://github.com/jasonLaster/3d-prints/blob/main/docs/hover-dining-table-audit-specifications.md";
+const HOVER_STRUCTURAL_SOURCE_URL =
+  "https://github.com/jasonLaster/3d-prints/blob/main/src/models/hoverDiningTable.ts";
+const HOVER_STRUCTURAL_REFERENCES: Record<
+  StructuralReferenceKey,
+  { label: string; specAnchor: string; sourceLines: string }
+> = {
+  overall: {
+    label: "Overall structural score",
+    specAnchor: "overall-weighting-and-grades",
+    sourceLines: "L4119-L4138",
+  },
+  "longitudinal-racking": {
+    label: "Lengthwise racking",
+    specAnchor: "lengthwise-racking",
+    sourceLines: "L3586-L3605",
+  },
+  "end-box-racking": {
+    label: "End-box racking",
+    specAnchor: "end-box-racking",
+    sourceLines: "L3607-L3614",
+  },
+  torsion: {
+    label: "Torsional rigidity",
+    specAnchor: "torsional-rigidity",
+    sourceLines: "L3616-L3646",
+  },
+  tipping: {
+    label: "Tipping margin",
+    specAnchor: "tipping-margin",
+    sourceLines: "L3648-L3655",
+  },
+  "floor-rocking": {
+    label: "Floor rocking tolerance",
+    specAnchor: "floor-rocking-tolerance",
+    sourceLines: "L3657-L3668",
+  },
+  "member-stiffness": {
+    label: "Member stiffness",
+    specAnchor: "member-stiffness",
+    sourceLines: "L3670-L3696",
+  },
+};
+
+function StructuralReferenceLinks({
+  referenceKey,
+}: {
+  referenceKey: StructuralReferenceKey;
+}) {
+  const reference = HOVER_STRUCTURAL_REFERENCES[referenceKey];
+  return (
+    <p className="structural-reference-links">
+      <a
+        aria-label={`${reference.label} detailed specification`}
+        href={`${HOVER_STRUCTURAL_SPEC_URL}#${reference.specAnchor}`}
+        rel="noreferrer"
+        target="_blank"
+      >
+        Detailed specification
+      </a>
+      <span aria-hidden="true">·</span>
+      <a
+        aria-label={`${reference.label} formula source code`}
+        href={`${HOVER_STRUCTURAL_SOURCE_URL}#${reference.sourceLines}`}
+        rel="noreferrer"
+        target="_blank"
+      >
+        Formula source
+      </a>
+    </p>
+  );
+}
+
 function formatStructuralCalculationInput(
   input: StructuralCalculationInput,
   unit: LengthUnit,
@@ -2992,6 +3070,7 @@ function HoverStructuralMetric({
         <div className="structural-calculation-section">
           <h4>Rationale</h4>
           <p>{metric.calculation.rationale}</p>
+          <StructuralReferenceLinks referenceKey={metric.key} />
         </div>
         <div className="structural-calculation-section">
           <h4>Formula</h4>
@@ -3082,6 +3161,7 @@ function HoverStructuralAssessment({
         <div className="structural-calculation-section">
           <h4>Rationale</h4>
           <p>{assessment.overallCalculation.rationale}</p>
+          <StructuralReferenceLinks referenceKey="overall" />
         </div>
         <div className="structural-calculation-section">
           <h4>Formula</h4>

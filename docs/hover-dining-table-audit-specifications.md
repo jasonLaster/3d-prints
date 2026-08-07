@@ -161,16 +161,75 @@ There is no hover-gap control or support-pad control. Stretcher count and floor-
 
 The inspector includes a live, geometry-only structural screen. It is intentionally not a certification, finite-element analysis, or substitute for testing the assembled table. Joint geometry, glue quality, grain defects, moisture, tabletop fasteners, floor flatness, and cyclic degradation are not known by this CAD model.
 
-The screen reports six independently visible 0–100 scores plus a weighted overall grade: lengthwise racking (23%), end-box racking (20%), torsional rigidity (18%), tipping margin (14%), floor-rocking tolerance (12%), and member stiffness (13%). Grades are A at 85 or above, B at 75, C at 65, D at 50, and F below 50. Each row must expose its geometry driver rather than presenting an unexplained result.
+The screen reports six independently visible 0–100 scores plus a weighted overall grade. The executable reference dimensions, material moduli, weights, grade thresholds, and score clamping are defined beside the formulas in [`hoverDiningTable.ts`](../src/models/hoverDiningTable.ts#L3431-L3492). Every UI rationale links back to the corresponding section below and to its implementation block.
 
-- Lengthwise racking rewards triangulated X layouts, larger support cross-sections, lower overall height, and a lower connecting plane.
-- End-box racking uses side-member width, box depth, rail height, and frame height as a closed-frame stiffness proxy.
-- Torsional rigidity rewards two separated triangulated support planes and penalizes parallel or missing lower connections. It also includes a bounded top-plane multiplier derived from the three C-channels' transformed oak/steel sections, cross-width coverage, and longitudinal distribution; the channels do not count as leg or joint bracing.
-- Tipping margin uses the controlling half-footprint-to-height ratio in the longitudinal and transverse directions.
-- Floor-rocking tolerance treats an added floor X or center board as an additional coplanar contact network. This makes the design more sensitive to an uneven floor even when it improves racking.
-- Member stiffness compares stile and active-support slenderness plus the channel-reinforced tabletop's effective slenderness. The tabletop term calculates the remaining oak and the C-channel web and flanges about a shared transformed-section neutral axis using fixed 12.27 GPa white-oak and 200 GPa steel modulus assumptions; it does not calculate allowable stress, fastener transfer, or joint capacity.
+### Overall weighting and grades
 
-The UI must also show a one-parameter overall-height sensitivity at ±1 in with every other input fixed. Increasing height must not improve the overall, end-box-racking, tipping, or member-stiffness scores. Enlarging the end-box side width or depth must not reduce the end-box-racking score. Removing triangulated support must reduce racking or torsional scores even if it improves uneven-floor tolerance. Increasing C-channel section and coverage must improve torsional and tabletop/member stiffness scores, while moving the outer channels toward the center must reduce only their torsional distribution contribution.
+The overall score is the weighted sum
+
+`0.23 × lengthwiseRacking + 0.20 × endBoxRacking + 0.18 × torsion + 0.14 × tipping + 0.12 × floorRocking + 0.13 × memberStiffness`.
+
+Each metric and the final sum are clamped to 0–100 and rounded to one decimal place. Grades are A at 85 or above, B at 75, C at 65, D at 50, and F below 50. Weighting emphasizes motion that is likely to be perceived as table wobble without allowing any one proxy to represent the complete design. See the [weight and grade constants](../src/models/hoverDiningTable.ts#L3444-L3465) and [weighted-sum implementation](../src/models/hoverDiningTable.ts#L4119-L4138).
+
+### Shared reference factors
+
+The relative factors use a 29.5 in reference height, 2.25 in end-box side width, 2.5 in end-box depth, 1.5 in average rail height, and 2.5 in² support reference area. These are comparison baselines rather than code-minimum dimensions. White oak is held at 12.27 GPa modulus of elasticity and steel at 200 GPa. See the [reference and material constants](../src/models/hoverDiningTable.ts#L3431-L3442).
+
+### C-channel transformed-section model
+
+The three widthwise channels contribute to the tabletop terms through a transformed oak/steel section. With modular ratio `n = Esteel / Eoak`, the helper models the remaining oak strip, steel web, and two steel flanges; calculates their shared transformed-section neutral axis; and applies the parallel-axis theorem to obtain `Itransformed`. The local section ratio is
+
+`sectionRatio = Itransformed / IbareOak`.
+
+That local ratio is bounded into a whole-top factor using the fraction of table length occupied by the three channel strips and the channel length across the tabletop:
+
+`topPlaneStiffnessFactor = 1 + channelStripFraction × channelLengthCoverage × (sectionRatio − 1)`.
+
+The outer-channel center spread produces a separate 0–1 distribution factor. Torsion receives
+
+`channelTorsionFactor = 1 + (topPlaneStiffnessFactor − 1) × (0.5 + 0.5 × distributionFactor)`.
+
+The effective tabletop thickness is `topThickness × ∛topPlaneStiffnessFactor`, preserving the cubic relationship between thickness and second moment of area. This is a relative screen that assumes meaningful oak/steel load transfer around a shared neutral axis. It does not calculate slotted-fastener slip, contact gaps, screw withdrawal, allowable stress, local mortise splitting, or long-direction tabletop sag. See [`getCChannelTopStiffness`](../src/models/hoverDiningTable.ts#L3495-L3580).
+
+### Lengthwise racking
+
+`30 + 35 × topTopology × topAreaFactor × heightFactor^1.4 + 25 × bottomTopology × bottomAreaFactor × heightFactor^1.4`
+
+Here `heightFactor = 29.5 in / overallHeight`; each area factor is the square root of support cross-sectional area divided by the 2.5 in² reference. Top topology is 1.00 for an X and 0.72 for parallel stretchers. Bottom topology is 1.00 for an X, 0.55 for a center board, and 0.12 for no connector. The base 30 represents the two end boxes before longitudinal members contribute. This rewards triangulation, larger support sections, and lower height but does not calculate connection rotation. See the [lengthwise-racking implementation](../src/models/hoverDiningTable.ts#L3586-L3605).
+
+### End-box racking
+
+`78 × (sideWidth / 2.25 in)^1.2 × (boxDepth / 2.5 in)^0.8 × (averageRailHeight / 1.5 in)^0.4 × heightFactor^2`
+
+Each end box is treated as a relative portal-frame proxy. Wider stiles, deeper members, and taller rails improve the score; height is penalized quadratically because it increases the lateral lever arm. The proxy does not assign rotational stiffness to the rail/stile joints. See the [end-box-racking implementation](../src/models/hoverDiningTable.ts#L3607-L3614).
+
+### Torsional rigidity
+
+`15 + 75 × √(topTopology × bottomTopology) × planeSeparation^0.6 × √widthEngagement × √channelTorsionFactor`
+
+Top topology is 1.00 for an X and 0.65 for parallel stretchers. Bottom topology is 1.00 for an X, 0.55 for a center board, and 0.15 with no lower connector. `planeSeparation` is the normalized vertical distance between the active upper and lower support centroids; the no-lower-support case receives a fixed 0.35 proxy. `widthEngagement` compares the end-box bottom width with 90% of tabletop width and is bounded from 0.5 to 1.1. The C-channel multiplier comes from the shared helper above and remains bounded by strip coverage and distribution. The channels improve the top plane but never count as end-box, leg, or joint bracing. See the [torsional-rigidity implementation](../src/models/hoverDiningTable.ts#L3616-L3646) and [C-channel helper](../src/models/hoverDiningTable.ts#L3495-L3580).
+
+### Tipping margin
+
+`20 + 80 × min(1, controllingTippingRatio / 0.65)`
+
+`controllingTippingRatio` is the smaller of `bottomWidth / (2 × height)` and `(tableLength − 2 × endOverhang) / (2 × height)`. This compares support-polygon geometry with height; it does not model a particular load case, occupant behavior, floor friction, or the assembled center of mass. See the [tipping implementation](../src/models/hoverDiningTable.ts#L3648-L3655).
+
+### Floor rocking tolerance
+
+`contactBase + 10 × min(1, (bottomWidth − 2 × outerBottomRadius) / bottomWidth)`
+
+The topology base is 52 for a floor X, 62 for a center board, and 84 for two end boxes with no lower floor connector. The remaining term rewards a long flat bearing run. This deliberately represents sensitivity to an uneven floor: an X can improve racking while introducing more coplanar contacts that require shimming or leveling. It is not a floor-flatness measurement. See the [floor-rocking implementation](../src/models/hoverDiningTable.ts#L3657-L3668).
+
+### Member stiffness
+
+`100 − max(0, stileSlenderness − 8) × 2 − max(0, supportSlenderness − 25) × 0.9 − max(0, tabletopSlenderness − 24) × 0.8`
+
+Stile slenderness is opening height divided by the square root of the stile face area. Active-support slenderness is member length divided by the square root of member cross-sectional area, using the most slender selected upper or lower support. Tabletop slenderness is tabletop width divided by the C-channel-reinforced effective thickness from the transformed-section helper. The result is a relative geometric screen at fixed material moduli; it does not calculate load deflection, buckling, allowable stress, fastener transfer, or joint capacity. See the [member-stiffness implementation](../src/models/hoverDiningTable.ts#L3670-L3696) and [C-channel helper](../src/models/hoverDiningTable.ts#L3495-L3580).
+
+### Sensitivity and executable checks
+
+The UI shows a one-parameter overall-height sensitivity at ±1 in with every other input fixed; see the [height-sensitivity implementation](../src/models/hoverDiningTable.ts#L4145-L4162). Increasing height must not improve the overall, end-box-racking, tipping, or member-stiffness scores. Enlarging the end-box side width or depth must not reduce end-box racking. Removing triangulated support must reduce racking or torsional scores even if it improves uneven-floor tolerance. Increasing C-channel section and coverage must improve torsional and tabletop/member stiffness scores, while moving the outer channels toward the center must reduce only their torsional distribution contribution. These behaviors and the transparent calculation inputs are covered by the [structural assessment tests](../tests/e2e/hover-dining-table.spec.ts#L529-L690).
 
 The research boundary follows [ISO 19682:2023](https://www.iso.org/standard/73590.html), which separates table stability, strength, and durability test methods; [ANSI/BIFMA X5.5-2021](https://www.bifma.org/news/551679/BIFMA-Revises-Desk-and-Table-Products-Standard.htm), which emphasizes table stability and leg strength; and the USDA Forest Products Laboratory's published white-oak reference values of approximately 12.27 GPa modulus of elasticity and 104.8 MPa modulus of rupture in clear bending specimens. These sources motivate the categories and oak reference only; this app does not claim conformance with either furniture standard.
 

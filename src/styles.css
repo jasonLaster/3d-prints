@@ -3008,6 +3008,29 @@ html.dark .segmented-control button.active {
   line-height: 1.5;
 }
 
+.structural-reference-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.structural-reference-links a {
+  color: var(--accent);
+  font-weight: 700;
+  text-underline-offset: 2px;
+}
+
+.structural-reference-links a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.structural-reference-links a:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .structural-formula {
   display: block;
   padding: 8px;

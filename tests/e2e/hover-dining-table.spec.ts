@@ -702,6 +702,31 @@ test("grades wobble risks and responds monotonically to structural parameters", 
   );
 });
 
+test("documents each structural formula with its implementation", () => {
+  const structuralSpec = fs.readFileSync(
+    path.join(root, "docs/hover-dining-table-audit-specifications.md"),
+    "utf8",
+  );
+  for (const [heading, sourceLines] of [
+    ["Overall weighting and grades", "L4119-L4138"],
+    ["Lengthwise racking", "L3586-L3605"],
+    ["End-box racking", "L3607-L3614"],
+    ["Torsional rigidity", "L3616-L3646"],
+    ["Tipping margin", "L3648-L3655"],
+    ["Floor rocking tolerance", "L3657-L3668"],
+    ["Member stiffness", "L3670-L3696"],
+  ] as const) {
+    expect(structuralSpec).toContain(`### ${heading}`);
+    expect(structuralSpec).toContain(
+      `../src/models/hoverDiningTable.ts#${sourceLines}`,
+    );
+  }
+  expect(structuralSpec).toContain("### C-channel transformed-section model");
+  expect(structuralSpec).toContain(
+    "../src/models/hoverDiningTable.ts#L3495-L3580",
+  );
+});
+
 test("atomically settles transient support-member and mating-box dimensions", () => {
   const transientParams = {
     ...defaultParams,
@@ -1638,6 +1663,12 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     structuralAssessment.getByRole("listitem"),
   ).toHaveCount(6);
   await expect(
+    structuralAssessment.locator(".structural-reference-links"),
+  ).toHaveCount(7);
+  await expect(
+    structuralAssessment.locator(".structural-reference-links a"),
+  ).toHaveCount(14);
+  await expect(
     structuralAssessment.getByText("Overall-height sensitivity"),
   ).toBeVisible();
   const overallCalculationButton = structuralAssessment.getByRole("button", {
@@ -1654,6 +1685,16 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(
     overallCalculation.getByText(/90 × 0\.23 = 20\.7/),
   ).toBeVisible();
+  await expect(
+    overallCalculation.getByRole("link", {
+      name: "Overall structural score detailed specification",
+    }),
+  ).toHaveAttribute("href", /#overall-weighting-and-grades$/);
+  await expect(
+    overallCalculation.getByRole("link", {
+      name: "Overall structural score formula source code",
+    }),
+  ).toHaveAttribute("href", /hoverDiningTable\.ts#L4119-L4138$/);
   await overallCalculationButton.click();
   await expect(overallCalculation).toBeHidden();
   const calculationButtons = structuralAssessment.locator(
@@ -1676,6 +1717,16 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(
     rackingCalculation.getByText(/30 \+ 35 × topTopology/),
   ).toBeVisible();
+  await expect(
+    rackingCalculation.getByRole("link", {
+      name: "Lengthwise racking detailed specification",
+    }),
+  ).toHaveAttribute("href", /#lengthwise-racking$/);
+  await expect(
+    rackingCalculation.getByRole("link", {
+      name: "Lengthwise racking formula source code",
+    }),
+  ).toHaveAttribute("href", /hoverDiningTable\.ts#L3586-L3605$/);
   const rackingHeightInput = rackingCalculation
     .locator(".structural-calculation-inputs > div")
     .filter({ hasText: "overallHeight" });
@@ -1690,6 +1741,11 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(
     torsionCalculation.getByText(/√\(channelTorsionFactor\)/),
   ).toBeVisible();
+  await expect(
+    torsionCalculation.getByRole("link", {
+      name: "Torsional rigidity detailed specification",
+    }),
+  ).toHaveAttribute("href", /#torsional-rigidity$/);
   const channelDepthInput = torsionCalculation
     .locator(".structural-calculation-inputs > div")
     .filter({ hasText: "channelDepth" });
