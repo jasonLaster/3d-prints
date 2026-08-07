@@ -2544,11 +2544,16 @@ html.dark .panel-section:nth-child(even) {
 .unit-select-trigger {
   width: 64px;
   height: 36px;
+  gap: 4px;
   padding: 0 7px;
   border-color: transparent;
   background: transparent;
   color: var(--foreground);
   font-size: 13px;
+}
+
+.unit-select-trigger svg {
+  flex: 0 0 14px;
 }
 
 .angle-unit {

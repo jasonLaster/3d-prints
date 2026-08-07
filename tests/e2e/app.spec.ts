@@ -376,7 +376,24 @@ test.describe("3D print app", () => {
   test("uses one contextual unit dropdown to switch all parameter rows", async ({
     page,
   }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await openReady(page, "/?model=paper-towel-holder&unit=mm");
+
+    const unitTrigger = page.getByRole("combobox", {
+      name: "Holder height units",
+    });
+    const unitChevron = unitTrigger.locator("svg");
+    const [triggerBox, chevronBox] = await Promise.all([
+      unitTrigger.boundingBox(),
+      unitChevron.boundingBox(),
+    ]);
+    expect(triggerBox).not.toBeNull();
+    expect(chevronBox).not.toBeNull();
+    expect(chevronBox?.width).toBe(14);
+    expect(chevronBox?.x).toBeGreaterThanOrEqual(triggerBox?.x ?? 0);
+    expect((chevronBox?.x ?? 0) + (chevronBox?.width ?? 0)).toBeLessThanOrEqual(
+      (triggerBox?.x ?? 0) + (triggerBox?.width ?? 0),
+    );
 
     await chooseSelectOption(page, "Holder height units", "cm");
 
