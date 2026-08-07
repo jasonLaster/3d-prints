@@ -1246,7 +1246,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   await expect(page.locator(".scene-panel canvas")).toBeVisible();
   await expect(
     page.locator(".inspector-body > .panel-section > h2"),
-  ).toHaveText(["Assembly", "Model controls", "Rendering"]);
+  ).toHaveText(["Assembly", "Model controls"]);
   const designChecks = page.getByLabel("Hover-table design checks");
   await expect(designChecks).toBeVisible();
   await expect(

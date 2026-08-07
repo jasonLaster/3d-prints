@@ -3573,6 +3573,8 @@ function WorkspaceActionsMenu({
   exportFileName,
   model,
   params,
+  renderMode,
+  showOriginal,
   theme,
   unit,
   onCreateStlBlob,
@@ -3580,7 +3582,9 @@ function WorkspaceActionsMenu({
   onExportLid,
   onExportBoxAndLid,
   onExportHoverTemplates,
+  onRenderModeChange,
   onSavedVersion,
+  onShowOriginalChange,
   onThemeChange,
 }: {
   activeVersionId: Id<"versions"> | null;
@@ -3588,6 +3592,8 @@ function WorkspaceActionsMenu({
   exportFileName: string;
   model: ModelDefinition;
   params: ModelParams;
+  renderMode: RenderMode;
+  showOriginal: boolean;
   theme: ThemeMode;
   unit: LengthUnit;
   onCreateStlBlob: () => Blob | null;
@@ -3595,7 +3601,9 @@ function WorkspaceActionsMenu({
   onExportLid: () => void;
   onExportBoxAndLid: () => void;
   onExportHoverTemplates: () => void;
+  onRenderModeChange: (renderMode: RenderMode) => void;
   onSavedVersion: (versionId: Id<"versions">, title: string) => void;
+  onShowOriginalChange: (checked: boolean) => void;
   onThemeChange: (theme: ThemeMode) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -3662,6 +3670,28 @@ function WorkspaceActionsMenu({
                 {isDark ? "Light theme" : "Dark theme"}
               </button>
             </div>
+            <div
+              aria-label="Rendering settings"
+              className="workspace-menu-group workspace-rendering-settings"
+            >
+              <span className="workspace-menu-label">Rendering</span>
+              <RenderModeControl
+                onChange={onRenderModeChange}
+                value={renderMode}
+              />
+              {model.viewer !== "dining-table-v1" &&
+              model.viewer !== "hover-dining-table-v1" ? (
+                <OriginalOverlayToggle
+                  checked={showOriginal}
+                  label={
+                    model.viewer === "weighted-paper-towel-holder-v1"
+                      ? "Original inlay"
+                      : "Original STL"
+                  }
+                  onChange={onShowOriginalChange}
+                />
+              ) : null}
+            </div>
             <div className="workspace-menu-group">
               <button className="primary-action" onClick={onExport} type="button">
                 <Download aria-hidden="true" />
@@ -3702,6 +3732,8 @@ function WorkspaceHeader({
   exportFileName,
   model,
   params,
+  renderMode,
+  showOriginal,
   theme,
   unit,
   onCreateStlBlob,
@@ -3709,7 +3741,9 @@ function WorkspaceHeader({
   onExportLid,
   onExportBoxAndLid,
   onExportHoverTemplates,
+  onRenderModeChange,
   onSavedVersion,
+  onShowOriginalChange,
   onThemeChange,
   onOpenNavigation,
   showNavigationTrigger,
@@ -3720,6 +3754,8 @@ function WorkspaceHeader({
   exportFileName: string;
   model: ModelDefinition;
   params: ModelParams;
+  renderMode: RenderMode;
+  showOriginal: boolean;
   theme: ThemeMode;
   unit: LengthUnit;
   onCreateStlBlob: () => Blob | null;
@@ -3727,7 +3763,9 @@ function WorkspaceHeader({
   onExportLid: () => void;
   onExportBoxAndLid: () => void;
   onExportHoverTemplates: () => void;
+  onRenderModeChange: (renderMode: RenderMode) => void;
   onSavedVersion: (versionId: Id<"versions">, title: string) => void;
+  onShowOriginalChange: (checked: boolean) => void;
   onThemeChange: (theme: ThemeMode) => void;
   onOpenNavigation: () => void;
   showNavigationTrigger: boolean;
@@ -3762,9 +3800,13 @@ function WorkspaceHeader({
           onExportLid={onExportLid}
           onExportBoxAndLid={onExportBoxAndLid}
           onExportHoverTemplates={onExportHoverTemplates}
+          onRenderModeChange={onRenderModeChange}
           onSavedVersion={onSavedVersion}
+          onShowOriginalChange={onShowOriginalChange}
           onThemeChange={onThemeChange}
           params={params}
+          renderMode={renderMode}
+          showOriginal={showOriginal}
           theme={theme}
           unit={unit}
         />
@@ -4280,11 +4322,15 @@ export default function App({
         onExportHoverTemplates={() =>
           viewerRef.current?.exportHoverTemplateStls()
         }
+        onRenderModeChange={setRenderMode}
         onSavedVersion={handleSavedVersion}
+        onShowOriginalChange={setShowOriginal}
         onThemeChange={updateTheme}
         onOpenNavigation={() => setIsCompactLibraryOpen(true)}
         params={params}
+        renderMode={renderMode}
         showNavigationTrigger={isCompactWorkspace}
+        showOriginal={showOriginal}
         theme={theme}
         unit={unit}
       />
@@ -4621,23 +4667,6 @@ export default function App({
                     />
                   </section>
                 ) : null}
-
-                <section className="panel-section rendering-panel-section">
-                  <h2>Rendering</h2>
-                  <RenderModeControl onChange={setRenderMode} value={renderMode} />
-                  {model.viewer !== "dining-table-v1" &&
-                  model.viewer !== "hover-dining-table-v1" ? (
-                    <OriginalOverlayToggle
-                      checked={showOriginal}
-                      label={
-                        model.viewer === "weighted-paper-towel-holder-v1"
-                          ? "Original inlay"
-                          : "Original STL"
-                      }
-                      onChange={setShowOriginal}
-                    />
-                  ) : null}
-                </section>
 
                 {model.viewer === "hover-dining-table-v1" ? (
                   isCompactWorkspace ? (

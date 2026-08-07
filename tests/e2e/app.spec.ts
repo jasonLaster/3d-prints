@@ -582,15 +582,30 @@ test.describe("3D print app", () => {
     await page.getByRole("button", { name: "Section" }).click();
     await expect(page.getByRole("button", { name: "Section" })).toHaveClass(/active/);
 
-    await page.getByRole("button", { name: "X-Ray" }).click();
-    await expect(page.getByRole("button", { name: "X-Ray" })).toHaveClass(/active/);
+    await expect(
+      page
+        .locator(".inspector-body > .panel-section > h2")
+        .filter({ hasText: "Rendering" }),
+    ).toHaveCount(0);
+    await openActions(page);
+    const renderingSettings = page.getByLabel("Rendering settings");
+    await expect(renderingSettings).toBeVisible();
+
+    await renderingSettings.getByRole("button", { name: "X-Ray" }).click();
+    await expect(
+      renderingSettings.getByRole("button", { name: "X-Ray" }),
+    ).toHaveClass(/active/);
     await expect(page.getByTestId("viewer-status")).toContainText("X-Ray");
-    await page.getByRole("button", { name: "Wire" }).click();
-    await expect(page.getByRole("button", { name: "Wire" })).toHaveClass(/active/);
+    await renderingSettings.getByRole("button", { name: "Wire" }).click();
+    await expect(
+      renderingSettings.getByRole("button", { name: "Wire" }),
+    ).toHaveClass(/active/);
     await expect(page.getByTestId("viewer-status")).toContainText("Wire");
 
-    const overlay = page.getByLabel("Original inlay");
-    await page.getByText("Original inlay", { exact: true }).click();
+    const overlay = renderingSettings.getByLabel("Original inlay");
+    await renderingSettings
+      .getByText("Original inlay", { exact: true })
+      .click();
     await expect(overlay).toBeChecked();
     await expectCanvasHasRenderedModel(page);
   });

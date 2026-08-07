@@ -937,6 +937,18 @@ html.dark .model-preview.holder span {
   width: 100%;
 }
 
+.workspace-menu-label {
+  color: var(--muted-strong);
+  font-size: 11px;
+  font-weight: 820;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workspace-rendering-settings .toggle-control {
+  margin-top: 4px;
+}
+
 .workspace-menu-group .primary-action,
 .version-modal-actions .primary-action {
   justify-content: center;
@@ -3224,19 +3236,11 @@ html.dark .segmented-control button.active {
   }
 
   .inspector[data-mobile-section="assembly"]
-    :is(
-      .model-controls-panel-section,
-      .rendering-panel-section,
-      .inspector-design-checks
-    ),
+    :is(.model-controls-panel-section, .inspector-design-checks),
   .inspector[data-mobile-section="parameters"]
     :is(.assembly-panel-section, .inspector-design-checks),
   .inspector[data-mobile-section="checks"]
-    :is(
-      .assembly-panel-section,
-      .model-controls-panel-section,
-      .rendering-panel-section
-    ) {
+    :is(.assembly-panel-section, .model-controls-panel-section) {
     display: none;
   }
 
