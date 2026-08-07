@@ -26,7 +26,10 @@ type TemplateBoundary = {
   inner: TemplatePoint[];
 };
 
-export type HoverDiningTableTemplateKind = "top-rail" | "vertical-stile";
+export type HoverDiningTableTemplateKind =
+  | "top-rail"
+  | "bottom-rail"
+  | "vertical-stile";
 
 export type HoverDiningTableTemplateSegment = {
   template: HoverDiningTableTemplateKind;
@@ -105,8 +108,11 @@ function asBoundaryPoints(
   stileLayout?: ReturnType<typeof getHoverDiningTableStileFabricationLayout>,
 ) {
   return points.map((point) => {
-    if (kind === "top-rail") {
-      return { u: point.x / scale, v: point.y / scale };
+    if (kind !== "vertical-stile") {
+      return {
+        u: point.x / scale,
+        v: (kind === "bottom-rail" ? -point.y : point.y) / scale,
+      };
     }
     if (!stileLayout) {
       throw new Error("Vertical-stile template is missing its fabrication frame");
@@ -220,7 +226,9 @@ function boundaryFromFabricationProfile(
     label:
       kind === "top-rail"
         ? "Top rail routing template"
-        : "Vertical stile routing template",
+        : kind === "bottom-rail"
+          ? "Bottom rail routing template"
+          : "Vertical stile routing template",
     outer,
     inner,
   };
@@ -238,6 +246,12 @@ function buildTemplateBoundaries(
     boundaryFromFabricationProfile(
       profiles.top,
       "top-rail",
+      scale,
+      curveSegments,
+    ),
+    boundaryFromFabricationProfile(
+      profiles.bottom,
+      "bottom-rail",
       scale,
       curveSegments,
     ),
@@ -572,7 +586,7 @@ export function createHoverDiningTableTemplateSegments(
       jointClearance,
     ),
   );
-  for (const kind of ["top-rail", "vertical-stile"] as const) {
+  for (const { kind } of boundaries) {
     const family = segments.filter((segment) => segment.template === kind);
     if (family.length < 2) {
       segments.forEach((segment) => segment.geometry.dispose());

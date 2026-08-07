@@ -4125,7 +4125,7 @@ export function getHoverDiningTableAuditValue(
     case "hoverRoutingTemplates":
       return item(
         check.label,
-        `2 profiles · ${formatLength(getParam(params, "templateThickness"), unit)} thick · ${formatLength(getParam(params, "templatePlateLength"), unit)} plate · keyed dovetails`,
+        `3 profiles · ${formatLength(getParam(params, "templateThickness"), unit)} thick · ${formatLength(getParam(params, "templatePlateLength"), unit)} plate · keyed dovetails`,
       );
     case "hoverPrintEnvelope":
       return item(

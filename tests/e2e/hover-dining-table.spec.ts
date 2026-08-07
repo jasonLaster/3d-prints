@@ -1056,12 +1056,13 @@ test("derives a full-size finished cut schedule for all 16 pieces", () => {
   );
 });
 
-test("builds two full-size routing templates as plate-safe dovetailed STLs", () => {
+test("builds three full-size routing templates as plate-safe dovetailed STLs", () => {
   const expectTemplateParity = (params: ModelParams) => {
     const cutList = getHoverDiningTableCutList(params);
     const templateSummary = getHoverDiningTableTemplateSummary(params, model);
     for (const [templateKind, cutPartId] of [
       ["top-rail", "B1"],
+      ["bottom-rail", "B2"],
       ["vertical-stile", "B3"],
     ] as const) {
       const template = templateSummary.templates.find(
@@ -1087,6 +1088,7 @@ test("builds two full-size routing templates as plate-safe dovetailed STLs", () 
   expect(summary.jointClearance).toBeCloseTo(0.2, 6);
   expect(summary.templates.map((template) => template.kind)).toEqual([
     "top-rail",
+    "bottom-rail",
     "vertical-stile",
   ]);
   expect(summary.templates.every((template) => template.segmentCount >= 2)).toBe(true);
@@ -1099,7 +1101,7 @@ test("builds two full-size routing templates as plate-safe dovetailed STLs", () 
   expect(new Set(segments.map((segment) => segment.fileName)).size).toBe(
     segments.length,
   );
-  for (const kind of ["top-rail", "vertical-stile"] as const) {
+  for (const kind of ["top-rail", "bottom-rail", "vertical-stile"] as const) {
     const family = segments.filter((segment) => segment.template === kind);
     const template = summary.templates.find(
       (candidate) => candidate.kind === kind,
@@ -1599,10 +1601,11 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   );
   await expect(
     page.getByText(
-      "Routing templates · exact B1 + B3 profiles · segmented STLs",
+      "Routing templates · exact B1 + B2 + B3 profiles · segmented STLs",
     ),
   ).toBeVisible();
   await expect(page.getByText("Top rail · B1")).toBeVisible();
+  await expect(page.getByText("Bottom rail · B2")).toBeVisible();
   await expect(page.getByText("Vertical stile · B3")).toBeVisible();
   const templateDownloads: string[] = [];
   page.on("download", (download) => {
@@ -1623,6 +1626,7 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
   );
   expect(new Set(templateDownloads).size).toBe(templateDownloads.length);
   expect(templateDownloads.some((name) => name.includes("top-rail"))).toBe(true);
+  expect(templateDownloads.some((name) => name.includes("bottom-rail"))).toBe(true);
   expect(templateDownloads.some((name) => name.includes("vertical-stile"))).toBe(true);
   await page.keyboard.press("Escape");
   await cutListButton.click();

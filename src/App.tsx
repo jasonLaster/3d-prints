@@ -1053,12 +1053,10 @@ const HolderViewer = forwardRef<
           model,
           previewScale,
         );
-        const families = ["top-rail", "vertical-stile"] as const;
-        families.forEach((family, familyIndex) => {
-          const familySegments = segments.filter(
-            (segment) => segment.template === family,
-          );
-          const familyBounds = familySegments.reduce(
+        const families = ["top-rail", "bottom-rail", "vertical-stile"] as const;
+        const familyRows = families.map((family) => {
+          const familySegments = segments.filter((segment) => segment.template === family);
+          const bounds = familySegments.reduce(
             (bounds, segment) => {
               segment.geometry.computeBoundingBox();
               const geometryBounds = segment.geometry.boundingBox;
@@ -1083,25 +1081,35 @@ const HolderViewer = forwardRef<
               maxY: Number.NEGATIVE_INFINITY,
             },
           );
-          const rowWidth = familyBounds.maxX - familyBounds.minX;
-          const rowHeight = familyBounds.maxY - familyBounds.minY;
-          const rowY =
-            familyIndex === 0
-              ? previewScale > 0
-                ? 8
-                : 0
-              : -rowHeight - 8;
+          return {
+            family,
+            segments: familySegments,
+            bounds,
+            width: bounds.maxX - bounds.minX,
+            height: bounds.maxY - bounds.minY,
+          };
+        });
+        const rowGap = 8;
+        const totalRowsHeight =
+          familyRows.reduce((total, row) => total + row.height, 0) +
+          rowGap * (familyRows.length - 1);
+        let nextRowTop = totalRowsHeight / 2;
+        familyRows.forEach((row, familyIndex) => {
+          const rowY = nextRowTop - row.height;
+          nextRowTop = rowY - rowGap;
           const seamReveal = Math.max(
             0.8,
             (getParam(latestParamsRef.current, "templateThickness") /
               previewScale) *
               2.5,
           );
-          familySegments.forEach((segment) => {
+          row.segments.forEach((segment) => {
             const palette =
-              family === "top-rail"
+              row.family === "top-rail"
                 ? ["#e4a457", "#f1c77e"]
-                : ["#86a9c4", "#b8cfdf"];
+                : row.family === "bottom-rail"
+                  ? ["#9db27d", "#c5d5a9"]
+                  : ["#86a9c4", "#b8cfdf"];
             const templateMaterial = new THREE.MeshStandardMaterial({
               color: palette[segment.index % palette.length],
               metalness: 0,
@@ -1112,9 +1120,9 @@ const HolderViewer = forwardRef<
             mesh.name = `${model.id}-${segment.template}-template-${segment.index + 1}`;
             mesh.position.set(
               segment.assemblyOffset.x -
-                (familyBounds.minX + rowWidth / 2) +
+                (row.bounds.minX + row.width / 2) +
                 (segment.index - (segment.count - 1) / 2) * seamReveal,
-              segment.assemblyOffset.y - familyBounds.minY + rowY,
+              segment.assemblyOffset.y - row.bounds.minY + rowY,
               familyIndex * Math.max(0.3, segment.thickness * 1.5),
             );
             mesh.userData.template = segment.template;
@@ -1432,15 +1440,27 @@ const HolderViewer = forwardRef<
       model,
       1,
     );
-    segments.forEach((segment) => {
+    const files = segments.map((segment) => {
       const mesh = new THREE.Mesh(createCleanExportGeometry(segment.geometry));
       mesh.name = `${model.id}-${segment.template}-template-part-${segment.index + 1}`;
       mesh.updateMatrixWorld(true);
       const result = new STLExporter().parse(mesh, { binary: true });
-      downloadBlob(new Blob([result], { type: "model/stl" }), segment.fileName);
       mesh.geometry.dispose();
       segment.geometry.dispose();
+      return {
+        blob: new Blob([result], { type: "model/stl" }),
+        fileName: segment.fileName,
+      };
     });
+    const downloadNext = (index: number) => {
+      const file = files[index];
+      if (!file) return;
+      downloadBlob(file.blob, file.fileName);
+      if (index + 1 < files.length) {
+        window.setTimeout(() => downloadNext(index + 1), 100);
+      }
+    };
+    downloadNext(0);
   }, [model]);
 
   useImperativeHandle(
@@ -1916,10 +1936,17 @@ const HolderViewer = forwardRef<
             </span>
           </div>
           <div>
+            <span className="template-swatch bottom-rail" aria-hidden="true" />
+            <strong>Bottom rail · B2</strong>
+            <span>
+              {hoverTemplateSummary.templates[1].segmentCount} plates · mirror by end
+            </span>
+          </div>
+          <div>
             <span className="template-swatch stile" aria-hidden="true" />
             <strong>Vertical stile · B3</strong>
             <span>
-              {hoverTemplateSummary.templates[1].segmentCount} plates · mirror left/right
+              {hoverTemplateSummary.templates[2].segmentCount} plates · mirror left/right
             </span>
           </div>
           <p>
@@ -1944,7 +1971,7 @@ const HolderViewer = forwardRef<
         ) : null}
         {model.viewer === "hover-dining-table-v1" &&
         assemblyMode === "templates" ? (
-          <span>Routing templates · exact B1 + B3 profiles · segmented STLs</span>
+          <span>Routing templates · exact B1 + B2 + B3 profiles · segmented STLs</span>
         ) : null}
       </div>
       <div className="viewer-nav" aria-label="3D view controls">
@@ -3725,16 +3752,6 @@ function WorkspaceHeader({
             <PanelLeftOpen aria-hidden="true" />
           </button>
         ) : null}
-        <button
-          aria-label="Download current model STL"
-          className="workspace-quick-action workspace-export-action"
-          onClick={onExport}
-          title="Download current model STL"
-          type="button"
-        >
-          <Download aria-hidden="true" />
-          <span>Export</span>
-        </button>
         <WorkspaceActionsMenu
           activeVersionId={activeVersionId}
           convexEnabled={convexEnabled}

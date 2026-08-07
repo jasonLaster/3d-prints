@@ -32,7 +32,7 @@ This document is the authoritative design and executable audit contract for `hov
 - The lower X is tight to the floor: its complete assembled bottom envelope is coplanar with and bears directly on `Z = 0`, with zero air gap, feet, or spacer.
 - The top can instead use the two original parallel lengthwise stretchers. The floor can instead use one centered lengthwise board or no connector. Side aprons, hover reveals, exposed support pads, and spacer blocks are prohibited.
 - Default manipulation-model scale: 1:10.
-- Two reusable full-size routing-template families reproduce the end-box top-rail and mirrored vertical-stile profiles. Their nominal printed thickness is 1/8 in.
+- Three reusable full-size routing-template families reproduce the asymmetric end-box top-rail, bottom-rail, and mirrored vertical-stile profiles. Their nominal printed thickness is 1/8 in.
 
 ## Tabletop contract
 
@@ -123,10 +123,11 @@ The sheet deliberately distinguishes finished nominal dimensions from rough stoc
 
 ## Segmented routing-template contract
 
-Templates is a fourth X-Hover assembly view. It derives two flat, full-size routing patterns from the same constraints and cubic Bézier control points as the assembled end box:
+Templates is a fourth X-Hover assembly view. It derives three flat, full-size routing patterns from the same constraints and cubic Bézier control points as the assembled end box:
 
 1. The top-rail template follows the complete outer top profile and inner-opening top profile, including both independent corner radii and curve tensions.
-2. The vertical-stile template follows the complete outer side profile and inner-opening side profile. It is mirrored for the opposite stile; a second hand-authored outline is forbidden.
+2. The bottom-rail template follows the complete outer floor profile and inner-opening bottom profile, including its independently editable corner radii and the shared curve tensions. Reusing or mirroring the top-rail outline is forbidden.
+3. The vertical-stile template follows the complete outer side profile and inner-opening side profile. It is mirrored for the opposite stile; a second hand-authored outline is forbidden.
 
 The nominal template thickness is 1/8 in (3.175 mm). A 9 in usable square print-plate span is the default rather than an assumption about the printer's advertised bed size. The plate span remains editable so the splitter can regenerate a different number of files for another printer. Every segment must lie flat at `Z = 0`, preserve the requested thickness, fit within the usable square plate envelope on both planar axes, and export as its own uniquely named STL.
 
@@ -199,7 +200,7 @@ Runtime construction checks must reject parameter combinations that would:
 - introduce a hover pad or spacer; or
 - move any normalized Bézier tension outside the supported range.
 - let a routing-template segment exceed either usable print-plate axis, lose its nominal thickness, contain a non-finite vertex, or collapse at a dovetail seam;
-- place a dovetail outside the shared inner/outer profile span, reverse the male/female sequence, or return fewer than two printable pieces for either template family.
+- place a dovetail outside the shared inner/outer profile span, reverse the male/female sequence, or return fewer than two printable pieces for any template family.
 
 ## Audit and test contract
 
@@ -223,7 +224,7 @@ The static model audit and browser tests must eventually prove:
 - an Assembled/Exploded switch that preserves parameter state, render mode, export geometry, camera orientation, and zoom; and
 - six to nine cut-list lines whose quantities sum to the selected 14–16 pieces, with exact model-derived SVG profiles, the H1 U-section, and joinery only where applicable;
 - invariance of every cut-list dimension under mock-scale edits plus associative schedule/SVG updates after full-size dimensional edits;
-- two full-size routing-template families derived from the frame Bézier geometry, nominally 1/8 in thick, with finite nondegenerate plate-safe segments and complementary male/female dovetails;
+- three full-size routing-template families derived from the frame Bézier geometry, nominally 1/8 in thick, with finite nondegenerate plate-safe segments and complementary male/female dovetails;
 - more exported template segments after reducing the usable plate span, while mock-scale changes alter only the preview size and never the full-size template dimensions or STL count;
 - camera orientation and zoom remain stable during every parameter edit.
 - the inspector presents Overall, Tabletop, End boxes, Support layout, Top support members, Bottom support members, Support joinery, and Routing templates as distinct groups; selectors persist in the URL; and legacy shared-radius/split-brace URLs migrate to the canonical controls.

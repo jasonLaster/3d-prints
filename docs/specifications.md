@@ -133,7 +133,7 @@ X-Hover Dining Table:
 - Each selected X uses one centered half-lap with a nominal depth of half the brace thickness and no overlapping solid volume. Straight supports have no false lap.
 - Assembled/Exploded mode separates the assembly into 14–16 fully profiled oak and steel pieces according to layout (16 for X/X), including three C-channels and the same curved boxes, true rounded support sections, contact ends, and conditional half-laps as the assembled geometry.
 - Cut List mode pairs a six-to-nine-line grouped schedule with exact model-derived SVGs and edge-treatment or U-channel sections for the selected 14–16 pieces. Mock scale never changes fabrication values.
-- Templates mode derives one top-rail and one mirrored vertical-stile routing pattern from the end-box outer/inner Bézier curves. Each defaults to 1/8 in thickness, splits across an editable 9 in usable square plate span, and exports every complementary male/female dovetail segment as an individual full-size STL.
+- Templates mode derives separate top-rail, bottom-rail, and mirrored vertical-stile routing patterns from the end-box outer/inner Bézier curves. Keeping both rail templates is required because their radii and finished profiles are independently editable. Each defaults to 1/8 in thickness, splits across an editable 9 in usable square plate span, and exports every complementary male/female dovetail segment as an individual full-size STL.
 - The renderer uses procedural oak grain, but exports remain material-neutral geometry.
 
 ## Viewer Contract

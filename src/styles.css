@@ -630,23 +630,6 @@ html.dark .workspace-version-row.active {
   height: 17px;
 }
 
-.workspace-export-action {
-  width: auto;
-  min-width: 88px;
-  padding: 0 13px;
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-foreground);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.workspace-export-action:hover {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 88%, black);
-  color: var(--accent-foreground);
-}
-
 .panel-section h2 {
   margin: 0;
   color: var(--foreground);
@@ -1185,6 +1168,10 @@ html.dark .viewer-status span {
 
 .template-swatch.stile {
   background: #86a9c4;
+}
+
+.template-swatch.bottom-rail {
+  background: #9db27d;
 }
 
 .dark .hover-template-legend {

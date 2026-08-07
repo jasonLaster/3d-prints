@@ -256,6 +256,7 @@ for (const required of [
   "getHoverDiningTableEndBoxFabricationProfiles",
   "getHoverDiningTableStileFabricationLayout",
   "profiles.top",
+  "profiles.bottom",
   "profiles.right",
   "createHoverDiningTableTemplateSegments",
   "getHoverDiningTableTemplateSummary",
@@ -297,8 +298,8 @@ for (const phrase of [
   "do not substitute proxy blanks",
   "exact constrained profiles",
   "full-size finished dimensions",
-  "full-size top-rail and mirrored vertical-stile routing templates",
-  "exact finished B1/B3 part profiles",
+  "full-size top-rail, bottom-rail, and mirrored vertical-stile routing templates",
+  "exact finished B1/B2/B3 part profiles",
   "complementary in-plane dovetails",
   "1/8 in nominal thickness",
   "rough-milling allowance",
@@ -311,5 +312,5 @@ for (const phrase of [
 }
 
 console.log(
-  `hover-dining-table audit passed: 75 × 35.5 × 29.5 in, 3 flush C-channels, ${(directOakBearingFraction * 100).toFixed(0)}% upper-support oak bearing, 2 end boxes, 4 diagonal braces, 2 centered half-laps, 2 plate-split routing templates, zero contact gaps, 1:${params.mockScale} model ${mockEnvelope.map((value) => value.toFixed(1)).join(" × ")} mm`,
+  `hover-dining-table audit passed: 75 × 35.5 × 29.5 in, 3 flush C-channels, ${(directOakBearingFraction * 100).toFixed(0)}% upper-support oak bearing, 2 end boxes, 4 diagonal braces, 2 centered half-laps, 3 plate-split routing templates, zero contact gaps, 1:${params.mockScale} model ${mockEnvelope.map((value) => value.toFixed(1)).join(" × ")} mm`,
 );
