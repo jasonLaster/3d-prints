@@ -3436,6 +3436,11 @@ const STRUCTURAL_REFERENCE = {
   supportArea: 2 * 1.25 * 25.4 * 25.4,
 } as const;
 
+const STRUCTURAL_MATERIAL = {
+  whiteOakModulusGPa: 12.27,
+  steelModulusGPa: 200,
+} as const;
+
 const STRUCTURAL_WEIGHTS: Record<
   HoverDiningTableStructuralMetric["key"],
   number
@@ -3484,6 +3489,94 @@ function structuralMetric(
       weight,
       scoringNote: `Raw result ${rawScore.toFixed(1)} is clamped to 0–100, then contributes ${(weight * 100).toFixed(0)}% of the overall score (${(score * weight).toFixed(1)} weighted points). Grade bands: A ≥ 85, B ≥ 75, C ≥ 65, D ≥ 50, F < 50.`,
     },
+  };
+}
+
+function getCChannelTopStiffness(spec: HoverDiningTableSpec) {
+  const channel = spec.channels;
+  const modularRatio =
+    STRUCTURAL_MATERIAL.steelModulusGPa /
+    STRUCTURAL_MATERIAL.whiteOakModulusGPa;
+  const remainingOakHeight = spec.topThickness - channel.depth;
+  const flangeHeight = channel.depth - channel.wallThickness;
+  const transformedSections = [
+    {
+      area: channel.width * remainingOakHeight,
+      centroid: channel.depth + remainingOakHeight / 2,
+      localSecondMoment:
+        (channel.width * remainingOakHeight ** 3) / 12,
+    },
+    {
+      area: modularRatio * channel.width * channel.wallThickness,
+      centroid: channel.wallThickness / 2,
+      localSecondMoment:
+        (modularRatio * channel.width * channel.wallThickness ** 3) / 12,
+    },
+    {
+      area:
+        modularRatio * 2 * channel.wallThickness * flangeHeight,
+      centroid: channel.wallThickness + flangeHeight / 2,
+      localSecondMoment:
+        (modularRatio * 2 * channel.wallThickness * flangeHeight ** 3) / 12,
+    },
+  ];
+  const transformedArea = transformedSections.reduce(
+    (total, section) => total + section.area,
+    0,
+  );
+  const neutralAxis =
+    transformedSections.reduce(
+      (total, section) => total + section.area * section.centroid,
+      0,
+    ) / transformedArea;
+  const transformedSecondMoment = transformedSections.reduce(
+    (total, section) =>
+      total +
+      section.localSecondMoment +
+      section.area * (section.centroid - neutralAxis) ** 2,
+    0,
+  );
+  const bareOakSecondMoment =
+    (channel.width * spec.topThickness ** 3) / 12;
+  const transformedSectionRatio =
+    transformedSecondMoment / bareOakSecondMoment;
+  const channelStripFraction = Math.min(
+    1,
+    (channel.count * channel.width) / spec.length,
+  );
+  const channelLengthCoverage = Math.min(1, channel.length / spec.width);
+  const topPlaneStiffnessFactor =
+    1 +
+    channelStripFraction *
+      channelLengthCoverage *
+      (transformedSectionRatio - 1);
+  const availableChannelCenterSpread = Math.max(
+    channel.width,
+    spec.braceSpanX - channel.width,
+  );
+  const channelCenterSpread =
+    channel.centerXs[channel.centerXs.length - 1] - channel.centerXs[0];
+  const channelDistributionFactor = Math.max(
+    0,
+    Math.min(1, channelCenterSpread / availableChannelCenterSpread),
+  );
+  const channelTorsionFactor =
+    1 +
+    (topPlaneStiffnessFactor - 1) *
+      (0.5 + 0.5 * channelDistributionFactor);
+  const effectiveTopThickness =
+    spec.topThickness * Math.cbrt(topPlaneStiffnessFactor);
+
+  return {
+    modularRatio,
+    transformedSectionRatio,
+    channelStripFraction,
+    channelLengthCoverage,
+    channelDistributionFactor,
+    channelTorsionFactor,
+    topPlaneStiffnessFactor,
+    effectiveTopThickness,
+    tabletopSlenderness: spec.width / effectiveTopThickness,
   };
 }
 
@@ -3543,12 +3636,14 @@ function evaluateHoverDiningTableStructure(
     0.5,
     Math.min(1.1, spec.frameBottomWidth / spec.width / 0.9),
   );
+  const channelTopStiffness = getCChannelTopStiffness(spec);
   const torsion =
     15 +
     75 *
       Math.sqrt(topTorsionTopology * bottomTorsionTopology) *
       supportPlaneSeparation ** 0.6 *
-      Math.sqrt(widthEngagement);
+      Math.sqrt(widthEngagement) *
+      Math.sqrt(channelTopStiffness.channelTorsionFactor);
 
   const footprintLength = spec.length - 2 * spec.endOverhang;
   const lateralTippingRatio = spec.frameBottomWidth / (2 * spec.height);
@@ -3597,7 +3692,8 @@ function evaluateHoverDiningTableStructure(
   const memberStiffness =
     100 -
     Math.max(0, stileSlenderness - 8) * 2 -
-    Math.max(0, supportSlenderness - 25) * 0.9;
+    Math.max(0, supportSlenderness - 25) * 0.9 -
+    Math.max(0, channelTopStiffness.tabletopSlenderness - 24) * 0.8;
 
   const metrics = [
     structuralMetric(
@@ -3733,12 +3829,12 @@ function evaluateHoverDiningTableStructure(
       "torsion",
       "Torsional rigidity",
       torsion,
-      `${spec.topSupportStyle === "x" ? "triangulated" : "parallel"} top · ${spec.bottomSupportStyle === "x" ? "triangulated" : spec.bottomSupportStyle === "center-board" ? "single-axis" : "open"} floor plane`,
+      `${spec.topSupportStyle === "x" ? "triangulated" : "parallel"} top · ${spec.bottomSupportStyle === "x" ? "triangulated" : spec.bottomSupportStyle === "center-board" ? "single-axis" : "open"} floor plane · ${channelTopStiffness.channelTorsionFactor.toFixed(2)}× channel factor`,
       {
         rationale:
-          "Twist resistance depends on closed or triangulated support paths at both elevations. Greater vertical separation between those paths and broader engagement across the end boxes improve the torsional couple.",
+          "Twist resistance depends on closed or triangulated support paths at both elevations. Greater vertical separation and broader end-box engagement improve the torsional couple. The three widthwise C-channels add a bounded top-plane factor from their transformed oak/steel sections, edge coverage, and longitudinal distribution; they do not count as leg or joint bracing.",
         formula:
-          "15 + 75 × √(topTopology × bottomTopology) × planeSeparation^0.6 × √(widthEngagement)",
+          "15 + 75 × √(topTopology × bottomTopology) × planeSeparation^0.6 × √(widthEngagement) × √(channelTorsionFactor)",
         inputs: [
           {
             key: "topSupportStyle",
@@ -3777,6 +3873,46 @@ function evaluateHoverDiningTableStructure(
             value: widthEngagement,
             format: "number",
             precision: 3,
+          },
+          {
+            key: "channelWidth",
+            label: "C-channel outside width",
+            value: spec.channels.width,
+            format: "length",
+          },
+          {
+            key: "channelDepth",
+            label: "C-channel depth",
+            value: spec.channels.depth,
+            format: "length",
+          },
+          {
+            key: "channelWallThickness",
+            label: "C-channel steel wall",
+            value: spec.channels.wallThickness,
+            format: "length",
+          },
+          {
+            key: "channelLengthCoverage",
+            label: "Channel length ÷ tabletop width",
+            value: channelTopStiffness.channelLengthCoverage,
+            format: "number",
+            precision: 3,
+          },
+          {
+            key: "channelDistributionFactor",
+            label: "Outer-channel distribution",
+            value: channelTopStiffness.channelDistributionFactor,
+            format: "number",
+            precision: 3,
+          },
+          {
+            key: "channelTorsionFactor",
+            label: "Derived channel torsion factor",
+            value: channelTopStiffness.channelTorsionFactor,
+            format: "number",
+            precision: 3,
+            suffix: "×",
           },
         ],
       },
@@ -3886,12 +4022,12 @@ function evaluateHoverDiningTableStructure(
       "member-stiffness",
       "Member stiffness",
       memberStiffness,
-      `support slenderness ${supportSlenderness.toFixed(1)}:1 · white-oak MOE reference`,
+      `support slenderness ${supportSlenderness.toFixed(1)}:1 · channel-reinforced top ${channelTopStiffness.tabletopSlenderness.toFixed(1)}:1`,
       {
         rationale:
-          "This is a relative geometric stiffness screen for white oak held at a constant material modulus. It penalizes end-box stiles above 8:1 slenderness and the most slender active support member above 25:1.",
+          "This relative stiffness screen penalizes end-box stiles above 8:1, the most slender active support above 25:1, and the channel-reinforced tabletop above 24:1. The tabletop term uses the remaining oak plus the steel U-channel web and flanges about their shared transformed-section neutral axis, with fixed white-oak and steel modulus assumptions.",
         formula:
-          "100 − max(0, stileSlenderness − 8) × 2 − max(0, supportSlenderness − 25) × 0.9",
+          "100 − max(0, stileSlenderness − 8) × 2 − max(0, supportSlenderness − 25) × 0.9 − max(0, tabletopWidth ÷ (topThickness × ∛topPlaneStiffnessFactor) − 24) × 0.8",
         inputs: [
           {
             key: "openingHeight",
@@ -3928,9 +4064,52 @@ function evaluateHoverDiningTableStructure(
             suffix: ":1",
           },
           {
+            key: "topThickness",
+            label: "Tabletop thickness",
+            value: spec.topThickness,
+            format: "length",
+          },
+          {
+            key: "channelStripFraction",
+            label: "Three channel strips ÷ tabletop length",
+            value: channelTopStiffness.channelStripFraction,
+            format: "number",
+            precision: 3,
+          },
+          {
+            key: "channelTransformedSectionRatio",
+            label: "Mortised oak/steel section ÷ bare oak",
+            value: channelTopStiffness.transformedSectionRatio,
+            format: "number",
+            precision: 3,
+            suffix: "×",
+          },
+          {
+            key: "topPlaneStiffnessFactor",
+            label: "Derived tabletop stiffness factor",
+            value: channelTopStiffness.topPlaneStiffnessFactor,
+            format: "number",
+            precision: 3,
+            suffix: "×",
+          },
+          {
+            key: "effectiveTopThickness",
+            label: "Equivalent tabletop thickness",
+            value: channelTopStiffness.effectiveTopThickness,
+            format: "length",
+          },
+          {
+            key: "tabletopSlenderness",
+            label: "Channel-reinforced tabletop slenderness",
+            value: channelTopStiffness.tabletopSlenderness,
+            format: "number",
+            precision: 2,
+            suffix: ":1",
+          },
+          {
             key: "materialAssumption",
             label: "Fixed material assumption",
-            value: "White oak; MOE held constant",
+            value: `White oak ${STRUCTURAL_MATERIAL.whiteOakModulusGPa.toFixed(2)} GPa; steel ${STRUCTURAL_MATERIAL.steelModulusGPa.toFixed(0)} GPa (${channelTopStiffness.modularRatio.toFixed(1)}:1)`,
             format: "choice",
           },
         ],

@@ -494,6 +494,34 @@ test("grades wobble risks and responds monotonically to structural parameters", 
       "bottomSupportWidth",
     ]),
   );
+  expect(
+    baseline.metrics
+      .find((metric) => metric.key === "torsion")!
+      .calculation.inputs.map((input) => input.key),
+  ).toEqual(
+    expect.arrayContaining([
+      "channelWidth",
+      "channelDepth",
+      "channelWallThickness",
+      "channelLengthCoverage",
+      "channelDistributionFactor",
+      "channelTorsionFactor",
+    ]),
+  );
+  expect(
+    baseline.metrics
+      .find((metric) => metric.key === "member-stiffness")!
+      .calculation.inputs.map((input) => input.key),
+  ).toEqual(
+    expect.arrayContaining([
+      "channelStripFraction",
+      "channelTransformedSectionRatio",
+      "topPlaneStiffnessFactor",
+      "effectiveTopThickness",
+      "tabletopSlenderness",
+      "materialAssumption",
+    ]),
+  );
   expect(baseline.heightSensitivity.lower?.delta).toBeGreaterThan(0);
   expect(baseline.heightSensitivity.higher?.delta).toBeLessThan(0);
 
@@ -544,6 +572,54 @@ test("grades wobble risks and responds monotonically to structural parameters", 
       .score,
   ).toBeGreaterThan(
     baseline.metrics.find((metric) => metric.key === "end-box-racking")!
+      .score,
+  );
+
+  const lighterChannels = getHoverDiningTableStructuralAssessment({
+    ...defaultParams,
+    channelSideInset: 4 * 25.4,
+    channelWidth: 1 * 25.4,
+    channelDepth: 0.25 * 25.4,
+    channelWallThickness: 0.0625 * 25.4,
+  });
+  const heavierChannels = getHoverDiningTableStructuralAssessment({
+    ...defaultParams,
+    channelSideInset: 0.625 * 25.4,
+    channelWidth: 3 * 25.4,
+    channelDepth: 0.5 * 25.4,
+    channelWallThickness: 0.1875 * 25.4,
+  });
+  for (const key of ["torsion", "member-stiffness"] as const) {
+    expect(
+      lighterChannels.metrics.find((metric) => metric.key === key)!.score,
+      `${key} with lighter C-channels`,
+    ).toBeLessThan(
+      baseline.metrics.find((metric) => metric.key === key)!.score,
+    );
+    expect(
+      heavierChannels.metrics.find((metric) => metric.key === key)!.score,
+      `${key} with heavier C-channels`,
+    ).toBeGreaterThan(
+      baseline.metrics.find((metric) => metric.key === key)!.score,
+    );
+  }
+
+  const clusteredChannels = getHoverDiningTableStructuralAssessment({
+    ...defaultParams,
+    channelEndClearance: 10 * 25.4,
+  });
+  expect(
+    clusteredChannels.metrics.find((metric) => metric.key === "torsion")!
+      .score,
+  ).toBeLessThan(
+    baseline.metrics.find((metric) => metric.key === "torsion")!.score,
+  );
+  expect(
+    clusteredChannels.metrics.find(
+      (metric) => metric.key === "member-stiffness",
+    )!.score,
+  ).toBe(
+    baseline.metrics.find((metric) => metric.key === "member-stiffness")!
       .score,
   );
 });
@@ -1526,6 +1602,35 @@ test("renders, manipulates, and exports the oak X-Hover table", async ({
     .locator(".structural-calculation-inputs > div")
     .filter({ hasText: "overallHeight" });
   await expect(rackingHeightInput.getByText("29 1/2 in")).toBeVisible();
+  const torsionCalculationButton = structuralAssessment.getByRole("button", {
+    name: "Explain Torsional rigidity calculation",
+  });
+  await torsionCalculationButton.click();
+  const torsionCalculation = structuralAssessment.getByLabel(
+    "Torsional rigidity calculation details",
+  );
+  await expect(
+    torsionCalculation.getByText(/√\(channelTorsionFactor\)/),
+  ).toBeVisible();
+  const channelDepthInput = torsionCalculation
+    .locator(".structural-calculation-inputs > div")
+    .filter({ hasText: "channelDepth" });
+  await expect(channelDepthInput.getByText("3/8 in")).toBeVisible();
+  const memberCalculationButton = structuralAssessment.getByRole("button", {
+    name: "Explain Member stiffness calculation",
+  });
+  await memberCalculationButton.click();
+  const memberCalculation = structuralAssessment.getByLabel(
+    "Member stiffness calculation details",
+  );
+  await expect(
+    memberCalculation.getByText(/∛topPlaneStiffnessFactor/),
+  ).toBeVisible();
+  await expect(
+    memberCalculation
+      .locator(".structural-calculation-inputs > div")
+      .filter({ hasText: "channelTransformedSectionRatio" }),
+  ).toBeVisible();
   const baselineStructuralScore = Number(
     await structuralAssessment.getAttribute("data-overall-score"),
   );
