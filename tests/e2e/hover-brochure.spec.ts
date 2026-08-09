@@ -43,6 +43,91 @@ test("accepts Wave brochure requests with model-specific geometry guidance", () 
   expect(prompt).toContain("no floor-level stretcher or diagonal X-members");
 });
 
+for (const model of [
+  {
+    id: "dining-table",
+    name: "Plate Table",
+    promptDetails: ["four stout square corner posts", "no apron"],
+  },
+  {
+    id: "whisperer",
+    name: "Whisperer",
+    promptDetails: ["splayed 15 degrees", "complete recessed four-apron frame"],
+  },
+]) {
+  test(`accepts ${model.name} brochure requests with model-specific geometry guidance`, () => {
+    const request = parseRequest({
+      clientId: `${model.id}-client-123`,
+      dimensions: {
+        height: 762,
+        length: 1905,
+        topThickness: 38.1,
+        width: 965.2,
+      },
+      generationId: `${model.id}-generation-1234567890`,
+      images: Array.from({ length: 4 }, () => MOCK_BROCHURE_IMAGE),
+      modelId: model.id,
+      modelName: model.name,
+    });
+
+    expect(request).not.toBeNull();
+    const prompt = buildBrochurePrompt(request!);
+    for (const detail of model.promptDetails) {
+      expect(prompt).toContain(detail);
+    }
+  });
+}
+
+for (const model of [
+  { id: "dining-table", name: "Plate Table" },
+  { id: "whisperer", name: "Whisperer" },
+  { id: "wave-dining-table", name: "The Wave" },
+]) {
+  test(`${model.name} captures four CAD angles for brochure generation`, async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    let requestPayload: {
+      generationId: string;
+      images: string[];
+      modelId: string;
+    } | null = null;
+
+    await page.route("**/api/brochure", async (route) => {
+      requestPayload = route.request().postDataJSON();
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          generationId: requestPayload!.generationId,
+          imageDataUrl: MOCK_BROCHURE_IMAGE,
+          model: "openai/gpt-image-2",
+          warnings: [],
+        }),
+      });
+    });
+
+    await page.goto(`/?model=${model.id}&unit=in`);
+    await expect(page.locator(".scene-panel canvas")).toBeVisible();
+    await page.getByRole("button", { name: "Brochures", exact: true }).click();
+    await page.getByRole("button", { name: "Generate brochure" }).click();
+    await expect
+      .poll(() => requestPayload, { message: `${model.name} brochure payload` })
+      .not.toBeNull();
+
+    expect(requestPayload!.modelId).toBe(model.id);
+    expect(requestPayload!.images).toHaveLength(4);
+    expect(
+      requestPayload!.images.every((image) =>
+        image.startsWith("data:image/jpeg;base64,"),
+      ),
+    ).toBe(true);
+    await expect(page.getByTestId("hover-brochure-panel")).toHaveAttribute(
+      "data-status",
+      "success",
+    );
+  });
+}
+
 test("brochure mode captures four CAD angles and presents the generated image", async ({
   page,
 }) => {

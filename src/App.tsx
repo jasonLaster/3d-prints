@@ -851,7 +851,7 @@ function downloadBlob(blob: Blob, name: string) {
   URL.revokeObjectURL(url);
 }
 
-async function requestHoverBrochure({
+async function requestDiningTableBrochure({
   clientId,
   generationId,
   images,
@@ -1743,8 +1743,11 @@ const HolderViewer = forwardRef<
   }, [model]);
 
   const captureBrochureViews = useCallback(async () => {
-    if (model.viewer !== "hover-dining-table-v1") {
-      throw new Error("Brochure capture is only available for the X-Hover table.");
+    if (
+      model.viewer !== "hover-dining-table-v1" &&
+      model.viewer !== "dining-table-v1"
+    ) {
+      throw new Error("Brochure capture is only available for dining tables.");
     }
     const camera = cameraRef.current;
     const controls = controlsRef.current;
@@ -4939,7 +4942,14 @@ export default function App({
   }, [model, savedBrochures]);
 
   const startBrochureGeneration = () => {
-    if (!model || !params || model.viewer !== "hover-dining-table-v1") return;
+    if (
+      !model ||
+      !params ||
+      (model.viewer !== "hover-dining-table-v1" &&
+        model.viewer !== "dining-table-v1")
+    ) {
+      return;
+    }
     const viewer = viewerRef.current;
     if (!viewer) {
       setBrochureState({
@@ -4977,7 +4987,7 @@ export default function App({
         modelKey: model.id,
         modelName: model.name,
         params,
-        promptVersion: "v2",
+        promptVersion: "v3",
         referenceCount: 4,
       };
       try {
@@ -4986,7 +4996,7 @@ export default function App({
           requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         );
         const images = await viewer.captureBrochureViews();
-        const result = await requestHoverBrochure({
+        const result = await requestDiningTableBrochure({
           clientId: brochureClientId,
           generationId,
           images,
@@ -5133,7 +5143,9 @@ export default function App({
     const url = new URL(window.location.href);
     url.searchParams.delete("brochure");
     window.history.replaceState(null, "", url);
-    setAssemblyMode("assembled");
+    setAssemblyMode(
+      model?.viewer === "hover-dining-table-v1" ? "assembled" : "box",
+    );
   };
 
   const updateParam = (key: string, value: number) => {
@@ -5589,7 +5601,8 @@ export default function App({
           selectedModelId={selectedModelId}
           theme={theme}
           onGenerateBrochure={
-            model.viewer === "hover-dining-table-v1"
+            model.viewer === "hover-dining-table-v1" ||
+            model.viewer === "dining-table-v1"
               ? () => {
                   setIsCompactLibraryOpen(false);
                   startBrochureGeneration();
@@ -5653,7 +5666,8 @@ export default function App({
             theme={theme}
             unit={unit}
           />
-          {model.viewer === "hover-dining-table-v1" &&
+          {(model.viewer === "hover-dining-table-v1" ||
+            model.viewer === "dining-table-v1") &&
           assemblyMode === "brochure" ? (
             <HoverBrochurePanel
               modelName={model.name}

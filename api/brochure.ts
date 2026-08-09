@@ -10,8 +10,10 @@ const MAX_REFERENCE_COUNT = 4;
 const MAX_REQUEST_BYTES = 6_000_000;
 const MAX_REFERENCE_BYTES = 1_500_000;
 const SUPPORTED_MODEL_IDS = new Set([
+  "dining-table",
   "hover-dining-table",
   "wave-dining-table",
+  "whisperer",
 ]);
 
 type BrochureRequest = {
@@ -92,12 +94,22 @@ function inches(millimeters: number) {
 
 export function buildBrochurePrompt(request: BrochureRequest) {
   const { dimensions } = request;
-  const geometryInstructions =
-    request.modelId === "wave-dining-table"
-      ? `Critical geometry invariants: thin rectilinear solid-oak top with straight plan corners and a soft rolled long edge; no apron; two open end frames, each formed by two full-height legs joined by one sculpted wave-curve top rail; two straight lengthwise upper stretchers; four short triangular corner braces between the leg frames and upper structure; no floor-level stretcher or diagonal X-members; four small adjustable feet. Reconcile hidden geometry from all four references. Do not close the end frames or reinterpret the design as a trestle table.
-Avoid: live edge, thick slab top, rounded plan corners, closed end boxes, diagonal X-supports, floor-level connector, central box stretcher, missing corner braces, altered proportions, warped wide-angle perspective, rustic farmhouse styling.`
-      : `Critical geometry invariants: thin rectilinear solid-oak top with straight plan corners and a soft rolled long edge; no apron; two matching sculpted rounded-rectangular end frames; low paired diagonal members crossing between the end frames; four small adjustable feet. Reconcile hidden geometry from all four references. Do not reinterpret the design as a generic trestle table.
+  const geometryInstructions = (() => {
+    switch (request.modelId) {
+      case "wave-dining-table":
+        return `Critical geometry invariants: thin rectilinear solid-oak top with straight plan corners and a soft rolled long edge; no apron; two open end frames, each formed by two full-height legs joined by one sculpted wave-curve top rail; two straight lengthwise upper stretchers; four short triangular corner braces between the leg frames and upper structure; no floor-level stretcher or diagonal X-members; four small adjustable feet. Reconcile hidden geometry from all four references. Do not close the end frames or reinterpret the design as a trestle table.
+Avoid: live edge, thick slab top, rounded plan corners, closed end boxes, diagonal X-supports, floor-level connector, central box stretcher, missing corner braces, altered proportions, warped wide-angle perspective, rustic farmhouse styling.`;
+      case "dining-table":
+        return `Critical geometry invariants: solid-oak rounded-rectangle top with visibly rounded plan corners, matching top and bottom edge roundovers, and a substantial flat edge band; no apron; four stout square corner posts with softened vertical corners and a subtle optional groove immediately below the top; four small adjustable feet. The corner mounting plates and three recessed widthwise C-channels belong flush under the tabletop and should not become visible decorative elements. Reconcile hidden geometry from all four references and preserve the direct post-to-top composition.
+Avoid: sharp tabletop corners, splayed or tapered legs, apron rails, trestle frames, diagonal braces, exposed steel plates, visible C-channels, altered proportions, warped wide-angle perspective, rustic farmhouse styling.`;
+      case "whisperer":
+        return `Critical geometry invariants: mid-century solid-oak top with a deep centered underside bevel that leaves a thin perimeter edge; four legs splayed 15 degrees lengthwise and tapered from broad tops to narrow feet; a complete recessed four-apron frame with two long aprons and two side aprons; chamfered apron lower edges; four small adjustable feet. Reconcile the leg splay, taper, apron setbacks, bevel, and hidden connections from all four references. Preserve the light floating-top silhouette.
+Avoid: slab-like vertical tabletop edges, straight or cylindrical legs, missing aprons, flush aprons, trestle frames, diagonal X-supports, exposed metal plates, altered proportions, warped wide-angle perspective, rustic farmhouse styling.`;
+      default:
+        return `Critical geometry invariants: thin rectilinear solid-oak top with straight plan corners and a soft rolled long edge; no apron; two matching sculpted rounded-rectangular end frames; low paired diagonal members crossing between the end frames; four small adjustable feet. Reconcile hidden geometry from all four references. Do not reinterpret the design as a generic trestle table.
 Avoid: live edge, thick slab top, rounded plan corners, four independent legs, central box stretcher, missing or extra diagonals, altered proportions, warped wide-angle perspective, rustic farmhouse styling.`;
+    }
+  })();
   return `Use case: product-mockup
 Asset type: premium furniture brochure hero photograph
 Primary request: Reconstruct one exact ${request.modelName} from the four supplied CAD views, then place that unchanged table in a serene contemporary dining room. The four images are equal-priority geometry references of the same object, not design variations.
@@ -105,7 +117,7 @@ Exact dimensions: ${inches(dimensions.length)} in long × ${inches(dimensions.wi
 ${geometryInstructions}
 Scene: warm contemporary dining room with ivory limewash walls, pale limestone floor, linen-curtained windows, restrained artwork, and a sculptural pendant. Add exactly six slim pale-oak dining chairs with woven natural seats: four long-side chairs neatly tucked under the tabletop and one chair at each short end slightly pulled out. Keep the base readable through the chairs. No people and nothing on the tabletop.
 Style: ultra-photorealistic architectural interiors photography, premium European furniture catalog, natural late-morning light, physically plausible contact shadows, 3:2 landscape composition, high material fidelity.
-Constraints: every visible table dimension, member count, connection point, edge profile, end frame, support member, and foot must match the CAD references. Do not add structural members or hardware that are absent from the references. No apron, decor on the tabletop, typography, logo, or watermark.
+Constraints: every visible table dimension, member count, connection point, edge profile, frame, support member, and foot must match the CAD references. Do not add or remove structural members or hardware. No decor on the tabletop, typography, logo, or watermark.
 `;
 }
 
@@ -161,7 +173,7 @@ async function handleBrochureRequest(request: Request) {
           tags: [
             "feature:brochure",
             `model:${brochureRequest.modelId}`,
-            "prompt:v2",
+            "prompt:v3",
             `generation:${brochureRequest.generationId}`,
           ],
         },
