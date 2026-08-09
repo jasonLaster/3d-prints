@@ -53,6 +53,22 @@ type StraightSupportSpec = {
   zTop: number;
 };
 
+type CornerKneeBraceSpec = {
+  enabled: boolean;
+  count: 4;
+  reach: number;
+  width: number;
+  thickness: number;
+  edgeRadius: number;
+  contactX: number;
+  contactY: number;
+  centerlineLength: number;
+  longPointLength: number;
+  angleRadians: number;
+  zBottom: number;
+  zTop: number;
+};
+
 type CChannelSpec = {
   count: 3;
   endClearance: number;
@@ -109,6 +125,7 @@ export type HoverDiningTableFabricationProfile = {
     | "frame-rail"
     | "frame-stile"
     | "brace"
+    | "corner-brace"
     | "support"
     | "channel"
     | "leveling-foot";
@@ -186,6 +203,7 @@ export type HoverDiningTableSpec = {
   upperBrace: BracePlaneSpec;
   lowerBrace: BracePlaneSpec;
   upperStretchers: StraightSupportSpec;
+  cornerKneeBraces: CornerKneeBraceSpec;
   lowerCenterBoard: StraightSupportSpec;
   channels: CChannelSpec;
   levelingFeet: LevelingFeetSpec;
@@ -324,6 +342,12 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
     : 0;
   const sideOverhang = getParam(params, "sideOverhang");
   const selectedEndFrameStyle = endFrameStyle(getParam(params, "endFrameStyle"));
+  const selectedTopSupportStyle = topSupportStyle(
+    getParam(params, "topSupportStyle"),
+  );
+  const selectedBottomSupportStyle = bottomSupportStyle(
+    getParam(params, "bottomSupportStyle"),
+  );
   const topSupportWidth = getParam(params, "topSupportWidth");
   const topSupportThickness = getParam(params, "topSupportThickness");
   const topSupportEndpointInset = getParam(params, "topSupportEndpointInset");
@@ -384,6 +408,20 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
   const upperPlacementBoundaryY = frameTopWidth / 2;
   const upperStretcherCenterY =
     upperPlacementBoundaryY - topSupportEndpointInset - topSupportWidth / 2;
+  const cornerBraceReach = Number.isFinite(params.cornerBraceReach)
+    ? params.cornerBraceReach
+    : 0;
+  const cornerBraceWidth = Math.min(topSupportWidth, frameDepth);
+  const cornerBraceThickness = Math.min(
+    topSupportThickness,
+    frameTopRailHeight,
+  );
+  const cornerBraceContactY =
+    Math.abs(upperStretcherCenterY) - topSupportWidth / 2;
+  const cornerBraceEnabled =
+    cornerBraceReach > EPSILON &&
+    selectedEndFrameStyle === "legs" &&
+    selectedTopSupportStyle === "stretchers";
   const levelingFootCenterY = frameBottomWidth / 2 - frameSideWidth / 2;
   const levelingFootRodRadius = levelingFootRodDiameter / 2;
   const levelingFootExposedRodLength = Math.max(
@@ -446,10 +484,8 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
     openingTop,
     frameCenterX: length / 2 - endOverhang - frameDepth / 2,
     braceSpanX,
-    topSupportStyle: topSupportStyle(getParam(params, "topSupportStyle")),
-    bottomSupportStyle: bottomSupportStyle(
-      getParam(params, "bottomSupportStyle"),
-    ),
+    topSupportStyle: selectedTopSupportStyle,
+    bottomSupportStyle: selectedBottomSupportStyle,
     upperBrace: createBracePlaneSpec({
       width: topSupportWidth,
       thickness: topSupportThickness,
@@ -485,6 +521,21 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       centerYs: [-upperStretcherCenterY, upperStretcherCenterY],
       placementBoundaryY: upperPlacementBoundaryY,
       zBottom: topBottom - topSupportThickness,
+      zTop: topBottom,
+    },
+    cornerKneeBraces: {
+      enabled: cornerBraceEnabled,
+      count: 4,
+      reach: cornerBraceReach,
+      width: cornerBraceWidth,
+      thickness: cornerBraceThickness,
+      edgeRadius: 0,
+      contactX: braceSpanX / 2,
+      contactY: cornerBraceContactY,
+      centerlineLength: Math.SQRT2 * cornerBraceReach,
+      longPointLength: Math.SQRT2 * cornerBraceReach + cornerBraceWidth,
+      angleRadians: Math.PI / 4,
+      zBottom: topBottom - cornerBraceThickness,
       zTop: topBottom,
     },
     lowerCenterBoard: {
@@ -651,6 +702,39 @@ function assertStraightSupport(
     )
   ) {
     throw new Error(`${label} must stop inside the end-box bearing boundary`);
+  }
+}
+
+function assertCornerKneeBraces(braces: CornerKneeBraceSpec) {
+  if (!braces.enabled) return;
+  for (const [label, value] of [
+    ["corner-brace reach", braces.reach],
+    ["corner-brace width", braces.width],
+    ["corner-brace thickness", braces.thickness],
+    ["corner-brace centerline length", braces.centerlineLength],
+    ["corner-brace long-point length", braces.longPointLength],
+    ["corner-brace longitudinal contact", braces.contactX],
+    ["corner-brace transverse contact", braces.contactY],
+  ] as const) {
+    assertPositive(value, label);
+  }
+  assertNonNegative(braces.edgeRadius, "Corner-brace edge radius");
+  if (braces.count !== 4) {
+    throw new Error("The triangulated top frame requires four mirrored corner braces");
+  }
+  if (braces.reach + braces.width > Math.min(braces.contactX, braces.contactY) + EPSILON) {
+    throw new Error("Corner-brace reach must leave material between opposing top-frame triangles");
+  }
+  if (braces.edgeRadius * 2 >= Math.min(braces.width, braces.thickness)) {
+    throw new Error("Corner-brace round-over must preserve a flat cross-section");
+  }
+  if (
+    Math.abs(braces.centerlineLength - Math.SQRT2 * braces.reach) > EPSILON ||
+    Math.abs(braces.longPointLength - (braces.centerlineLength + braces.width)) >
+      EPSILON ||
+    Math.abs(braces.angleRadians - Math.PI / 4) > EPSILON
+  ) {
+    throw new Error("Corner-brace length and 45-degree end cuts must remain derived from reach");
   }
 }
 
@@ -849,6 +933,7 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
   assertBracePlane(spec.upperBrace, spec, "Upper");
   assertBracePlane(spec.lowerBrace, spec, "Lower");
   assertStraightSupport(spec.upperStretchers, "Upper stretchers");
+  assertCornerKneeBraces(spec.cornerKneeBraces);
   assertStraightSupport(spec.lowerCenterBoard, "Floor center board");
   if (Math.abs(spec.upperBrace.zTop - spec.topBottom) > EPSILON) {
     throw new Error("Upper X top envelope must contact the tabletop underside");
@@ -861,6 +946,18 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
   }
   if (Math.abs(spec.upperStretchers.zTop - spec.topBottom) > EPSILON) {
     throw new Error("Upper stretchers must contact the tabletop underside");
+  }
+  if (
+    spec.cornerKneeBraces.enabled &&
+    (spec.endFrameStyle !== "legs" || spec.topSupportStyle !== "stretchers")
+  ) {
+    throw new Error("Corner braces require open leg frames and lengthwise upper rails");
+  }
+  if (
+    spec.cornerKneeBraces.enabled &&
+    Math.abs(spec.cornerKneeBraces.zTop - spec.topBottom) > EPSILON
+  ) {
+    throw new Error("Corner braces must share the tabletop-underside support plane");
   }
   if (Math.abs(spec.lowerCenterBoard.zBottom - spec.frameBottomZ) > EPSILON) {
     throw new Error("Floor center board must share the raised end-box underside plane");
@@ -937,6 +1034,25 @@ function scaleStraightSupport(
         : support.placementBoundaryY / scale,
     zBottom: support.zBottom / scale,
     zTop: support.zTop / scale,
+  };
+}
+
+function scaleCornerKneeBraces(
+  braces: CornerKneeBraceSpec,
+  scale: number,
+): CornerKneeBraceSpec {
+  return {
+    ...braces,
+    reach: braces.reach / scale,
+    width: braces.width / scale,
+    thickness: braces.thickness / scale,
+    edgeRadius: braces.edgeRadius / scale,
+    contactX: braces.contactX / scale,
+    contactY: braces.contactY / scale,
+    centerlineLength: braces.centerlineLength / scale,
+    longPointLength: braces.longPointLength / scale,
+    zBottom: braces.zBottom / scale,
+    zTop: braces.zTop / scale,
   };
 }
 
@@ -1023,6 +1139,10 @@ export function getHoverDiningTableSpec(params: ModelParams) {
     upperBrace: scaleBrace(fullSize.upperBrace, scale),
     lowerBrace: scaleBrace(fullSize.lowerBrace, scale),
     upperStretchers: scaleStraightSupport(fullSize.upperStretchers, scale),
+    cornerKneeBraces: scaleCornerKneeBraces(
+      fullSize.cornerKneeBraces,
+      scale,
+    ),
     lowerCenterBoard: scaleStraightSupport(fullSize.lowerCenterBoard, scale),
     channels: scaleCChannel(fullSize.channels, scale),
     levelingFeet: scaleLevelingFeet(fullSize.levelingFeet, scale),
@@ -2022,6 +2142,14 @@ function assertFabricationProfile(
     ) {
       throw new Error(`${label} channel must retain its square U-section`);
     }
+  } else if (profile.family === "corner-brace") {
+    if (
+      profile.section.radius !== 0 ||
+      sectionTopRadius !== 0 ||
+      profile.section.outline.some((command) => command.kind === "cubic")
+    ) {
+      throw new Error(`${label} corner brace must retain its square housed-joint section`);
+    }
   } else if (profile.family === "leveling-foot") {
     if (
       profile.section.radius !== 0 ||
@@ -2744,6 +2872,127 @@ function braceNormal(brace: BracePlaneSpec, slopeSign: -1 | 1) {
   return new THREE.Vector2(-direction.y, direction.x);
 }
 
+function cornerKneeBraceAsPlane(braces: CornerKneeBraceSpec): BracePlaneSpec {
+  return {
+    width: braces.width,
+    thickness: braces.thickness,
+    endpointInset: 0,
+    edgeRadius: braces.edgeRadius,
+    topEdgeRadius: 0,
+    spanX: braces.reach,
+    spanY: braces.reach,
+    endpointY: braces.reach / 2,
+    endpointOuterY: braces.reach / 2,
+    cornerTangentY: braces.contactY,
+    miterHalfWidth: braces.width / Math.SQRT2,
+    diagonalLength: braces.centerlineLength,
+    angleRadians: braces.angleRadians,
+    zBottom: braces.zBottom,
+    zTop: braces.zTop,
+    halfLapDepth: braces.thickness / 2,
+  };
+}
+
+function cornerKneeBraceFootprint(
+  braces: CornerKneeBraceSpec,
+  endSign: -1 | 1,
+  sideSign: -1 | 1,
+) {
+  const xFace = endSign * braces.contactX;
+  const yFace = sideSign * braces.contactY;
+  const start = new THREE.Vector2(
+    xFace - endSign * braces.reach,
+    yFace,
+  );
+  const end = new THREE.Vector2(
+    xFace,
+    yFace - sideSign * braces.reach,
+  );
+  const direction = end.clone().sub(start).normalize();
+  const normal = new THREE.Vector2(-direction.y, direction.x);
+  const extension = braces.width * 2;
+  const halfWidth = braces.width / 2;
+  let footprint = ensureCounterClockwise([
+    start.clone().addScaledVector(direction, -extension).addScaledVector(normal, -halfWidth),
+    end.clone().addScaledVector(direction, extension).addScaledVector(normal, -halfWidth),
+    end.clone().addScaledVector(direction, extension).addScaledVector(normal, halfWidth),
+    start.clone().addScaledVector(direction, -extension).addScaledVector(normal, halfWidth),
+  ]);
+  footprint = clipPolygonHalfPlane(
+    footprint,
+    new THREE.Vector2(endSign, 0),
+    braces.contactX,
+    true,
+  );
+  footprint = clipPolygonHalfPlane(
+    footprint,
+    new THREE.Vector2(0, sideSign),
+    braces.contactY,
+    true,
+  );
+  if (footprint.length !== 4) {
+    throw new Error("Corner brace must retain four mitered plan faces");
+  }
+  return footprint;
+}
+
+function createCornerKneeBraceFabricationProfile(
+  braces: CornerKneeBraceSpec,
+): HoverDiningTableFabricationProfile {
+  const footprint = cornerKneeBraceFootprint(braces, 1, 1);
+  const direction = new THREE.Vector2(1, -1).normalize();
+  const normal = new THREE.Vector2(-direction.y, direction.x);
+  const localPoints = footprint.map(
+    (point) => new THREE.Vector2(point.dot(direction), point.dot(normal)),
+  );
+  const outline = polygonProfile(ensureCounterClockwise(localPoints));
+  return {
+    family: "corner-brace",
+    outline,
+    bounds: profileBounds(outline),
+    section: {
+      width: braces.width,
+      thickness: braces.thickness,
+      radius: braces.edgeRadius,
+      topRadius: 0,
+      label: "square housed-joint edges",
+      outline: supportRoundedRectangleProfile(
+        braces.width,
+        braces.thickness,
+        braces.edgeRadius,
+        0,
+      ),
+    },
+  };
+}
+
+function createCornerKneeBraceParts(
+  braces: CornerKneeBraceSpec,
+  model: HoverDiningTableModelDefinition,
+) {
+  if (!braces.enabled) return [];
+  const plane = cornerKneeBraceAsPlane(braces);
+  return ([-1, 1] as const).flatMap((endSign) =>
+    ([-1, 1] as const).map((sideSign) => {
+      const slopeSign = (-endSign * sideSign) as -1 | 1;
+      const geometry = createRoundedPlanPrism(
+        cornerKneeBraceFootprint(braces, endSign, sideSign),
+        braces.zBottom,
+        braces.zTop,
+        plane,
+        slopeSign,
+        false,
+        false,
+        model.geometry.braceRoundoverSegments,
+      );
+      if (!geometry) {
+        throw new Error("Unable to create top-frame corner-brace geometry");
+      }
+      return geometry;
+    }),
+  );
+}
+
 function addPlanarWoodUvs(geometry: THREE.BufferGeometry) {
   geometry.computeBoundingBox();
   const bounds = geometry.boundingBox;
@@ -2956,11 +3205,16 @@ export function createHoverDiningTableGeometry(
       : spec.bottomSupportStyle === "center-board"
         ? createStraightSupportParts(spec.lowerCenterBoard, model)
         : [];
+  const cornerKneeBraces = createCornerKneeBraceParts(
+    spec.cornerKneeBraces,
+    model,
+  );
   const geometries = [
     createTabletopGeometry(spec, model),
     createEndFrameGeometry(spec, model, -spec.frameCenterX),
     createEndFrameGeometry(spec, model, spec.frameCenterX),
     ...upperSupports,
+    ...cornerKneeBraces,
     ...lowerSupports,
   ];
   return mergeGeometryList(
@@ -2977,6 +3231,7 @@ export type HoverDiningTableExplodedPart = {
     | "end-box-horizontal"
     | "end-box-vertical"
     | "upper-x"
+    | "upper-corner-brace"
     | "floor-x"
     | "upper-stretcher"
     | "floor-center-board"
@@ -2995,6 +3250,7 @@ export type HoverDiningTableCutPart = {
     | "tabletop hardware"
     | "end boxes"
     | "upper X"
+    | "upper corner braces"
     | "floor X"
     | "upper stretchers"
     | "floor center board"
@@ -3127,12 +3383,46 @@ function createStraightSupportCutPart(
   };
 }
 
+function createCornerKneeBraceCutPart(
+  braces: CornerKneeBraceSpec,
+): HoverDiningTableCutPart {
+  return {
+    id: "K1",
+    name: "Top-frame diagonal knee brace",
+    assembly: "upper corner braces",
+    kind: "brace",
+    material: "Oak",
+    quantity: braces.count,
+    length: braces.longPointLength,
+    width: braces.width,
+    thickness: braces.thickness,
+    grainDirection: "length",
+    fabricationProfile: createCornerKneeBraceFabricationProfile(braces),
+    cutAngleDegrees: THREE.MathUtils.radToDeg(braces.angleRadians),
+    notes: [
+      "Install one mirrored brace at each corner between a lengthwise upper rail and a transverse Wave top rail.",
+      "The two 45° end faces bear on the rails' inside faces; use positive housed loose-tenon or equivalent joinery at both ends rather than relying on fasteners into end grain.",
+      "The structural screen credits the resulting top-plane triangles only when both end joints can transfer load.",
+    ],
+    processDimensions: [
+      { label: "Rail-face reach", value: braces.reach },
+      { label: "Centerline length", value: braces.centerlineLength },
+    ],
+  };
+}
+
 export function getHoverDiningTablePieceCount(params: ModelParams) {
   const bottomStyle = bottomSupportStyle(getParam(params, "bottomSupportStyle"));
   const frameStyle = endFrameStyle(getParam(params, "endFrameStyle"));
   const footCount = getParam(params, "levelingFeetEnabled") >= 0.5 ? 4 : 0;
+  const cornerBraceCount = Number.isFinite(params.cornerBraceReach) &&
+      params.cornerBraceReach > EPSILON &&
+      frameStyle === "legs" &&
+      topSupportStyle(getParam(params, "topSupportStyle")) === "stretchers"
+    ? 4
+    : 0;
   const basePieceCount = frameStyle === "box" ? 14 : 12;
-  return basePieceCount + footCount +
+  return basePieceCount + footCount + cornerBraceCount +
     (bottomStyle === "x" ? 2 : bottomStyle === "center-board" ? 1 : 0);
 }
 
@@ -3388,6 +3678,9 @@ export function getHoverDiningTableCutList(
       ),
     );
   }
+  if (spec.cornerKneeBraces.enabled) {
+    parts.push(createCornerKneeBraceCutPart(spec.cornerKneeBraces));
+  }
   if (spec.bottomSupportStyle === "x") {
     parts.push(
       ...createBraceCutParts(
@@ -3546,6 +3839,13 @@ export function createHoverDiningTableCutPartGeometry(
       throw new Error("S1 requires the upper-stretcher support layout");
     }
     const geometries = createStraightSupportParts(spec.upperStretchers, model);
+    geometry = geometries[0];
+    geometries.slice(1).forEach((candidate) => candidate.dispose());
+  } else if (partId === "K1") {
+    if (!spec.cornerKneeBraces.enabled) {
+      throw new Error("K1 requires open leg frames with lengthwise upper rails");
+    }
+    const geometries = createCornerKneeBraceParts(spec.cornerKneeBraces, model);
     geometry = geometries[0];
     geometries.slice(1).forEach((candidate) => candidate.dispose());
   } else if (partId === "C1") {
@@ -3723,6 +4023,30 @@ export function createHoverDiningTableExplodedParts(
     addXParts(spec.upperBrace, "upper-x");
   } else {
     addStraightParts(spec.upperStretchers, "upper-stretcher");
+  }
+  if (spec.cornerKneeBraces.enabled) {
+    const braceGeometries = createCornerKneeBraceParts(
+      spec.cornerKneeBraces,
+      model,
+    );
+    braceGeometries.forEach((geometry, index) => {
+      const endSign = index < 2 ? -1 : 1;
+      const sideSign = index % 2 === 0 ? -1 : 1;
+      parts.push({
+        name: `${endSign < 0 ? "left" : "right"}-${sideSign < 0 ? "front" : "back"}-top-frame-knee-brace`,
+        category: "upper-corner-brace",
+        material: "Oak",
+        geometry,
+        offset: new THREE.Vector3(
+          endSign * gap * 1.1,
+          sideSign * gap * 1.8,
+          baseLift + gap * 0.5,
+        ),
+        fabricationProfile: createCornerKneeBraceFabricationProfile(
+          spec.cornerKneeBraces,
+        ),
+      });
+    });
   }
   if (spec.bottomSupportStyle === "x") {
     addXParts(spec.lowerBrace, "floor-x");
@@ -4074,6 +4398,13 @@ export function getHoverDiningTableParameterLimits(
       limits.max,
       brace.cornerTangentY - brace.miterHalfWidth - brace.width / 2,
     );
+  } else if (key === "cornerBraceReach") {
+    limits.min = Math.max(limits.min, spec.cornerKneeBraces.width * 2);
+    limits.max = Math.min(
+      limits.max,
+      spec.cornerKneeBraces.contactX - spec.cornerKneeBraces.width,
+      spec.cornerKneeBraces.contactY - spec.cornerKneeBraces.width,
+    );
   } else if (key === "topSupportEdgeRadius" || key === "bottomSupportEdgeRadius") {
     const brace = key === "topSupportEdgeRadius" ? spec.upperBrace : spec.lowerBrace;
     const isCrossbar =
@@ -4348,7 +4679,19 @@ function evaluateHoverDiningTableStructure(
     (spec.lowerBrace.width * spec.lowerBrace.thickness) /
       STRUCTURAL_REFERENCE.supportArea,
   );
-  const topRackingTopology = spec.topSupportStyle === "x" ? 1 : 0.72;
+  const cornerBraceEngagement = spec.cornerKneeBraces.enabled
+    ? Math.min(
+        1,
+        (spec.cornerKneeBraces.reach / spec.cornerKneeBraces.contactY) *
+          Math.sqrt(
+            (spec.cornerKneeBraces.width * spec.cornerKneeBraces.thickness) /
+              (1.5 * 1.25 * 25.4 * 25.4),
+          ),
+      )
+    : 0;
+  const topRackingTopology = spec.topSupportStyle === "x"
+    ? 1
+    : 0.72 + 0.22 * cornerBraceEngagement;
   const bottomRackingTopology =
     spec.bottomSupportStyle === "x"
       ? 1
@@ -4372,7 +4715,9 @@ function evaluateHoverDiningTableStructure(
     heightFactor ** 2 *
     endFrameClosureFactor;
 
-  const topTorsionTopology = spec.topSupportStyle === "x" ? 1 : 0.65;
+  const topTorsionTopology = spec.topSupportStyle === "x"
+    ? 1
+    : 0.65 + 0.3 * cornerBraceEngagement;
   const bottomTorsionTopology =
     spec.bottomSupportStyle === "x"
       ? 1
@@ -4483,12 +4828,12 @@ function evaluateHoverDiningTableStructure(
       "longitudinal-racking",
       "Lengthwise racking",
       longitudinalRacking,
-      `${spec.topSupportStyle === "x" ? "upper X" : "upper stretchers"} + ${spec.bottomSupportStyle === "x" ? "floor X" : spec.bottomSupportStyle === "center-board" ? "center board" : "no floor connector"}`,
+      `${spec.topSupportStyle === "x" ? "upper X" : spec.cornerKneeBraces.enabled ? "upper stretchers + 4 corner triangles" : "upper stretchers"} + ${spec.bottomSupportStyle === "x" ? "floor X" : spec.bottomSupportStyle === "center-board" ? "center board" : "no floor connector"}`,
       {
         rationale:
-          "Lengthwise sway grows with tabletop height and falls as the top and floor support paths become more triangulated and gain cross-sectional area. The base 30 represents the two end frames before the connecting members contribute.",
+          "Lengthwise sway grows with tabletop height and falls as the top and floor support paths become more triangulated and gain cross-sectional area. Four positively joined plan-view corner braces raise the stretcher topology according to their reach and section, but do not replace vertical leg bracing. The base 30 represents the two end frames before the connecting members contribute.",
         formula:
-          "30 + 35 × topTopology × topAreaFactor × heightFactor^1.4 + 25 × bottomTopology × bottomAreaFactor × heightFactor^1.4",
+          "30 + 35 × (baseTopTopology + 0.22 × cornerBraceEngagement) × topAreaFactor × heightFactor^1.4 + 25 × bottomTopology × bottomAreaFactor × heightFactor^1.4",
         inputs: [
           {
             key: "overallHeight",
@@ -4543,6 +4888,13 @@ function evaluateHoverDiningTableStructure(
             key: "topAreaFactor",
             label: "Top cross-section factor",
             value: topAreaFactor,
+            format: "number",
+            precision: 3,
+          },
+          {
+            key: "cornerBraceReach",
+            label: "Corner-triangle engagement",
+            value: cornerBraceEngagement,
             format: "number",
             precision: 3,
           },
@@ -4629,12 +4981,12 @@ function evaluateHoverDiningTableStructure(
       "torsion",
       "Torsional rigidity",
       torsion,
-      `${spec.topSupportStyle === "x" ? "triangulated" : "parallel"} top · ${spec.bottomSupportStyle === "x" ? "triangulated" : spec.bottomSupportStyle === "center-board" ? "single-axis" : "open"} floor plane · ${channelTopStiffness.channelTorsionFactor.toFixed(2)}× channel factor`,
+      `${spec.topSupportStyle === "x" ? "triangulated" : spec.cornerKneeBraces.enabled ? "four corner-triangulated" : "parallel"} top · ${spec.bottomSupportStyle === "x" ? "triangulated" : spec.bottomSupportStyle === "center-board" ? "single-axis" : "open"} floor plane · ${channelTopStiffness.channelTorsionFactor.toFixed(2)}× channel factor`,
       {
         rationale:
-          "Twist resistance depends on closed or triangulated support paths at both elevations. Greater vertical separation and broader end-frame engagement improve the torsional couple. The three widthwise C-channels add a bounded top-plane factor from their transformed oak/steel sections, edge coverage, and longitudinal distribution; they do not count as leg or joint bracing.",
+          "Twist resistance depends on closed or triangulated support paths at both elevations. The four corner braces triangulate the top rail-to-stretcher joints in plan when both ends use positive joinery; their credit scales with reach and section. Greater vertical separation and broader end-frame engagement improve the torsional couple. The three widthwise C-channels add a bounded top-plane factor; neither system counts as vertical leg bracing.",
         formula:
-          "15 + 75 × √(topTopology × bottomTopology) × planeSeparation^0.6 × √(widthEngagement) × √(channelTorsionFactor)",
+          "15 + 75 × √((baseTopTopology + 0.30 × cornerBraceEngagement) × bottomTopology) × planeSeparation^0.6 × √(widthEngagement) × √(channelTorsionFactor)",
         inputs: [
           {
             key: "topSupportStyle",
@@ -4647,6 +4999,13 @@ function evaluateHoverDiningTableStructure(
             label: "Bottom torsion topology",
             value: `${spec.bottomSupportStyle} (${bottomTorsionTopology.toFixed(2)})`,
             format: "choice",
+          },
+          {
+            key: "cornerBraceReach",
+            label: "Corner-triangle engagement",
+            value: cornerBraceEngagement,
+            format: "number",
+            precision: 3,
           },
           {
             key: "supportPlaneSeparation",
@@ -5007,7 +5366,7 @@ function formatBraceAngle(brace: BracePlaneSpec) {
 function topSupportAuditLabel(spec: HoverDiningTableSpec, unit: LengthUnit) {
   return spec.topSupportStyle === "x"
     ? `X · 2 × ${formatLength(spec.upperBrace.diagonalLength, unit)} at ±${formatBraceAngle(spec.upperBrace)}`
-    : `2 original lengthwise stretchers · ${formatLength(spec.upperStretchers.spanX, unit)} long · centers at ±${formatLength(Math.abs(spec.upperStretchers.centerYs[0]), unit)}`;
+    : `2 original lengthwise stretchers · ${formatLength(spec.upperStretchers.spanX, unit)} long · centers at ±${formatLength(Math.abs(spec.upperStretchers.centerYs[0]), unit)}${spec.cornerKneeBraces.enabled ? " · 4 corner triangles" : ""}`;
 }
 
 function bottomSupportAuditLabel(spec: HoverDiningTableSpec, unit: LengthUnit) {
@@ -5093,7 +5452,7 @@ export function getHoverDiningTableAuditValue(
               : 0;
         return item(
           check.label,
-          `${4 + bottomFaceCount} ${spec.endFrameStyle === "box" ? "box" : "frame"}-parallel support end faces · selected members stop on straight contact zones · ${formatLength(spec.upperBrace.edgeRadius, unit)} bottom-edge round-over`,
+          `${4 + (spec.cornerKneeBraces.enabled ? 8 : 0) + bottomFaceCount} ${spec.endFrameStyle === "box" ? "box" : "frame"}-parallel support end faces · selected members stop on straight contact zones · ${formatLength(spec.upperBrace.edgeRadius, unit)} bottom-edge round-over`,
         );
       }
     case "hoverHalfLaps":
@@ -5123,7 +5482,7 @@ export function getHoverDiningTableAuditValue(
     case "hoverExplodedAssembly":
       return item(
         check.label,
-        `${getHoverDiningTablePieceCount(params)} constrained solids · mortised profiled top · 3 steel C-channels · ${spec.endFrameStyle === "box" ? "4 Bézier rails · 4 tangent-seam stiles" : "2 wave-curve rails · 4 full-height legs"} · selected finished supports${spec.levelingFeet.enabled ? " · 4 leveling feet" : ""}`,
+        `${getHoverDiningTablePieceCount(params)} constrained solids · mortised profiled top · 3 steel C-channels · ${spec.endFrameStyle === "box" ? "4 Bézier rails · 4 tangent-seam stiles" : "2 wave-curve rails · 4 full-height legs"} · selected finished supports${spec.cornerKneeBraces.enabled ? " · 4 top-frame knee braces" : ""}${spec.levelingFeet.enabled ? " · 4 leveling feet" : ""}`,
       );
     case "hoverCutList":
       {
@@ -5131,6 +5490,7 @@ export function getHoverDiningTableAuditValue(
           (spec.endFrameStyle === "box" ? 5 : 4) +
           (spec.levelingFeet.enabled ? 1 : 0) +
           (spec.topSupportStyle === "x" ? 2 : 1) +
+          (spec.cornerKneeBraces.enabled ? 1 : 0) +
           (spec.bottomSupportStyle === "x"
             ? 2
             : spec.bottomSupportStyle === "center-board"

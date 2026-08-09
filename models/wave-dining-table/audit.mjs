@@ -34,6 +34,7 @@ assert.equal(params.endFrameStyle, 1, "open leg frames must be the default");
 assert.equal(params.topSupportStyle, 1, "two lengthwise upper rails must be the default");
 assert.equal(params.bottomSupportStyle, 2, "the floor must remain open by default");
 assert.equal(params.levelingFeetEnabled, 0, "wood legs must contact the floor by default");
+close(params.cornerBraceReach, 10 * inch, "corner-brace reach");
 
 const topBottom = params.overallHeight - params.topThickness;
 const frameTopWidth = params.tableWidth - 2 * params.sideOverhang;
@@ -60,7 +61,9 @@ for (const required of [
   "Unable to merge open-leg end-frame geometry",
   "Wave-curve top rail",
   "Full-height leg",
-  "basePieceCount = frameStyle === \"box\" ? 14 : 12",
+  "createCornerKneeBraceParts",
+  'id: "K1"',
+  "cornerBraceCount",
   "one or two square rail-tangent seams",
 ]) {
   assert.ok(source.includes(required), `shared source is missing ${required}`);
@@ -82,13 +85,14 @@ for (const phrase of [
   "two open transverse frames",
   "distinctive wave-shaped shoulder",
   "two parallel lengthwise upper rails",
+  "four plan-view corner knee braces",
   "no floor connector",
-  "12 default pieces",
+  "16 default pieces",
   "top-rail and mirrored full-height-leg routing templates",
 ]) {
   assert.ok(auditText.includes(phrase), `audit contract is missing: ${phrase}`);
 }
 
 console.log(
-  `wave-dining-table audit passed: open wave-curve leg frames, 2 lengthwise rails, direct floor contact, ${supportSpan.toFixed(1)} mm support span`,
+  `wave-dining-table audit passed: open wave-curve leg frames, 2 lengthwise rails, 4 corner knee braces, direct floor contact, ${supportSpan.toFixed(1)} mm support span`,
 );

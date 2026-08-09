@@ -2740,6 +2740,7 @@ const HOVER_PARAMETER_GROUPS = [
   "Adjustable feet",
   "Support layout",
   "Top support members",
+  "Corner braces",
   "Bottom support members",
   "Support joinery",
   "Routing templates",
@@ -2838,6 +2839,11 @@ function HoverDiningTableParameterControls({
               ) : group === "Top support members" ? (
                 <p className="parameter-group-description">
                   Dimensions for the selected top X or stretcher members.
+                </p>
+              ) : group === "Corner braces" ? (
+                <p className="parameter-group-description">
+                  Four mirrored 45° braces close the top frame into plan-view
+                  triangles. Reach is measured along both joined rail faces.
                 </p>
               ) : group === "Bottom support members" ? (
                 <p className="parameter-group-description">
