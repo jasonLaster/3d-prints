@@ -12,6 +12,7 @@ const MAX_REFERENCE_BYTES = 1_500_000;
 
 type BrochureRequest = {
   clientId: string;
+  generationId: string;
   dimensions: {
     height: number;
     length: number;
@@ -47,6 +48,8 @@ function parseRequest(value: unknown): BrochureRequest | null {
     candidate.modelName.length > 80 ||
     typeof candidate.clientId !== "string" ||
     !/^[a-zA-Z0-9-]{8,64}$/.test(candidate.clientId) ||
+    typeof candidate.generationId !== "string" ||
+    !/^[a-zA-Z0-9-]{20,64}$/.test(candidate.generationId) ||
     !Array.isArray(candidate.images) ||
     candidate.images.length !== MAX_REFERENCE_COUNT ||
     !candidate.dimensions ||
@@ -144,6 +147,7 @@ async function handleBrochureRequest(request: Request) {
             "feature:brochure",
             "model:hover-dining-table",
             "prompt:v1",
+            `generation:${brochureRequest.generationId}`,
           ],
         },
       },
@@ -151,6 +155,7 @@ async function handleBrochureRequest(request: Request) {
 
     return json({
       imageDataUrl: `data:${result.image.mediaType};base64,${result.image.base64}`,
+      generationId: brochureRequest.generationId,
       model: IMAGE_MODEL,
       warnings: result.warnings.map((warning) => warning.type),
     });

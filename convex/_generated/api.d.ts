@@ -9,6 +9,7 @@
  */
 
 import type * as library from "../library.js";
+import type * as brochures from "../brochures.js";
 
 import type {
   ApiFromModules,
@@ -17,6 +18,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  brochures: typeof brochures;
   library: typeof library;
 }>;
 

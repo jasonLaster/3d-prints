@@ -10,6 +10,7 @@ test("brochure mode captures four CAD angles and presents the generated image", 
   let requestPayload: {
     clientId: string;
     dimensions: Record<string, number>;
+    generationId: string;
     images: string[];
     modelId: string;
     modelName: string;
@@ -25,6 +26,7 @@ test("brochure mode captures four CAD angles and presents the generated image", 
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
+        generationId: requestPayload!.generationId,
         imageDataUrl: MOCK_BROCHURE_IMAGE,
         model: "openai/gpt-image-2",
         warnings: [],
@@ -52,6 +54,7 @@ test("brochure mode captures four CAD angles and presents the generated image", 
   expect(requestPayload!.modelId).toBe("hover-dining-table");
   expect(requestPayload!.modelName).toBe("X-Hover Dining Table");
   expect(requestPayload!.clientId).toMatch(/^[a-zA-Z0-9-]{8,64}$/);
+  expect(requestPayload!.generationId).toMatch(/^[a-zA-Z0-9-]{20,64}$/);
   expect(requestPayload!.images).toHaveLength(4);
   expect(
     requestPayload!.images.every((image) =>
@@ -76,6 +79,7 @@ test("brochure mode captures four CAD angles and presents the generated image", 
   await expect(
     page.getByText(/CAD model remains authoritative/),
   ).toBeVisible();
+  await expect(page.getByText("Not saved", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Back to model" }).click();
   await expect(brochure).toHaveCount(0);
@@ -84,4 +88,9 @@ test("brochure mode captures four CAD angles and presents the generated image", 
     "style",
     orientationBefore!,
   );
+
+  await page.getByRole("button", { name: "Brochures", exact: true }).click();
+  await expect(
+    page.getByText("Connect Convex to save and browse generated brochures."),
+  ).toBeVisible();
 });

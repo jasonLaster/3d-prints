@@ -38,4 +38,35 @@ export default defineSchema({
     .index("by_model", ["modelKey"])
     .index("by_parent", ["parentVersionId"])
     .index("by_updated", ["updatedAt"]),
+
+  brochures: defineTable({
+    generationId: v.string(),
+    clientId: v.string(),
+    modelKey: v.string(),
+    modelName: v.string(),
+    imageModel: v.string(),
+    promptVersion: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("complete"),
+      v.literal("error"),
+    ),
+    params: v.record(v.string(), v.number()),
+    dimensions: v.object({
+      height: v.number(),
+      length: v.number(),
+      topThickness: v.number(),
+      width: v.number(),
+    }),
+    referenceCount: v.number(),
+    imageStorageId: v.optional(v.id("_storage")),
+    mediaType: v.optional(v.string()),
+    warnings: v.optional(v.array(v.string())),
+    errorMessage: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_generation", ["generationId"])
+    .index("by_client_updated", ["clientId", "updatedAt"])
+    .index("by_model_updated", ["modelKey", "updatedAt"]),
 });

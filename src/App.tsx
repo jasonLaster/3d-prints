@@ -8,6 +8,7 @@ import {
   GitFork,
   Hand,
   Info,
+  Images,
   Layers3,
   MoreHorizontal,
   Moon,
@@ -161,6 +162,58 @@ type ModelCatalogEntry = {
 type ModelCatalog = {
   version: number;
   models: ModelCatalogEntry[];
+};
+
+export type BrochureDimensions = {
+  height: number;
+  length: number;
+  topThickness: number;
+  width: number;
+};
+
+export type SavedBrochure = {
+  generationId: string;
+  imageUrl: string;
+  modelKey: string;
+  modelName: string;
+  dimensions: BrochureDimensions;
+  createdAt: number;
+  updatedAt: number;
+};
+
+type BrochureRecordInput = {
+  clientId: string;
+  dimensions: BrochureDimensions;
+  generationId: string;
+  imageModel: string;
+  modelKey: string;
+  modelName: string;
+  params: ModelParams;
+  promptVersion: string;
+  referenceCount: number;
+};
+
+export type BrochurePersistence = {
+  create: (input: BrochureRecordInput) => Promise<void>;
+  complete: (input: {
+    clientId: string;
+    generationId: string;
+    imageDataUrl: string;
+    mediaType: string;
+    warnings: string[];
+  }) => Promise<{ imageUrl: string }>;
+  fail: (input: {
+    clientId: string;
+    errorMessage: string;
+    generationId: string;
+  }) => Promise<void>;
+};
+
+type PendingBrochureSave = {
+  imageDataUrl: string;
+  mediaType: string;
+  record: BrochureRecordInput;
+  warnings: string[];
 };
 
 const CATALOG_URL = "/models/index.json";
@@ -451,7 +504,7 @@ function getInitialTheme(): ThemeMode {
     : "light";
 }
 
-function getBrochureClientId() {
+export function getBrochureClientId() {
   const storedId = window.localStorage.getItem(BROCHURE_CLIENT_ID_KEY);
   if (storedId && /^[a-zA-Z0-9-]{8,64}$/.test(storedId)) {
     return storedId;
@@ -782,11 +835,15 @@ function downloadBlob(blob: Blob, name: string) {
 }
 
 async function requestHoverBrochure({
+  clientId,
+  generationId,
   images,
   model,
   params,
   signal,
 }: {
+  clientId: string;
+  generationId: string;
   images: string[];
   model: ModelDefinition;
   params: ModelParams;
@@ -797,7 +854,8 @@ async function requestHoverBrochure({
     headers: { "content-type": "application/json" },
     signal,
     body: JSON.stringify({
-      clientId: getBrochureClientId(),
+      clientId,
+      generationId,
       dimensions: {
         height: getParam(params, "overallHeight"),
         length: getParam(params, "tableLength"),
@@ -810,17 +868,33 @@ async function requestHoverBrochure({
     }),
   });
   const payload = (await response.json().catch(() => null)) as
-    | { error?: string; imageDataUrl?: string }
+    | {
+        error?: string;
+        generationId?: string;
+        imageDataUrl?: string;
+        model?: string;
+        warnings?: string[];
+      }
     | null;
   if (!response.ok) {
     throw new Error(
       payload?.error ?? `Brochure generation failed (${response.status}).`,
     );
   }
-  if (!payload?.imageDataUrl?.startsWith("data:image/")) {
+  if (
+    payload?.generationId !== generationId ||
+    !payload.imageDataUrl?.startsWith("data:image/") ||
+    typeof payload.model !== "string" ||
+    !Array.isArray(payload.warnings)
+  ) {
     throw new Error("The brochure service returned an invalid image.");
   }
-  return payload.imageDataUrl;
+  return {
+    imageDataUrl: payload.imageDataUrl,
+    mediaType: payload.imageDataUrl.slice(5, payload.imageDataUrl.indexOf(";")),
+    model: payload.model,
+    warnings: payload.warnings,
+  };
 }
 
 function orientDiningTableForSupportFreePrint(
@@ -3726,6 +3800,7 @@ function isVisibleSavedVersion(version: SavedLibraryVersion) {
 
 type WorkspaceLibrarySidebarProps = {
   activeVersionId: Id<"versions"> | null;
+  brochures?: SavedBrochure[];
   catalogModels: CatalogSeedModel[];
   convexEnabled: boolean;
   designChecks: ReactNode | null;
@@ -3734,12 +3809,14 @@ type WorkspaceLibrarySidebarProps = {
   selectedModelId: string;
   theme: ThemeMode;
   onOpenModel: (modelId: string) => void;
+  onOpenBrochure: (brochure: SavedBrochure) => void;
   onOpenVersion: (version: SavedLibraryVersion) => void;
   onToggleCollapsed: () => void;
 };
 
 function WorkspaceLibrarySidebar({
   activeVersionId,
+  brochures,
   catalogModels,
   convexEnabled,
   designChecks,
@@ -3748,11 +3825,12 @@ function WorkspaceLibrarySidebar({
   selectedModelId,
   theme,
   onOpenModel,
+  onOpenBrochure,
   onOpenVersion,
   onToggleCollapsed,
 }: WorkspaceLibrarySidebarProps) {
   const [activeSection, setActiveSection] = useState<
-    "models" | "versions" | "checks"
+    "models" | "versions" | "brochures" | "checks"
   >("models");
   const [query, setQuery] = useState("");
   const hasDesignChecks = designChecks !== null;
@@ -3813,6 +3891,18 @@ function WorkspaceLibrarySidebar({
         >
           <Clock3 aria-hidden="true" />
         </button>
+        <button
+          aria-label="Show brochures"
+          className={activeSection === "brochures" ? "active" : ""}
+          onClick={() => {
+            setActiveSection("brochures");
+            onToggleCollapsed();
+          }}
+          title="Brochures"
+          type="button"
+        >
+          <Images aria-hidden="true" />
+        </button>
         {hasDesignChecks ? (
           <button
             aria-label="Show design checks"
@@ -3864,6 +3954,14 @@ function WorkspaceLibrarySidebar({
         >
           <Clock3 aria-hidden="true" />
           Saved Versions
+        </button>
+        <button
+          className={activeSection === "brochures" ? "active" : ""}
+          onClick={() => setActiveSection("brochures")}
+          type="button"
+        >
+          <Images aria-hidden="true" />
+          Brochures
         </button>
         {hasDesignChecks ? (
           <button
@@ -3935,6 +4033,14 @@ function WorkspaceLibrarySidebar({
           selectedModelName={selectedModelName}
           onOpenVersion={onOpenVersion}
         />
+      ) : activeSection === "brochures" ? (
+        <WorkspaceSavedBrochures
+          brochures={brochures}
+          convexEnabled={convexEnabled}
+          onOpenBrochure={onOpenBrochure}
+          selectedModelId={selectedModelId}
+          selectedModelName={selectedModelName}
+        />
       ) : (
         <div
           aria-label="Hover-table design checks"
@@ -3944,6 +4050,71 @@ function WorkspaceLibrarySidebar({
         </div>
       )}
     </aside>
+  );
+}
+
+function WorkspaceSavedBrochures({
+  brochures,
+  convexEnabled,
+  onOpenBrochure,
+  selectedModelId,
+  selectedModelName,
+}: {
+  brochures?: SavedBrochure[];
+  convexEnabled: boolean;
+  onOpenBrochure: (brochure: SavedBrochure) => void;
+  selectedModelId: string;
+  selectedModelName: string;
+}) {
+  const visibleBrochures = (brochures ?? []).filter(
+    (brochure) => brochure.modelKey === selectedModelId,
+  );
+  return (
+    <div className="workspace-sidebar-section workspace-brochures-section">
+      <div className="workspace-sidebar-section-heading">
+        <span>Brochures</span>
+        <strong title={selectedModelName}>{selectedModelName}</strong>
+      </div>
+      <div className="workspace-brochure-content">
+        {!convexEnabled ? (
+          <LibraryUnavailableMessage>
+            Connect Convex to save and browse generated brochures.
+          </LibraryUnavailableMessage>
+        ) : brochures === undefined ? (
+          <p className="library-empty">Loading brochures...</p>
+        ) : visibleBrochures.length === 0 ? (
+          <p className="library-empty">
+            No brochures yet. Generate one from the Assembly panel.
+          </p>
+        ) : (
+          <div className="workspace-brochure-grid">
+            {visibleBrochures.map((brochure) => (
+              <button
+                aria-label={`Open brochure from ${formatWorkspaceVersionDate(brochure.createdAt)}`}
+                className="workspace-brochure-card"
+                key={brochure.generationId}
+                onClick={() => onOpenBrochure(brochure)}
+                type="button"
+              >
+                <img
+                  alt=""
+                  decoding="async"
+                  loading="lazy"
+                  src={brochure.imageUrl}
+                />
+                <span>
+                  <strong>{formatWorkspaceVersionDate(brochure.createdAt)}</strong>
+                  <small>
+                    {(brochure.dimensions.length / 25.4).toFixed(0)} ×{" "}
+                    {(brochure.dimensions.width / 25.4).toFixed(1)} in
+                  </small>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -4349,9 +4520,15 @@ function getRequestedModelId() {
 }
 
 export default function App({
+  brochureClientId = getBrochureClientId(),
+  brochurePersistence,
   convexEnabled = false,
+  savedBrochures,
 }: {
+  brochureClientId?: string;
+  brochurePersistence?: BrochurePersistence;
   convexEnabled?: boolean;
+  savedBrochures?: SavedBrochure[];
 }) {
   const [catalog, setCatalog] = useState<ModelCatalog | null>(null);
   const [selectedModelId, setSelectedModelId] = useState("");
@@ -4387,6 +4564,7 @@ export default function App({
   const viewerRef = useRef<ViewerHandle | null>(null);
   const brochureAbortRef = useRef<AbortController | null>(null);
   const brochureRequestRef = useRef(0);
+  const brochurePendingSaveRef = useRef<PendingBrochureSave | null>(null);
   const [brochureState, setBrochureState] =
     useState<BrochureGenerationState>({ status: "idle" });
 
@@ -4561,6 +4739,28 @@ export default function App({
     });
   }, [model, params, selectedModelId, unit]);
 
+  useEffect(() => {
+    const generationId = new URLSearchParams(window.location.search).get(
+      "brochure",
+    );
+    if (!generationId || !model || !savedBrochures) return;
+    const brochure = savedBrochures.find(
+      (candidate) => candidate.generationId === generationId,
+    );
+    if (!brochure) return;
+    if (model.id !== brochure.modelKey) {
+      setSelectedModelId(brochure.modelKey);
+      return;
+    }
+    setAssemblyMode("brochure");
+    setBrochureState({
+      status: "success",
+      generationId: brochure.generationId,
+      imageDataUrl: brochure.imageUrl,
+      saved: true,
+    });
+  }, [model, savedBrochures]);
+
   const startBrochureGeneration = () => {
     if (!model || !params || model.viewer !== "hover-dining-table-v1") return;
     const viewer = viewerRef.current;
@@ -4573,39 +4773,159 @@ export default function App({
     }
 
     setAssemblyMode("brochure");
+    const brochureUrl = new URL(window.location.href);
+    brochureUrl.searchParams.delete("brochure");
+    window.history.replaceState(null, "", brochureUrl);
     const requestId = brochureRequestRef.current + 1;
     brochureRequestRef.current = requestId;
     brochureAbortRef.current?.abort();
     const controller = new AbortController();
     brochureAbortRef.current = controller;
+    brochurePendingSaveRef.current = null;
     setBrochureState({ status: "generating" });
 
     void (async () => {
+      const generationId = globalThis.crypto.randomUUID();
+      const dimensions = {
+        height: getParam(params, "overallHeight"),
+        length: getParam(params, "tableLength"),
+        topThickness: getParam(params, "topThickness"),
+        width: getParam(params, "tableWidth"),
+      };
+      const record: BrochureRecordInput = {
+        clientId: brochureClientId,
+        dimensions,
+        generationId,
+        imageModel: "openai/gpt-image-2",
+        modelKey: model.id,
+        modelName: model.name,
+        params,
+        promptVersion: "v1",
+        referenceCount: 4,
+      };
       try {
+        await brochurePersistence?.create(record);
         await new Promise<void>((resolve) =>
           requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         );
         const images = await viewer.captureBrochureViews();
-        const imageDataUrl = await requestHoverBrochure({
+        const result = await requestHoverBrochure({
+          clientId: brochureClientId,
+          generationId,
           images,
           model,
           params,
           signal: controller.signal,
         });
-        if (brochureRequestRef.current === requestId) {
-          setBrochureState({ status: "success", imageDataUrl });
+        const pendingSave: PendingBrochureSave = {
+          imageDataUrl: result.imageDataUrl,
+          mediaType: result.mediaType,
+          record: { ...record, imageModel: result.model },
+          warnings: result.warnings,
+        };
+        brochurePendingSaveRef.current = pendingSave;
+        if (brochureRequestRef.current !== requestId) return;
+
+        if (!brochurePersistence) {
+          setBrochureState({
+            status: "success",
+            generationId,
+            imageDataUrl: result.imageDataUrl,
+            saved: false,
+            saveError: "brochure storage is unavailable",
+          });
+          return;
         }
+        setBrochureState({
+          status: "saving",
+          imageDataUrl: result.imageDataUrl,
+        });
+        const saved = await brochurePersistence.complete({
+          clientId: brochureClientId,
+          generationId,
+          imageDataUrl: result.imageDataUrl,
+          mediaType: result.mediaType,
+          warnings: result.warnings,
+        });
+        if (brochureRequestRef.current !== requestId) return;
+        const url = new URL(window.location.href);
+        url.searchParams.set("brochure", generationId);
+        window.history.replaceState(null, "", url);
+        brochurePendingSaveRef.current = null;
+        setBrochureState({
+          status: "success",
+          generationId,
+          imageDataUrl: saved.imageUrl,
+          saved: true,
+        });
       } catch (error) {
         if (controller.signal.aborted) return;
         if (brochureRequestRef.current === requestId) {
-          setBrochureState({
-            status: "error",
-            message:
-              error instanceof Error
-                ? error.message
-                : "Brochure generation failed. Please try again.",
-          });
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Brochure generation failed. Please try again.";
+          const pendingSave = brochurePendingSaveRef.current;
+          if (pendingSave?.record.generationId === generationId) {
+            setBrochureState({
+              status: "success",
+              generationId,
+              imageDataUrl: pendingSave.imageDataUrl,
+              saved: false,
+              saveError: message,
+            });
+          } else {
+            setBrochureState({ status: "error", message });
+            void brochurePersistence?.fail({
+              clientId: brochureClientId,
+              errorMessage: message,
+              generationId,
+            });
+          }
         }
+      }
+    })();
+  };
+
+  const retryBrochureSave = () => {
+    const pendingSave = brochurePendingSaveRef.current;
+    if (!pendingSave || !brochurePersistence) return;
+    const requestId = brochureRequestRef.current;
+    setBrochureState({
+      status: "saving",
+      imageDataUrl: pendingSave.imageDataUrl,
+    });
+    void (async () => {
+      try {
+        await brochurePersistence.create(pendingSave.record);
+        const saved = await brochurePersistence.complete({
+          clientId: brochureClientId,
+          generationId: pendingSave.record.generationId,
+          imageDataUrl: pendingSave.imageDataUrl,
+          mediaType: pendingSave.mediaType,
+          warnings: pendingSave.warnings,
+        });
+        if (brochureRequestRef.current !== requestId) return;
+        const url = new URL(window.location.href);
+        url.searchParams.set("brochure", pendingSave.record.generationId);
+        window.history.replaceState(null, "", url);
+        brochurePendingSaveRef.current = null;
+        setBrochureState({
+          status: "success",
+          generationId: pendingSave.record.generationId,
+          imageDataUrl: saved.imageUrl,
+          saved: true,
+        });
+      } catch (error) {
+        if (brochureRequestRef.current !== requestId) return;
+        setBrochureState({
+          status: "success",
+          generationId: pendingSave.record.generationId,
+          imageDataUrl: pendingSave.imageDataUrl,
+          saved: false,
+          saveError:
+            error instanceof Error ? error.message : "Unable to save brochure.",
+        });
       }
     })();
   };
@@ -4613,6 +4933,7 @@ export default function App({
   useEffect(() => {
     if (assemblyMode !== "brochure") {
       brochureAbortRef.current?.abort();
+      brochureRequestRef.current += 1;
     }
   }, [assemblyMode]);
 
@@ -4629,6 +4950,13 @@ export default function App({
       return;
     }
     setAssemblyMode(nextMode);
+  };
+
+  const leaveBrochure = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("brochure");
+    window.history.replaceState(null, "", url);
+    setAssemblyMode("assembled");
   };
 
   const updateParam = (key: string, value: number) => {
@@ -4825,6 +5153,7 @@ export default function App({
     url.searchParams.set("model", modelId);
     url.searchParams.set("unit", unit);
     url.searchParams.delete("theme");
+    url.searchParams.delete("brochure");
     for (const key of PARAM_QUERY_KEYS) {
       url.searchParams.delete(key);
     }
@@ -4847,6 +5176,7 @@ export default function App({
     url.searchParams.set("model", version.modelKey);
     url.searchParams.set("unit", version.unit);
     url.searchParams.delete("theme");
+    url.searchParams.delete("brochure");
     for (const key of PARAM_QUERY_KEYS) {
       url.searchParams.delete(key);
     }
@@ -4877,6 +5207,22 @@ export default function App({
     }
 
     setSelectedModelId(version.modelKey);
+  };
+
+  const openSavedBrochure = (brochure: SavedBrochure) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("model", brochure.modelKey);
+    url.searchParams.set("brochure", brochure.generationId);
+    window.history.replaceState(null, "", url);
+    brochurePendingSaveRef.current = null;
+    setAssemblyMode("brochure");
+    setBrochureState({
+      status: "success",
+      generationId: brochure.generationId,
+      imageDataUrl: brochure.imageUrl,
+      saved: true,
+    });
+    setIsCompactLibraryOpen(false);
   };
 
   const handleSavedVersion = (versionId: Id<"versions">, title: string) => {
@@ -5014,6 +5360,7 @@ export default function App({
         ) : null}
         <WorkspaceLibrarySidebar
           activeVersionId={activeVersionId}
+          brochures={savedBrochures}
           catalogModels={catalogSeedModels}
           convexEnabled={convexEnabled}
           designChecks={
@@ -5042,6 +5389,7 @@ export default function App({
           selectedModelId={selectedModelId}
           theme={theme}
           onOpenModel={openModel}
+          onOpenBrochure={openSavedBrochure}
           onOpenVersion={openLibraryVersion}
           onToggleCollapsed={() =>
             isCompactWorkspace
@@ -5101,8 +5449,9 @@ export default function App({
           assemblyMode === "brochure" ? (
             <HoverBrochurePanel
               modelName={model.name}
-              onBack={() => setAssemblyMode("assembled")}
+              onBack={leaveBrochure}
               onRegenerate={startBrochureGeneration}
+              onRetrySave={retryBrochureSave}
               state={brochureState}
             />
           ) : null}
