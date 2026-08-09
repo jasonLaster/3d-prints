@@ -187,6 +187,18 @@ const PARAM_QUERY_KEYS = [
   "tableWidth",
   "overallHeight",
   "topThickness",
+  "topEdgeThickness",
+  "undersideBevelInset",
+  "legTopWidth",
+  "legFootWidth",
+  "legThickness",
+  "legFootChamfer",
+  "longApronLength",
+  "longApronHeight",
+  "sideApronLength",
+  "sideApronHeight",
+  "apronThickness",
+  "apronSetback",
   "tabletopCornerRadius",
   "topRoundoverRadius",
   "bottomRoundoverRadius",
@@ -1504,7 +1516,7 @@ const HolderViewer = forwardRef<
       return;
     }
     const fileName = getExportFileName(model, latestParamsRef.current);
-    if (model.viewer === "dining-table-v1") {
+    if (model.viewer === "dining-table-v1" && model.id !== "whisperer") {
       const hardwareBlob = createDiningTableHardwareStlBlob();
       downloadBlob(
         blob,
@@ -4124,7 +4136,7 @@ function WorkspaceActionsMenu({
             <div className="workspace-menu-group">
               <button className="primary-action" onClick={onExport} type="button">
                 <Download aria-hidden="true" />
-                {model.viewer === "dining-table-v1"
+                {model.viewer === "dining-table-v1" && model.id !== "whisperer"
                   ? "Export two-color STLs"
                   : "Export"}
               </button>
@@ -5132,12 +5144,14 @@ export default function App({
                         onChange={(value) => updateParam("mockScale", value)}
                         value={getParam(params, "mockScale")}
                       />
-                      <PostGrooveToggle
-                        checked={getParam(params, "legGrooveEnabled") >= 0.5}
-                        onChange={(checked) =>
-                          updateParam("legGrooveEnabled", checked ? 1 : 0)
-                        }
-                      />
+                      {Number.isFinite(params.legGrooveEnabled) ? (
+                        <PostGrooveToggle
+                          checked={params.legGrooveEnabled >= 0.5}
+                          onChange={(checked) =>
+                            updateParam("legGrooveEnabled", checked ? 1 : 0)
+                          }
+                        />
+                      ) : null}
                     </>
                   ) : null}
                   {model.viewer === "hover-dining-table-v1" ? (
@@ -5152,7 +5166,8 @@ export default function App({
                     .filter((parameter) => {
                       if (
                         model.viewer === "dining-table-v1" &&
-                        getParam(params, "legGrooveEnabled") < 0.5 &&
+                        Number.isFinite(params.legGrooveEnabled) &&
+                        params.legGrooveEnabled < 0.5 &&
                         LEG_GROOVE_PARAM_KEYS.has(parameter.key)
                       ) {
                         return false;

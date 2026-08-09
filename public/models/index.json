@@ -32,6 +32,11 @@
       "configUrl": "/models/dining-table/model.json"
     },
     {
+      "id": "whisperer",
+      "name": "Whisperer",
+      "configUrl": "/models/whisperer/model.json"
+    },
+    {
       "id": "hover-dining-table",
       "name": "X-Hover Dining Table",
       "configUrl": "/models/hover-dining-table/model.json"

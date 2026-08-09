@@ -124,7 +124,11 @@ export type DiningTableGeometry = {
   mainAxis: { x: number; y: number; z: number };
   cornerSegments: number;
   edgeProfileSegments: number;
-  channelCount: 3;
+  channelCount: 0 | 3;
+  legSplayDegrees?: number;
+  longApronEndAngleDegrees?: number;
+  sideApronEdgeAngleDegrees?: number;
+  sideApronBottomChamferDegrees?: number;
 };
 
 export type HoverDiningTableGeometry = {

@@ -2,6 +2,12 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { formatLength } from "../units";
 import { getParam, getParameter } from "./shared";
+import {
+  createWhispererTableWoodGeometry,
+  getWhispererTableAuditValue,
+  getWhispererTableParameterLimits,
+  isWhispererParams,
+} from "./whispererTable";
 import type {
   AuditCheckDefinition,
   AuditItem,
@@ -392,6 +398,9 @@ export function createDiningTableWoodGeometry(
   params: ModelParams,
   model: DiningTableModelDefinition,
 ) {
+  if (model.id === "whisperer") {
+    return createWhispererTableWoodGeometry(params);
+  }
   const geometries = [
     createTabletopGeometry(params, model),
     ...getLegCenters(params).map((center) =>
@@ -409,6 +418,9 @@ export function createDiningTableWoodGeometry(
 export function createDiningTableHardwareGeometries(
   params: ModelParams,
 ) {
+  if (isWhispererParams(params)) {
+    return { plates: [], channels: [] };
+  }
   const scale = getParam(params, "mockScale");
   const length = getParam(params, "tableLength") / scale;
   const width = getParam(params, "tableWidth") / scale;
@@ -510,6 +522,9 @@ export function getDiningTableParameterLimits(
   params: ModelParams,
   key: string,
 ): NumberLimits {
+  if (model.id === "whisperer") {
+    return getWhispererTableParameterLimits(model, params, key);
+  }
   const limits = { ...getParameter(model, key).limits };
   const length = getParam(params, "tableLength");
   const width = getParam(params, "tableWidth");
@@ -608,6 +623,9 @@ export function getDiningTableAuditValue(
   params: ModelParams,
   unit: LengthUnit,
 ): AuditItem {
+  if (isWhispererParams(params)) {
+    return getWhispererTableAuditValue(check, params, unit);
+  }
   const scale = getParam(params, "mockScale");
   const topThickness = getParam(params, "topThickness");
   const topRadius = getParam(params, "topRoundoverRadius");
