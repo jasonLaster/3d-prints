@@ -118,6 +118,7 @@ button:disabled {
 }
 
 .scene-panel {
+  position: relative;
   grid-area: scene;
   min-width: 0;
   min-height: 0;
@@ -2175,11 +2176,208 @@ html.dark .panel-section:nth-child(even) {
   height: 15px;
 }
 
+.assembly-panel-section .segmented-control button[data-mode="brochure"] {
+  grid-column: 1 / -1;
+}
+
 .assembly-mode-note {
   margin: 14px 0 0;
   color: var(--muted-strong);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.hover-brochure-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow: hidden;
+  background: #e9e2d7;
+  color: #22201d;
+}
+
+.hover-brochure-backdrop,
+.hover-brochure-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hover-brochure-backdrop {
+  background:
+    radial-gradient(circle at 62% 40%, rgba(255, 255, 255, 0.9), transparent 38%),
+    linear-gradient(135deg, #f2ece3 0%, #d9cbbb 100%);
+}
+
+.hover-brochure-image {
+  display: block;
+  object-fit: cover;
+}
+
+.hover-brochure-toolbar {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hover-brochure-toolbar button,
+.hover-brochure-toolbar a,
+.hover-brochure-message button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 1px solid rgba(51, 45, 38, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 252, 247, 0.9);
+  color: #2c2823;
+  box-shadow: 0 10px 28px rgba(58, 45, 31, 0.12);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 780;
+  text-decoration: none;
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+}
+
+.hover-brochure-toolbar button:first-child {
+  margin-right: auto;
+}
+
+.hover-brochure-toolbar svg,
+.hover-brochure-message button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.hover-brochure-toolbar button:hover,
+.hover-brochure-toolbar button:focus-visible,
+.hover-brochure-toolbar a:hover,
+.hover-brochure-toolbar a:focus-visible,
+.hover-brochure-message button:hover,
+.hover-brochure-message button:focus-visible {
+  border-color: rgba(125, 82, 37, 0.48);
+  background: #fffdf9;
+  outline: 0;
+}
+
+.hover-brochure-message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  width: min(430px, calc(100% - 44px));
+  align-items: center;
+  flex-direction: column;
+  padding: 32px;
+  border: 1px solid rgba(87, 68, 47, 0.12);
+  border-radius: 22px;
+  background: rgba(255, 252, 247, 0.78);
+  box-shadow: 0 30px 90px rgba(77, 59, 39, 0.15);
+  text-align: center;
+  transform: translate(-50%, -50%);
+  backdrop-filter: blur(20px);
+}
+
+.hover-brochure-spark {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 18px;
+  place-items: center;
+  border-radius: 50%;
+  background: #312b24;
+  color: #f2c98e;
+}
+
+.hover-brochure-spark svg {
+  width: 21px;
+  height: 21px;
+}
+
+.hover-brochure-message p {
+  margin: 0 0 6px;
+  color: #8d6337;
+  font-size: 11px;
+  font-weight: 820;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hover-brochure-message h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(27px, 4cqi, 42px);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+}
+
+.hover-brochure-message > span:not(.hover-brochure-spark) {
+  max-width: 350px;
+  margin-top: 12px;
+  color: #6a6056;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.hover-brochure-progress {
+  position: relative;
+  overflow: hidden;
+  width: min(280px, 100%);
+  height: 3px;
+  margin-top: 24px;
+  border-radius: 999px;
+  background: rgba(95, 75, 53, 0.15);
+}
+
+.hover-brochure-progress span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: inherit;
+  background: #b67d3d;
+  animation: hover-brochure-progress 1.35s ease-in-out infinite;
+}
+
+.hover-brochure-message.error button {
+  margin-top: 22px;
+}
+
+.hover-brochure-disclaimer {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2;
+  max-width: min(430px, calc(100% - 36px));
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(31, 27, 23, 0.72);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 11px;
+  line-height: 1.4;
+  backdrop-filter: blur(12px);
+}
+
+@keyframes hover-brochure-progress {
+  0% {
+    transform: translateX(-110%);
+  }
+  55% {
+    transform: translateX(145%);
+  }
+  100% {
+    transform: translateX(245%);
+  }
 }
 
 .panel-section-toggle {

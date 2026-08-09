@@ -20,6 +20,7 @@ import {
   Ruler,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Sun,
   Trash2,
   ZoomIn,
@@ -60,6 +61,10 @@ import {
   SelectValue,
 } from "./components/ui/select";
 import { HoverDiningTableCutList } from "./components/HoverDiningTableCutList";
+import {
+  HoverBrochurePanel,
+  type BrochureGenerationState,
+} from "./components/HoverBrochurePanel";
 import { MiniModelViewer } from "./components/MiniModelViewer";
 import {
   applyHolderMorph,
@@ -130,11 +135,13 @@ type AssemblyMode =
   | "assembled"
   | "exploded"
   | "cut-list"
-  | "templates";
+  | "templates"
+  | "brochure";
 type ViewerInteractionMode = "orbit" | "pan";
 type MobileInspectorSection = "assembly" | "parameters" | "checks";
 
 type ViewerHandle = {
+  captureBrochureViews: () => Promise<string[]>;
   exportStl: () => void;
   exportLidStl: () => void;
   exportBoxAndLidStl: () => void;
@@ -384,6 +391,7 @@ const SIDEBAR_DEFAULT_WIDTH = 390;
 const INSPECTOR_COLLAPSED_WIDTH = 52;
 const LIBRARY_SIDEBAR_WIDTH_KEY = "3d-prints:library-sidebar-width";
 const THEME_STORAGE_KEY = "3d-prints:theme";
+const BROCHURE_CLIENT_ID_KEY = "3d-prints:brochure-client-id";
 const ENABLE_TRAY_ORIENTATION_CONTROLS =
   import.meta.env.VITE_ENABLE_TRAY_ORIENTATION_CONTROLS === "true";
 const LIBRARY_SIDEBAR_MIN_WIDTH = 280;
@@ -428,6 +436,17 @@ function getInitialTheme(): ThemeMode {
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light";
+}
+
+function getBrochureClientId() {
+  const storedId = window.localStorage.getItem(BROCHURE_CLIENT_ID_KEY);
+  if (storedId && /^[a-zA-Z0-9-]{8,64}$/.test(storedId)) {
+    return storedId;
+  }
+  const nextId = globalThis.crypto?.randomUUID?.() ??
+    `brochure-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  window.localStorage.setItem(BROCHURE_CLIENT_ID_KEY, nextId);
+  return nextId;
 }
 
 function useMediaQuery(query: string) {
@@ -747,6 +766,48 @@ function downloadBlob(blob: Blob, name: string) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+async function requestHoverBrochure({
+  images,
+  model,
+  params,
+  signal,
+}: {
+  images: string[];
+  model: ModelDefinition;
+  params: ModelParams;
+  signal: AbortSignal;
+}) {
+  const response = await fetch("/api/brochure", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    signal,
+    body: JSON.stringify({
+      clientId: getBrochureClientId(),
+      dimensions: {
+        height: getParam(params, "overallHeight"),
+        length: getParam(params, "tableLength"),
+        topThickness: getParam(params, "topThickness"),
+        width: getParam(params, "tableWidth"),
+      },
+      images,
+      modelId: model.id,
+      modelName: model.name,
+    }),
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { error?: string; imageDataUrl?: string }
+    | null;
+  if (!response.ok) {
+    throw new Error(
+      payload?.error ?? `Brochure generation failed (${response.status}).`,
+    );
+  }
+  if (!payload?.imageDataUrl?.startsWith("data:image/")) {
+    throw new Error("The brochure service returned an invalid image.");
+  }
+  return payload.imageDataUrl;
 }
 
 function orientDiningTableForSupportFreePrint(
@@ -1558,9 +1619,72 @@ const HolderViewer = forwardRef<
     downloadNext(0);
   }, [model]);
 
+  const captureBrochureViews = useCallback(async () => {
+    if (model.viewer !== "hover-dining-table-v1") {
+      throw new Error("Brochure capture is only available for the X-Hover table.");
+    }
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    const renderer = rendererRef.current;
+    const scene = sceneRef.current;
+    if (!camera || !controls || !renderer || !scene) {
+      throw new Error("The 3D model is not ready for brochure capture.");
+    }
+
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+    const savedPosition = camera.position.clone();
+    const savedUp = camera.up.clone();
+    const savedTarget = controls.target.clone();
+    const savedDamping = controls.enableDamping;
+    const dimensions = getModelDimensions(model, latestParamsRef.current);
+    const distance = Math.max(
+      dimensions.height * 2.2,
+      dimensions.length * 1.55,
+      dimensions.width * 2.25,
+    );
+    const target = new THREE.Vector3(0, 0, dimensions.height * 0.25);
+    const captures: string[] = [];
+    const cameraPositions = [
+      new THREE.Vector3(distance * 0.7, -distance * 0.78, distance * 0.52),
+      new THREE.Vector3(-distance * 0.7, distance * 0.78, distance * 0.52),
+      new THREE.Vector3(0, -distance, target.z + dimensions.height * 0.2),
+      new THREE.Vector3(distance * 0.45, -distance * 0.55, target.z + distance * 0.82),
+    ];
+
+    controls.enableDamping = false;
+    try {
+      for (const position of cameraPositions) {
+        camera.up.set(0, 0, 1);
+        camera.position.copy(position);
+        camera.lookAt(target);
+        camera.updateProjectionMatrix();
+        controls.target.copy(target);
+        controls.update();
+        renderer.render(scene, camera);
+        captures.push(renderer.domElement.toDataURL("image/jpeg", 0.86));
+      }
+    } finally {
+      camera.up.copy(savedUp);
+      camera.position.copy(savedPosition);
+      controls.target.copy(savedTarget);
+      controls.enableDamping = savedDamping;
+      controls.update();
+      camera.updateProjectionMatrix();
+      renderer.render(scene, camera);
+      updateCubeOrientation();
+    }
+
+    if (captures.length !== 4 || captures.some((image) => image.length < 1_000)) {
+      throw new Error("The multi-angle CAD references could not be captured.");
+    }
+    return captures;
+  }, [model, updateCubeOrientation]);
+
   useImperativeHandle(
     ref,
     () => ({
+      captureBrochureViews,
       exportStl,
       exportLidStl,
       exportBoxAndLidStl,
@@ -1569,7 +1693,7 @@ const HolderViewer = forwardRef<
       resetCamera,
       setView: setCameraView,
     }),
-    [createStlBlob, exportBoxAndLidStl, exportHoverTemplateStls, exportLidStl, exportStl, resetCamera, setCameraView],
+    [captureBrochureViews, createStlBlob, exportBoxAndLidStl, exportHoverTemplateStls, exportLidStl, exportStl, resetCamera, setCameraView],
   );
 
   useEffect(() => {
@@ -2867,10 +2991,12 @@ function HoverAssemblyControl({
         ["exploded", "Exploded", <Layers3 aria-hidden="true" />],
         ["cut-list", "Cut list", <Ruler aria-hidden="true" />],
         ["templates", "Templates", <Focus aria-hidden="true" />],
+        ["brochure", "Brochure", <Sparkles aria-hidden="true" />],
       ] as const).map(([mode, label, icon]) => (
         <button
           aria-pressed={value === mode}
           className={value === mode ? "active" : ""}
+          data-mode={mode}
           key={mode}
           onClick={() => onChange(mode)}
           type="button"
@@ -4159,6 +4285,10 @@ export default function App({
     null,
   );
   const viewerRef = useRef<ViewerHandle | null>(null);
+  const brochureAbortRef = useRef<AbortController | null>(null);
+  const brochureRequestRef = useRef(0);
+  const [brochureState, setBrochureState] =
+    useState<BrochureGenerationState>({ status: "idle" });
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -4273,6 +4403,8 @@ export default function App({
         setShowOriginal(false);
         setCoreViewMode("surface");
         setRenderMode("solid");
+        brochureAbortRef.current?.abort();
+        setBrochureState({ status: "idle" });
         setAssemblyMode(
           nextModel.viewer === "hover-dining-table-v1" ? "assembled" : "box",
         );
@@ -4328,6 +4460,76 @@ export default function App({
       unit,
     });
   }, [model, params, selectedModelId, unit]);
+
+  const startBrochureGeneration = () => {
+    if (!model || !params || model.viewer !== "hover-dining-table-v1") return;
+    const viewer = viewerRef.current;
+    if (!viewer) {
+      setBrochureState({
+        status: "error",
+        message: "The 3D viewer is not ready yet. Try again in a moment.",
+      });
+      return;
+    }
+
+    setAssemblyMode("brochure");
+    const requestId = brochureRequestRef.current + 1;
+    brochureRequestRef.current = requestId;
+    brochureAbortRef.current?.abort();
+    const controller = new AbortController();
+    brochureAbortRef.current = controller;
+    setBrochureState({ status: "generating" });
+
+    void (async () => {
+      try {
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        );
+        const images = await viewer.captureBrochureViews();
+        const imageDataUrl = await requestHoverBrochure({
+          images,
+          model,
+          params,
+          signal: controller.signal,
+        });
+        if (brochureRequestRef.current === requestId) {
+          setBrochureState({ status: "success", imageDataUrl });
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        if (brochureRequestRef.current === requestId) {
+          setBrochureState({
+            status: "error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Brochure generation failed. Please try again.",
+          });
+        }
+      }
+    })();
+  };
+
+  useEffect(() => {
+    if (assemblyMode !== "brochure") {
+      brochureAbortRef.current?.abort();
+    }
+  }, [assemblyMode]);
+
+  useEffect(
+    () => () => {
+      brochureAbortRef.current?.abort();
+    },
+    [],
+  );
+
+  const changeHoverAssemblyMode = (nextMode: AssemblyMode) => {
+    if (nextMode === "brochure") {
+      startBrochureGeneration();
+      return;
+    }
+    setAssemblyMode(nextMode);
+  };
 
   const updateParam = (key: string, value: number) => {
     if (!model) {
@@ -4792,6 +4994,15 @@ export default function App({
             theme={theme}
             unit={unit}
           />
+          {model.viewer === "hover-dining-table-v1" &&
+          assemblyMode === "brochure" ? (
+            <HoverBrochurePanel
+              modelName={model.name}
+              onBack={() => setAssemblyMode("assembled")}
+              onRegenerate={startBrochureGeneration}
+              state={brochureState}
+            />
+          ) : null}
         </section>
 
         {!isInspectorCollapsed ? (
@@ -4895,14 +5106,15 @@ export default function App({
                   <section className="panel-section assembly-panel-section">
                     <h2>Assembly</h2>
                     <HoverAssemblyControl
-                      onChange={setAssemblyMode}
+                      onChange={changeHoverAssemblyMode}
                       value={assemblyMode}
                     />
                     <p className="assembly-mode-note">
                       Switch between the assembled model, all{" "}
                       {getHoverDiningTablePieceCount(params)} pieces, the
-                      full-size cut sheet, and routing templates. Template STLs
-                      export from workspace actions.
+                      full-size cut sheet, routing templates, and an AI brochure
+                      render. Brochure mode captures four CAD angles before
+                      generating through Vercel AI Gateway.
                     </p>
                   </section>
                 ) : null}

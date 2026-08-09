@@ -1,0 +1,191 @@
+import {
+  APICallError,
+  NoImageGeneratedError,
+  generateImage,
+  gateway,
+} from "ai";
+
+const IMAGE_MODEL = "openai/gpt-image-2";
+const MAX_REFERENCE_COUNT = 4;
+const MAX_REQUEST_BYTES = 6_000_000;
+const MAX_REFERENCE_BYTES = 1_500_000;
+
+type BrochureRequest = {
+  clientId: string;
+  dimensions: {
+    height: number;
+    length: number;
+    topThickness: number;
+    width: number;
+  };
+  images: string[];
+  modelId: string;
+  modelName: string;
+};
+
+function json(value: unknown, status = 200, headers?: HeadersInit) {
+  return new Response(JSON.stringify(value), {
+    status,
+    headers: {
+      "cache-control": "no-store",
+      "content-type": "application/json; charset=utf-8",
+      ...headers,
+    },
+  });
+}
+
+function isFinitePositive(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+function parseRequest(value: unknown): BrochureRequest | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<BrochureRequest>;
+  if (
+    candidate.modelId !== "hover-dining-table" ||
+    typeof candidate.modelName !== "string" ||
+    candidate.modelName.length > 80 ||
+    typeof candidate.clientId !== "string" ||
+    !/^[a-zA-Z0-9-]{8,64}$/.test(candidate.clientId) ||
+    !Array.isArray(candidate.images) ||
+    candidate.images.length !== MAX_REFERENCE_COUNT ||
+    !candidate.dimensions ||
+    !isFinitePositive(candidate.dimensions.length) ||
+    !isFinitePositive(candidate.dimensions.width) ||
+    !isFinitePositive(candidate.dimensions.height) ||
+    !isFinitePositive(candidate.dimensions.topThickness)
+  ) {
+    return null;
+  }
+  return candidate as BrochureRequest;
+}
+
+function decodeReferenceImage(dataUrl: string) {
+  const match = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(
+    dataUrl,
+  );
+  if (!match) {
+    throw new Error("Reference images must be base64 JPEG, PNG, or WebP data URLs.");
+  }
+  const binary = atob(match[2]);
+  if (binary.length > MAX_REFERENCE_BYTES) {
+    throw new Error("A reference image exceeded the 1.5 MB limit.");
+  }
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+function inches(millimeters: number) {
+  return (millimeters / 25.4).toFixed(3).replace(/\.0+$/, "");
+}
+
+export function buildBrochurePrompt(request: BrochureRequest) {
+  const { dimensions } = request;
+  return `Use case: product-mockup
+Asset type: premium furniture brochure hero photograph
+Primary request: Reconstruct one exact ${request.modelName} from the four supplied CAD views, then place that unchanged table in a serene contemporary dining room. The four images are equal-priority geometry references of the same object, not design variations.
+Exact dimensions: ${inches(dimensions.length)} in long × ${inches(dimensions.width)} in wide × ${inches(dimensions.height)} in high; tabletop thickness ${inches(dimensions.topThickness)} in. Preserve the resulting length-to-width ratio, tabletop overhangs, and member scale.
+Critical geometry invariants: thin rectilinear solid-oak top with straight plan corners and a soft rolled long edge; no apron; two matching sculpted rounded-rectangular end frames; low paired diagonal members crossing between the end frames; four small adjustable feet. Reconcile hidden geometry from all four references. Do not reinterpret the design as a generic trestle table.
+Scene: warm contemporary dining room with ivory limewash walls, pale limestone floor, linen-curtained windows, restrained artwork, and a sculptural pendant. Add exactly six slim pale-oak dining chairs with woven natural seats: four long-side chairs neatly tucked under the tabletop and one chair at each short end slightly pulled out. Keep the base readable through the chairs. No people and nothing on the tabletop.
+Style: ultra-photorealistic architectural interiors photography, premium European furniture catalog, natural late-morning light, physically plausible contact shadows, 3:2 landscape composition, high material fidelity.
+Constraints: every visible table dimension, member count, connection point, edge profile, end frame, X-support, and foot must match the CAD references. No added apron, braces, hardware, decor on the tabletop, typography, logo, or watermark.
+Avoid: live edge, thick slab top, rounded plan corners, four independent legs, central box stretcher, missing or extra diagonals, altered proportions, warped wide-angle perspective, rustic farmhouse styling.`;
+}
+
+async function handleBrochureRequest(request: Request) {
+  if (request.method !== "POST") {
+    return json(
+      { error: "Method not allowed." },
+      405,
+      { allow: "POST" },
+    );
+  }
+
+  const contentLength = Number(request.headers.get("content-length") ?? "0");
+  if (contentLength > MAX_REQUEST_BYTES) {
+    return json({ error: "The reference image payload is too large." }, 413);
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "The request body must be valid JSON." }, 400);
+  }
+
+  const brochureRequest = parseRequest(body);
+  if (!brochureRequest) {
+    return json({ error: "The brochure request is incomplete or invalid." }, 400);
+  }
+
+  let references: Uint8Array[];
+  try {
+    references = brochureRequest.images.map(decodeReferenceImage);
+  } catch (error) {
+    return json(
+      { error: error instanceof Error ? error.message : "Invalid reference image." },
+      400,
+    );
+  }
+
+  try {
+    const result = await generateImage({
+      model: gateway.image(IMAGE_MODEL),
+      prompt: {
+        text: buildBrochurePrompt(brochureRequest),
+        images: references,
+      },
+      size: "1536x1024",
+      maxRetries: 1,
+      abortSignal: AbortSignal.timeout(55_000),
+      providerOptions: {
+        gateway: {
+          user: brochureRequest.clientId,
+          tags: [
+            "feature:brochure",
+            "model:hover-dining-table",
+            "prompt:v1",
+          ],
+        },
+      },
+    });
+
+    return json({
+      imageDataUrl: `data:${result.image.mediaType};base64,${result.image.base64}`,
+      model: IMAGE_MODEL,
+      warnings: result.warnings.map((warning) => warning.type),
+    });
+  } catch (error) {
+    if (APICallError.isInstance(error) && error.statusCode === 429) {
+      return json(
+        {
+          error: "Brochure generation is temporarily rate limited. Try again shortly.",
+        },
+        429,
+        error.responseHeaders?.["retry-after"]
+          ? { "retry-after": error.responseHeaders["retry-after"] }
+          : undefined,
+      );
+    }
+    if (APICallError.isInstance(error) && error.statusCode === 402) {
+      return json(
+        { error: "The brochure generation budget is currently unavailable." },
+        503,
+      );
+    }
+    if (NoImageGeneratedError.isInstance(error)) {
+      return json(
+        { error: "The image model did not return a usable brochure image." },
+        502,
+      );
+    }
+    console.error("Brochure generation failed", error);
+    return json(
+      { error: "Brochure generation failed. Please try again." },
+      500,
+    );
+  }
+}
+
+export default {
+  fetch: handleBrochureRequest,
+};
