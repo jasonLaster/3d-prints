@@ -212,6 +212,10 @@ test("builds The Wave with four top-frame corner triangles", () => {
   expect(fullSize.endFrameStyle).toBe("legs");
   expect(fullSize.topSupportStyle).toBe("stretchers");
   expect(fullSize.bottomSupportStyle).toBe("none");
+  expect(fullSize.frameDepth).toBeCloseTo(4 * 25.4, 6);
+  expect(fullSize.frameSideWidth).toBeCloseTo(2 * 25.4, 6);
+  expect(fullSize.frameTopRailHeight).toBeCloseTo(2 * 25.4, 6);
+  expect(fullSize.levelingFeet.enabled).toBe(true);
   expect(fullSize.cornerKneeBraces.enabled).toBe(true);
   expect(fullSize.cornerKneeBraces.count).toBe(4);
   expect(fullSize.cornerKneeBraces.reach).toBeCloseTo(10 * 25.4, 6);
@@ -231,18 +235,19 @@ test("builds The Wave with four top-frame corner triangles", () => {
   );
 
   const cutList = getHoverDiningTableCutList(waveDefaultParams);
-  expect(cutList.totalPieces).toBe(16);
-  expect(getHoverDiningTablePieceCount(waveDefaultParams)).toBe(16);
+  expect(cutList.totalPieces).toBe(20);
+  expect(getHoverDiningTablePieceCount(waveDefaultParams)).toBe(20);
   expect(cutList.parts.map((part) => part.id)).toEqual([
     "T1",
     "H1",
+    "L1",
     "B1",
     "B3",
     "S1",
     "K1",
   ]);
   expect(cutList.parts.find((part) => part.id === "B2")).toBeUndefined();
-  expect(cutList.parts.find((part) => part.id === "L1")).toBeUndefined();
+  expect(cutList.parts.find((part) => part.id === "L1")?.quantity).toBe(4);
   expect(cutList.parts.find((part) => part.id === "S1")?.quantity).toBe(2);
   const kneeBrace = cutList.parts.find((part) => part.id === "K1")!;
   expect(kneeBrace.quantity).toBe(4);
@@ -278,20 +283,26 @@ test("builds The Wave with four top-frame corner triangles", () => {
   expect(inspected.degenerateTriangles).toBe(0);
   expect(inspected.size.x).toBeCloseTo(fullSize.length / fullSize.scale, 4);
   expect(inspected.size.y).toBeCloseTo(fullSize.width / fullSize.scale, 4);
-  expect(inspected.size.z).toBeCloseTo(fullSize.height / fullSize.scale, 4);
+  expect(inspected.size.z).toBeCloseTo(
+    (fullSize.height - fullSize.levelingFeet.extension) / fullSize.scale,
+    4,
+  );
   geometry.dispose();
 
   const exploded = createHoverDiningTableExplodedParts(
     waveDefaultParams,
     waveModel,
   );
-  expect(exploded).toHaveLength(16);
+  expect(exploded).toHaveLength(20);
   expect(
     exploded.filter((part) => part.category === "end-box-vertical"),
   ).toHaveLength(4);
   expect(exploded.some((part) => part.name.includes("bottom-rail"))).toBe(false);
   expect(
     exploded.filter((part) => part.category === "upper-corner-brace"),
+  ).toHaveLength(4);
+  expect(
+    exploded.filter((part) => part.category === "leveling-foot"),
   ).toHaveLength(4);
   exploded.forEach((part) => part.geometry.dispose());
 
@@ -332,7 +343,7 @@ test("builds The Wave with four top-frame corner triangles", () => {
 
   const hardware = createHoverDiningTableHardwareGeometries(waveDefaultParams);
   expect(hardware.channels).toHaveLength(3);
-  expect(hardware.feet).toHaveLength(0);
+  expect(hardware.feet).toHaveLength(4);
   [...hardware.channels, ...hardware.feet].forEach((part) => part.dispose());
 
   const templateSummary = getHoverDiningTableTemplateSummary(
@@ -2094,7 +2105,9 @@ test("renders The Wave across assembly and fabrication views", async ({
     if (message.type() === "error") pageErrors.push(message.text());
   });
 
-  await page.goto("/?model=wave-dining-table&unit=in");
+  await page.goto(
+    "/?model=wave-dining-table&unit=in&bottomSupportStyle=0",
+  );
   await expect(
     page.getByRole("heading", { name: "The Wave" }),
   ).toBeVisible();
@@ -2120,9 +2133,18 @@ test("renders The Wave across assembly and fabrication views", async ({
   await expect(page.getByLabel("End-box outer bottom radius in inches")).toHaveCount(0);
   await expect(page.getByLabel("End-box inner bottom radius in inches")).toHaveCount(0);
   await expect(page.getByLabel("End-box outer top radius in inches")).toBeVisible();
-  await expect(page.getByLabel("Use adjustable leveling feet")).not.toBeChecked();
+  await expect(page.getByLabel("Use adjustable leveling feet")).toBeChecked();
   await expect(page.getByLabel("Top support style")).toContainText("Original stretchers");
   await expect(page.getByLabel("Bottom support style")).toContainText("None");
+  await expect(page).toHaveURL(/bottomSupportStyle=2(?:&|$)/);
+  const supportLayoutGroup = page
+    .locator(".parameter-group")
+    .filter({ has: page.getByRole("heading", { name: "Support layout" }) });
+  await supportLayoutGroup.locator(".parameter-group-toggle").click();
+  await expect(page.getByText("The Wave keeps the floor open with no lower support.")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Bottom support members" }),
+  ).toHaveCount(0);
   const cornerBraceGroup = page
     .locator(".parameter-group")
     .filter({ has: page.getByRole("heading", { name: "Corner braces" }) });
@@ -2140,7 +2162,7 @@ test("renders The Wave across assembly and fabrication views", async ({
   await expect(page.getByText(/2 open frames · 4 full-height legs/)).toBeVisible();
 
   await page.getByRole("button", { name: "Exploded" }).click();
-  await expect(page.getByText("Exploded · 16 pieces")).toBeVisible();
+  await expect(page.getByText("Exploded · 20 pieces")).toBeVisible();
 
   await page.getByRole("button", { name: "Templates", exact: true }).click();
   await expect(
@@ -2151,9 +2173,9 @@ test("renders The Wave across assembly and fabrication views", async ({
   await expect(page.getByText("Bottom rail · B2")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Cut list" }).click();
-  await expect(page.getByText("Cut list · full-size · 16 pieces")).toBeVisible();
+  await expect(page.getByText("Cut list · full-size · 20 pieces")).toBeVisible();
   await expect(page.getByLabel("The Wave full-size cut list")).toBeVisible();
-  await expect(page.locator(".hover-cut-table tbody tr")).toHaveCount(6);
+  await expect(page.locator(".hover-cut-table tbody tr")).toHaveCount(7);
   await expect(page.locator('.hover-cut-card[data-part-id="B2"]')).toHaveCount(0);
   await expect(page.locator('.hover-cut-card[data-part-id="B3"]')).toContainText(
     "Full-height leg",

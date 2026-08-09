@@ -11,13 +11,16 @@ The top rail owns both the outer and inner cubic Bézier returns. Those returns 
 - 1 profiled oak tabletop
 - 3 flush blackened-steel C-channels
 - 2 mirrored wave-curve top rails
-- 4 full-height oak legs
+- 4 full-height oak legs, each 2 in wide × 4 in deep
+- 2 in high wave-curve top rails
 - 2 parallel lengthwise upper rails
 - 4 mirrored 45° top-frame knee braces with 10 in reach along each joined rail
 - no lower lengthwise member
-- no default leveling hardware
+- 4 recessed adjustable leveling feet
 
-The default cut list therefore contains 16 finished pieces across six schedule lines. The top and leg routing-template families come from the same B1 and B3 profiles used by the assembled model, exploded view, and cut list.
+The default cut list therefore contains 20 finished pieces across seven schedule lines. The top and leg routing-template families come from the same B1 and B3 profiles used by the assembled model, exploded view, and cut list.
+
+The open floor is a fixed Wave design rule. Lower-support URL values and UI edits normalize back to `None`; the shared Hover metadata remains only for schema compatibility.
 
 ## Joinery and load path
 

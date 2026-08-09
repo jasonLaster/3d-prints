@@ -712,6 +712,9 @@ function getParamsFromUrl(model: ModelDefinition) {
   }
 
   if (model.viewer === "hover-dining-table-v1") {
+    if (model.id === "wave-dining-table") {
+      params.bottomSupportStyle = 2;
+    }
     // Two passes settle limits whose valid ranges depend on other image-derived
     // dimensions (opening size, member width, radii, and reveal height).
     for (let pass = 0; pass < 2; pass += 1) {
@@ -2612,9 +2615,11 @@ function BezierCurveControl({
 }
 
 function HoverSupportLayoutControl({
+  model,
   params,
   onChange,
 }: {
+  model: ModelDefinition;
   params: ModelParams;
   onChange: (key: string, value: number) => void;
 }) {
@@ -2655,6 +2660,21 @@ function HoverSupportLayoutControl({
       symbol: "—",
     },
   ];
+  const bottomSupportParameter = model.parameters.find(
+    (parameter) => parameter.key === "bottomSupportStyle",
+  );
+  const availableBottomSupportOptions = bottomSupportParameter
+    ? bottomSupportOptions.filter((option) => {
+        if (model.id === "wave-dining-table") {
+          return option.value === "2";
+        }
+        const value = Number(option.value);
+        return (
+          value >= bottomSupportParameter.limits.min &&
+          value <= bottomSupportParameter.limits.max
+        );
+      })
+    : bottomSupportOptions;
 
   const supportSelect = (
     label: string,
@@ -2716,7 +2736,11 @@ function HoverSupportLayoutControl({
   return (
     <div className="hover-support-layout-controls">
       {supportSelect("Top support", "topSupportStyle", topSupportOptions)}
-      {supportSelect("Bottom support", "bottomSupportStyle", bottomSupportOptions)}
+      {supportSelect(
+        "Bottom support",
+        "bottomSupportStyle",
+        availableBottomSupportOptions,
+      )}
       {bothSupportsAreCrossbars ? (
         <div className="crossbar-sync-option">
           <OriginalOverlayToggle
@@ -2784,10 +2808,14 @@ function HoverDiningTableParameterControls({
     () => new Set(),
   );
   const openLegFrames = getParam(params, "endFrameStyle") >= 0.5;
+  const floorMustRemainOpen = model.id === "wave-dining-table";
 
   return (
     <div className="parameter-groups">
       {HOVER_PARAMETER_GROUPS.map((group) => {
+        if (floorMustRemainOpen && group === "Bottom support members") {
+          return null;
+        }
         const parameters = model.parameters.filter(
           (parameter) => parameter.group === group,
         );
@@ -2834,7 +2862,9 @@ function HoverDiningTableParameterControls({
             >
               {group === "Support layout" ? (
                 <p className="parameter-group-description">
-                  Choose the top and floor architecture independently.
+                  {floorMustRemainOpen
+                    ? "Choose the top architecture; The Wave keeps the floor open with no lower support."
+                    : "Choose the top and floor architecture independently."}
                 </p>
               ) : group === "Top support members" ? (
                 <p className="parameter-group-description">
@@ -2866,7 +2896,11 @@ function HoverDiningTableParameterControls({
                 </p>
               ) : null}
               {group === "Support layout" ? (
-                <HoverSupportLayoutControl params={params} onChange={onChange} />
+                <HoverSupportLayoutControl
+                  model={model}
+                  params={params}
+                  onChange={onChange}
+                />
               ) : parameters.map((parameter) => {
                 if (
                   openLegFrames &&
@@ -5095,6 +5129,9 @@ export default function App({
           ? getHoverSyncedParameterLimits(model, current, key)
           : getParameterLimits(model, current, key);
       let nextValue = Math.min(limits.max, Math.max(limits.min, value));
+      if (model.id === "wave-dining-table" && key === "bottomSupportStyle") {
+        nextValue = 2;
+      }
       if (
         model.viewer === "simple-box-v1" &&
         current.gridfinityCompatible >= 0.5 &&

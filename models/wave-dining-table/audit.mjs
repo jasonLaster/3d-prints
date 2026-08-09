@@ -33,7 +33,10 @@ close(params.topThickness, 1.25 * inch, "tabletop thickness");
 assert.equal(params.endFrameStyle, 1, "open leg frames must be the default");
 assert.equal(params.topSupportStyle, 1, "two lengthwise upper rails must be the default");
 assert.equal(params.bottomSupportStyle, 2, "the floor must remain open by default");
-assert.equal(params.levelingFeetEnabled, 0, "wood legs must contact the floor by default");
+assert.equal(params.levelingFeetEnabled, 1, "recessed leveling feet must be enabled by default");
+close(params.frameDepth, 4 * inch, "leg-frame depth");
+close(params.frameSideWidth, 2 * inch, "leg width");
+close(params.frameTopRailHeight, 2 * inch, "wave top-rail height");
 close(params.cornerBraceReach, 10 * inch, "corner-brace reach");
 
 const topBottom = params.overallHeight - params.topThickness;
@@ -87,12 +90,13 @@ for (const phrase of [
   "two parallel lengthwise upper rails",
   "four plan-view corner knee braces",
   "no floor connector",
-  "16 default pieces",
+  "20 default pieces",
+  "four recessed leveling feet",
   "top-rail and mirrored full-height-leg routing templates",
 ]) {
   assert.ok(auditText.includes(phrase), `audit contract is missing: ${phrase}`);
 }
 
 console.log(
-  `wave-dining-table audit passed: open wave-curve leg frames, 2 lengthwise rails, 4 corner knee braces, direct floor contact, ${supportSpan.toFixed(1)} mm support span`,
+  `wave-dining-table audit passed: open 2 × 4 in wave-curve leg frames, 2 lengthwise rails, 4 corner knee braces, 4 leveling feet, no lower support, ${supportSpan.toFixed(1)} mm support span`,
 );

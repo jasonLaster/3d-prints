@@ -148,14 +148,14 @@
       "key": "frameDepth",
       "label": "End-box depth",
       "group": "End boxes",
-      "default": 63.5,
+      "default": 101.6,
       "limits": { "min": 25.4, "max": 152.4, "step": 3.175 }
     },
     {
       "key": "frameSideWidth",
       "label": "End-box side width",
       "group": "End boxes",
-      "default": 57.15,
+      "default": 50.8,
       "limits": { "min": 12.7, "max": 127, "step": 3.175 }
     },
     {
@@ -169,7 +169,7 @@
       "key": "frameTopRailHeight",
       "label": "End-box top rail height",
       "group": "End boxes",
-      "default": 31.75,
+      "default": 50.8,
       "limits": { "min": 25.4, "max": 101.6, "step": 3.175 }
     },
     {
@@ -246,7 +246,7 @@
       "key": "levelingFeetEnabled",
       "label": "Use adjustable leveling feet",
       "group": "Adjustable feet",
-      "default": 0,
+      "default": 1,
       "limits": { "min": 0, "max": 1, "step": 1 }
     },
     {
@@ -417,15 +417,15 @@
       "The image and supplied elevation establish a 75 in long by 35.5 in wide by 29.5 in high table envelope.",
       "The tabletop has independently editable plan-view corner radii, length-end face round-overs, and continuous Bézier-rolled long edges.",
       "Exactly three blackened-steel C-channels run widthwise in flush underside mortises: one centered and two symmetrically derived between the leg frames, all clear of the rolled long edges.",
-      "The default base contains two open transverse frames, each built from one sculpted top rail and two full-height legs, with two parallel lengthwise upper rails, four plan-view corner knee braces, and no floor connector.",
+      "The default base contains two open transverse frames, each built from one 2 in high sculpted top rail and two 2 in wide by 4 in deep full-height legs, with two parallel lengthwise upper rails, four plan-view corner knee braces, and no floor connector.",
       "Each top rail owns paired outer and inner cubic Bézier returns that flow tangent into the legs and preserve the distinctive wave-shaped shoulder; the floor remains open between the legs.",
       "Every selected X crosses at the table center with a derived 50/50 half-lap and no overlapping solid volume; straight-support layouts contain no artificial lap.",
-      "Top and bottom support width, thickness, bearing-zone inset, and bottom-edge round-over contracts are independently editable; the bottom supports also expose an independent top-edge round-over. An optional shared-dimension mode applies to the matching crossbar dimensions while both layouts are Xs; half-lap fit clearance applies only to selected Xs.",
-      "Four optional adjustable feet align beneath the full-height legs, but the default design uses direct wood-to-floor contact.",
+      "Top-support width, thickness, bearing-zone inset, and bottom-edge round-over remain editable. The shared Hover parameter schema retains dormant bottom-support dimensions, but The Wave normalizes the lower layout to none and never generates a floor connector.",
+      "Four recessed adjustable feet align beneath the full-height legs and are enabled by default; they are the only floor contacts and do not add a lower support between the legs.",
       "The two default upper lengthwise rails bear directly against the tabletop underside and terminate flush against the inside faces of the two open leg frames.",
       "Four mirrored 45-degree knee braces connect the inside faces of the two lengthwise rails and two transverse top rails, closing one plan-view triangle at every corner with positive joinery required at both ends.",
-      "Exploded mode presents 16 default pieces: one profiled tabletop, three steel C-channels, two wave-curve top rails, four full-height legs, two lengthwise upper rails, and four top-frame knee braces; optional feet or lower supports add only their selected pieces.",
-      "Cut List mode presents the same selected pieces as six default grouped schedule lines with full-size finished dimensions, quantities, material, oak grain direction where applicable, exact constrained profiles, edge treatment, hardware, and joinery notes.",
+      "Exploded mode presents 20 default pieces: one profiled tabletop, three steel C-channels, two wave-curve top rails, four full-height legs, two lengthwise upper rails, four top-frame knee braces, and four recessed leveling feet; lower supports remain unselected.",
+      "Cut List mode presents the same selected pieces as seven default grouped schedule lines with full-size finished dimensions, quantities, material, oak grain direction where applicable, exact constrained profiles, edge treatment, hardware, and joinery notes.",
       "The default 1:10 manipulation model retains the full 75 × 35.5 × 29.5 in proportions."
     ],
     "invariants": [
@@ -446,7 +446,7 @@
       "Center each leveling-foot rod beneath a stile, keep its rounded-bottom entry circle inside solid wood, report its exposed and embedded lengths, and reduce local end-box height by the installed extension while preserving the overall tabletop height.",
       "Keep inner and outer corner curves as cubic Bézier functions whose control lengths equal radius times normalized tension; rail-side and stile-side handles remain independently editable for both curve families.",
       "Keep top and bottom exterior and interior corner radii independently editable because the observed curves are not concentric offsets.",
-      "Keep top and bottom support sections and bottom-edge radii independently editable unless crossbar synchronization is explicitly enabled while both layouts are Xs; synchronized edits must update width, thickness, bearing-zone inset, and bottom-edge radius as matched pairs. Keep the lower support top-edge radius independent.",
+      "Keep the selected top-support section and bottom-edge radius independently editable. Retain the shared bottom-support metadata for schema compatibility, but normalize every Wave URL and UI edit to no lower support.",
       "Treat bottom spread as the explicit splay hypothesis; zero means orthogonal frame sides and remains the evidence-backed default.",
       "Keep frame edge round-over below half the depth, leg width, and top-rail height; keep leg width independently editable because the lengthwise rails bear on the horizontal top rails rather than setting leg width.",
       "Keep both leg frames, their bottom spread, and all support endpoints inside the tabletop width while preserving positive longitudinal spans.",
@@ -458,7 +458,7 @@
       "Split both routing templates by the editable usable square print-plate span, keep every STL flat and inside that envelope, and join adjacent pieces with complementary in-plane dovetails sized by explicit depth and fit-clearance controls.",
       "Keep routing-template export at full furniture size and 1/8 in nominal thickness regardless of the manipulation-model scale; use the mock-scale denominator only for the on-screen template preview.",
       "Label listed sizes as finished nominal dimensions and keep rough-milling allowance explicit rather than silently adding stock to any part.",
-      "Generate two parallel upper lengthwise rails by default, generate exactly one centered floor board only when selected, and never generate hover pads or spacer blocks.",
+      "Generate two parallel upper lengthwise rails by default and never generate a lower X, center board, hover pad, or spacer block for The Wave.",
       "Expose a geometry-only wobble screen with independent racking, torsion, tipping, floor-rocking, and member-stiffness grades; keep its formulas transparent and never present it as structural certification.",
       "Keep structural sensitivity monotonic: increasing overall height cannot improve the overall score, while increasing end-box side width or depth cannot reduce its racking score.",
       "Treat oak grain and finish as renderer materials only; the STL geometry remains material-neutral."
