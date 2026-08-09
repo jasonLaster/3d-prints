@@ -20,31 +20,6 @@
       "id": "door-lock-adapter",
       "name": "Door Lock Adapter",
       "configUrl": "/models/door-lock-adapter/model.json"
-    },
-    {
-      "id": "concentric-tube-jig",
-      "name": "Concentric Tube Jig",
-      "configUrl": "/models/concentric-tube-jig/model.json"
-    },
-    {
-      "id": "dining-table",
-      "name": "Plate Table",
-      "configUrl": "/models/dining-table/model.json"
-    },
-    {
-      "id": "whisperer",
-      "name": "Whisperer",
-      "configUrl": "/models/whisperer/model.json"
-    },
-    {
-      "id": "hover-dining-table",
-      "name": "X-Hover Dining Table",
-      "configUrl": "/models/hover-dining-table/model.json"
-    },
-    {
-      "id": "wave-dining-table",
-      "name": "The Wave",
-      "configUrl": "/models/wave-dining-table/model.json"
     }
   ]
 }

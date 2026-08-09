@@ -228,20 +228,20 @@ test.describe("3D print app", () => {
     await openReady(page, "/?model=japandi-tray&unit=in");
 
     const trayPreview = page.getByTestId("model-preview-japandi-tray");
-    const tablePreview = page.getByTestId("model-preview-dining-table");
+    const boxPreview = page.getByTestId("model-preview-simple-box");
     await expect(trayPreview).toHaveAttribute("data-load-state", "ready");
     await expect(trayPreview.locator("canvas")).toBeVisible();
-    await tablePreview.scrollIntoViewIfNeeded();
-    await expect(tablePreview).toHaveAttribute("data-load-state", "ready");
-    await expect(tablePreview.locator("canvas")).toBeVisible();
+    await boxPreview.scrollIntoViewIfNeeded();
+    await expect(boxPreview).toHaveAttribute("data-load-state", "ready");
+    await expect(boxPreview.locator("canvas")).toBeVisible();
 
-    const before = await tablePreview.screenshot();
-    await tablePreview.focus();
-    await tablePreview.press("ArrowRight");
-    const after = await tablePreview.screenshot();
+    const before = await boxPreview.screenshot();
+    await boxPreview.focus();
+    await boxPreview.press("ArrowRight");
+    const after = await boxPreview.screenshot();
     expect(countChangedPixels(before, after)).toBeGreaterThan(20);
 
-    await expect(page.getByRole("button", { name: "Open Plate Table" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open Simple Box" })).toBeVisible();
 
     await page.setViewportSize({ width: 393, height: 852 });
     await page.getByRole("button", { name: "Open workspace navigation" }).click();
@@ -716,7 +716,7 @@ test.describe("3D print app", () => {
 
       await expectCanvasHasRenderedModel(page);
 
-      await openReady(page, "/?model=dining-table&unit=in");
+      await openReady(page, "/?model=simple-box&unit=in");
       await expect(
         page.getByRole("img", { name: "Current camera orientation" }),
       ).toBeVisible();
@@ -980,7 +980,7 @@ test.describe("3D print app", () => {
     });
   });
 
-  test("renders and exports the concentric tube jig with fractional-inch steps", async ({ page }) => {
+  test.skip("Concentric Tube Jig moved to the Jig woodworking project", async ({ page }) => {
     await expectNoPageErrors(page, async () => {
       await openReady(page, "/?model=concentric-tube-jig&unit=in");
 

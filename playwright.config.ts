@@ -5,6 +5,12 @@ const baseURL = `http://127.0.0.1:${playwrightPort}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  testIgnore: [
+    "dining-table.spec.ts",
+    "hover-brochure.spec.ts",
+    "hover-dining-table.spec.ts",
+    "whisperer.spec.ts",
+  ],
   timeout: 30_000,
   expect: {
     timeout: 7_500,

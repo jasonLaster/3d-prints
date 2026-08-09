@@ -32,6 +32,12 @@ Current models:
 The model JSON owns the display name, STL URL, parameter definitions, audit
 checks, dimension invariants, and associated scripts for that print.
 
+## Woodworking Models
+
+The Plate Table, Whisperer, X-Hover, The Wave, and Concentric Tube Jig now live
+in the focused [Jig](https://jig.jlast.io) project. They are no longer part of
+the 3D Prints catalog.
+
 ## Workspace And Persistence
 
 The root route opens the default model workspace. Catalog models live in the
