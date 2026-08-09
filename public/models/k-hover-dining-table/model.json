@@ -1,17 +1,17 @@
 {
-  "id": "hover-dining-table",
-  "name": "X-Hover Dining Table",
-  "subtitle": "Parametric Hover-table variation",
-  "description": "A 1:10 manipulation model of the 75-inch oak Hover table: an independently corner-rounded and edge-rolled top, two sculpted closed end boxes, independently selectable support layouts, and four adjustable corner feet.",
+  "id": "k-hover-dining-table",
+  "name": "K-Hover Dining Table",
+  "subtitle": "Open-leg Hover-table variation",
+  "description": "A 1:10 manipulation model that keeps the Hover top, paired K-curve rail shoulders, and two lengthwise upper rails while replacing each closed end box with two full-height legs.",
   "viewer": "hover-dining-table-v1",
   "stl": {
-    "fileName": "hover-dining-table.stl",
-    "sourceName": "procedural-hover-dining-table-default.stl",
+    "fileName": "k-hover-dining-table.stl",
+    "sourceName": "procedural-k-hover-dining-table-default.stl",
     "units": "mm",
-    "url": "/models/hover-dining-table/hover-dining-table.stl"
+    "url": "/models/k-hover-dining-table/k-hover-dining-table.stl"
   },
   "export": {
-    "filePrefix": "hover-dining-table"
+    "filePrefix": "k-hover-dining-table"
   },
   "geometry": {
     "mainAxis": { "x": 0, "y": 0, "z": 0 },
@@ -141,7 +141,7 @@
       "key": "endFrameStyle",
       "label": "Use open leg frames",
       "group": "End boxes",
-      "default": 0,
+      "default": 1,
       "limits": { "min": 0, "max": 1, "step": 1 }
     },
     {
@@ -246,7 +246,7 @@
       "key": "levelingFeetEnabled",
       "label": "Use adjustable leveling feet",
       "group": "Adjustable feet",
-      "default": 1,
+      "default": 0,
       "limits": { "min": 0, "max": 1, "step": 1 }
     },
     {
@@ -288,14 +288,14 @@
       "key": "topSupportStyle",
       "label": "Top support style",
       "group": "Support layout",
-      "default": 0,
+      "default": 1,
       "limits": { "min": 0, "max": 1, "step": 1 }
     },
     {
       "key": "bottomSupportStyle",
       "label": "Bottom support style",
       "group": "Support layout",
-      "default": 0,
+      "default": 2,
       "limits": { "min": 0, "max": 2, "step": 1 }
     },
     {
@@ -409,25 +409,25 @@
     "dimensionTargets": [
       "The image and supplied elevation establish a 75 in long by 35.5 in wide by 29.5 in high table envelope.",
       "The tabletop has independently editable plan-view corner radii, length-end face round-overs, and continuous Bézier-rolled long edges.",
-      "Exactly three blackened-steel C-channels run widthwise in flush underside mortises: one centered and two symmetrically derived between the end boxes, all clear of the rolled long edges.",
-      "The base contains exactly two closed transverse end boxes with independently selectable support layouts: an upper horizontal X or two original lengthwise stretchers, plus a floor X, one centered lengthwise board, or no floor connector.",
-      "Each end box has independently editable top and bottom values for both outer and inner corner radii, independent rail-side and stile-side handles for both cubic Bézier corner families, rounded face edges, and a zero-spread default that can be adjusted to evaluate possible splay.",
+      "Exactly three blackened-steel C-channels run widthwise in flush underside mortises: one centered and two symmetrically derived between the leg frames, all clear of the rolled long edges.",
+      "The default base contains two open transverse frames, each built from one sculpted top rail and two full-height legs, with two parallel lengthwise upper rails and no floor connector.",
+      "Each top rail owns paired outer and inner cubic Bézier returns that flow tangent into the legs and preserve the distinctive K-curve shoulder; the floor remains open between the legs.",
       "Every selected X crosses at the table center with a derived 50/50 half-lap and no overlapping solid volume; straight-support layouts contain no artificial lap.",
       "Top and bottom support width, thickness, bearing-zone inset, and bottom-edge round-over contracts are independently editable; the bottom supports also expose an independent top-edge round-over. An optional shared-dimension mode applies to the matching crossbar dimensions while both layouts are Xs; half-lap fit clearance applies only to selected Xs.",
-      "Four optional adjustable feet align beneath the end-box stiles; the default hardware has 1.5 in pads and 3 in threaded rods, while pad thickness, rod diameter, and installed floor-to-box extension remain explicit editable assumptions.",
-      "The selected upper supports bear directly against the tabletop underside. Adjustable feet raise both end boxes and the complete selected lower support together while preserving overall tabletop height; disabling them restores direct wood-to-floor contact.",
-      "Exploded mode presents 14–20 assembly pieces according to the selected layouts and feet: one profiled tabletop, three steel C-channels, four finished rail-and-stile bars per end box, two upper support members, zero, one, or two lower support members, and four optional leveling feet.",
-      "Cut List mode presents the same selected pieces as six to ten grouped schedule lines with full-size finished dimensions, quantities, material, oak grain direction where applicable, exact constrained profiles, edge-treatment, hardware, or C-channel section views, and joinery notes.",
+      "Four optional adjustable feet align beneath the full-height legs, but the default design uses direct wood-to-floor contact.",
+      "The two default upper lengthwise rails bear directly against the tabletop underside and terminate flush against the inside faces of the two open leg frames.",
+      "Exploded mode presents 12 default pieces: one profiled tabletop, three steel C-channels, two K-curve top rails, four full-height legs, and two lengthwise upper rails; optional feet or lower supports add only their selected pieces.",
+      "Cut List mode presents the same selected pieces as five default grouped schedule lines with full-size finished dimensions, quantities, material, oak grain direction where applicable, exact constrained profiles, edge treatment, hardware, and joinery notes.",
       "The default 1:10 manipulation model retains the full 75 × 35.5 × 29.5 in proportions."
     ],
     "invariants": [
       "Keep all full-size furniture dimensions independent from the mock-scale denominator.",
       "Keep tabletop plan corners, length-end face edges, and the two continuous long-edge profiles independently editable from one shared watertight geometry contract.",
-      "Keep exactly three widthwise C-channels flush with the tabletop underside; derive the center channel at table center and the outer pair symmetrically from the end-box inside faces, channel width, and editable clearance.",
-      "Keep every C-channel inside the tabletop, clear of both rolled long edges and both end boxes, with a positive U-section web and two positive flanges that fit within the tabletop thickness.",
+      "Keep exactly three widthwise C-channels flush with the tabletop underside; derive the center channel at table center and the outer pair symmetrically from the leg-frame inside faces, channel width, and editable clearance.",
+      "Keep every C-channel inside the tabletop, clear of both rolled long edges and both leg frames, with a positive U-section web and two positive flanges that fit within the tabletop thickness.",
       "Keep the exposed C-channel webs and every selected upper-support top face on the same tabletop-underside plane, with no proud hardware and at least half of each support length retaining direct oak bearing for attachment.",
-      "Derive the end-box outer width from tabletop width and side overhang so width edits preserve the relationship.",
-      "Derive both inner openings from outer box dimensions and member widths; never scale the opening independently.",
+      "Derive each leg-frame outer width from tabletop width and side overhang so width edits preserve the relationship.",
+      "Keep the open frame clear to the floor and derive both leg positions from the outer frame width and member width; never add a hidden bottom rail.",
       "For each selected X, derive both diagonal lengths and equal-and-opposite plan angles from the end-box corner zones and keep the crossing at the table origin.",
       "Derive each brace endpoint from the straight-rail tangent of the editable inner corner radius, inset the complete angled end face clear of that curve, and keep the support end planar and parallel with the end-box inside face; rail height controls vertical bearing overlap independently of support thickness.",
       "Keep each selected X brace at full nominal width through the crossing, form complementary centered pockets at exactly half the nominal thickness, align every pocket boundary as a planar machining cut, and remove solid overlap between the two braces.",
@@ -438,16 +438,16 @@
       "Keep top and bottom exterior and interior corner radii independently editable because the observed curves are not concentric offsets.",
       "Keep top and bottom support sections and bottom-edge radii independently editable unless crossbar synchronization is explicitly enabled while both layouts are Xs; synchronized edits must update width, thickness, bearing-zone inset, and bottom-edge radius as matched pairs. Keep the lower support top-edge radius independent.",
       "Treat bottom spread as the explicit splay hypothesis; zero means orthogonal frame sides and remains the evidence-backed default.",
-      "Keep frame edge round-over below half the depth, side width, top-rail height, and bottom-rail height; keep the end-box side width independently editable down to 1/2 in because support members bear on the horizontal rails rather than setting the stile width.",
-      "Keep end boxes, their bottom spread, and all brace endpoints inside the tabletop width while preserving positive diagonal spans.",
+      "Keep frame edge round-over below half the depth, leg width, and top-rail height; keep leg width independently editable because the lengthwise rails bear on the horizontal top rails rather than setting leg width.",
+      "Keep both leg frames, their bottom spread, and all support endpoints inside the tabletop width while preserving positive longitudinal spans.",
       "Derive the exploded rail, stile, tabletop, X-brace, stretcher, and center-board solids from the same Bézier, splay, round-over, contact-plane, and half-lap constraints used by the assembled model; do not substitute proxy blanks.",
-      "Keep exploded offsets presentation-only: parameter edits and layout changes must regenerate the selected 14–20 fully profiled wood and steel pieces without changing the assembled STL contract or resetting the camera.",
+      "Keep exploded offsets presentation-only: parameter edits and layout changes must regenerate the selected 12–20 fully profiled wood and steel pieces without changing the assembled STL contract or resetting the camera.",
       "Keep the cut list full-size and associative to the furniture parameters: changing mock scale must not change a listed fabrication dimension, while dimensional edits must update the schedule, exact SVG profile, section view, radii, tensions, round-overs, end cuts, and half-lap geometry.",
-      "Derive separate full-size top-rail, bottom-rail, and mirrored vertical-stile routing templates from the exact finished B1/B2/B3 part profiles used by the assembled, exploded, and cut-list modes; each asymmetric rail owns its Bézier corner returns and each stile runs only tangent-to-tangent.",
-      "Split all three routing templates by the editable usable square print-plate span, keep every STL flat and inside that envelope, and join adjacent pieces with complementary in-plane dovetails sized by explicit depth and fit-clearance controls.",
+      "Derive separate full-size top-rail and mirrored full-height-leg routing templates from the exact finished B1/B3 part profiles used by the assembled, exploded, and cut-list modes; each top rail owns its Bézier corner returns and each leg runs from one tangent seam to the floor.",
+      "Split both routing templates by the editable usable square print-plate span, keep every STL flat and inside that envelope, and join adjacent pieces with complementary in-plane dovetails sized by explicit depth and fit-clearance controls.",
       "Keep routing-template export at full furniture size and 1/8 in nominal thickness regardless of the manipulation-model scale; use the mock-scale denominator only for the on-screen template preview.",
       "Label listed sizes as finished nominal dimensions and keep rough-milling allowance explicit rather than silently adding stock to any part.",
-      "Generate parallel upper lengthwise stretchers only when selected, generate exactly one centered floor board only when selected, and never generate hover pads or spacer blocks.",
+      "Generate two parallel upper lengthwise rails by default, generate exactly one centered floor board only when selected, and never generate hover pads or spacer blocks.",
       "Expose a geometry-only wobble screen with independent racking, torsion, tipping, floor-rocking, and member-stiffness grades; keep its formulas transparent and never present it as structural certification.",
       "Keep structural sensitivity monotonic: increasing overall height cannot improve the overall score, while increasing end-box side width or depth cannot reduce its racking score.",
       "Treat oak grain and finish as renderer materials only; the STL geometry remains material-neutral."
@@ -456,10 +456,10 @@
       { "key": "hoverTableEnvelope", "label": "Full-size envelope" },
       { "key": "hoverTabletopProfile", "label": "Profiled tabletop edges" },
       { "key": "hoverChannels", "label": "Three flush C-channels" },
-      { "key": "hoverEndBoxes", "label": "Two closed end boxes" },
-      { "key": "hoverBoxOpening", "label": "Derived box opening" },
-      { "key": "hoverCornerCurves", "label": "Independent Bézier corners" },
-      { "key": "hoverBoxSplay", "label": "End-box splay hypothesis" },
+      { "key": "hoverEndBoxes", "label": "Two open leg frames" },
+      { "key": "hoverBoxOpening", "label": "Open floor clearance" },
+      { "key": "hoverCornerCurves", "label": "K-curve rail shoulders" },
+      { "key": "hoverBoxSplay", "label": "Leg-frame splay hypothesis" },
       { "key": "hoverUpperX", "label": "Selected top supports" },
       { "key": "hoverLowerX", "label": "Selected floor supports" },
       { "key": "hoverBraceEndCuts", "label": "Support end faces" },
@@ -475,9 +475,9 @@
   "scripts": [
     {
       "name": "audit",
-      "path": "models/hover-dining-table/audit.mjs",
-      "command": "npm run audit -- hover-dining-table",
-      "description": "Validates the image-derived dimensions, end-box curves, selectable support layouts, conditional half-laps, zero-gap contacts, and procedural source contract."
+      "path": "models/k-hover-dining-table/audit.mjs",
+      "command": "npm run audit -- k-hover-dining-table",
+      "description": "Validates the open-leg frames, K-curve top rails, two lengthwise supports, direct floor contact, and shared procedural source contract."
     }
   ]
 }

@@ -210,6 +210,7 @@ const PARAM_QUERY_KEYS = [
   "topEndFaceRoundover",
   "sideOverhang",
   "endOverhang",
+  "endFrameStyle",
   "frameDepth",
   "frameSideWidth",
   "frameBottomRailHeight",
@@ -290,6 +291,7 @@ const SCALAR_PARAM_KEYS = new Set([
   "frameOuterStileCurveTension",
   "frameInnerRailCurveTension",
   "frameInnerStileCurveTension",
+  "endFrameStyle",
   "topSupportStyle",
   "bottomSupportStyle",
   "syncCrossbarDimensions",
@@ -305,6 +307,7 @@ const CURVE_PARAM_KEYS = new Set([
 const OPTION_PARAM_KEYS = new Set([
   "gridfinityCompatible",
   "legGrooveEnabled",
+  "endFrameStyle",
   "syncCrossbarDimensions",
   "levelingFeetEnabled",
 ]);
@@ -1135,7 +1138,10 @@ const HolderViewer = forwardRef<
           model,
           previewScale,
         );
-        const families = ["top-rail", "bottom-rail", "vertical-stile"] as const;
+        const families = (["top-rail", "bottom-rail", "vertical-stile"] as const)
+          .filter((family) =>
+            segments.some((segment) => segment.template === family),
+          );
         const familyRows = families.map((family) => {
           const familySegments = segments.filter((segment) => segment.template === family);
           const bounds = familySegments.reduce(
@@ -2018,27 +2024,28 @@ const HolderViewer = forwardRef<
       assemblyMode === "templates" &&
       hoverTemplateSummary ? (
         <aside className="hover-template-legend" aria-label="Routing template summary">
-          <div>
-            <span className="template-swatch rail" aria-hidden="true" />
-            <strong>Top rail · B1</strong>
-            <span>
-              {hoverTemplateSummary.templates[0].segmentCount} plates · mirror by end
-            </span>
-          </div>
-          <div>
-            <span className="template-swatch bottom-rail" aria-hidden="true" />
-            <strong>Bottom rail · B2</strong>
-            <span>
-              {hoverTemplateSummary.templates[1].segmentCount} plates · mirror by end
-            </span>
-          </div>
-          <div>
-            <span className="template-swatch stile" aria-hidden="true" />
-            <strong>Vertical stile · B3</strong>
-            <span>
-              {hoverTemplateSummary.templates[2].segmentCount} plates · mirror left/right
-            </span>
-          </div>
+          {hoverTemplateSummary.templates.map((template) => {
+            const isTop = template.kind === "top-rail";
+            const isBottom = template.kind === "bottom-rail";
+            return (
+              <div key={template.kind}>
+                <span
+                  className={`template-swatch ${isTop ? "rail" : isBottom ? "bottom-rail" : "stile"}`}
+                  aria-hidden="true"
+                />
+                <strong>
+                  {isTop
+                    ? "Top rail · B1"
+                    : isBottom
+                      ? "Bottom rail · B2"
+                      : `${getParam(params, "endFrameStyle") >= 0.5 ? "Full-height leg" : "Vertical stile"} · B3`}
+                </strong>
+                <span>
+                  {template.segmentCount} plates · {isTop || isBottom ? "mirror by end" : "mirror left/right"}
+                </span>
+              </div>
+            );
+          })}
           <p>
             {formatLength(hoverTemplateSummary.thickness, unit)} thick · {formatLength(hoverTemplateSummary.plateLength, unit)} usable plate · full-size STL export
           </p>
@@ -2061,7 +2068,17 @@ const HolderViewer = forwardRef<
         ) : null}
         {model.viewer === "hover-dining-table-v1" &&
         assemblyMode === "templates" ? (
-          <span>Routing templates · exact B1 + B2 + B3 profiles · segmented STLs</span>
+          <span>
+            Routing templates · exact {hoverTemplateSummary?.templates
+              .map((template) =>
+                template.kind === "top-rail"
+                  ? "B1"
+                  : template.kind === "bottom-rail"
+                    ? "B2"
+                    : "B3",
+              )
+              .join(" + ")} profiles · segmented STLs
+          </span>
         ) : null}
       </div>
       <div className="viewer-nav" aria-label="3D view controls">
@@ -2483,6 +2500,12 @@ const HOVER_PARAMETER_GROUPS = [
   "Routing templates",
 ] as const;
 
+const OPEN_LEG_HIDDEN_PARAMETER_KEYS = new Set([
+  "frameBottomRailHeight",
+  "frameOuterBottomCornerRadius",
+  "frameInnerBottomCornerRadius",
+]);
+
 function HoverParameterGroupIcon({
   group,
 }: {
@@ -2514,6 +2537,7 @@ function HoverDiningTableParameterControls({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     () => new Set(),
   );
+  const openLegFrames = getParam(params, "endFrameStyle") >= 0.5;
 
   return (
     <div className="parameter-groups">
@@ -2551,7 +2575,9 @@ function HoverDiningTableParameterControls({
                 <span className="parameter-group-icon">
                   <HoverParameterGroupIcon group={group} />
                 </span>
-                <h3 id={headingId}>{group}</h3>
+                <h3 id={headingId}>
+                  {group === "End boxes" && openLegFrames ? "Leg frames" : group}
+                </h3>
                 <ChevronDown aria-hidden="true" />
               </button>
             </div>
@@ -2578,9 +2604,9 @@ function HoverDiningTableParameterControls({
                 </p>
               ) : group === "End boxes" ? (
                 <p className="parameter-group-description">
-                  Top and bottom radii are independent. Inner and outer
-                  rail-side sweeps shape the horizontal returns; their
-                  stile-side sweeps control how long the sides stay straight.
+                  {openLegFrames
+                    ? "Each end uses one sculpted K-curve top rail and two full-height legs; no bottom rail closes the frame."
+                    : "Top and bottom radii are independent. Inner and outer rail-side sweeps shape the horizontal returns; their stile-side sweeps control how long the sides stay straight."}
                 </p>
               ) : group === "Adjustable feet" ? (
                 <p className="parameter-group-description">
@@ -2591,6 +2617,24 @@ function HoverDiningTableParameterControls({
               {group === "Support layout" ? (
                 <HoverSupportLayoutControl params={params} onChange={onChange} />
               ) : parameters.map((parameter) => {
+                if (
+                  openLegFrames &&
+                  OPEN_LEG_HIDDEN_PARAMETER_KEYS.has(parameter.key)
+                ) {
+                  return null;
+                }
+                if (parameter.key === "endFrameStyle") {
+                  return (
+                    <OriginalOverlayToggle
+                      checked={openLegFrames}
+                      key={parameter.key}
+                      label={parameter.label}
+                      onChange={(checked) =>
+                        onChange(parameter.key, checked ? 1 : 0)
+                      }
+                    />
+                  );
+                }
                 if (
                   parameter.key === "halfLapClearance" &&
                   getParam(params, "topSupportStyle") >= 0.5 &&

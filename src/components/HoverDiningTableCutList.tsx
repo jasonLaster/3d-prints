@@ -538,12 +538,15 @@ export function HoverDiningTableCutList({
   const cutList = getHoverDiningTableCutList(params);
   const hasHalfLaps = cutList.parts.some((part) => part.lap);
   return (
-    <section className="hover-cut-sheet" aria-label="X-Hover full-size cut list">
+    <section
+      className="hover-cut-sheet"
+      aria-label={`${model.name.replace(/ Dining Table$/, "")} full-size cut list`}
+    >
       <div className="hover-cut-sheet-inner">
         <header className="hover-cut-sheet-header">
           <div>
             <p className="hover-cut-eyebrow">Fabrication sheet · revision follows model parameters</p>
-            <h2>X-Hover Dining Table Cut List</h2>
+            <h2>{model.name} Cut List</h2>
             <p>
               Full-size finished dimensions. Add rough-milling allowance for
               your stock and verify critical joinery on a full-size story stick.
@@ -617,12 +620,12 @@ export function HoverDiningTableCutList({
           {hasHalfLaps ? (
             <p>
               X-brace length is the true centerline length between the two
-              parallel end-box contact planes. Half-laps are centered at half
+              parallel end-frame contact planes. Half-laps are centered at half
               the member length; A is relieved from the top and B from the bottom.
             </p>
           ) : (
             <p>
-              Straight-support lengths run between the two parallel end-box
+              Straight-support lengths run between the two parallel end-frame
               contact planes; their square ends are ready for the selected joinery.
             </p>
           )}

@@ -35,6 +35,11 @@
       "id": "hover-dining-table",
       "name": "X-Hover Dining Table",
       "configUrl": "/models/hover-dining-table/model.json"
+    },
+    {
+      "id": "k-hover-dining-table",
+      "name": "K-Hover Dining Table",
+      "configUrl": "/models/k-hover-dining-table/model.json"
     }
   ]
 }

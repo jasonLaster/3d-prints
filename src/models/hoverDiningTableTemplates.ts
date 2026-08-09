@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { getParam } from "./shared";
 import {
   getHoverDiningTableEndBoxFabricationProfiles,
+  getHoverDiningTableSpec,
   getHoverDiningTableStileFabricationLayout,
   type HoverDiningTableFabricationProfile,
   type HoverDiningTableProfileCommand,
@@ -241,6 +242,7 @@ function buildTemplateBoundaries(
 ): TemplateBoundary[] {
   const curveSegments = Math.max(12, model.geometry.curveSegments * 3);
   const profiles = getHoverDiningTableEndBoxFabricationProfiles(params);
+  const { fullSize: spec } = getHoverDiningTableSpec(params);
 
   return [
     boundaryFromFabricationProfile(
@@ -249,12 +251,16 @@ function buildTemplateBoundaries(
       scale,
       curveSegments,
     ),
-    boundaryFromFabricationProfile(
-      profiles.bottom,
-      "bottom-rail",
-      scale,
-      curveSegments,
-    ),
+    ...(spec.endFrameStyle === "box"
+      ? [
+          boundaryFromFabricationProfile(
+            profiles.bottom,
+            "bottom-rail",
+            scale,
+            curveSegments,
+          ),
+        ]
+      : []),
     boundaryFromFabricationProfile(
       profiles.right,
       "vertical-stile",
@@ -467,6 +473,7 @@ function templateEnvelope(boundary: TemplateBoundary) {
 
 function buildSegments(
   boundary: TemplateBoundary,
+  filePrefix: string,
   thickness: number,
   plateLength: number,
   dovetailDepth: number,
@@ -529,7 +536,7 @@ function buildSegments(
       templateLabel: boundary.label,
       index,
       count,
-      fileName: `hover-dining-table-${boundary.kind}-template-part-${String(index + 1).padStart(2, "0")}-of-${String(count).padStart(2, "0")}.stl`,
+      fileName: `${filePrefix}-${boundary.kind}-template-part-${String(index + 1).padStart(2, "0")}-of-${String(count).padStart(2, "0")}.stl`,
       geometry,
       assemblyOffset,
       jointStart: index === 0 ? "none" : "female",
@@ -580,6 +587,7 @@ export function createHoverDiningTableTemplateSegments(
   const segments = boundaries.flatMap((boundary) =>
     buildSegments(
       boundary,
+      model.export.filePrefix,
       thickness,
       plateLength,
       dovetailDepth,
@@ -615,6 +623,7 @@ export function getHoverDiningTableTemplateSummary(
   const segments = boundaries.flatMap((boundary) =>
     buildSegments(
       boundary,
+      model.export.filePrefix,
       thickness,
       plateLength,
       dovetailDepth,

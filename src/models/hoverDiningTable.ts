@@ -37,6 +37,7 @@ type BracePlaneSpec = {
 
 export type HoverDiningTableTopSupportStyle = "x" | "stretchers";
 export type HoverDiningTableBottomSupportStyle = "x" | "center-board" | "none";
+export type HoverDiningTableEndFrameStyle = "box" | "legs";
 
 type StraightSupportSpec = {
   count: 1 | 2;
@@ -154,6 +155,7 @@ export type HoverDiningTableSpec = {
   topEndFaceRoundover: number;
   sideOverhang: number;
   endOverhang: number;
+  endFrameStyle: HoverDiningTableEndFrameStyle;
   frameDepth: number;
   frameSideWidth: number;
   frameBottomRailHeight: number;
@@ -248,6 +250,10 @@ function bottomSupportStyle(value: number): HoverDiningTableBottomSupportStyle {
   return "x";
 }
 
+function endFrameStyle(value: number): HoverDiningTableEndFrameStyle {
+  return value >= 0.5 ? "legs" : "box";
+}
+
 function createBracePlaneSpec({
   width,
   thickness,
@@ -317,6 +323,7 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
     ? getParam(params, "levelingFootExtension")
     : 0;
   const sideOverhang = getParam(params, "sideOverhang");
+  const selectedEndFrameStyle = endFrameStyle(getParam(params, "endFrameStyle"));
   const topSupportWidth = getParam(params, "topSupportWidth");
   const topSupportThickness = getParam(params, "topSupportThickness");
   const topSupportEndpointInset = getParam(params, "topSupportEndpointInset");
@@ -344,7 +351,9 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
   const frameBottomRailHeight = getParam(params, "frameBottomRailHeight");
   const frameTopRailHeight = getParam(params, "frameTopRailHeight");
   const frameHeight = topBottom - levelingFootExtension;
-  const openingBottom = frameBottomRailHeight;
+  const openingBottom = selectedEndFrameStyle === "box"
+    ? frameBottomRailHeight
+    : 0;
   const openingTop = frameHeight - frameTopRailHeight;
   const frameDepth = getParam(params, "frameDepth");
   const frameEdgeRoundover = Math.min(
@@ -352,8 +361,8 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
     Math.min(
       frameDepth,
       frameSideWidth,
-      frameBottomRailHeight,
       frameTopRailHeight,
+      ...(selectedEndFrameStyle === "box" ? [frameBottomRailHeight] : []),
     ) /
       2 -
       MIN_FRAME_FACE_FLAT / 2,
@@ -396,6 +405,7 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
     topEndFaceRoundover: getParam(params, "topEndFaceRoundover"),
     sideOverhang,
     endOverhang,
+    endFrameStyle: selectedEndFrameStyle,
     frameDepth,
     frameSideWidth,
     frameBottomRailHeight,
@@ -515,7 +525,9 @@ function rawHoverDiningTableSpec(params: ModelParams): HoverDiningTableSpec {
       centerYs: [-levelingFootCenterY, levelingFootCenterY],
       outerEntryClearance:
         frameSideWidth / 2 -
-        getParam(params, "frameOuterBottomCornerRadius") -
+        (selectedEndFrameStyle === "box"
+          ? getParam(params, "frameOuterBottomCornerRadius")
+          : 0) -
         levelingFootRodRadius,
       stileClearance: frameSideWidth / 2 - levelingFootRodRadius,
       depthClearance: frameDepth / 2 - levelingFootRodRadius,
@@ -680,7 +692,10 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
   if (spec.topThickness >= spec.height) {
     throw new Error("Tabletop thickness must remain below the overall height");
   }
-  if (spec.frameHeight <= spec.frameBottomRailHeight + spec.frameTopRailHeight) {
+  if (
+    spec.endFrameStyle === "box" &&
+    spec.frameHeight <= spec.frameBottomRailHeight + spec.frameTopRailHeight
+  ) {
     throw new Error("End-box rails leave no positive interior opening height");
   }
   if (spec.frameTopWidth >= spec.width || spec.frameBottomWidth > spec.width + EPSILON) {
@@ -694,17 +709,21 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
   }
   if (
     spec.frameInnerTopCornerRadius * 2 >= spec.openingTopWidth ||
-    spec.frameInnerBottomCornerRadius * 2 >= spec.openingBottomWidth ||
-    spec.frameInnerTopCornerRadius + spec.frameInnerBottomCornerRadius >=
-      spec.openingHeight
+    (spec.endFrameStyle === "box" &&
+      spec.frameInnerBottomCornerRadius * 2 >= spec.openingBottomWidth) ||
+    (spec.endFrameStyle === "box" &&
+      spec.frameInnerTopCornerRadius + spec.frameInnerBottomCornerRadius >=
+        spec.openingHeight)
   ) {
     throw new Error("Interior top and bottom radii must fit inside the end-box opening");
   }
   if (
     spec.frameOuterTopCornerRadius * 2 >= spec.frameTopWidth ||
-    spec.frameOuterBottomCornerRadius * 2 >= spec.frameBottomWidth ||
-    spec.frameOuterTopCornerRadius + spec.frameOuterBottomCornerRadius >=
-      spec.frameHeight
+    (spec.endFrameStyle === "box" &&
+      spec.frameOuterBottomCornerRadius * 2 >= spec.frameBottomWidth) ||
+    (spec.endFrameStyle === "box" &&
+      spec.frameOuterTopCornerRadius + spec.frameOuterBottomCornerRadius >=
+        spec.frameHeight)
   ) {
     throw new Error("Exterior top and bottom radii must fit inside the end-box silhouette");
   }
@@ -713,8 +732,8 @@ export function assertHoverDiningTableSpec(spec: HoverDiningTableSpec) {
     Math.min(
       spec.frameDepth,
       spec.frameSideWidth,
-      spec.frameBottomRailHeight,
       spec.frameTopRailHeight,
+      ...(spec.endFrameStyle === "box" ? [spec.frameBottomRailHeight] : []),
     )
   ) {
     throw new Error("Frame edge round-over must preserve flat material on every member");
@@ -1639,6 +1658,10 @@ function createEndBoxPartProfiles(spec: HoverDiningTableSpec) {
     spec.frameInnerStileCurveTension,
   );
   const squareClose = { kind: "close", edgeTreatment: "square" } as const;
+  const rightOuterFloor = new THREE.Vector2(spec.frameBottomWidth / 2, 0);
+  const rightInnerFloor = new THREE.Vector2(spec.openingBottomWidth / 2, 0);
+  const leftOuterFloor = new THREE.Vector2(-spec.frameBottomWidth / 2, 0);
+  const leftInnerFloor = new THREE.Vector2(-spec.openingBottomWidth / 2, 0);
   const profiles: Record<EndBoxPartPosition, HoverDiningTableProfileCommand[]> = {
     top: [
       moveProfile(outer.leftUpper),
@@ -1662,20 +1685,36 @@ function createEndBoxPartProfiles(spec: HoverDiningTableSpec) {
       cubicProfile(inner.bottomLeftCurve, true),
       squareClose,
     ],
-    right: [
-      moveProfile(outer.rightLower),
-      lineProfile(outer.rightUpper),
-      lineProfile(inner.rightUpper, "square"),
-      lineProfile(inner.rightLower),
-      squareClose,
-    ],
-    left: [
-      moveProfile(outer.leftUpper),
-      lineProfile(outer.leftLower),
-      lineProfile(inner.leftLower, "square"),
-      lineProfile(inner.leftUpper),
-      squareClose,
-    ],
+    right: spec.endFrameStyle === "box"
+      ? [
+          moveProfile(outer.rightLower),
+          lineProfile(outer.rightUpper),
+          lineProfile(inner.rightUpper, "square"),
+          lineProfile(inner.rightLower),
+          squareClose,
+        ]
+      : [
+          moveProfile(rightOuterFloor),
+          lineProfile(outer.rightUpper),
+          lineProfile(inner.rightUpper, "square"),
+          lineProfile(rightInnerFloor),
+          { kind: "close" },
+        ],
+    left: spec.endFrameStyle === "box"
+      ? [
+          moveProfile(outer.leftUpper),
+          lineProfile(outer.leftLower),
+          lineProfile(inner.leftLower, "square"),
+          lineProfile(inner.leftUpper),
+          squareClose,
+        ]
+      : [
+          moveProfile(outer.leftUpper),
+          lineProfile(leftOuterFloor),
+          lineProfile(leftInnerFloor),
+          lineProfile(inner.leftUpper),
+          squareClose,
+        ],
   };
   return profiles;
 }
@@ -2011,9 +2050,12 @@ function assertFabricationProfile(
       );
     }
   } else if (profile.family === "frame-stile") {
-    if (cubicCount !== 0 || squareEdgeCount !== 2) {
+    if (
+      cubicCount !== 0 ||
+      (squareEdgeCount !== 1 && squareEdgeCount !== 2)
+    ) {
       throw new Error(
-        `${label} stile must retain its two square rail-tangent seams`,
+        `${label} stile must retain one or two square rail-tangent seams`,
       );
     }
   } else if (profile.family !== "channel" && squareEdgeCount !== 0) {
@@ -2344,6 +2386,14 @@ function createEndFrameGeometry(
   model: HoverDiningTableModelDefinition,
   x: number,
 ) {
+  if (spec.endFrameStyle === "legs") {
+    return mergeGeometryList(
+      (["top", "left", "right"] as const).map((position) =>
+        createEndBoxFinishedPartGeometry(spec, model, x, position),
+      ),
+      "Unable to merge open-leg end-frame geometry",
+    );
+  }
   const shape = new THREE.Shape();
   addRoundedTrapezoid(
     shape,
@@ -3079,8 +3129,10 @@ function createStraightSupportCutPart(
 
 export function getHoverDiningTablePieceCount(params: ModelParams) {
   const bottomStyle = bottomSupportStyle(getParam(params, "bottomSupportStyle"));
+  const frameStyle = endFrameStyle(getParam(params, "endFrameStyle"));
   const footCount = getParam(params, "levelingFeetEnabled") >= 0.5 ? 4 : 0;
-  return 14 + footCount +
+  const basePieceCount = frameStyle === "box" ? 14 : 12;
+  return basePieceCount + footCount +
     (bottomStyle === "x" ? 2 : bottomStyle === "center-board" ? 1 : 0);
 }
 
@@ -3172,7 +3224,7 @@ export function getHoverDiningTableCutList(
     },
     {
       id: "B1",
-      name: "End-box top rail",
+      name: spec.endFrameStyle === "box" ? "End-box top rail" : "K-curve top rail",
       assembly: "end boxes",
       kind: "rail",
       material: "Oak",
@@ -3183,8 +3235,10 @@ export function getHoverDiningTableCutList(
       grainDirection: "length",
       fabricationProfile: frameProfiles.top,
       notes: [
-        "One finished top rail per end box; profile includes both routed inner and outer corner curves.",
-        "Tangent seams remain square for the stile glue joints.",
+        spec.endFrameStyle === "box"
+          ? "One finished top rail per end box; profile includes both routed inner and outer corner curves."
+          : "One finished top rail per open leg frame; its paired inner and outer Bézier returns form the distinctive K-curve shoulder.",
+        "Tangent seams remain square for the leg glue joints.",
       ],
       processDimensions: [
         { label: "Outer top radius", value: spec.frameOuterTopCornerRadius },
@@ -3213,6 +3267,34 @@ export function getHoverDiningTableCutList(
       ],
     },
     {
+      id: "B3",
+      name: spec.endFrameStyle === "box" ? "End-box stile" : "Full-height leg",
+      assembly: "end boxes",
+      kind: "stile",
+      material: "Oak",
+      quantity: 4,
+      length: stileLength,
+      width: stileWidth,
+      thickness: spec.frameDepth,
+      grainDirection: "length",
+      fabricationProfile: frameProfiles.right,
+      cutAngleDegrees: stileCutAngle,
+      notes: [
+        spec.endFrameStyle === "box"
+          ? "Two mirrored stiles per end box."
+          : "Two mirrored full-height legs per end frame; the floor edge remains open between them.",
+        spec.endFrameStyle === "box"
+          ? "The profile runs exactly between the rail curve-tangent seams and follows the derived box splay."
+          : "Each leg runs from its square top-rail tangent seam to the floor and follows the derived frame splay.",
+      ],
+      processDimensions: [
+        { label: "Face-edge round-over", value: spec.frameEdgeRoundover },
+      ],
+    },
+  ];
+
+  if (spec.endFrameStyle === "box") {
+    parts.splice(3, 0, {
       id: "B2",
       name: "End-box bottom rail",
       assembly: "end boxes",
@@ -3253,29 +3335,8 @@ export function getHoverDiningTableCutList(
           format: "ratio",
         },
       ],
-    },
-    {
-      id: "B3",
-      name: "End-box stile",
-      assembly: "end boxes",
-      kind: "stile",
-      material: "Oak",
-      quantity: 4,
-      length: stileLength,
-      width: stileWidth,
-      thickness: spec.frameDepth,
-      grainDirection: "length",
-      fabricationProfile: frameProfiles.right,
-      cutAngleDegrees: stileCutAngle,
-      notes: [
-        "Two mirrored stiles per end box.",
-        "The profile runs exactly between the rail curve-tangent seams and follows the derived box splay.",
-      ],
-      processDimensions: [
-        { label: "Face-edge round-over", value: spec.frameEdgeRoundover },
-      ],
-    },
-  ];
+    });
+  }
 
   if (spec.levelingFeet.enabled) {
     parts.splice(2, 0, {
@@ -3293,7 +3354,7 @@ export function getHoverDiningTableCutList(
         spec.levelingFeet,
       ),
       notes: [
-        "One threaded leveling foot mounts beneath each end-box stile.",
+        "One threaded leveling foot mounts beneath each stile or full-height leg.",
         "Installed extension is measured from the floor to the wood underside; the remaining rod length embeds vertically in solid stile material.",
       ],
       processDimensions: [
@@ -3436,6 +3497,9 @@ export function createHoverDiningTableCutPartGeometry(
       "top",
     );
   } else if (partId === "B2") {
+    if (spec.endFrameStyle !== "box") {
+      throw new Error("B2 requires the closed end-box style");
+    }
     geometry = createEndBoxFinishedPartGeometry(
       spec,
       model,
@@ -3567,7 +3631,7 @@ export function createHoverDiningTableExplodedParts(
     const endLabel = endSign < 0 ? "left" : "right";
     parts.push(
       {
-        name: `${endLabel}-box-top-rail`,
+        name: `${endLabel}-${spec.endFrameStyle === "box" ? "box" : "leg-frame"}-top-rail`,
         category: "end-box-horizontal",
         material: "Oak",
         geometry: createEndBoxFinishedPartGeometry(spec, model, x, "top"),
@@ -3575,15 +3639,7 @@ export function createHoverDiningTableExplodedParts(
         fabricationProfile: createEndBoxPartFabricationProfile(spec, "top"),
       },
       {
-        name: `${endLabel}-box-bottom-rail`,
-        category: "end-box-horizontal",
-        material: "Oak",
-        geometry: createEndBoxFinishedPartGeometry(spec, model, x, "bottom"),
-        offset: new THREE.Vector3(xOffset, 0, 0),
-        fabricationProfile: createEndBoxPartFabricationProfile(spec, "bottom"),
-      },
-      {
-        name: `${endLabel}-box-left-vertical`,
+        name: `${endLabel}-${spec.endFrameStyle === "box" ? "box-left-vertical" : "left-leg"}`,
         category: "end-box-vertical",
         material: "Oak",
         geometry: createEndBoxFinishedPartGeometry(spec, model, x, "left"),
@@ -3591,7 +3647,7 @@ export function createHoverDiningTableExplodedParts(
         fabricationProfile: createEndBoxPartFabricationProfile(spec, "left"),
       },
       {
-        name: `${endLabel}-box-right-vertical`,
+        name: `${endLabel}-${spec.endFrameStyle === "box" ? "box-right-vertical" : "right-leg"}`,
         category: "end-box-vertical",
         material: "Oak",
         geometry: createEndBoxFinishedPartGeometry(spec, model, x, "right"),
@@ -3599,6 +3655,16 @@ export function createHoverDiningTableExplodedParts(
         fabricationProfile: createEndBoxPartFabricationProfile(spec, "right"),
       },
     );
+    if (spec.endFrameStyle === "box") {
+      parts.splice(parts.length - 2, 0, {
+        name: `${endLabel}-box-bottom-rail`,
+        category: "end-box-horizontal",
+        material: "Oak",
+        geometry: createEndBoxFinishedPartGeometry(spec, model, x, "bottom"),
+        offset: new THREE.Vector3(xOffset, 0, 0),
+        fabricationProfile: createEndBoxPartFabricationProfile(spec, "bottom"),
+      });
+    }
   }
 
   const addXParts = (
@@ -3737,20 +3803,18 @@ export function getHoverDiningTableParameterLimits(
   } else if (key === "overallHeight") {
     limits.min = Math.max(
       limits.min,
-      spec.topThickness +
-        spec.frameBottomRailHeight +
-        spec.frameTopRailHeight +
-        spec.frameInnerTopCornerRadius +
-        spec.frameInnerBottomCornerRadius +
-        limits.step,
+      spec.topThickness + spec.frameTopRailHeight +
+        spec.frameInnerTopCornerRadius + limits.step +
+        (spec.endFrameStyle === "box"
+          ? spec.frameBottomRailHeight + spec.frameInnerBottomCornerRadius
+          : 0),
       spec.topThickness + spec.lowerBrace.thickness + spec.upperBrace.thickness,
       spec.topThickness +
         spec.levelingFeet.extension +
-        spec.frameBottomRailHeight +
-        spec.frameTopRailHeight +
-        spec.frameInnerTopCornerRadius +
-        spec.frameInnerBottomCornerRadius +
-        limits.step,
+        spec.frameTopRailHeight + spec.frameInnerTopCornerRadius + limits.step +
+        (spec.endFrameStyle === "box"
+          ? spec.frameBottomRailHeight + spec.frameInnerBottomCornerRadius
+          : 0),
     );
   } else if (key === "topThickness") {
     limits.min = Math.max(
@@ -3877,7 +3941,9 @@ export function getHoverDiningTableParameterLimits(
       limits.min = Math.max(
         limits.min,
         2 *
-          (spec.frameOuterBottomCornerRadius +
+          ((spec.endFrameStyle === "box"
+            ? spec.frameOuterBottomCornerRadius
+            : 0) +
             spec.levelingFeet.rodDiameter / 2),
       );
     }
@@ -3955,8 +4021,8 @@ export function getHoverDiningTableParameterLimits(
       Math.min(
         spec.frameDepth,
         spec.frameSideWidth,
-        spec.frameBottomRailHeight,
         spec.frameTopRailHeight,
+        ...(spec.endFrameStyle === "box" ? [spec.frameBottomRailHeight] : []),
       ) /
         2 -
         limits.step,
@@ -4049,7 +4115,10 @@ export function getHoverDiningTableParameterLimits(
     if (spec.levelingFeet.enabled) {
       limits.max = Math.min(
         limits.max,
-        spec.frameSideWidth - 2 * spec.frameOuterBottomCornerRadius,
+        spec.frameSideWidth -
+          (spec.endFrameStyle === "box"
+            ? 2 * spec.frameOuterBottomCornerRadius
+            : 0),
         spec.frameDepth,
       );
     }
@@ -4073,11 +4142,12 @@ export function getHoverDiningTableParameterLimits(
           spec.levelingFeet.rodLength -
           limits.step,
         spec.topBottom -
-          spec.frameBottomRailHeight -
           spec.frameTopRailHeight -
           spec.frameInnerTopCornerRadius -
-          spec.frameInnerBottomCornerRadius -
-          limits.step,
+          limits.step -
+          (spec.endFrameStyle === "box"
+            ? spec.frameBottomRailHeight + spec.frameInnerBottomCornerRadius
+            : 0),
       );
     }
   } else if (key === "templatePlateLength") {
@@ -4290,14 +4360,17 @@ function evaluateHoverDiningTableStructure(
     35 * topRackingTopology * topAreaFactor * heightFactor ** 1.4 +
     25 * bottomRackingTopology * bottomAreaFactor * heightFactor ** 1.4;
 
-  const averageRailHeight =
-    (spec.frameTopRailHeight + spec.frameBottomRailHeight) / 2;
+  const effectiveRailHeight = spec.endFrameStyle === "box"
+    ? (spec.frameTopRailHeight + spec.frameBottomRailHeight) / 2
+    : spec.frameTopRailHeight;
+  const endFrameClosureFactor = spec.endFrameStyle === "box" ? 1 : 0.58;
   const endBoxRacking =
     78 *
     (spec.frameSideWidth / STRUCTURAL_REFERENCE.frameSideWidth) ** 1.2 *
     (spec.frameDepth / STRUCTURAL_REFERENCE.frameDepth) ** 0.8 *
-    (averageRailHeight / STRUCTURAL_REFERENCE.averageRailHeight) ** 0.4 *
-    heightFactor ** 2;
+    (effectiveRailHeight / STRUCTURAL_REFERENCE.averageRailHeight) ** 0.4 *
+    heightFactor ** 2 *
+    endFrameClosureFactor;
 
   const topTorsionTopology = spec.topSupportStyle === "x" ? 1 : 0.65;
   const bottomTorsionTopology =
@@ -4346,17 +4419,25 @@ function evaluateHoverDiningTableStructure(
   );
   const tipping = 20 + 80 * Math.min(1, controllingTippingRatio / 0.65);
 
-  const flatBottomRun = Math.max(
-    0,
-    (spec.frameBottomWidth - 2 * spec.frameOuterBottomCornerRadius) /
-      spec.frameBottomWidth,
-  );
+  const flatBottomRun = spec.endFrameStyle === "legs"
+    ? 1
+    : Math.max(
+        0,
+        (spec.frameBottomWidth - 2 * spec.frameOuterBottomCornerRadius) /
+          spec.frameBottomWidth,
+      );
   const rockingBase =
-    spec.bottomSupportStyle === "x"
-      ? 52
-      : spec.bottomSupportStyle === "center-board"
-        ? 62
-        : 84;
+    spec.endFrameStyle === "legs"
+      ? spec.bottomSupportStyle === "x"
+        ? 45
+        : spec.bottomSupportStyle === "center-board"
+          ? 52
+          : 62
+      : spec.bottomSupportStyle === "x"
+        ? 52
+        : spec.bottomSupportStyle === "center-board"
+          ? 62
+          : 84;
   const levelingClearanceFactor = Math.max(
     0,
     Math.min(
@@ -4405,7 +4486,7 @@ function evaluateHoverDiningTableStructure(
       `${spec.topSupportStyle === "x" ? "upper X" : "upper stretchers"} + ${spec.bottomSupportStyle === "x" ? "floor X" : spec.bottomSupportStyle === "center-board" ? "center board" : "no floor connector"}`,
       {
         rationale:
-          "Lengthwise sway grows with tabletop height and falls as the top and floor support paths become more triangulated and gain cross-sectional area. The base 30 represents the two end boxes before the connecting members contribute.",
+          "Lengthwise sway grows with tabletop height and falls as the top and floor support paths become more triangulated and gain cross-sectional area. The base 30 represents the two end frames before the connecting members contribute.",
         formula:
           "30 + 35 × topTopology × topAreaFactor × heightFactor^1.4 + 25 × bottomTopology × bottomAreaFactor × heightFactor^1.4",
         inputs: [
@@ -4477,24 +4558,32 @@ function evaluateHoverDiningTableStructure(
     ),
     structuralMetric(
       "end-box-racking",
-      "End-box racking",
+      spec.endFrameStyle === "box" ? "End-box racking" : "Open-frame racking",
       endBoxRacking,
       `stile slenderness ${stileSlenderness.toFixed(1)}:1 · depth/height ${(spec.frameDepth / spec.height).toFixed(3)}`,
       {
         rationale:
-          "Each end box behaves like a portal frame. Wider stiles, deeper members, and taller rails increase its resistance; increasing overall height increases the lever arm and is penalized quadratically.",
+          spec.endFrameStyle === "box"
+            ? "Each end box behaves like a portal frame. Wider stiles, deeper members, and taller rails increase its resistance; increasing overall height increases the lever arm and is penalized quadratically."
+            : "Each open leg frame behaves like a top-connected portal. Wider and deeper legs plus a taller K-curve rail increase resistance, while the missing bottom rail receives an explicit closure penalty and increasing height is penalized quadratically.",
         formula:
-          "78 × (sideWidth ÷ 2.25 in)^1.2 × (boxDepth ÷ 2.5 in)^0.8 × (averageRailHeight ÷ 1.5 in)^0.4 × heightFactor^2",
+          "78 × (sideWidth ÷ 2.25 in)^1.2 × (frameDepth ÷ 2.5 in)^0.8 × (effectiveRailHeight ÷ 1.5 in)^0.4 × heightFactor^2 × closureFactor",
         inputs: [
           {
+            key: "endFrameStyle",
+            label: "End-frame topology",
+            value: `${spec.endFrameStyle} (${endFrameClosureFactor.toFixed(2)} closure factor)`,
+            format: "choice",
+          },
+          {
             key: "frameSideWidth",
-            label: "End-box side width",
+            label: spec.endFrameStyle === "box" ? "End-box side width" : "Leg width",
             value: spec.frameSideWidth,
             format: "length",
           },
           {
             key: "frameDepth",
-            label: "End-box member depth",
+            label: "End-frame member depth",
             value: spec.frameDepth,
             format: "length",
           },
@@ -4504,11 +4593,20 @@ function evaluateHoverDiningTableStructure(
             value: spec.frameTopRailHeight,
             format: "length",
           },
+          ...(spec.endFrameStyle === "box"
+            ? [{
+                key: "frameBottomRailHeight",
+                label: "Bottom rail height",
+                value: spec.frameBottomRailHeight,
+                format: "length" as const,
+              }]
+            : []),
           {
-            key: "frameBottomRailHeight",
-            label: "Bottom rail height",
-            value: spec.frameBottomRailHeight,
-            format: "length",
+            key: "endFrameClosureFactor",
+            label: "Derived closure factor",
+            value: endFrameClosureFactor,
+            format: "number",
+            precision: 2,
           },
           {
             key: "overallHeight",
@@ -4534,7 +4632,7 @@ function evaluateHoverDiningTableStructure(
       `${spec.topSupportStyle === "x" ? "triangulated" : "parallel"} top · ${spec.bottomSupportStyle === "x" ? "triangulated" : spec.bottomSupportStyle === "center-board" ? "single-axis" : "open"} floor plane · ${channelTopStiffness.channelTorsionFactor.toFixed(2)}× channel factor`,
       {
         rationale:
-          "Twist resistance depends on closed or triangulated support paths at both elevations. Greater vertical separation and broader end-box engagement improve the torsional couple. The three widthwise C-channels add a bounded top-plane factor from their transformed oak/steel sections, edge coverage, and longitudinal distribution; they do not count as leg or joint bracing.",
+          "Twist resistance depends on closed or triangulated support paths at both elevations. Greater vertical separation and broader end-frame engagement improve the torsional couple. The three widthwise C-channels add a bounded top-plane factor from their transformed oak/steel sections, edge coverage, and longitudinal distribution; they do not count as leg or joint bracing.",
         formula:
           "15 + 75 × √(topTopology × bottomTopology) × planeSeparation^0.6 × √(widthEngagement) × √(channelTorsionFactor)",
         inputs: [
@@ -4559,7 +4657,7 @@ function evaluateHoverDiningTableStructure(
           },
           {
             key: "frameBottomWidth",
-            label: "End-box bottom width",
+            label: "End-frame bottom width",
             value: spec.frameBottomWidth,
             format: "length",
           },
@@ -4677,13 +4775,17 @@ function evaluateHoverDiningTableStructure(
       spec.levelingFeet.enabled
         ? "four independently adjustable corner contacts"
         : spec.bottomSupportStyle === "none"
-        ? "two end-box floor contacts"
+        ? spec.endFrameStyle === "box"
+          ? "two end-box floor contacts"
+          : "four fixed wood-leg contacts"
         : spec.bottomSupportStyle === "center-board"
-          ? "end boxes + one center floor contact"
-          : "end boxes + crossing floor-contact network",
+          ? `${spec.endFrameStyle === "box" ? "end boxes" : "legs"} + one center floor contact`
+          : `${spec.endFrameStyle === "box" ? "end boxes" : "legs"} + crossing floor-contact network`,
       {
         rationale:
-          "With leveling feet enabled, four independently adjustable corner contacts replace the long wood and lower-support floor contacts; solid rod-entry clearance adds a small confidence margin. Without feet, rocking tolerance rewards long flat end-box bearing runs and fewer over-constrained contacts.",
+          spec.endFrameStyle === "box"
+            ? "With leveling feet enabled, four independently adjustable corner contacts replace the long wood and lower-support floor contacts; solid rod-entry clearance adds a small confidence margin. Without feet, rocking tolerance rewards long flat end-box bearing runs and fewer over-constrained contacts."
+            : "With leveling feet enabled, four independently adjustable contacts can be leveled to an uneven floor. Without them, the four fixed wood legs are over-constrained and receive a lower base score even though each leg has a full flat foot.",
         formula:
           spec.levelingFeet.enabled
             ? "96 + 2 × clamp(outerEntryClearance ÷ rodDiameter, 0, 1)"
@@ -4710,7 +4812,7 @@ function evaluateHoverDiningTableStructure(
           },
           {
             key: "frameBottomWidth",
-            label: "End-box bottom width",
+            label: "End-frame bottom width",
             value: spec.frameBottomWidth,
             format: "length",
           },
@@ -4749,19 +4851,19 @@ function evaluateHoverDiningTableStructure(
       `support slenderness ${supportSlenderness.toFixed(1)}:1 · channel-reinforced top ${channelTopStiffness.tabletopSlenderness.toFixed(1)}:1`,
       {
         rationale:
-          "This relative stiffness screen penalizes end-box stiles above 8:1, the most slender active support above 25:1, and the channel-reinforced tabletop above 24:1. The tabletop term uses the remaining oak plus the steel U-channel web and flanges about their shared transformed-section neutral axis, with fixed white-oak and steel modulus assumptions.",
+          "This relative stiffness screen penalizes frame stiles or legs above 8:1, the most slender active support above 25:1, and the channel-reinforced tabletop above 24:1. The tabletop term uses the remaining oak plus the steel U-channel web and flanges about their shared transformed-section neutral axis, with fixed white-oak and steel modulus assumptions.",
         formula:
           "100 − max(0, stileSlenderness − 8) × 2 − max(0, supportSlenderness − 25) × 0.9 − max(0, tabletopWidth ÷ (topThickness × ∛topPlaneStiffnessFactor) − 24) × 0.8",
         inputs: [
           {
             key: "openingHeight",
-            label: "End-box opening height",
+            label: spec.endFrameStyle === "box" ? "End-box opening height" : "Open leg height",
             value: spec.openingHeight,
             format: "length",
           },
           {
             key: "frameSideWidth",
-            label: "End-box side width",
+            label: spec.endFrameStyle === "box" ? "End-box side width" : "Leg width",
             value: spec.frameSideWidth,
             format: "length",
           },
@@ -4915,7 +5017,9 @@ function bottomSupportAuditLabel(spec: HoverDiningTableSpec, unit: LengthUnit) {
   if (spec.bottomSupportStyle === "center-board") {
     return `1 centered lengthwise board · ${formatLength(spec.lowerCenterBoard.spanX, unit)} long`;
   }
-  return "None · end boxes remain unconnected at floor level";
+  return spec.endFrameStyle === "box"
+    ? "None · end boxes remain unconnected at floor level"
+    : "None · four legs remain independent at floor level";
 }
 
 export function getHoverDiningTableAuditValue(
@@ -4948,17 +5052,21 @@ export function getHoverDiningTableAuditValue(
     case "hoverEndBoxes":
       return item(
         check.label,
-        `2 × ${formatLength(spec.frameTopWidth, unit)} wide closed boxes`,
+        spec.endFrameStyle === "box"
+          ? `2 × ${formatLength(spec.frameTopWidth, unit)} wide closed boxes`
+          : `2 open frames · 4 full-height legs · ${formatLength(spec.frameTopWidth, unit)} wide K-curve top rails`,
       );
     case "hoverBoxOpening":
       return item(
         check.label,
-        `${formatLength(spec.openingTopWidth, unit)} top × ${formatLength(spec.openingHeight, unit)} high`,
+        `${formatLength(spec.openingTopWidth, unit)} clear at top × ${formatLength(spec.openingHeight, unit)} high${spec.endFrameStyle === "legs" ? " · open to floor" : ""}`,
       );
     case "hoverCornerCurves":
       return item(
         check.label,
-        `outer top/bottom ${formatLength(spec.frameOuterTopCornerRadius, unit)} / ${formatLength(spec.frameOuterBottomCornerRadius, unit)} κ rail ${spec.frameOuterRailCurveTension.toFixed(3)} / stile ${spec.frameOuterStileCurveTension.toFixed(3)} · inner top/bottom ${formatLength(spec.frameInnerTopCornerRadius, unit)} / ${formatLength(spec.frameInnerBottomCornerRadius, unit)} κ rail ${spec.frameInnerRailCurveTension.toFixed(3)} / stile ${spec.frameInnerStileCurveTension.toFixed(3)}`,
+        spec.endFrameStyle === "box"
+          ? `outer top/bottom ${formatLength(spec.frameOuterTopCornerRadius, unit)} / ${formatLength(spec.frameOuterBottomCornerRadius, unit)} κ rail ${spec.frameOuterRailCurveTension.toFixed(3)} / stile ${spec.frameOuterStileCurveTension.toFixed(3)} · inner top/bottom ${formatLength(spec.frameInnerTopCornerRadius, unit)} / ${formatLength(spec.frameInnerBottomCornerRadius, unit)} κ rail ${spec.frameInnerRailCurveTension.toFixed(3)} / stile ${spec.frameInnerStileCurveTension.toFixed(3)}`
+          : `K-curve top shoulders · outer ${formatLength(spec.frameOuterTopCornerRadius, unit)} / inner ${formatLength(spec.frameInnerTopCornerRadius, unit)} · κ rail ${spec.frameOuterRailCurveTension.toFixed(3)} / ${spec.frameInnerRailCurveTension.toFixed(3)} · κ leg ${spec.frameOuterStileCurveTension.toFixed(3)} / ${spec.frameInnerStileCurveTension.toFixed(3)}`,
       );
     case "hoverBoxSplay":
       return item(
@@ -4985,7 +5093,7 @@ export function getHoverDiningTableAuditValue(
               : 0;
         return item(
           check.label,
-          `${4 + bottomFaceCount} box-parallel support end faces · selected members stop on straight contact zones · ${formatLength(spec.upperBrace.edgeRadius, unit)} bottom-edge round-over`,
+          `${4 + bottomFaceCount} ${spec.endFrameStyle === "box" ? "box" : "frame"}-parallel support end faces · selected members stop on straight contact zones · ${formatLength(spec.upperBrace.edgeRadius, unit)} bottom-edge round-over`,
         );
       }
     case "hoverHalfLaps":
@@ -5009,18 +5117,18 @@ export function getHoverDiningTableAuditValue(
       return item(
         check.label,
         spec.levelingFeet.enabled
-          ? `4 × ${formatLength(spec.levelingFeet.padDiameter, unit)} pads · ${formatLength(spec.levelingFeet.rodLength, unit)} × ${formatLength(spec.levelingFeet.rodDiameter, unit)} rods · ${formatLength(spec.levelingFeet.extension, unit)} floor-to-box · ${formatLength(spec.levelingFeet.embeddedRodLength, unit)} embedded · ${formatLength(spec.levelingFeet.outerEntryClearance, unit)} radius-entry clearance · end boxes ${formatLength(spec.frameHeight, unit)} high`
-          : `Disabled · ${formatLength(spec.frameHeight, unit)} end boxes bear directly at floor level`,
+          ? `4 × ${formatLength(spec.levelingFeet.padDiameter, unit)} pads · ${formatLength(spec.levelingFeet.rodLength, unit)} × ${formatLength(spec.levelingFeet.rodDiameter, unit)} rods · ${formatLength(spec.levelingFeet.extension, unit)} floor-to-frame · ${formatLength(spec.levelingFeet.embeddedRodLength, unit)} embedded · ${formatLength(spec.levelingFeet.outerEntryClearance, unit)} entry clearance · ${formatLength(spec.frameHeight, unit)} high legs`
+          : `Disabled · ${formatLength(spec.frameHeight, unit)} ${spec.endFrameStyle === "box" ? "end boxes" : "full-height legs"} bear directly at floor level`,
       );
     case "hoverExplodedAssembly":
       return item(
         check.label,
-        `${getHoverDiningTablePieceCount(params)} constrained solids · mortised profiled top · 3 steel C-channels · 4 Bézier rails · 4 tangent-seam stiles · selected finished supports${spec.levelingFeet.enabled ? " · 4 leveling feet" : ""}`,
+        `${getHoverDiningTablePieceCount(params)} constrained solids · mortised profiled top · 3 steel C-channels · ${spec.endFrameStyle === "box" ? "4 Bézier rails · 4 tangent-seam stiles" : "2 K-curve rails · 4 full-height legs"} · selected finished supports${spec.levelingFeet.enabled ? " · 4 leveling feet" : ""}`,
       );
     case "hoverCutList":
       {
         const scheduleLines =
-          5 +
+          (spec.endFrameStyle === "box" ? 5 : 4) +
           (spec.levelingFeet.enabled ? 1 : 0) +
           (spec.topSupportStyle === "x" ? 2 : 1) +
           (spec.bottomSupportStyle === "x"
@@ -5036,7 +5144,7 @@ export function getHoverDiningTableAuditValue(
     case "hoverRoutingTemplates":
       return item(
         check.label,
-        `3 profiles · ${formatLength(getParam(params, "templateThickness"), unit)} thick · ${formatLength(getParam(params, "templatePlateLength"), unit)} plate · keyed dovetails`,
+        `${spec.endFrameStyle === "box" ? 3 : 2} profiles · ${formatLength(getParam(params, "templateThickness"), unit)} thick · ${formatLength(getParam(params, "templatePlateLength"), unit)} plate · keyed dovetails`,
       );
     case "hoverPrintEnvelope":
       return item(

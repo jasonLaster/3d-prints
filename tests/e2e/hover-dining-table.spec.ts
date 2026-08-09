@@ -34,6 +34,15 @@ const model = JSON.parse(
 const defaultParams = Object.fromEntries(
   model.parameters.map((parameter) => [parameter.key, parameter.default]),
 ) as ModelParams;
+const kHoverModel = JSON.parse(
+  fs.readFileSync(
+    path.join(root, "public/models/k-hover-dining-table/model.json"),
+    "utf8",
+  ),
+) as HoverDiningTableModelDefinition;
+const kHoverDefaultParams = Object.fromEntries(
+  kHoverModel.parameters.map((parameter) => [parameter.key, parameter.default]),
+) as ModelParams;
 
 function inspectGeometry(geometry: THREE.BufferGeometry) {
   geometry.computeBoundingBox();
@@ -197,6 +206,96 @@ function centerlineZRange(
     max: Math.max(...zValues),
   };
 }
+
+test("builds the K-Hover default as two open leg frames with lengthwise rails", () => {
+  const { fullSize } = getHoverDiningTableSpec(kHoverDefaultParams);
+  expect(fullSize.endFrameStyle).toBe("legs");
+  expect(fullSize.topSupportStyle).toBe("stretchers");
+  expect(fullSize.bottomSupportStyle).toBe("none");
+  expect(fullSize.openingBottom).toBe(0);
+  expect(fullSize.openingHeight).toBeCloseTo(
+    fullSize.frameHeight - fullSize.frameTopRailHeight,
+    6,
+  );
+
+  const cutList = getHoverDiningTableCutList(kHoverDefaultParams);
+  expect(cutList.totalPieces).toBe(12);
+  expect(getHoverDiningTablePieceCount(kHoverDefaultParams)).toBe(12);
+  expect(cutList.parts.map((part) => part.id)).toEqual([
+    "T1",
+    "H1",
+    "B1",
+    "B3",
+    "S1",
+  ]);
+  expect(cutList.parts.find((part) => part.id === "B2")).toBeUndefined();
+  expect(cutList.parts.find((part) => part.id === "L1")).toBeUndefined();
+  expect(cutList.parts.find((part) => part.id === "S1")?.quantity).toBe(2);
+
+  const topRail = cutList.parts.find((part) => part.id === "B1")!;
+  const leg = cutList.parts.find((part) => part.id === "B3")!;
+  expect(topRail.name).toBe("K-curve top rail");
+  expect(
+    topRail.fabricationProfile.outline.filter((command) => command.kind === "cubic"),
+  ).toHaveLength(4);
+  expect(leg.name).toBe("Full-height leg");
+  expect(leg.quantity).toBe(4);
+  expect(leg.fabricationProfile.bounds.minY).toBeCloseTo(0, 6);
+  expect(
+    leg.fabricationProfile.outline.filter(
+      (command) =>
+        command.kind !== "move" && command.edgeTreatment === "square",
+    ),
+  ).toHaveLength(1);
+
+  const geometry = createHoverDiningTableGeometry(
+    kHoverDefaultParams,
+    kHoverModel,
+  );
+  const inspected = inspectGeometry(geometry);
+  expect(inspected.finite).toBe(true);
+  expect(inspected.degenerateTriangles).toBe(0);
+  expect(inspected.size.x).toBeCloseTo(fullSize.length / fullSize.scale, 4);
+  expect(inspected.size.y).toBeCloseTo(fullSize.width / fullSize.scale, 4);
+  expect(inspected.size.z).toBeCloseTo(fullSize.height / fullSize.scale, 4);
+  geometry.dispose();
+
+  const exploded = createHoverDiningTableExplodedParts(
+    kHoverDefaultParams,
+    kHoverModel,
+  );
+  expect(exploded).toHaveLength(12);
+  expect(
+    exploded.filter((part) => part.category === "end-box-vertical"),
+  ).toHaveLength(4);
+  expect(exploded.some((part) => part.name.includes("bottom-rail"))).toBe(false);
+  exploded.forEach((part) => part.geometry.dispose());
+
+  const hardware = createHoverDiningTableHardwareGeometries(kHoverDefaultParams);
+  expect(hardware.channels).toHaveLength(3);
+  expect(hardware.feet).toHaveLength(0);
+  [...hardware.channels, ...hardware.feet].forEach((part) => part.dispose());
+
+  const templateSummary = getHoverDiningTableTemplateSummary(
+    kHoverDefaultParams,
+    kHoverModel,
+  );
+  expect(templateSummary.templates.map((template) => template.kind)).toEqual([
+    "top-rail",
+    "vertical-stile",
+  ]);
+  const templateSegments = createHoverDiningTableTemplateSegments(
+    kHoverDefaultParams,
+    kHoverModel,
+  );
+  expect(templateSegments).toHaveLength(templateSummary.totalSegments);
+  expect(
+    templateSegments.every((segment) =>
+      segment.fileName.startsWith("k-hover-dining-table-"),
+    ),
+  ).toBe(true);
+  templateSegments.forEach((segment) => segment.geometry.dispose());
+});
 
 test("derives two centered half-lapped Xs above four adjustable feet", () => {
   const { fullSize, scaled } = getHoverDiningTableSpec(defaultParams);
@@ -1924,6 +2023,69 @@ test("builds three full-size routing templates as plate-safe dovetailed STLs", (
     );
     segment.geometry.dispose();
   });
+});
+
+test("renders the K-Hover open-leg design across assembly and fabrication views", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") pageErrors.push(message.text());
+  });
+
+  await page.goto("/?model=k-hover-dining-table&unit=in");
+  await expect(
+    page.getByRole("heading", { name: "K-Hover Dining Table" }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel("K-Hover Dining Table model viewer"),
+  ).toBeVisible();
+  await expect(page.locator(".scene-panel canvas")).toBeVisible();
+  await expect(page.getByText(/2 open frames · 4 full-height legs/)).toBeVisible();
+  await expect(
+    page.getByText(/2 original lengthwise stretchers/),
+  ).toBeVisible();
+  await expect(page.getByText("None · four legs remain independent at floor level")).toBeVisible();
+
+  const legFrameGroup = page
+    .locator(".parameter-group")
+    .filter({ has: page.getByRole("heading", { name: "Leg frames" }) });
+  await legFrameGroup.locator(".parameter-group-toggle").click();
+  await expect(page.getByLabel("Use open leg frames")).toBeChecked();
+  await expect(page.getByLabel("End-box bottom rail height in inches")).toHaveCount(0);
+  await expect(page.getByLabel("End-box outer bottom radius in inches")).toHaveCount(0);
+  await expect(page.getByLabel("End-box inner bottom radius in inches")).toHaveCount(0);
+  await expect(page.getByLabel("End-box outer top radius in inches")).toBeVisible();
+  await expect(page.getByLabel("Use adjustable leveling feet")).not.toBeChecked();
+  await expect(page.getByLabel("Top support style")).toContainText("Original stretchers");
+  await expect(page.getByLabel("Bottom support style")).toContainText("None");
+  await expect(page).toHaveURL(/endFrameStyle=1(?:&|$)/);
+  await page.reload();
+  await expect(page.getByLabel("Use open leg frames")).toBeChecked();
+  await expect(page.getByText(/2 open frames · 4 full-height legs/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Exploded" }).click();
+  await expect(page.getByText("Exploded · 12 pieces")).toBeVisible();
+
+  await page.getByRole("button", { name: "Templates", exact: true }).click();
+  await expect(
+    page.getByText("Routing templates · exact B1 + B3 profiles · segmented STLs"),
+  ).toBeVisible();
+  await expect(page.getByText("Top rail · B1")).toBeVisible();
+  await expect(page.getByText("Full-height leg · B3")).toBeVisible();
+  await expect(page.getByText("Bottom rail · B2")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Cut list" }).click();
+  await expect(page.getByText("Cut list · full-size · 12 pieces")).toBeVisible();
+  await expect(page.getByLabel("K-Hover full-size cut list")).toBeVisible();
+  await expect(page.locator(".hover-cut-table tbody tr")).toHaveCount(5);
+  await expect(page.locator('.hover-cut-card[data-part-id="B2"]')).toHaveCount(0);
+  await expect(page.locator('.hover-cut-card[data-part-id="B3"]')).toContainText(
+    "Full-height leg",
+  );
+  expect(pageErrors).toEqual([]);
 });
 
 test("renders, manipulates, and exports the oak X-Hover table", async ({
