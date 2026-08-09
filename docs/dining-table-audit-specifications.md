@@ -1,6 +1,6 @@
-# Oak Dining Table audit specification
+# Plate Table audit specification
 
-The Oak Dining Table model is a parametric construction mock, not an image-derived mesh. Full-size furniture values remain in millimeters in the model contract; `mockScale` controls only the generated preview and STL size.
+The Plate Table model is a parametric construction mock of the solid-oak apronless table, not an image-derived mesh. Full-size furniture values remain in millimeters in the model contract; `mockScale` controls only the generated preview and STL size. The stable model and export ID remains `dining-table` so saved URLs and registered STL pairs continue to work.
 
 ## Default design
 
@@ -25,3 +25,51 @@ The procedural geometry controls dimensions, counts, and placement. The independ
 ## Print caveat
 
 Import both STL files simultaneously as parts of one multipart object so the slicer preserves their shared origin; assign the hardware part to the second filament. The exported orientation places the broad tabletop face on the build plate and prints the legs vertically, so supports are not required for the default geometry. Importing the hardware independently may cause a slicer to drop it to the build plate and lose registration.
+
+## Structural screening
+
+The Structure panel is a transparent geometry-only comparison. It is not structural engineering, a load rating, or certification of the plate/post joint. It does not know the actual fastener pattern, screw embedment, slotted-hole direction, wood defects, moisture movement, glue quality, plate grade, floor flatness, impact loads, or fatigue. The score is useful for comparing parameter changes inside this model; it must not be used as permission to build an untested joint.
+
+The transformed-section channel estimate assumes white oak at 12.27 GPa, steel at 200 GPa, and a fixed 1/8 in channel wall because wall thickness is not an editable Plate Table parameter. The C-channel calculation credits only tabletop-plane behavior. It does not brace the posts or guarantee composite action across moving/slotted tabletop fasteners.
+
+### Apronless post racking
+
+`24 + 28 × postBendingFactor × heightFactor^1.7 + 24 × plateEngagementFactor × heightFactor^1.2`
+
+The post factor is the square root of the square-post second-moment ratio, so it varies with post size squared while the underlying section varies with size to the fourth power. Height increases the lateral lever arm. Plate engagement combines plate area, thickness, projection beyond the post, and edge setback. The 24-point base prevents this geometry proxy from implying that four freestanding posts have zero capacity, but it does not model connection slip.
+
+### Plate-joint leverage
+
+`28 + 48 × sqrt(plateAreaFactor × plateThicknessFactor) × plateProjectionFactor × setbackFactor × heightFactor^1.4`
+
+This screen isolates the geometry available to the recessed corner plate. Larger or thicker plates and more projection beyond the post improve the comparison. The value deliberately remains a proxy: hole pattern, screw diameter, embedment, plate bending, post mortise fit, and repeated-load loosening are outside the model.
+
+### Tabletop torsional rigidity
+
+`24 + 34 × plateEngagementFactor × heightFactor + 18 × clamp((channelTorsionFactor − 1) ÷ 0.15, 0, 1.5)`
+
+The plate connections supply one part of the top-plane load path. The other part comes from a transformed oak/steel section for the three widthwise channels, averaged across the tabletop by channel strip fraction and cross-width coverage. Spreading the first and third channels farther apart increases the distribution factor. This is not credit for post bracing.
+
+### Tipping margin
+
+`20 + 80 × min(1, min(contactWidth ÷ 2 ÷ height, contactLength ÷ 2 ÷ height) ÷ 0.65)`
+
+The smaller half-footprint-to-height ratio controls. Leg edge inset shrinks both contact dimensions. The metric compares static geometry only; it is not a safe-load prediction for someone sitting, leaning hard, or climbing on the tabletop.
+
+### Floor rocking tolerance
+
+`52 + 20 × clamp((legSize − 2 × bottomRoundover) ÷ legSize, 0, 1)`
+
+The four fixed wood contacts are statically over-constrained on a non-planar floor. A larger flat area at each post earns limited contact credit, but fixed posts cannot independently level themselves. Field shimming or a future adjustable-foot design remains necessary when the floor is not flat.
+
+### Member stiffness
+
+`100 − max(0, legSlenderness − 7.5) × 4 − max(0, widthSlenderness − 24) × 1.2 − max(0, lengthSlenderness − 48) × 0.45`
+
+Post slenderness is clear post height divided by square post size. Tabletop slenderness uses the equivalent thickness from the transformed oak/steel channel calculation. Widthwise channels improve the tabletop term only; they do not change the post term or certify long-term fastener behavior.
+
+### Overall weighting and grades
+
+The weighted score is 24% apronless post racking, 24% plate-joint leverage, 18% tabletop torsion, 12% tipping, 10% floor rocking, and 12% member stiffness. Scores are clamped to 0–100. Grade bands are A at 85 or above, B at 75, C at 65, D at 50, and F below 50. The panel also recomputes the complete score at one inch lower and one inch higher while leaving every other parameter fixed.
+
+Before irreversible joinery, build a full-size corner mock with the actual plate and fasteners. Perform a shim-free diagonal corner-rock test, a repeatable measured lateral push at tabletop height, loaded deflection checks, witness-mark inspection for plate/post slip, and repeated-load retesting. The physical result overrides this screen.

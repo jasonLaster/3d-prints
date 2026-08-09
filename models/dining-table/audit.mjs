@@ -12,6 +12,7 @@ const close = (actual, expected, label, tolerance = 1e-6) =>
   assert.ok(Math.abs(actual - expected) <= tolerance, `${label}: expected ${expected}, received ${actual}`);
 
 assert.equal(model.id, "dining-table");
+assert.equal(model.name, "Plate Table");
 assert.equal(model.viewer, "dining-table-v1");
 assert.equal(model.geometry.channelCount, 3);
 close(params.tableLength, 76 * inch, "table length");
@@ -69,8 +70,37 @@ for (const required of [
   "legLayers",
   "outerCornerIndex",
   "channelPosition${index}",
+  "getDiningTableStructuralAssessment",
+  "plateEngagementFactor",
+  "channelTorsionFactor",
 ]) {
   assert.ok(source.includes(required), `procedural source is missing ${required}`);
+}
+
+for (const invariant of [
+  "geometry-only structural screen",
+  "increasing overall height cannot improve",
+]) {
+  assert.ok(
+    model.audit.invariants.some((entry) => entry.includes(invariant)),
+    `model audit invariants are missing ${invariant}`,
+  );
+}
+
+const structuralSpec = fs.readFileSync(
+  path.join(root, "docs/dining-table-audit-specifications.md"),
+  "utf8",
+);
+for (const heading of [
+  "Apronless post racking",
+  "Plate-joint leverage",
+  "Tabletop torsional rigidity",
+  "Tipping margin",
+  "Floor rocking tolerance",
+  "Member stiffness",
+  "Overall weighting and grades",
+]) {
+  assert.ok(structuralSpec.includes(`### ${heading}`), `structural spec is missing ${heading}`);
 }
 
 console.log(

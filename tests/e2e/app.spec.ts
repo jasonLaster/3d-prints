@@ -241,7 +241,7 @@ test.describe("3D print app", () => {
     const after = await tablePreview.screenshot();
     expect(countChangedPixels(before, after)).toBeGreaterThan(20);
 
-    await expect(page.getByRole("button", { name: "Open Oak Dining Table" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open Plate Table" })).toBeVisible();
 
     await page.setViewportSize({ width: 393, height: 852 });
     await page.getByRole("button", { name: "Open workspace navigation" }).click();

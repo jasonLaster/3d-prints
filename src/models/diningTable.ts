@@ -17,6 +17,11 @@ import type {
   ModelParams,
   NumberLimits,
 } from "./types";
+import type {
+  HoverDiningTableStructuralAssessment,
+  HoverDiningTableStructuralGrade,
+  HoverDiningTableStructuralMetric,
+} from "./hoverDiningTable";
 
 type LoftLayer = {
   z: number;
@@ -515,6 +520,432 @@ export function updateDiningTableGuide(
     dimensions.height,
   );
   mesh.position.set(0, 0, dimensions.height / 2);
+}
+
+const PLATE_TABLE_STRUCTURAL_REFERENCE = {
+  height: 30 * 25.4,
+  legSize: 4 * 25.4,
+  plateSize: 6 * 25.4,
+  plateThickness: 0.25 * 25.4,
+  plateProjection: 1 * 25.4,
+} as const;
+
+const PLATE_TABLE_STRUCTURAL_MATERIAL = {
+  assumedChannelWallThickness: 0.125 * 25.4,
+  steelModulusGPa: 200,
+  whiteOakModulusGPa: 12.27,
+} as const;
+
+const PLATE_TABLE_STRUCTURAL_WEIGHTS: Record<
+  HoverDiningTableStructuralMetric["key"],
+  number
+> = {
+  "longitudinal-racking": 0.24,
+  "end-box-racking": 0.24,
+  torsion: 0.18,
+  tipping: 0.12,
+  "floor-rocking": 0.1,
+  "member-stiffness": 0.12,
+};
+
+function plateTableStructuralScore(value: number) {
+  return Number(Math.max(0, Math.min(100, value)).toFixed(1));
+}
+
+function plateTableStructuralGrade(
+  score: number,
+): HoverDiningTableStructuralGrade {
+  if (score >= 85) return "A";
+  if (score >= 75) return "B";
+  if (score >= 65) return "C";
+  if (score >= 50) return "D";
+  return "F";
+}
+
+function plateTableStructuralMetric(
+  key: HoverDiningTableStructuralMetric["key"],
+  label: string,
+  rawScore: number,
+  detail: string,
+  calculation: Pick<
+    HoverDiningTableStructuralMetric["calculation"],
+    "rationale" | "formula" | "inputs"
+  >,
+): HoverDiningTableStructuralMetric {
+  const score = plateTableStructuralScore(rawScore);
+  const weight = PLATE_TABLE_STRUCTURAL_WEIGHTS[key];
+  return {
+    key,
+    label,
+    score,
+    grade: plateTableStructuralGrade(score),
+    detail,
+    calculation: {
+      ...calculation,
+      rawScore: Number(rawScore.toFixed(1)),
+      weight,
+      scoringNote: `Raw result ${rawScore.toFixed(1)} is clamped to 0–100, then contributes ${(weight * 100).toFixed(0)}% of the overall score (${(score * weight).toFixed(1)} weighted points). Grade bands: A ≥ 85, B ≥ 75, C ≥ 65, D ≥ 50, F < 50.`,
+    },
+  };
+}
+
+function getPlateTableChannelStiffness(params: ModelParams) {
+  const topThickness = getParam(params, "topThickness");
+  const tableLength = getParam(params, "tableLength");
+  const tableWidth = getParam(params, "tableWidth");
+  const channelWidth = getParam(params, "channelWidth");
+  const channelDepth = getParam(params, "channelDepth");
+  const channelLength = getParam(params, "channelLength");
+  const wallThickness = Math.min(
+    PLATE_TABLE_STRUCTURAL_MATERIAL.assumedChannelWallThickness,
+    channelDepth / 3,
+    channelWidth / 4,
+  );
+  const modularRatio =
+    PLATE_TABLE_STRUCTURAL_MATERIAL.steelModulusGPa /
+    PLATE_TABLE_STRUCTURAL_MATERIAL.whiteOakModulusGPa;
+  const remainingOakHeight = Math.max(EPSILON, topThickness - channelDepth);
+  const flangeHeight = Math.max(EPSILON, channelDepth - wallThickness);
+  const transformedSections = [
+    {
+      area: channelWidth * remainingOakHeight,
+      centroid: channelDepth + remainingOakHeight / 2,
+      localSecondMoment:
+        (channelWidth * remainingOakHeight ** 3) / 12,
+    },
+    {
+      area: modularRatio * channelWidth * wallThickness,
+      centroid: wallThickness / 2,
+      localSecondMoment:
+        (modularRatio * channelWidth * wallThickness ** 3) / 12,
+    },
+    {
+      area: modularRatio * 2 * wallThickness * flangeHeight,
+      centroid: wallThickness + flangeHeight / 2,
+      localSecondMoment:
+        (modularRatio * 2 * wallThickness * flangeHeight ** 3) / 12,
+    },
+  ];
+  const transformedArea = transformedSections.reduce(
+    (total, section) => total + section.area,
+    0,
+  );
+  const neutralAxis =
+    transformedSections.reduce(
+      (total, section) => total + section.area * section.centroid,
+      0,
+    ) / transformedArea;
+  const transformedSecondMoment = transformedSections.reduce(
+    (total, section) =>
+      total +
+      section.localSecondMoment +
+      section.area * (section.centroid - neutralAxis) ** 2,
+    0,
+  );
+  const bareOakSecondMoment =
+    (channelWidth * topThickness ** 3) / 12;
+  const transformedSectionRatio =
+    transformedSecondMoment / bareOakSecondMoment;
+  const channelStripFraction = Math.min(
+    1,
+    (3 * channelWidth) / tableLength,
+  );
+  const channelLengthCoverage = Math.min(1, channelLength / tableWidth);
+  const topPlaneStiffnessFactor =
+    1 +
+    channelStripFraction *
+      channelLengthCoverage *
+      Math.max(0, transformedSectionRatio - 1);
+  const channelCenterSpread =
+    getParam(params, "channelPosition3") -
+    getParam(params, "channelPosition1");
+  const availableChannelCenterSpread = Math.max(
+    channelWidth,
+    tableLength - 2 * channelWidth,
+  );
+  const channelDistributionFactor = Math.max(
+    0,
+    Math.min(1, channelCenterSpread / availableChannelCenterSpread),
+  );
+  const channelTorsionFactor =
+    1 +
+    (topPlaneStiffnessFactor - 1) *
+      (0.5 + 0.5 * channelDistributionFactor);
+  const effectiveTopThickness =
+    topThickness * Math.cbrt(topPlaneStiffnessFactor);
+
+  return {
+    assumedWallThickness: wallThickness,
+    modularRatio,
+    transformedSectionRatio,
+    channelStripFraction,
+    channelLengthCoverage,
+    channelDistributionFactor,
+    channelTorsionFactor,
+    topPlaneStiffnessFactor,
+    effectiveTopThickness,
+    widthSlenderness: tableWidth / effectiveTopThickness,
+    lengthSlenderness: tableLength / effectiveTopThickness,
+  };
+}
+
+function evaluatePlateTableStructure(
+  params: ModelParams,
+): Omit<HoverDiningTableStructuralAssessment, "heightSensitivity"> {
+  const height = getParam(params, "overallHeight");
+  const topThickness = getParam(params, "topThickness");
+  const legHeight = height - topThickness;
+  const legSize = getParam(params, "legSize");
+  const plateSize = getParam(params, "plateSize");
+  const plateThickness = getParam(params, "plateThickness");
+  const plateEdgeInset = getParam(params, "plateEdgeInset");
+  const legEdgeInset = getParam(params, "legEdgeInset");
+  const tableLength = getParam(params, "tableLength");
+  const tableWidth = getParam(params, "tableWidth");
+  const heightFactor = PLATE_TABLE_STRUCTURAL_REFERENCE.height / height;
+  const postBendingFactor = Math.min(
+    1.8,
+    (legSize / PLATE_TABLE_STRUCTURAL_REFERENCE.legSize) ** 2,
+  );
+  const plateProjection = Math.max(0, (plateSize - legSize) / 2);
+  const plateAreaFactor = Math.min(
+    1.8,
+    (plateSize / PLATE_TABLE_STRUCTURAL_REFERENCE.plateSize) ** 2,
+  );
+  const plateThicknessFactor = Math.min(
+    1.8,
+    Math.sqrt(
+      plateThickness / PLATE_TABLE_STRUCTURAL_REFERENCE.plateThickness,
+    ),
+  );
+  const plateProjectionFactor = Math.min(
+    1.5,
+    plateProjection / PLATE_TABLE_STRUCTURAL_REFERENCE.plateProjection,
+  );
+  const setbackFactor = Math.max(
+    0.65,
+    Math.min(1, 1 - plateEdgeInset / Math.max(plateSize, EPSILON)),
+  );
+  const plateEngagementFactor =
+    Math.sqrt(plateAreaFactor * plateThicknessFactor) *
+    plateProjectionFactor *
+    setbackFactor;
+  const channel = getPlateTableChannelStiffness(params);
+
+  const longitudinalRacking =
+    24 +
+    28 * postBendingFactor * heightFactor ** 1.7 +
+    24 * plateEngagementFactor * heightFactor ** 1.2;
+  const plateJointLeverage =
+    28 +
+    48 * plateEngagementFactor * heightFactor ** 1.4;
+  const channelContribution = Math.min(
+    1.5,
+    Math.max(0, (channel.channelTorsionFactor - 1) / 0.15),
+  );
+  const torsion =
+    24 +
+    34 * plateEngagementFactor * heightFactor +
+    18 * channelContribution;
+
+  const footprintLength = tableLength - 2 * legEdgeInset;
+  const footprintWidth = tableWidth - 2 * legEdgeInset;
+  const controllingTippingRatio =
+    Math.min(footprintLength, footprintWidth) / (2 * height);
+  const tipping =
+    20 + 80 * Math.min(1, controllingTippingRatio / 0.65);
+
+  const bottomRoundover = getParam(params, "legBottomRoundoverRadius");
+  const flatFootFraction = Math.max(
+    0,
+    Math.min(1, (legSize - 2 * bottomRoundover) / legSize),
+  );
+  const floorRocking = 52 + 20 * flatFootFraction;
+
+  const legSlenderness = legHeight / legSize;
+  const memberStiffness =
+    100 -
+    Math.max(0, legSlenderness - 7.5) * 4 -
+    Math.max(0, channel.widthSlenderness - 24) * 1.2 -
+    Math.max(0, channel.lengthSlenderness - 48) * 0.45;
+
+  const metrics = [
+    plateTableStructuralMetric(
+      "longitudinal-racking",
+      "Apronless post racking",
+      longitudinalRacking,
+      `post slenderness ${legSlenderness.toFixed(1)}:1 · ${formatLength(plateProjection, "in")} plate projection`,
+      {
+        rationale:
+          "With no apron or stretcher, lateral sway is screened from the fourth-power post section (expressed here as its square-root factor), table height, and the geometry available for each recessed plate to engage the tabletop beyond the post. Actual screw slip and wood crushing are deliberately excluded.",
+        formula:
+          "24 + 28 × postBendingFactor × heightFactor^1.7 + 24 × plateEngagementFactor × heightFactor^1.2",
+        inputs: [
+          { key: "overallHeight", label: "Overall height", value: height, format: "length" },
+          { key: "legSize", label: "Square post size", value: legSize, format: "length" },
+          { key: "plateSize", label: "Plate size", value: plateSize, format: "length" },
+          { key: "plateThickness", label: "Plate thickness", value: plateThickness, format: "length" },
+          { key: "postBendingFactor", label: "Derived post bending factor", value: postBendingFactor, format: "number", precision: 3 },
+          { key: "plateEngagementFactor", label: "Derived plate engagement factor", value: plateEngagementFactor, format: "number", precision: 3 },
+        ],
+      },
+    ),
+    plateTableStructuralMetric(
+      "end-box-racking",
+      "Plate-joint leverage",
+      plateJointLeverage,
+      `${formatLength(plateSize, "in")} plate · ${formatLength(plateThickness, "in")} thick · geometry proxy only`,
+      {
+        rationale:
+          "The plate score rewards plan area, thickness, and projection beyond the post while penalizing excessive edge setback. It is only a geometry proxy: screw pattern, embedment, slot direction, plate bending, post mortise fit, and repeated-load loosening require a physical corner test.",
+        formula:
+          "28 + 48 × sqrt(plateAreaFactor × plateThicknessFactor) × plateProjectionFactor × setbackFactor × heightFactor^1.4",
+        inputs: [
+          { key: "overallHeight", label: "Overall height", value: height, format: "length" },
+          { key: "plateSize", label: "Plate size", value: plateSize, format: "length" },
+          { key: "plateThickness", label: "Plate thickness", value: plateThickness, format: "length" },
+          { key: "plateEdgeInset", label: "Plate edge setback", value: plateEdgeInset, format: "length" },
+          { key: "plateProjection", label: "Plate projection beyond post", value: plateProjection, format: "length" },
+          { key: "plateEngagementFactor", label: "Derived plate engagement factor", value: plateEngagementFactor, format: "number", precision: 3 },
+        ],
+      },
+    ),
+    plateTableStructuralMetric(
+      "torsion",
+      "Tabletop torsional rigidity",
+      torsion,
+      `three channels · ${channel.channelTorsionFactor.toFixed(3)}× top-plane factor`,
+      {
+        rationale:
+          "Table twisting is screened from the four plate connections plus the transformed oak/steel contribution of the three widthwise channels. Channel credit applies only to the tabletop plane; it does not brace the posts or prove composite action at slotted fasteners.",
+        formula:
+          "24 + 34 × plateEngagementFactor × heightFactor + 18 × clamp((channelTorsionFactor − 1) ÷ 0.15, 0, 1.5)",
+        inputs: [
+          { key: "plateEngagementFactor", label: "Derived plate engagement factor", value: plateEngagementFactor, format: "number", precision: 3 },
+          { key: "channelWidth", label: "Channel visible width", value: getParam(params, "channelWidth"), format: "length" },
+          { key: "channelDepth", label: "Channel depth", value: getParam(params, "channelDepth"), format: "length" },
+          { key: "channelLength", label: "Channel length", value: getParam(params, "channelLength"), format: "length" },
+          { key: "assumedChannelWallThickness", label: "Fixed channel wall assumption", value: channel.assumedWallThickness, format: "length" },
+          { key: "channelDistributionFactor", label: "Channel distribution", value: channel.channelDistributionFactor, format: "number", precision: 3 },
+          { key: "channelTorsionFactor", label: "Derived channel torsion factor", value: channel.channelTorsionFactor, format: "number", precision: 3, suffix: "×" },
+        ],
+      },
+    ),
+    plateTableStructuralMetric(
+      "tipping",
+      "Tipping margin",
+      tipping,
+      `controlling half-footprint / height ${controllingTippingRatio.toFixed(2)}`,
+      {
+        rationale:
+          "The smaller tabletop-direction support footprint controls how far the center of mass can move before passing the leg-contact polygon. This is a geometry margin, not a prediction for a person sitting or climbing on the tabletop.",
+        formula:
+          "20 + 80 × min(1, min(contactWidth ÷ 2 ÷ height, contactLength ÷ 2 ÷ height) ÷ 0.65)",
+        inputs: [
+          { key: "overallHeight", label: "Overall height", value: height, format: "length" },
+          { key: "tableLength", label: "Table length", value: tableLength, format: "length" },
+          { key: "tableWidth", label: "Table width", value: tableWidth, format: "length" },
+          { key: "legEdgeInset", label: "Leg edge inset", value: legEdgeInset, format: "length" },
+          { key: "footprintLength", label: "Contact footprint length", value: footprintLength, format: "length" },
+          { key: "footprintWidth", label: "Contact footprint width", value: footprintWidth, format: "length" },
+        ],
+      },
+    ),
+    plateTableStructuralMetric(
+      "floor-rocking",
+      "Floor rocking tolerance",
+      floorRocking,
+      "four fixed wood contacts · no independent leveling",
+      {
+        rationale:
+          "Four fixed legs are statically over-constrained on an uneven floor. The flat portion left by each bottom round-over earns limited contact credit, but cannot substitute for adjustable feet or field shimming.",
+        formula:
+          "52 + 20 × clamp((legSize − 2 × bottomRoundover) ÷ legSize, 0, 1)",
+        inputs: [
+          { key: "legSize", label: "Square post size", value: legSize, format: "length" },
+          { key: "legBottomRoundoverRadius", label: "Bottom round-over", value: bottomRoundover, format: "length" },
+          { key: "flatFootFraction", label: "Derived flat-foot fraction", value: flatFootFraction, format: "number", precision: 3 },
+        ],
+      },
+    ),
+    plateTableStructuralMetric(
+      "member-stiffness",
+      "Member stiffness",
+      memberStiffness,
+      `post ${legSlenderness.toFixed(1)}:1 · reinforced top ${channel.widthSlenderness.toFixed(1)}:1 across width`,
+      {
+        rationale:
+          "This relative screen penalizes posts above 7.5:1 slenderness and the channel-reinforced top above reference width and length slenderness limits. The steel contribution uses a fixed 1/8 in wall assumption because wall thickness is not currently an editable model parameter.",
+        formula:
+          "100 − max(0, legSlenderness − 7.5) × 4 − max(0, widthSlenderness − 24) × 1.2 − max(0, lengthSlenderness − 48) × 0.45",
+        inputs: [
+          { key: "legHeight", label: "Post height", value: legHeight, format: "length" },
+          { key: "legSize", label: "Square post size", value: legSize, format: "length" },
+          { key: "legSlenderness", label: "Derived post slenderness", value: legSlenderness, format: "number", precision: 2, suffix: ":1" },
+          { key: "topThickness", label: "Tabletop thickness", value: topThickness, format: "length" },
+          { key: "topPlaneStiffnessFactor", label: "Derived tabletop stiffness factor", value: channel.topPlaneStiffnessFactor, format: "number", precision: 3, suffix: "×" },
+          { key: "effectiveTopThickness", label: "Equivalent tabletop thickness", value: channel.effectiveTopThickness, format: "length" },
+          { key: "widthSlenderness", label: "Reinforced top width slenderness", value: channel.widthSlenderness, format: "number", precision: 2, suffix: ":1" },
+          { key: "lengthSlenderness", label: "Reinforced top length slenderness", value: channel.lengthSlenderness, format: "number", precision: 2, suffix: ":1" },
+        ],
+      },
+    ),
+  ];
+  const overallScore = plateTableStructuralScore(
+    metrics.reduce(
+      (total, metric) =>
+        total + metric.score * PLATE_TABLE_STRUCTURAL_WEIGHTS[metric.key],
+      0,
+    ),
+  );
+  return {
+    overallScore,
+    overallGrade: plateTableStructuralGrade(overallScore),
+    overallCalculation: {
+      rationale:
+        "The Plate Table composite emphasizes the two apronless plate/post connection screens, followed by tabletop torsion. Tipping, fixed-floor contact, and member slenderness remain visible contributors without disguising the untested joint behavior.",
+      formula: metrics
+        .map(
+          (metric) =>
+            `${(PLATE_TABLE_STRUCTURAL_WEIGHTS[metric.key] * 100).toFixed(0)}% × ${metric.label}`,
+        )
+        .join(" + "),
+      scoringNote: `The weighted sum is ${overallScore.toFixed(1)}. Grade bands: A ≥ 85, B ≥ 75, C ≥ 65, D ≥ 50, F < 50. This remains a geometry-only comparison, not a load or joint certification.`,
+    },
+    metrics,
+    basis: "geometry-only screening",
+  };
+}
+
+export function getDiningTableStructuralAssessment(
+  params: ModelParams,
+): HoverDiningTableStructuralAssessment {
+  const current = evaluatePlateTableStructure(params);
+  const height = getParam(params, "overallHeight");
+  const stepMm = 25.4;
+  const assessHeight = (heightMm: number) => {
+    try {
+      const score = evaluatePlateTableStructure({
+        ...params,
+        overallHeight: heightMm,
+      }).overallScore;
+      return {
+        heightMm,
+        score,
+        delta: Number((score - current.overallScore).toFixed(1)),
+      };
+    } catch {
+      return null;
+    }
+  };
+  return {
+    ...current,
+    heightSensitivity: {
+      stepMm,
+      lower: assessHeight(height - stepMm),
+      higher: assessHeight(height + stepMm),
+    },
+  };
 }
 
 export function getDiningTableParameterLimits(

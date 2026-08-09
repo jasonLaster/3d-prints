@@ -1,8 +1,8 @@
 {
   "id": "dining-table",
-  "name": "Oak Dining Table",
+  "name": "Plate Table",
   "subtitle": "Parametric 1:10 construction mock",
-  "description": "A dimension-driven apronless oak dining table with rounded tabletop and posts, an optional rounded post-top groove, flush inset 6-inch corner plates, and three recessed C-channels.",
+  "description": "A dimension-driven apronless oak table with rounded tabletop and posts, an optional rounded post-top groove, flush inset 6-inch corner plates, three recessed C-channels, and transparent geometry-only structural screening.",
   "viewer": "dining-table-v1",
   "stl": {
     "fileName": "dining-table.stl",
@@ -203,6 +203,8 @@
       "Mirror the independently adjustable outside post corner to the matching outside corner at each of the four table positions.",
       "Keep the three C-channel positions ordered from the first end of the table.",
       "Keep top and bottom roundover radii within half the tabletop thickness.",
+      "Expose a geometry-only structural screen for apronless post racking, plate-joint leverage, tabletop torsion, tipping, floor rocking, and member stiffness; never present it as load or joint certification.",
+      "Keep structural sensitivity monotonic: increasing overall height cannot improve the overall score, while increasing post size, plate size, or plate thickness cannot reduce their corresponding racking or joint score.",
       "Export the wood and registered plate/C-channel hardware as separate same-origin STL bodies, flipped with the tabletop top face on the build plate so the legs print upward without supports.",
       "Treat oak grain and steel finish as render materials; dimensions come only from procedural geometry."
     ],

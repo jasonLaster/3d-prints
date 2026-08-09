@@ -2,7 +2,7 @@
 
 This document defines the product and engineering contract for the 3D Prints app. Tests should fail when an implementation drifts from these expectations.
 
-## Oak Dining Table
+## Plate Table
 
 - Fully parametric 76 × 38 × 30 in apronless table with a separate print-scale denominator.
 - Rounded tabletop and leg geometry, separately adjustable outer and other-three post corner radii, an optional post-top groove/rabbet with its top roundover moved below the recessed band, a separate bottom post roundover, four inset corner plates, and exactly three recessed C-channels are generated from numeric parameters.

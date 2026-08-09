@@ -70,6 +70,7 @@ export {
 export {
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
+  getDiningTableStructuralAssessment,
   updateDiningTableGuide,
 } from "./diningTable";
 export {

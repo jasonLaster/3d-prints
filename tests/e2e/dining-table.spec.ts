@@ -1,5 +1,18 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test, type Download } from "@playwright/test";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
+import {
+  getDefaultParams,
+  getDiningTableStructuralAssessment,
+} from "../../src/models";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const model = JSON.parse(
+  fs.readFileSync(path.join(root, "public/models/dining-table/model.json"), "utf8"),
+);
+const defaultParams = getDefaultParams(model);
 
 function inspectStl(buffer: Buffer) {
   const arrayBuffer = buffer.buffer.slice(
@@ -72,7 +85,7 @@ function inspectStl(buffer: Buffer) {
   };
 }
 
-test("renders the oak table and exports the registered two-color 1:10 mock", async ({
+test("renders the Plate Table and exports the registered two-color 1:10 mock", async ({
   page,
 }) => {
   const pageErrors: string[] = [];
@@ -82,8 +95,8 @@ test("renders the oak table and exports the registered two-color 1:10 mock", asy
   });
 
   await page.goto("/?model=dining-table&unit=in");
-  await expect(page.getByRole("heading", { name: "Oak Dining Table" })).toBeVisible();
-  await expect(page.getByLabel("Oak Dining Table model viewer")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Plate Table" })).toBeVisible();
+  await expect(page.getByLabel("Plate Table model viewer")).toBeVisible();
   await expect(page.locator(".scene-panel canvas")).toBeVisible();
   await expect(page.getByLabel("Mock scale denominator")).toHaveValue("10");
   await expect(page.getByLabel("Table length in inches")).toHaveValue("76");
@@ -139,7 +152,6 @@ test("renders the oak table and exports the registered two-color 1:10 mock", asy
   const hardwarePath = await hardwareDownload?.path();
   expect(woodPath).not.toBeNull();
   expect(hardwarePath).not.toBeNull();
-  const fs = await import("node:fs");
   const woodStl = inspectStl(fs.readFileSync(woodPath!));
   const hardwareStl = inspectStl(fs.readFileSync(hardwarePath!));
   expect(woodStl.finite).toBe(true);
@@ -157,4 +169,139 @@ test("renders the oak table and exports the registered two-color 1:10 mock", asy
   expect(hardwareStl.size.y).toBeCloseTo(93.98, 1);
   expect(hardwareStl.size.z).toBeCloseTo(1.27, 1);
   expect(pageErrors).toEqual([]);
+});
+
+test("screens Plate Table structure and responds monotonically to key geometry", () => {
+  const baseline = getDiningTableStructuralAssessment(defaultParams);
+  expect(baseline.metrics).toHaveLength(6);
+  expect(baseline.overallScore).toBeGreaterThanOrEqual(0);
+  expect(baseline.overallScore).toBeLessThanOrEqual(100);
+  expect(
+    baseline.metrics.reduce(
+      (total, metric) => total + metric.calculation.weight,
+      0,
+    ),
+  ).toBeCloseTo(1, 8);
+  for (const metric of baseline.metrics) {
+    expect(Number.isFinite(metric.score)).toBe(true);
+    expect(metric.score).toBeGreaterThanOrEqual(0);
+    expect(metric.score).toBeLessThanOrEqual(100);
+    expect(metric.calculation.inputs.length).toBeGreaterThan(0);
+  }
+
+  const metric = (
+    assessment: ReturnType<typeof getDiningTableStructuralAssessment>,
+    key: (typeof assessment.metrics)[number]["key"],
+  ) => assessment.metrics.find((entry) => entry.key === key)!.score;
+  const taller = getDiningTableStructuralAssessment({
+    ...defaultParams,
+    overallHeight: defaultParams.overallHeight + 25.4,
+  });
+  expect(taller.overallScore).toBeLessThan(baseline.overallScore);
+  expect(metric(taller, "longitudinal-racking")).toBeLessThan(
+    metric(baseline, "longitudinal-racking"),
+  );
+  expect(metric(taller, "tipping")).toBeLessThan(metric(baseline, "tipping"));
+
+  const largerPosts = getDiningTableStructuralAssessment({
+    ...defaultParams,
+    legSize: defaultParams.legSize + 25.4,
+  });
+  expect(metric(largerPosts, "longitudinal-racking")).toBeGreaterThan(
+    metric(baseline, "longitudinal-racking"),
+  );
+  expect(metric(largerPosts, "member-stiffness")).toBeGreaterThanOrEqual(
+    metric(baseline, "member-stiffness"),
+  );
+
+  const largerPlates = getDiningTableStructuralAssessment({
+    ...defaultParams,
+    plateSize: defaultParams.plateSize + 25.4,
+    plateThickness: defaultParams.plateThickness + 3.175,
+  });
+  expect(metric(largerPlates, "end-box-racking")).toBeGreaterThan(
+    metric(baseline, "end-box-racking"),
+  );
+  expect(metric(largerPlates, "torsion")).toBeGreaterThan(
+    metric(baseline, "torsion"),
+  );
+
+  const clusteredChannels = getDiningTableStructuralAssessment({
+    ...defaultParams,
+    channelPosition1: 34 * 25.4,
+    channelPosition2: 38 * 25.4,
+    channelPosition3: 42 * 25.4,
+  });
+  expect(metric(clusteredChannels, "torsion")).toBeLessThan(
+    metric(baseline, "torsion"),
+  );
+  expect(baseline.heightSensitivity.lower?.delta).toBeGreaterThan(0);
+  expect(baseline.heightSensitivity.higher?.delta).toBeLessThan(0);
+});
+
+test("documents every Plate Table structural formula", () => {
+  const structuralSpec = fs.readFileSync(
+    path.join(root, "docs/dining-table-audit-specifications.md"),
+    "utf8",
+  );
+  for (const heading of [
+    "Apronless post racking",
+    "Plate-joint leverage",
+    "Tabletop torsional rigidity",
+    "Tipping margin",
+    "Floor rocking tolerance",
+    "Member stiffness",
+    "Overall weighting and grades",
+  ]) {
+    expect(structuralSpec).toContain(`### ${heading}`);
+  }
+  expect(structuralSpec).toContain("1/8 in channel wall");
+  expect(structuralSpec).toContain("geometry-only comparison");
+  expect(structuralSpec).toContain("full-size corner mock");
+});
+
+test("shows the Plate Table structural screen with transparent calculations", async ({
+  page,
+}) => {
+  await page.goto("/?model=dining-table&unit=in");
+  const designChecks = page.getByLabel("Workspace model library");
+  const structuralAssessment = designChecks.getByLabel(
+    "Structural wobble assessment",
+  );
+  await expect(structuralAssessment).toBeVisible();
+  await expect(structuralAssessment.getByRole("listitem")).toHaveCount(6);
+  await expect(
+    structuralAssessment
+      .locator('[data-metric="end-box-racking"]')
+      .getByText("Plate-joint leverage", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    structuralAssessment
+      .locator('[data-metric="torsion"]')
+      .getByText("Tabletop torsional rigidity", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    structuralAssessment.locator(".structural-reference-links a"),
+  ).toHaveCount(14);
+
+  await structuralAssessment
+    .getByRole("button", { name: "Explain Plate-joint leverage calculation" })
+    .click();
+  const calculation = structuralAssessment.getByLabel(
+    "Plate-joint leverage calculation details",
+  );
+  await expect(calculation).toContainText("Plate projection beyond post");
+  await expect(
+    calculation.getByRole("link", { name: "Plate-joint leverage detailed specification" }),
+  ).toHaveAttribute("href", /dining-table-audit-specifications\.md#plate-joint-leverage$/);
+
+  const baselineScore = Number(
+    await structuralAssessment.getAttribute("data-overall-score"),
+  );
+  await page.getByLabel("Overall height in inches").fill("31");
+  await expect
+    .poll(async () =>
+      Number(await structuralAssessment.getAttribute("data-overall-score")),
+    )
+    .toBeLessThan(baselineScore);
 });
