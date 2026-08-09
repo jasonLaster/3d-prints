@@ -2,7 +2,7 @@
   "id": "dining-table",
   "name": "Plate Table",
   "subtitle": "Parametric 1:10 construction mock",
-  "description": "A dimension-driven apronless oak table with rounded tabletop and posts, an optional rounded post-top groove, flush inset 6-inch corner plates, three recessed C-channels, and transparent geometry-only structural screening.",
+  "description": "A dimension-driven apronless oak table with rounded tabletop and posts, four independently adjustable leveling feet, an optional rounded post-top groove, flush inset 6-inch corner plates, three recessed C-channels, and transparent geometry-only structural screening.",
   "viewer": "dining-table-v1",
   "stl": {
     "fileName": "dining-table.stl",
@@ -127,6 +127,60 @@
       "limits": { "min": 1.5875, "max": 25.4, "step": 1.5875 }
     },
     {
+      "key": "levelingFeetEnabled",
+      "label": "Use independently adjustable leveling feet",
+      "default": 1,
+      "limits": { "min": 0, "max": 1, "step": 1 }
+    },
+    {
+      "key": "levelingFootPadDiameter",
+      "label": "Leveling-foot pad diameter",
+      "default": 38.1,
+      "limits": { "min": 25.4, "max": 76.2, "step": 3.175 }
+    },
+    {
+      "key": "levelingFootPadThickness",
+      "label": "Leveling-foot pad thickness",
+      "default": 6.35,
+      "limits": { "min": 3.175, "max": 12.7, "step": 1.5875 }
+    },
+    {
+      "key": "levelingFootRodDiameter",
+      "label": "Leveling-foot rod diameter",
+      "default": 9.525,
+      "limits": { "min": 6.35, "max": 15.875, "step": 1.5875 }
+    },
+    {
+      "key": "levelingFootRodLength",
+      "label": "Leveling-foot rod length",
+      "default": 76.2,
+      "limits": { "min": 38.1, "max": 101.6, "step": 3.175 }
+    },
+    {
+      "key": "levelingFootExtensionLeftFront",
+      "label": "Left-front installed extension",
+      "default": 19.05,
+      "limits": { "min": 6.35, "max": 44.45, "step": 1.5875 }
+    },
+    {
+      "key": "levelingFootExtensionLeftRear",
+      "label": "Left-rear installed extension",
+      "default": 19.05,
+      "limits": { "min": 6.35, "max": 44.45, "step": 1.5875 }
+    },
+    {
+      "key": "levelingFootExtensionRightFront",
+      "label": "Right-front installed extension",
+      "default": 19.05,
+      "limits": { "min": 6.35, "max": 44.45, "step": 1.5875 }
+    },
+    {
+      "key": "levelingFootExtensionRightRear",
+      "label": "Right-rear installed extension",
+      "default": 19.05,
+      "limits": { "min": 6.35, "max": 44.45, "step": 1.5875 }
+    },
+    {
       "key": "plateSize",
       "label": "Corner plate size",
       "default": 152.4,
@@ -189,6 +243,7 @@
       "The tabletop has 1/2 in top and bottom roundovers, leaving a 1/2 in flat vertical edge band.",
       "Each post has an optional 1/4 in high by 1/8 in deep groove immediately below the tabletop; when enabled, the 1/4 in top roundover forms the lower shoulder of that groove.",
       "Each post has a 1/4 in bottom roundover; disabling the groove restores the 1/4 in roundover to the post's top edge.",
+      "Four independently adjustable steel leveling feet default to 3/4 in installed extension, with one separately editable extension beneath each post.",
       "Four 6 in square by 1/4 in steel plates are set 1/2 in back from both tabletop edges, and exactly three widthwise C-channels are flush with the tabletop underside.",
       "The default 1:10 mock fits inside a 256 mm square printer bed footprint."
     ],
@@ -203,9 +258,10 @@
       "Mirror the independently adjustable outside post corner to the matching outside corner at each of the four table positions.",
       "Keep the three C-channel positions ordered from the first end of the table.",
       "Keep top and bottom roundover radii within half the tabletop thickness.",
+      "When leveling feet are enabled, keep all four pads on the floor reference, preserve the tabletop height, shorten each wood post by its own installed extension, and retain positive threaded-rod embedment inside every post.",
       "Expose a geometry-only structural screen for apronless post racking, plate-joint leverage, tabletop torsion, tipping, floor rocking, and member stiffness; never present it as load or joint certification.",
       "Keep structural sensitivity monotonic: increasing overall height cannot improve the overall score, while increasing post size, plate size, or plate thickness cannot reduce their corresponding racking or joint score.",
-      "Export the wood and registered plate/C-channel hardware as separate same-origin STL bodies, flipped with the tabletop top face on the build plate so the legs print upward without supports.",
+      "Export the wood and registered plate/C-channel/leveling-foot hardware as separate same-origin STL bodies, flipped with the tabletop top face on the build plate so the legs print upward without supports.",
       "Treat oak grain and steel finish as render materials; dimensions come only from procedural geometry."
     ],
     "checks": [
@@ -213,6 +269,7 @@
       { "key": "tabletopProfile", "label": "Tabletop edge profile" },
       { "key": "legGeometry", "label": "Leg geometry" },
       { "key": "legEndRoundovers", "label": "Leg top detail" },
+      { "key": "levelingFeet", "label": "Independent leveling feet" },
       { "key": "cornerPlates", "label": "Corner plates" },
       { "key": "channelLayout", "label": "Three C-channels" },
       { "key": "printEnvelope", "label": "Mock print envelope" },

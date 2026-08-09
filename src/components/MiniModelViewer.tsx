@@ -181,7 +181,7 @@ function createPreviewObject(
       ),
     );
     const hardware = createDiningTableHardwareGeometries(params);
-    [...hardware.plates, ...hardware.channels].forEach((geometry) => {
+    [...hardware.plates, ...hardware.channels, ...hardware.feet].forEach((geometry) => {
       group.add(new THREE.Mesh(geometry, metalMaterial));
     });
   } else {

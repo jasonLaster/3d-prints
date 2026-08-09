@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { expect, test, type Download } from "@playwright/test";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import {
+  createDiningTableHardwareGeometries,
+  createDiningTableWoodGeometry,
   getDefaultParams,
   getDiningTableStructuralAssessment,
 } from "../../src/models";
@@ -117,6 +119,11 @@ test("renders the Plate Table and exports the registered two-color 1:10 mock", a
   await expect(page.getByLabel("Post groove depth in inches")).toHaveValue("1/8");
   await expect(page.getByLabel("Leg top shoulder roundover radius in inches")).toHaveValue("1/4");
   await expect(page.getByLabel("Leg bottom roundover radius in inches")).toHaveValue("1/4");
+  await expect(page.getByLabel("Independent leg leveling")).toBeChecked();
+  await expect(page.getByLabel("Left-front installed extension in inches")).toHaveValue("3/4");
+  await expect(page.getByLabel("Left-rear installed extension in inches")).toHaveValue("3/4");
+  await expect(page.getByLabel("Right-front installed extension in inches")).toHaveValue("3/4");
+  await expect(page.getByLabel("Right-rear installed extension in inches")).toHaveValue("3/4");
   await expect(page.getByText("1/4 in high × 1/8 in deep; 1/4 in shoulder")).toBeVisible();
   await expect(page.getByLabel("Plate edge setback in inches")).toHaveValue("1/2");
   await expect(page.getByText("16 in · 38 in · 60 in")).toBeVisible();
@@ -159,7 +166,7 @@ test("renders the Plate Table and exports the registered two-color 1:10 mock", a
   expect(woodStl.min.z).toBeCloseTo(0, 3);
   expect(woodStl.size.x).toBeCloseTo(193.04, 1);
   expect(woodStl.size.y).toBeCloseTo(96.52, 1);
-  expect(woodStl.size.z).toBeCloseTo(76.2, 1);
+  expect(woodStl.size.z).toBeCloseTo(74.295, 1);
   expect(woodStl.bedContactSize.x).toBeGreaterThan(185);
   expect(woodStl.bedContactSize.y).toBeGreaterThan(90);
   expect(hardwareStl.finite).toBe(true);
@@ -167,7 +174,7 @@ test("renders the Plate Table and exports the registered two-color 1:10 mock", a
   expect(hardwareStl.min.z).toBeCloseTo(2.54, 1);
   expect(hardwareStl.size.x).toBeCloseTo(190.5, 1);
   expect(hardwareStl.size.y).toBeCloseTo(93.98, 1);
-  expect(hardwareStl.size.z).toBeCloseTo(1.27, 1);
+  expect(hardwareStl.size.z).toBeCloseTo(73.66, 1);
   expect(pageErrors).toEqual([]);
 });
 
@@ -237,6 +244,73 @@ test("screens Plate Table structure and responds monotonically to key geometry",
   );
   expect(baseline.heightSensitivity.lower?.delta).toBeGreaterThan(0);
   expect(baseline.heightSensitivity.higher?.delta).toBeLessThan(0);
+
+  const fixedPosts = getDiningTableStructuralAssessment({
+    ...defaultParams,
+    levelingFeetEnabled: 0,
+  });
+  expect(metric(baseline, "floor-rocking")).toBeGreaterThan(
+    metric(fixedPosts, "floor-rocking"),
+  );
+  expect(baseline.overallScore).toBeGreaterThan(fixedPosts.overallScore);
+});
+
+test("models four independently installed leveling feet on one floor plane", () => {
+  const extensions = [12.7, 15.875, 19.05, 22.225];
+  const independentParams = {
+    ...defaultParams,
+    levelingFootExtensionLeftFront: extensions[0],
+    levelingFootExtensionLeftRear: extensions[1],
+    levelingFootExtensionRightFront: extensions[2],
+    levelingFootExtensionRightRear: extensions[3],
+  };
+  const hardware = createDiningTableHardwareGeometries(independentParams);
+  expect(hardware.feet).toHaveLength(4);
+  for (const foot of hardware.feet) {
+    foot.computeBoundingBox();
+    expect(foot.boundingBox!.min.z).toBeCloseTo(0, 4);
+    expect(foot.boundingBox!.max.z).toBeCloseTo(
+      (defaultParams.levelingFootPadThickness +
+        defaultParams.levelingFootRodLength) /
+        defaultParams.mockScale,
+      4,
+    );
+    foot.dispose();
+  }
+  hardware.plates.forEach((geometry) => geometry.dispose());
+  hardware.channels.forEach((geometry) => geometry.dispose());
+
+  const wood = createDiningTableWoodGeometry(independentParams, model);
+  const positions = wood.getAttribute("position");
+  const quadrantMinimums = [Infinity, Infinity, Infinity, Infinity];
+  for (let index = 0; index < positions.count; index += 1) {
+    const x = positions.getX(index);
+    const y = positions.getY(index);
+    const quadrant = (x >= 0 ? 2 : 0) + (y >= 0 ? 1 : 0);
+    quadrantMinimums[quadrant] = Math.min(
+      quadrantMinimums[quadrant],
+      positions.getZ(index),
+    );
+  }
+  quadrantMinimums.forEach((minimum, index) => {
+    expect(minimum).toBeCloseTo(extensions[index] / defaultParams.mockScale, 4);
+  });
+  wood.dispose();
+
+  const disabledHardware = createDiningTableHardwareGeometries({
+    ...defaultParams,
+    levelingFeetEnabled: 0,
+  });
+  expect(disabledHardware.feet).toHaveLength(0);
+  disabledHardware.plates.forEach((geometry) => geometry.dispose());
+  disabledHardware.channels.forEach((geometry) => geometry.dispose());
+  const disabledWood = createDiningTableWoodGeometry(
+    { ...defaultParams, levelingFeetEnabled: 0 },
+    model,
+  );
+  disabledWood.computeBoundingBox();
+  expect(disabledWood.boundingBox!.min.z).toBeCloseTo(0, 4);
+  disabledWood.dispose();
 });
 
 test("documents every Plate Table structural formula", () => {
@@ -250,6 +324,7 @@ test("documents every Plate Table structural formula", () => {
     "Tabletop torsional rigidity",
     "Tipping margin",
     "Floor rocking tolerance",
+    "Independent leveling feet",
     "Member stiffness",
     "Overall weighting and grades",
   ]) {
@@ -304,4 +379,26 @@ test("shows the Plate Table structural screen with transparent calculations", as
       Number(await structuralAssessment.getAttribute("data-overall-score")),
     )
     .toBeLessThan(baselineScore);
+});
+
+test("persists independent Plate Table leveling controls in the URL", async ({
+  page,
+}) => {
+  await page.goto("/?model=dining-table&unit=in");
+  const toggle = page.getByLabel("Independent leg leveling");
+  const leftFront = page.getByLabel("Left-front installed extension in inches");
+  await leftFront.fill("1");
+  await expect(page).toHaveURL(/levelingFootExtensionLeftFront=1(?:&|$)/);
+  await page.reload();
+  await expect(leftFront).toHaveValue("1");
+
+  const assessment = page.getByLabel("Structural wobble assessment");
+  const enabledScore = Number(await assessment.getAttribute("data-overall-score"));
+  await page.getByText("Independent leg leveling", { exact: true }).click();
+  await expect(toggle).not.toBeChecked();
+  await expect(leftFront).toHaveCount(0);
+  await expect(page).toHaveURL(/levelingFeetEnabled=0(?:&|$)/);
+  await expect
+    .poll(async () => Number(await assessment.getAttribute("data-overall-score")))
+    .toBeLessThan(enabledScore);
 });

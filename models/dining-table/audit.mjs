@@ -31,6 +31,25 @@ close(params.legGrooveHeight, 0.25 * inch, "post groove height");
 close(params.legGrooveDepth, 0.125 * inch, "post groove depth");
 close(params.legTopRoundoverRadius, 0.25 * inch, "leg top roundover");
 close(params.legBottomRoundoverRadius, 0.25 * inch, "leg bottom roundover");
+assert.equal(params.levelingFeetEnabled, 1, "independent leveling feet should be enabled by default");
+close(params.levelingFootPadDiameter, 1.5 * inch, "leveling-foot pad diameter");
+close(params.levelingFootPadThickness, 0.25 * inch, "leveling-foot pad thickness");
+close(params.levelingFootRodDiameter, 0.375 * inch, "leveling-foot rod diameter");
+close(params.levelingFootRodLength, 3 * inch, "leveling-foot rod length");
+for (const key of [
+  "levelingFootExtensionLeftFront",
+  "levelingFootExtensionLeftRear",
+  "levelingFootExtensionRightFront",
+  "levelingFootExtensionRightRear",
+]) {
+  close(params[key], 0.75 * inch, `${key} default extension`);
+  assert.ok(params[key] >= params.levelingFootPadThickness, `${key} must expose the whole pad`);
+  assert.ok(
+    params.levelingFootRodLength - (params[key] - params.levelingFootPadThickness) >=
+      Math.max(2 * params.levelingFootRodDiameter, inch),
+    `${key} must preserve threaded embedment`,
+  );
+}
 close(params.plateSize, 6 * inch, "plate size");
 close(params.plateThickness, 0.25 * inch, "plate thickness");
 close(params.plateEdgeInset, 0.5 * inch, "plate edge setback");
@@ -61,6 +80,8 @@ assert.ok(mockEnvelope[1] <= 256, "default mock width must fit a 256 mm bed");
 assert.ok(params.legTopRoundoverRadius / params.mockScale >= 0.3, "top post roundover must survive the default print scale");
 assert.ok(params.legBottomRoundoverRadius / params.mockScale >= 0.3, "bottom post roundover must survive the default print scale");
 assert.ok(params.legGrooveDepth / params.mockScale >= 0.3, "post groove must survive the default print scale");
+assert.ok(params.levelingFootPadThickness / params.mockScale >= 0.3, "foot pad must survive the default print scale");
+assert.ok(params.levelingFootRodDiameter / params.mockScale >= 0.3, "foot rod must survive the default print scale");
 
 const source = fs.readFileSync(path.join(root, "src/models/diningTable.ts"), "utf8");
 for (const required of [
@@ -73,6 +94,8 @@ for (const required of [
   "getDiningTableStructuralAssessment",
   "plateEngagementFactor",
   "channelTorsionFactor",
+  "getPlateTableLevelingFeetSpec",
+  "leveling-foot geometry",
 ]) {
   assert.ok(source.includes(required), `procedural source is missing ${required}`);
 }
@@ -80,6 +103,7 @@ for (const required of [
 for (const invariant of [
   "geometry-only structural screen",
   "increasing overall height cannot improve",
+  "all four pads on the floor reference",
 ]) {
   assert.ok(
     model.audit.invariants.some((entry) => entry.includes(invariant)),
@@ -99,6 +123,7 @@ for (const heading of [
   "Floor rocking tolerance",
   "Member stiffness",
   "Overall weighting and grades",
+  "Independent leveling feet",
 ]) {
   assert.ok(structuralSpec.includes(`### ${heading}`), `structural spec is missing ${heading}`);
 }

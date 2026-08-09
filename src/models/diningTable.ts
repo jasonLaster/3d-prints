@@ -327,6 +327,7 @@ function createLegGeometry(
   model: DiningTableModelDefinition,
   x: number,
   y: number,
+  bottomZ = 0,
 ) {
   const size = scaled(params, "legSize");
   const sharedRadius = Math.min(scaled(params, "legCornerRadius"), size / 2);
@@ -344,7 +345,7 @@ function createLegGeometry(
   ];
   cornerRadii[outerCornerIndex] = outerRadius;
   const thickness = scaled(params, "topThickness");
-  const height = scaled(params, "overallHeight") - thickness;
+  const height = scaled(params, "overallHeight") - thickness - bottomZ;
   const grooveEnabled = getParam(params, "legGrooveEnabled") >= 0.5;
   const grooveHeight = Math.min(
     scaled(params, "legGrooveHeight"),
@@ -381,8 +382,89 @@ function createLegGeometry(
     ),
     model.geometry.cornerSegments,
   );
-  geometry.translate(x, y, 0);
+  geometry.translate(x, y, bottomZ);
   return geometry;
+}
+
+const PLATE_TABLE_LEVELING_EXTENSION_KEYS = [
+  "levelingFootExtensionLeftFront",
+  "levelingFootExtensionLeftRear",
+  "levelingFootExtensionRightFront",
+  "levelingFootExtensionRightRear",
+] as const;
+
+type PlateTableLevelingFeetSpec = {
+  enabled: boolean;
+  padDiameter: number;
+  padThickness: number;
+  rodDiameter: number;
+  rodLength: number;
+  extensions: [number, number, number, number];
+  exposedRodLengths: [number, number, number, number];
+  embeddedRodLengths: [number, number, number, number];
+  minimumEmbedment: number;
+};
+
+function getPlateTableLevelingFeetSpec(
+  params: ModelParams,
+  applyMockScale: boolean,
+): PlateTableLevelingFeetSpec {
+  const divisor = applyMockScale ? getParam(params, "mockScale") : 1;
+  const enabled = getParam(params, "levelingFeetEnabled") >= 0.5;
+  const padDiameter = getParam(params, "levelingFootPadDiameter") / divisor;
+  const padThickness = getParam(params, "levelingFootPadThickness") / divisor;
+  const rodDiameter = getParam(params, "levelingFootRodDiameter") / divisor;
+  const rodLength = getParam(params, "levelingFootRodLength") / divisor;
+  const extensions = PLATE_TABLE_LEVELING_EXTENSION_KEYS.map((key) =>
+    enabled ? getParam(params, key) / divisor : 0,
+  ) as PlateTableLevelingFeetSpec["extensions"];
+  const exposedRodLengths = extensions.map((extension) =>
+    Math.max(0, extension - padThickness),
+  ) as PlateTableLevelingFeetSpec["exposedRodLengths"];
+  const embeddedRodLengths = exposedRodLengths.map(
+    (exposed) => rodLength - exposed,
+  ) as PlateTableLevelingFeetSpec["embeddedRodLengths"];
+  const minimumEmbedment = Math.max(rodDiameter * 2, 25.4 / divisor);
+  return {
+    enabled,
+    padDiameter,
+    padThickness,
+    rodDiameter,
+    rodLength,
+    extensions,
+    exposedRodLengths,
+    embeddedRodLengths,
+    minimumEmbedment,
+  };
+}
+
+function assertPlateTableLevelingFeet(
+  feet: PlateTableLevelingFeetSpec,
+  legSize: number,
+  bottomRoundover: number,
+) {
+  if (!feet.enabled) return;
+  const flatBottomWidth = legSize - 2 * bottomRoundover;
+  if (feet.padDiameter > legSize + EPSILON) {
+    throw new Error("Leveling-foot pads must fit beneath the square posts");
+  }
+  if (feet.rodDiameter > flatBottomWidth + EPSILON) {
+    throw new Error(
+      "Leveling-foot rods must enter the flat solid face inside the bottom roundover",
+    );
+  }
+  feet.extensions.forEach((extension, index) => {
+    if (extension < feet.padThickness - EPSILON) {
+      throw new Error(
+        `${PLATE_TABLE_LEVELING_EXTENSION_KEYS[index]} must include the full pad thickness`,
+      );
+    }
+    if (feet.embeddedRodLengths[index] < feet.minimumEmbedment - EPSILON) {
+      throw new Error(
+        `${PLATE_TABLE_LEVELING_EXTENSION_KEYS[index]} must retain positive threaded-rod embedment`,
+      );
+    }
+  });
 }
 
 function getLegCenters(params: ModelParams) {
@@ -407,10 +489,22 @@ export function createDiningTableWoodGeometry(
   if (model.id === "whisperer") {
     return createWhispererTableWoodGeometry(params);
   }
+  const levelingFeet = getPlateTableLevelingFeetSpec(params, true);
+  assertPlateTableLevelingFeet(
+    levelingFeet,
+    scaled(params, "legSize"),
+    scaled(params, "legBottomRoundoverRadius"),
+  );
   const geometries = [
     createTabletopGeometry(params, model),
-    ...getLegCenters(params).map((center) =>
-      createLegGeometry(params, model, center.x, center.y),
+    ...getLegCenters(params).map((center, index) =>
+      createLegGeometry(
+        params,
+        model,
+        center.x,
+        center.y,
+        levelingFeet.extensions[index],
+      ),
     ),
   ];
   const merged = mergeGeometries(geometries, false);
@@ -425,7 +519,7 @@ export function createDiningTableHardwareGeometries(
   params: ModelParams,
 ) {
   if (isWhispererParams(params)) {
-    return { plates: [], channels: [] };
+    return { plates: [], channels: [], feet: [] };
   }
   const scale = getParam(params, "mockScale");
   const length = getParam(params, "tableLength") / scale;
@@ -497,7 +591,48 @@ export function createDiningTableHardwareGeometries(
     );
     return geometry;
   });
-  return { plates, channels };
+  const levelingFeet = getPlateTableLevelingFeetSpec(params, true);
+  assertPlateTableLevelingFeet(
+    levelingFeet,
+    legSize,
+    scaled(params, "legBottomRoundoverRadius"),
+  );
+  const feet = levelingFeet.enabled
+    ? getLegCenters(params).map((center) => {
+        const pad = new THREE.CylinderGeometry(
+          levelingFeet.padDiameter / 2,
+          levelingFeet.padDiameter / 2,
+          levelingFeet.padThickness,
+          32,
+        );
+        pad.rotateX(Math.PI / 2);
+        pad.translate(
+          center.x,
+          center.y,
+          levelingFeet.padThickness / 2,
+        );
+        const rod = new THREE.CylinderGeometry(
+          levelingFeet.rodDiameter / 2,
+          levelingFeet.rodDiameter / 2,
+          levelingFeet.rodLength,
+          24,
+        );
+        rod.rotateX(Math.PI / 2);
+        rod.translate(
+          center.x,
+          center.y,
+          levelingFeet.padThickness + levelingFeet.rodLength / 2,
+        );
+        const geometry = mergeGeometries([pad, rod], false);
+        pad.dispose();
+        rod.dispose();
+        if (!geometry) {
+          throw new Error("Unable to merge Plate Table leveling-foot geometry");
+        }
+        return geometry;
+      })
+    : [];
+  return { plates, channels, feet };
 }
 
 export function getDiningTableDimensions(params: ModelParams): ModelDimensions {
@@ -703,6 +838,9 @@ function evaluatePlateTableStructure(
   const legEdgeInset = getParam(params, "legEdgeInset");
   const tableLength = getParam(params, "tableLength");
   const tableWidth = getParam(params, "tableWidth");
+  const bottomRoundover = getParam(params, "legBottomRoundoverRadius");
+  const levelingFeet = getPlateTableLevelingFeetSpec(params, false);
+  assertPlateTableLevelingFeet(levelingFeet, legSize, bottomRoundover);
   const heightFactor = PLATE_TABLE_STRUCTURAL_REFERENCE.height / height;
   const postBendingFactor = Math.min(
     1.8,
@@ -749,21 +887,37 @@ function evaluatePlateTableStructure(
     34 * plateEngagementFactor * heightFactor +
     18 * channelContribution;
 
-  const footprintLength = tableLength - 2 * legEdgeInset;
-  const footprintWidth = tableWidth - 2 * legEdgeInset;
+  const contactSize = levelingFeet.enabled
+    ? levelingFeet.padDiameter
+    : legSize;
+  const footprintLength =
+    tableLength - 2 * legEdgeInset - legSize + contactSize;
+  const footprintWidth =
+    tableWidth - 2 * legEdgeInset - legSize + contactSize;
   const controllingTippingRatio =
     Math.min(footprintLength, footprintWidth) / (2 * height);
   const tipping =
     20 + 80 * Math.min(1, controllingTippingRatio / 0.65);
 
-  const bottomRoundover = getParam(params, "legBottomRoundoverRadius");
   const flatFootFraction = Math.max(
     0,
     Math.min(1, (legSize - 2 * bottomRoundover) / legSize),
   );
-  const floorRocking = 52 + 20 * flatFootFraction;
+  const minimumEmbeddedRod = Math.min(...levelingFeet.embeddedRodLengths);
+  const embedmentFactor = levelingFeet.enabled
+    ? Math.max(
+        0,
+        Math.min(1, minimumEmbeddedRod / (4 * levelingFeet.rodDiameter)),
+      )
+    : 0;
+  const floorRocking = levelingFeet.enabled
+    ? 96 + 2 * embedmentFactor
+    : 52 + 20 * flatFootFraction;
 
-  const legSlenderness = legHeight / legSize;
+  const longestWoodPost = levelingFeet.enabled
+    ? legHeight - Math.min(...levelingFeet.extensions)
+    : legHeight;
+  const legSlenderness = longestWoodPost / legSize;
   const memberStiffness =
     100 -
     Math.max(0, legSlenderness - 7.5) * 4 -
@@ -856,16 +1010,29 @@ function evaluatePlateTableStructure(
       "floor-rocking",
       "Floor rocking tolerance",
       floorRocking,
-      "four fixed wood contacts · no independent leveling",
+      levelingFeet.enabled
+        ? `four independent contacts · ${formatLength(Math.min(...levelingFeet.extensions), "in")}–${formatLength(Math.max(...levelingFeet.extensions), "in")} installed range`
+        : "four fixed wood contacts · no independent leveling",
       {
-        rationale:
-          "Four fixed legs are statically over-constrained on an uneven floor. The flat portion left by each bottom round-over earns limited contact credit, but cannot substitute for adjustable feet or field shimming.",
-        formula:
-          "52 + 20 × clamp((legSize − 2 × bottomRoundover) ÷ legSize, 0, 1)",
+        rationale: levelingFeet.enabled
+          ? "Four threaded feet provide independent contact adjustment while the tabletop stays at its specified height. The score also checks the shortest remaining threaded embedment; it does not certify the insert, threads, or floor bearing capacity."
+          : "Four fixed legs are statically over-constrained on an uneven floor. The flat portion left by each bottom round-over earns limited contact credit, but cannot substitute for adjustable feet or field shimming.",
+        formula: levelingFeet.enabled
+          ? "96 + 2 × clamp(minimumEmbeddedRod ÷ (4 × rodDiameter), 0, 1)"
+          : "52 + 20 × clamp((legSize − 2 × bottomRoundover) ÷ legSize, 0, 1)",
         inputs: [
+          { key: "levelingFeetEnabled", label: "Independent leveling enabled", value: levelingFeet.enabled ? 1 : 0, format: "number", precision: 0 },
           { key: "legSize", label: "Square post size", value: legSize, format: "length" },
           { key: "legBottomRoundoverRadius", label: "Bottom round-over", value: bottomRoundover, format: "length" },
           { key: "flatFootFraction", label: "Derived flat-foot fraction", value: flatFootFraction, format: "number", precision: 3 },
+          ...(levelingFeet.enabled
+            ? [
+                ...PLATE_TABLE_LEVELING_EXTENSION_KEYS.map((key, index) => ({ key, label: `Installed extension ${index + 1}`, value: levelingFeet.extensions[index], format: "length" as const })),
+                { key: "levelingFootPadDiameter", label: "Pad diameter", value: levelingFeet.padDiameter, format: "length" as const },
+                { key: "levelingFootRodDiameter", label: "Rod diameter", value: levelingFeet.rodDiameter, format: "length" as const },
+                { key: "minimumEmbeddedRod", label: "Minimum embedded rod", value: minimumEmbeddedRod, format: "length" as const },
+              ]
+            : []),
         ],
       },
     ),
@@ -880,7 +1047,7 @@ function evaluatePlateTableStructure(
         formula:
           "100 − max(0, legSlenderness − 7.5) × 4 − max(0, widthSlenderness − 24) × 1.2 − max(0, lengthSlenderness − 48) × 0.45",
         inputs: [
-          { key: "legHeight", label: "Post height", value: legHeight, format: "length" },
+          { key: "legHeight", label: "Controlling wood-post height", value: longestWoodPost, format: "length" },
           { key: "legSize", label: "Square post size", value: legSize, format: "length" },
           { key: "legSlenderness", label: "Derived post slenderness", value: legSlenderness, format: "number", precision: 2, suffix: ":1" },
           { key: "topThickness", label: "Tabletop thickness", value: topThickness, format: "length" },
@@ -904,7 +1071,7 @@ function evaluatePlateTableStructure(
     overallGrade: plateTableStructuralGrade(overallScore),
     overallCalculation: {
       rationale:
-        "The Plate Table composite emphasizes the two apronless plate/post connection screens, followed by tabletop torsion. Tipping, fixed-floor contact, and member slenderness remain visible contributors without disguising the untested joint behavior.",
+        "The Plate Table composite emphasizes the two apronless plate/post connection screens, followed by tabletop torsion. Tipping, floor contact, and member slenderness remain visible contributors without disguising the untested joint behavior.",
       formula: metrics
         .map(
           (metric) =>
@@ -965,6 +1132,14 @@ export function getDiningTableParameterLimits(
   const width = getParam(params, "tableWidth");
   const thickness = getParam(params, "topThickness");
   const legSize = getParam(params, "legSize");
+  const feetEnabled = getParam(params, "levelingFeetEnabled") >= 0.5;
+  const padThickness = getParam(params, "levelingFootPadThickness");
+  const rodDiameter = getParam(params, "levelingFootRodDiameter");
+  const rodLength = getParam(params, "levelingFootRodLength");
+  const extensions = PLATE_TABLE_LEVELING_EXTENSION_KEYS.map((extensionKey) =>
+    getParam(params, extensionKey),
+  );
+  const minimumEmbedment = Math.max(rodDiameter * 2, 25.4);
 
   if (key === "topThickness") {
     limits.max = Math.min(limits.max, getParam(params, "overallHeight") / 4);
@@ -976,7 +1151,10 @@ export function getDiningTableParameterLimits(
       getParam(params, "plateThickness"),
     );
   } else if (key === "overallHeight") {
-    limits.min = Math.max(limits.min, thickness + legSize * 2);
+    limits.min = Math.max(
+      limits.min,
+      thickness + legSize * 2 + (feetEnabled ? Math.max(...extensions) : 0),
+    );
   } else if (key === "tabletopCornerRadius") {
     limits.max = Math.min(limits.max, Math.min(length, width) / 2);
   } else if (key === "topRoundoverRadius" || key === "bottomRoundoverRadius") {
@@ -987,6 +1165,9 @@ export function getDiningTableParameterLimits(
       limits.min,
       getParam(params, "legCornerRadius") * 2,
       getParam(params, "legOuterCornerRadius") * 2,
+      ...(feetEnabled
+        ? [rodDiameter + 2 * getParam(params, "legBottomRoundoverRadius")]
+        : []),
     );
   } else if (
     key === "legCornerRadius" ||
@@ -1008,6 +1189,9 @@ export function getDiningTableParameterLimits(
       limits.max,
       legSize / 2,
       key === "legBottomRoundoverRadius" ? legHeight / 2 : legHeight - reservedHeight,
+      ...(key === "legBottomRoundoverRadius" && feetEnabled
+        ? [(legSize - rodDiameter) / 2]
+        : []),
     );
   } else if (key === "legGrooveHeight") {
     limits.max = Math.min(
@@ -1033,6 +1217,32 @@ export function getDiningTableParameterLimits(
     limits.max = Math.min(limits.max, legSize - limits.step);
   } else if (key === "plateThickness" || key === "channelDepth") {
     limits.max = Math.min(limits.max, thickness);
+  } else if (key === "levelingFootPadDiameter") {
+    limits.max = Math.min(limits.max, legSize);
+    limits.min = Math.max(limits.min, rodDiameter);
+  } else if (key === "levelingFootPadThickness") {
+    limits.max = Math.min(limits.max, ...extensions);
+  } else if (key === "levelingFootRodDiameter") {
+    limits.max = Math.min(
+      limits.max,
+      legSize - 2 * getParam(params, "legBottomRoundoverRadius"),
+      getParam(params, "levelingFootPadDiameter"),
+    );
+  } else if (key === "levelingFootRodLength") {
+    limits.min = Math.max(
+      limits.min,
+      Math.max(...extensions) - padThickness + minimumEmbedment,
+    );
+  } else if (
+    PLATE_TABLE_LEVELING_EXTENSION_KEYS.includes(
+      key as (typeof PLATE_TABLE_LEVELING_EXTENSION_KEYS)[number],
+    )
+  ) {
+    limits.min = Math.max(limits.min, padThickness);
+    limits.max = Math.min(
+      limits.max,
+      padThickness + rodLength - minimumEmbedment,
+    );
   } else if (key === "channelLength") {
     limits.max = Math.min(limits.max, width - 2 * getParam(params, "legEdgeInset"));
   } else if (key.startsWith("channelPosition")) {
@@ -1067,6 +1277,7 @@ export function getDiningTableAuditValue(
   const bottomRadius = getParam(params, "bottomRoundoverRadius");
   const flatBand = topThickness - topRadius - bottomRadius;
   const dimensions = getDiningTableDimensions(params);
+  const levelingFeet = getPlateTableLevelingFeetSpec(params, false);
   switch (check.key) {
     case "tableEnvelope":
       return item(
@@ -1106,6 +1317,17 @@ export function getDiningTableAuditValue(
           .map((index) => formatLength(getParam(params, `channelPosition${index}`), unit))
           .join(" · "),
       );
+    case "levelingFeet": {
+      if (!levelingFeet.enabled) {
+        return item(check.label, "Disabled; wood posts contact the floor", "warn");
+      }
+      const minimumEmbeddedRod = Math.min(...levelingFeet.embeddedRodLengths);
+      return item(
+        check.label,
+        `4 independent extensions ${levelingFeet.extensions.map((extension) => formatLength(extension, unit)).join(" · ")}; ${formatLength(levelingFeet.padDiameter, unit)} pads · ${formatLength(levelingFeet.rodDiameter, unit)} rods · ${formatLength(minimumEmbeddedRod, unit)} minimum embedded`,
+        minimumEmbeddedRod >= levelingFeet.minimumEmbedment ? "pass" : "warn",
+      );
+    }
     case "printEnvelope":
       return item(
         check.label,
@@ -1119,6 +1341,12 @@ export function getDiningTableAuditValue(
         getParam(params, "plateThickness") / scale,
         ...(getParam(params, "legGrooveEnabled") >= 0.5
           ? [getParam(params, "legGrooveDepth") / scale]
+          : []),
+        ...(levelingFeet.enabled
+          ? [
+              levelingFeet.padThickness / scale,
+              levelingFeet.rodDiameter / scale,
+            ]
           : []),
       );
       return item(

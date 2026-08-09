@@ -5,7 +5,7 @@ This document defines the product and engineering contract for the 3D Prints app
 ## Plate Table
 
 - Fully parametric 76 × 38 × 30 in apronless table with a separate print-scale denominator.
-- Rounded tabletop and leg geometry, separately adjustable outer and other-three post corner radii, an optional post-top groove/rabbet with its top roundover moved below the recessed band, a separate bottom post roundover, four inset corner plates, and exactly three recessed C-channels are generated from numeric parameters.
+- Rounded tabletop and leg geometry, separately adjustable outer and other-three post corner radii, an optional post-top groove/rabbet with its top roundover moved below the recessed band, a separate bottom post roundover, four independently adjustable leveling feet, four inset corner plates, and exactly three recessed C-channels are generated from numeric parameters.
 - The default 1:10 mock is approximately 193 × 97 × 76 mm.
 - See `docs/dining-table-audit-specifications.md` for the construction and audit contract.
 
@@ -161,7 +161,7 @@ X-Hover Dining Table:
 
 - Export downloads the current generated STL, not the untouched source STL.
 - Export file names include the model export prefix and active parameter values.
-- Dining Table export downloads same-origin `support-free-wood-color-1` and `support-free-hardware-color-2` STL files, flipped with the tabletop on the build plate and legs upward; the hardware file contains all four plates and three C-channels for multipart slicer import.
+- Plate Table export downloads same-origin `support-free-wood-color-1` and `support-free-hardware-color-2` STL files, flipped with the tabletop on the build plate and legs upward; the hardware file contains all four plates, three C-channels, and four independent leveling feet for multipart slicer import.
 - The paper towel export includes the flush weighted center tube floor and rounded weighted center tube top.
 - The generated STL snapshot used by Save/Fork follows the same geometry as Export.
 - Simple Box provides a separate lid export whose registration skirt uses the same wall-derived clearance contract as stacking.

@@ -158,6 +158,19 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "hoverPrintEnvelope",
     ],
   };
+  const modelSpecificCheckKeys: Record<string, string[]> = {
+    "dining-table": [
+      "tableEnvelope",
+      "tabletopProfile",
+      "legGeometry",
+      "legEndRoundovers",
+      "levelingFeet",
+      "cornerPlates",
+      "channelLayout",
+      "printEnvelope",
+      "minimumMockFeature",
+    ],
+  };
 
   for (const entry of catalog.models) {
     expect(catalogIds.has(entry.id)).toBe(false);
@@ -178,7 +191,9 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
     expect(model.audit.toleranceMm).toBeLessThanOrEqual(1);
     expect(model.audit.dimensionTargets.length).toBeGreaterThanOrEqual(4);
     expect(model.audit.invariants.length).toBeGreaterThanOrEqual(5);
-    expect(checkKeys).toEqual(expectedCheckKeys[model.viewer]);
+    expect(checkKeys).toEqual(
+      modelSpecificCheckKeys[model.id] ?? expectedCheckKeys[model.viewer],
+    );
 
     for (const parameter of model.parameters) {
       expect(parameter.key).toMatch(/^[a-z][a-zA-Z0-9]*$/);

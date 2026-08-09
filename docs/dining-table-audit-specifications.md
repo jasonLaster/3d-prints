@@ -12,15 +12,16 @@ The Plate Table model is a parametric construction mock of the solid-oak apronle
 - An optional post-top groove/rabbet, enabled by default at 1/4 in high × 1/8 in deep
 - With the groove enabled, the 1/4 in top roundover sits below the recessed band and forms its rounded lower shoulder; with it disabled, that roundover returns to the post's top edge
 - A 1/4 in horizontal edge roundover at the bottom of each post
+- Four 1 1/2 in diameter threaded leveling pads, each independently installed at 3/4 in by default; each wood post is shortened by its own installed extension so all pads share the floor plane while finished tabletop height remains 30 in
 - Four 6 × 6 × 1/4 in flush corner plates, set 1/2 in back from both tabletop edges so they disappear in side elevation
 - Three flush C-channels centered 16, 38, and 60 in from one end
 - Default printable mock scale: 1:10
 
-The default 1:10 mock is approximately 193 × 97 × 76 mm.
+The default 1:10 mock is approximately 193 × 97 × 76 mm overall.
 
 ## Source-of-truth boundary
 
-The procedural geometry controls dimensions, counts, and placement. The independent post corner is mirrored to face outward at all four table corners. The post-top groove is part of the solid geometry and can be switched off without changing the overall table height. Oak grain and blackened steel are render materials only and must never change the model geometry. The two-color export produces a wood STL for color 1 and a registered hardware STL containing all four plates and three C-channels for color 2. Both files are flipped into the same support-free print orientation, with the tabletop top face on the build plate and the legs extending upward.
+The procedural geometry controls dimensions, counts, and placement. The independent post corner is mirrored to face outward at all four table corners. The post-top groove is part of the solid geometry and can be switched off without changing the overall table height. Each enabled leveling foot has an independent installed extension; its corresponding wood post shortens by that amount, keeping the tabletop level and all four pad bottoms on the common floor reference. Oak grain and blackened steel are render materials only and must never change the model geometry. The two-color export produces a wood STL for color 1 and a registered hardware STL containing all four plates, three C-channels, and four leveling feet for color 2. Both files are flipped into the same support-free print orientation, with the tabletop top face on the build plate and the legs extending upward.
 
 ## Print caveat
 
@@ -58,9 +59,15 @@ The smaller half-footprint-to-height ratio controls. Leg edge inset shrinks both
 
 ### Floor rocking tolerance
 
-`52 + 20 × clamp((legSize − 2 × bottomRoundover) ÷ legSize, 0, 1)`
+With leveling enabled: `96 + 2 × clamp(minimumEmbeddedRod ÷ (4 × rodDiameter), 0, 1)`
 
-The four fixed wood contacts are statically over-constrained on a non-planar floor. A larger flat area at each post earns limited contact credit, but fixed posts cannot independently level themselves. Field shimming or a future adjustable-foot design remains necessary when the floor is not flat.
+With leveling disabled: `52 + 20 × clamp((legSize − 2 × bottomRoundover) ÷ legSize, 0, 1)`
+
+### Independent leveling feet
+
+Four threaded feet adjust independently. Each installed extension includes the pad thickness plus exposed rod, and the corresponding wood post shortens by exactly that extension. The tabletop stays at the selected finished height and each pad bottom stays on the common floor plane. The live limits require the pad to fit under the post, the rod to enter the flat face inside the bottom roundover, and at least the greater of two rod diameters or 1 in of rod embedment. The score is a geometry check, not certification of the threaded insert, threads, pullout strength, or floor bearing.
+
+When leveling is disabled, the four fixed wood contacts are statically over-constrained on a non-planar floor. A larger flat area at each post earns limited contact credit, but fixed posts cannot independently level themselves; field shimming is then necessary when the floor is not flat.
 
 ### Member stiffness
 

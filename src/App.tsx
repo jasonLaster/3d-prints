@@ -303,6 +303,10 @@ const PARAM_QUERY_KEYS = [
   "levelingFootRodDiameter",
   "levelingFootRodLength",
   "levelingFootExtension",
+  "levelingFootExtensionLeftFront",
+  "levelingFootExtensionLeftRear",
+  "levelingFootExtensionRightFront",
+  "levelingFootExtensionRightRear",
   "topSupportStyle",
   "bottomSupportStyle",
   "syncCrossbarDimensions",
@@ -387,6 +391,16 @@ const OPTION_PARAM_KEYS = new Set([
 const LEG_GROOVE_PARAM_KEYS = new Set([
   "legGrooveHeight",
   "legGrooveDepth",
+]);
+const PLATE_LEVELING_FOOT_PARAM_KEYS = new Set([
+  "levelingFootPadDiameter",
+  "levelingFootPadThickness",
+  "levelingFootRodDiameter",
+  "levelingFootRodLength",
+  "levelingFootExtensionLeftFront",
+  "levelingFootExtensionLeftRear",
+  "levelingFootExtensionRightFront",
+  "levelingFootExtensionRightRear",
 ]);
 const DIVIDER_PARAM_KEYS = new Set([
   "dividerCount",
@@ -1218,6 +1232,11 @@ const HolderViewer = forwardRef<
         mesh.name = `${model.id}-channel-${index + 1}`;
         diningHardwareGroup.add(mesh);
       });
+      hardware.feet.forEach((geometry, index) => {
+        const mesh = new THREE.Mesh(geometry, diningMetalMaterial);
+        mesh.name = `${model.id}-leveling-foot-${index + 1}`;
+        diningHardwareGroup.add(mesh);
+      });
       updateDiningTableGuide(guideMesh, latestParamsRef.current);
     } else if (model.viewer === "hover-dining-table-v1") {
       if (!hoverHardwareGroup || !hoverExplodedGroup || !diningMetalMaterial) {
@@ -1562,25 +1581,35 @@ const HolderViewer = forwardRef<
     const hardware = createDiningTableHardwareGeometries(
       latestParamsRef.current,
     );
-    const sourceGeometries = [...hardware.plates, ...hardware.channels];
+    const sources = [
+      ...hardware.plates.map((geometry, index) => ({
+        geometry,
+        name: `${model.id}-plate-${index + 1}`,
+      })),
+      ...hardware.channels.map((geometry, index) => ({
+        geometry,
+        name: `${model.id}-c-channel-${index + 1}`,
+      })),
+      ...hardware.feet.map((geometry, index) => ({
+        geometry,
+        name: `${model.id}-leveling-foot-${index + 1}`,
+      })),
+    ];
     const group = new THREE.Group();
     const printHeight = getModelDimensions(
       model,
       latestParamsRef.current,
     ).height;
-    const meshes = sourceGeometries.map((geometry, index) => {
+    const meshes = sources.map(({ geometry, name }) => {
       const mesh = new THREE.Mesh(createCleanExportGeometry(geometry));
-      mesh.name =
-        index < hardware.plates.length
-          ? `${model.id}-plate-${index + 1}`
-          : `${model.id}-c-channel-${index - hardware.plates.length + 1}`;
+      mesh.name = name;
       orientDiningTableForSupportFreePrint(mesh, printHeight);
       group.add(mesh);
       return mesh;
     });
     group.updateMatrixWorld(true);
     const result = new STLExporter().parse(group, { binary: true });
-    sourceGeometries.forEach((geometry) => geometry.dispose());
+    sources.forEach(({ geometry }) => geometry.dispose());
     meshes.forEach((mesh) => mesh.geometry.dispose());
     return new Blob([result], { type: "model/stl" });
   }, [model]);
@@ -2104,6 +2133,11 @@ const HolderViewer = forwardRef<
           hardware.channels.forEach((geometry, index) => {
             const mesh = new THREE.Mesh(geometry, diningMetalMaterial);
             mesh.name = `${model.id}-channel-${index + 1}`;
+            hardwareGroup.add(mesh);
+          });
+          hardware.feet.forEach((geometry, index) => {
+            const mesh = new THREE.Mesh(geometry, diningMetalMaterial);
+            mesh.name = `${model.id}-leveling-foot-${index + 1}`;
             hardwareGroup.add(mesh);
           });
           scene.add(hardwareGroup);
@@ -3223,6 +3257,29 @@ function PostGrooveToggle({
         {checked
           ? "The recessed band meets a rounded lower shoulder below the tabletop."
           : "The top roundover returns to the post edge with no recessed band."}
+      </small>
+    </div>
+  );
+}
+
+function PlateLevelingFeetToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="gridfinity-option">
+      <OriginalOverlayToggle
+        checked={checked}
+        label="Independent leg leveling"
+        onChange={onChange}
+      />
+      <small>
+        {checked
+          ? "Four threaded feet adjust independently while the tabletop height stays fixed."
+          : "Wood posts contact the floor directly."}
       </small>
     </div>
   );
@@ -5652,6 +5709,14 @@ export default function App({
                           }
                         />
                       ) : null}
+                      {Number.isFinite(params.levelingFeetEnabled) ? (
+                        <PlateLevelingFeetToggle
+                          checked={params.levelingFeetEnabled >= 0.5}
+                          onChange={(checked) =>
+                            updateParam("levelingFeetEnabled", checked ? 1 : 0)
+                          }
+                        />
+                      ) : null}
                     </>
                   ) : null}
                   {model.viewer === "hover-dining-table-v1" ? (
@@ -5669,6 +5734,14 @@ export default function App({
                         Number.isFinite(params.legGrooveEnabled) &&
                         params.legGrooveEnabled < 0.5 &&
                         LEG_GROOVE_PARAM_KEYS.has(parameter.key)
+                      ) {
+                        return false;
+                      }
+                      if (
+                        model.viewer === "dining-table-v1" &&
+                        Number.isFinite(params.levelingFeetEnabled) &&
+                        params.levelingFeetEnabled < 0.5 &&
+                        PLATE_LEVELING_FOOT_PARAM_KEYS.has(parameter.key)
                       ) {
                         return false;
                       }
