@@ -1623,7 +1623,11 @@ const HolderViewer = forwardRef<
       return;
     }
     const fileName = getExportFileName(model, latestParamsRef.current);
-    if (model.viewer === "dining-table-v1" && model.id !== "whisperer") {
+    if (
+      model.viewer === "dining-table-v1" &&
+      (model.id !== "whisperer" ||
+        getParam(latestParamsRef.current, "levelingFeetEnabled") >= 0.5)
+    ) {
       const hardwareBlob = createDiningTableHardwareStlBlob();
       downloadBlob(
         blob,
@@ -3544,37 +3548,37 @@ const WHISPERER_STRUCTURAL_REFERENCES: Record<
   overall: {
     label: "Overall structural score",
     specAnchor: "overall-weighting-and-grades",
-    sourceLines: "L639-L691",
+    sourceLines: "L749-L801",
   },
   "longitudinal-racking": {
     label: "Long-apron racking",
     specAnchor: "long-apron-racking",
-    sourceLines: "L449-L539",
+    sourceLines: "L527-L634",
   },
   "end-box-racking": {
     label: "Side-frame racking",
     specAnchor: "side-frame-racking",
-    sourceLines: "L453-L559",
+    sourceLines: "L531-L654",
   },
   torsion: {
     label: "Apron-frame torsion",
     specAnchor: "apron-frame-torsion",
-    sourceLines: "L467-L579",
+    sourceLines: "L545-L674",
   },
   tipping: {
     label: "Splayed-foot tipping margin",
     specAnchor: "splayed-foot-tipping-margin",
-    sourceLines: "L487-L598",
+    sourceLines: "L565-L695",
   },
   "floor-rocking": {
     label: "Floor rocking tolerance",
     specAnchor: "floor-rocking-tolerance",
-    sourceLines: "L497-L617",
+    sourceLines: "L583-L727",
   },
   "member-stiffness": {
     label: "Member stiffness",
     specAnchor: "member-stiffness",
-    sourceLines: "L505-L638",
+    sourceLines: "L599-L748",
   },
 };
 
@@ -4566,7 +4570,9 @@ function WorkspaceActionsMenu({
             <div className="workspace-menu-group">
               <button className="primary-action" onClick={onExport} type="button">
                 <Download aria-hidden="true" />
-                {model.viewer === "dining-table-v1" && model.id !== "whisperer"
+                {model.viewer === "dining-table-v1" &&
+                (model.id !== "whisperer" ||
+                  getParam(params, "levelingFeetEnabled") >= 0.5)
                   ? "Export two-color STLs"
                   : "Export"}
               </button>
@@ -5170,6 +5176,26 @@ export default function App({
           ),
         ),
       };
+      if (
+        model.id === "whisperer" &&
+        key === "levelingFeetEnabled" &&
+        next.levelingFeetEnabled >= 0.5
+      ) {
+        for (const footKey of [
+          "levelingFootPadThickness",
+          "levelingFootRodDiameter",
+          "levelingFootExtension",
+          "levelingFootRodLength",
+          "levelingFootExtension",
+        ]) {
+          const footLimits = getParameterLimits(model, next, footKey);
+          next[footKey] = clamp(
+            next[footKey],
+            footLimits.min,
+            footLimits.max,
+          );
+        }
+      }
       if (model.viewer === "hover-dining-table-v1") {
         if (key === "levelingFeetEnabled" && next.levelingFeetEnabled >= 0.5) {
           const radiusLimits = getParameterLimits(
@@ -5764,6 +5790,15 @@ export default function App({
                         onChange={(value) => updateParam("mockScale", value)}
                         value={getParam(params, "mockScale")}
                       />
+                      {model.id === "whisperer" ? (
+                        <OriginalOverlayToggle
+                          checked={getParam(params, "levelingFeetEnabled") >= 0.5}
+                          label="Use independent leveling feet"
+                          onChange={(checked) =>
+                            updateParam("levelingFeetEnabled", checked ? 1 : 0)
+                          }
+                        />
+                      ) : null}
                       {Number.isFinite(params.legGrooveEnabled) ? (
                         <PostGrooveToggle
                           checked={params.legGrooveEnabled >= 0.5}

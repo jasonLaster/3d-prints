@@ -536,6 +536,8 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "Side-frame racking",
     "Apron-frame torsion",
     "Splayed-foot tipping margin",
+    "four independently adjustable leveling feet",
+    "registered support-free wood and hardware STLs",
     "full-size corner mock",
     "physical result overrides this screen",
   ]) {

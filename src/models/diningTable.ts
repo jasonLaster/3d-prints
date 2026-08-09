@@ -4,6 +4,7 @@ import { formatLength } from "../units";
 import { getParam, getParameter } from "./shared";
 import {
   createWhispererTableWoodGeometry,
+  createWhispererTableHardwareGeometries,
   getWhispererTableAuditValue,
   getWhispererTableParameterLimits,
   getWhispererTableStructuralAssessment,
@@ -519,7 +520,11 @@ export function createDiningTableHardwareGeometries(
   params: ModelParams,
 ) {
   if (isWhispererParams(params)) {
-    return { plates: [], channels: [], feet: [] };
+    return {
+      plates: [],
+      channels: [],
+      feet: createWhispererTableHardwareGeometries(params).feet,
+    };
   }
   const scale = getParam(params, "mockScale");
   const length = getParam(params, "tableLength") / scale;

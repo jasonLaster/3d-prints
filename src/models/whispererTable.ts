@@ -217,8 +217,22 @@ function scaled(params: ModelParams, key: string) {
   return getParam(params, key) / getParam(params, "mockScale");
 }
 
-function getWhispererLegHeight(params: ModelParams) {
+function getWhispererTopBottom(params: ModelParams) {
   return scaled(params, "overallHeight") - scaled(params, "topThickness");
+}
+
+function whispererLevelingFeetEnabled(params: ModelParams) {
+  return getParam(params, "levelingFeetEnabled") >= 0.5;
+}
+
+function getWhispererWoodBottom(params: ModelParams) {
+  return whispererLevelingFeetEnabled(params)
+    ? scaled(params, "levelingFootExtension")
+    : 0;
+}
+
+function getWhispererLegHeight(params: ModelParams) {
+  return getWhispererTopBottom(params) - getWhispererWoodBottom(params);
 }
 
 function createWhispererTopGeometry(params: ModelParams) {
@@ -234,20 +248,20 @@ function createWhispererTopGeometry(params: ModelParams) {
     length / 2 - EPSILON,
     width / 2 - EPSILON,
   );
-  const legHeight = getWhispererLegHeight(params);
+  const topBottom = getWhispererTopBottom(params);
   const innerLength = length - bevelInset * 2;
   const innerWidth = width - bevelInset * 2;
   return createLoftGeometry([
     {
-      z: legHeight,
+      z: topBottom,
       points: rectanglePoints(innerLength, innerWidth),
     },
     {
-      z: legHeight + thickness - edgeThickness,
+      z: topBottom + thickness - edgeThickness,
       points: rectanglePoints(length, width),
     },
     {
-      z: legHeight + thickness,
+      z: topBottom + thickness,
       points: rectanglePoints(length, width),
     },
   ]);
@@ -263,6 +277,7 @@ function createWhispererLegGeometry(
   const footWidth = scaled(params, "legFootWidth");
   const thickness = scaled(params, "legThickness");
   const footChamfer = scaled(params, "legFootChamfer");
+  const woodBottom = getWhispererWoodBottom(params);
   const topCenterX = xSign * scaled(params, "longApronLength") / 2;
   const bottomCenterX =
     topCenterX + xSign * height * Math.tan(LEG_SPLAY_RADIANS);
@@ -270,7 +285,7 @@ function createWhispererLegGeometry(
 
   return createLoftGeometry([
     {
-      z: 0,
+      z: woodBottom,
       centerX: bottomCenterX,
       centerY,
       points: chamferedRectanglePoints(
@@ -280,7 +295,7 @@ function createWhispererLegGeometry(
       ),
     },
     {
-      z: height,
+      z: woodBottom + height,
       centerX: topCenterX,
       centerY,
       points: chamferedRectanglePoints(topWidth, thickness, EPSILON),
@@ -313,7 +328,7 @@ function createLongApronGeometry(params: ModelParams, ySign: -1 | 1) {
     length,
     apronCrossSection(thickness, height, thickness / 2),
   );
-  geometry.translate(0, y, getWhispererLegHeight(params) - height);
+  geometry.translate(0, y, getWhispererTopBottom(params) - height);
   return geometry;
 }
 
@@ -341,8 +356,59 @@ function createSideApronGeometry(params: ModelParams, xSign: -1 | 1) {
       ),
   );
   const geometry = createPrismAlongY(length, crossSection);
-  geometry.translate(topCenter, 0, getWhispererLegHeight(params) - height);
+  geometry.translate(topCenter, 0, getWhispererTopBottom(params) - height);
   return geometry;
+}
+
+function createWhispererLevelingFootGeometry(
+  params: ModelParams,
+  xSign: -1 | 1,
+  ySign: -1 | 1,
+) {
+  const scale = getParam(params, "mockScale");
+  const padDiameter = getParam(params, "levelingFootPadDiameter") / scale;
+  const padThickness = getParam(params, "levelingFootPadThickness") / scale;
+  const rodDiameter = getParam(params, "levelingFootRodDiameter") / scale;
+  const rodLength = getParam(params, "levelingFootRodLength") / scale;
+  const woodHeight = getWhispererLegHeight(params);
+  const centerX =
+    xSign * scaled(params, "longApronLength") / 2 +
+    xSign * woodHeight * Math.tan(LEG_SPLAY_RADIANS);
+  const centerY = ySign * scaled(params, "sideApronLength") / 2;
+  const pad = new THREE.CylinderGeometry(
+    padDiameter / 2,
+    padDiameter / 2,
+    padThickness,
+    32,
+  );
+  pad.rotateX(Math.PI / 2);
+  pad.translate(centerX, centerY, padThickness / 2);
+  const rod = new THREE.CylinderGeometry(
+    rodDiameter / 2,
+    rodDiameter / 2,
+    rodLength,
+    24,
+  );
+  rod.rotateX(Math.PI / 2);
+  rod.translate(centerX, centerY, padThickness + rodLength / 2);
+  const geometry = mergeGeometries([pad, rod], false);
+  pad.dispose();
+  rod.dispose();
+  if (!geometry) throw new Error("Unable to merge Whisperer leveling foot");
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+export function createWhispererTableHardwareGeometries(params: ModelParams) {
+  if (!whispererLevelingFeetEnabled(params)) return { feet: [] };
+  return {
+    feet: ([-1, 1] as const).flatMap((xSign) =>
+      ([-1, 1] as const).map((ySign) =>
+        createWhispererLevelingFootGeometry(params, xSign, ySign),
+      ),
+    ),
+  };
 }
 
 export function isWhispererParams(params: ModelParams) {
@@ -428,13 +494,25 @@ function evaluateWhispererTableStructure(
   const legFootWidth = getParam(params, "legFootWidth");
   const legThickness = getParam(params, "legThickness");
   const legFootChamfer = getParam(params, "legFootChamfer");
+  const levelingFeetEnabled = whispererLevelingFeetEnabled(params);
+  const levelingFootPadDiameter = getParam(
+    params,
+    "levelingFootPadDiameter",
+  );
+  const levelingFootRodDiameter = getParam(
+    params,
+    "levelingFootRodDiameter",
+  );
+  const levelingFootExtension = levelingFeetEnabled
+    ? getParam(params, "levelingFootExtension")
+    : 0;
   const longApronLength = getParam(params, "longApronLength");
   const longApronHeight = getParam(params, "longApronHeight");
   const sideApronLength = getParam(params, "sideApronLength");
   const sideApronHeight = getParam(params, "sideApronHeight");
   const apronThickness = getParam(params, "apronThickness");
   const apronSetback = getParam(params, "apronSetback");
-  const legHeight = height - topThickness;
+  const legHeight = height - topThickness - levelingFootExtension;
   const heightFactor = WHISPERER_STRUCTURAL_REFERENCE.height / height;
   const legSectionFactor = Math.sqrt(
     (legTopWidth * legThickness) /
@@ -485,8 +563,16 @@ function evaluateWhispererTableStructure(
     18 * topTorsionFactor;
 
   const splayRun = legHeight * Math.tan(LEG_SPLAY_RADIANS);
-  const footprintLength = longApronLength + 2 * splayRun + legFootWidth;
-  const footprintWidth = sideApronLength + legThickness;
+  const contactDiameter = levelingFeetEnabled
+    ? levelingFootPadDiameter
+    : 0;
+  const footprintLength =
+    longApronLength +
+    2 * splayRun +
+    (levelingFeetEnabled ? contactDiameter : legFootWidth);
+  const footprintWidth =
+    sideApronLength +
+    (levelingFeetEnabled ? contactDiameter : legThickness);
   const controllingTippingRatio = Math.min(
     footprintLength / (2 * height),
     footprintWidth / (2 * height),
@@ -500,7 +586,16 @@ function evaluateWhispererTableStructure(
     nominalFootArea - 2 * legFootChamfer ** 2,
   );
   const flatFootFraction = flatFootArea / nominalFootArea;
-  const floorRocking = 52 + 20 * flatFootFraction;
+  const rodEntryClearance =
+    Math.min(legFootWidth, legThickness) / 2 - levelingFootRodDiameter / 2;
+  const floorRocking = levelingFeetEnabled
+    ? 96 +
+      2 *
+        Math.max(
+          0,
+          Math.min(1, rodEntryClearance / levelingFootRodDiameter),
+        )
+    : 52 + 20 * flatFootFraction;
 
   const averageLegWidth = (legTopWidth + legFootWidth) / 2;
   const legSlenderness = legHeight / Math.sqrt(averageLegWidth * legThickness);
@@ -584,13 +679,15 @@ function evaluateWhispererTableStructure(
       `controlling half-footprint / height ${controllingTippingRatio.toFixed(2)}`,
       {
         rationale:
-          "The support polygon uses the actual longitudinal 15-degree splay and the crosswise foot spacing. Its smaller half-footprint-to-height ratio controls. This is static geometry, not a safe-load prediction for sitting, leaning, or climbing.",
+          "The support polygon uses the actual longitudinal 15-degree splay and the crosswise contact spacing. Adjustable pads replace the wood-foot extents when enabled. The smaller half-footprint-to-height ratio controls; this is not a safe-load prediction for sitting, leaning, or climbing.",
         formula:
           "20 + 80 × min(1, min(footprintLength ÷ 2 ÷ height, footprintWidth ÷ 2 ÷ height) ÷ 0.65)",
         inputs: [
           { key: "overallHeight", label: "Overall height", value: height, format: "length" },
+          { key: "floorContactSystem", label: "Floor-contact system", value: levelingFeetEnabled ? "independent leveling pads" : "fixed wood feet", format: "choice" },
           { key: "legSplayDegrees", label: "Fixed leg splay", value: 15, format: "number", precision: 0, suffix: "°" },
           { key: "splayRun", label: "Derived longitudinal splay run", value: splayRun, format: "length" },
+          { key: "contactDiameter", label: "Controlling contact width", value: levelingFeetEnabled ? contactDiameter : Math.min(legFootWidth, legThickness), format: "length" },
           { key: "footprintLength", label: "Contact footprint length", value: footprintLength, format: "length" },
           { key: "footprintWidth", label: "Contact footprint width", value: footprintWidth, format: "length" },
         ],
@@ -600,19 +697,32 @@ function evaluateWhispererTableStructure(
       "floor-rocking",
       "Floor rocking tolerance",
       floorRocking,
-      `four fixed chamfered wood contacts · ${(flatFootFraction * 100).toFixed(0)}% nominal foot area`,
+      levelingFeetEnabled
+        ? `four independently adjustable pads · ${formatLength(rodEntryClearance, "in")} minimum rod-entry clearance`
+        : `four fixed chamfered wood contacts · ${(flatFootFraction * 100).toFixed(0)}% nominal foot area`,
       {
-        rationale:
-          "Four fixed legs are statically over-constrained on an uneven floor. Chamfered feet retain most of their nominal contact area, but cannot independently level themselves; the finished table may still need field shimming.",
-        formula:
-          "52 + 20 × clamp((footWidth × footThickness − 2 × chamfer²) ÷ (footWidth × footThickness), 0, 1)",
-        inputs: [
-          { key: "legFootWidth", label: "Foot width", value: legFootWidth, format: "length" },
-          { key: "legThickness", label: "Foot thickness", value: legThickness, format: "length" },
-          { key: "legFootChamfer", label: "Foot corner chamfer", value: legFootChamfer, format: "length" },
-          { key: "flatFootArea", label: "Derived flat contact area", value: flatFootArea, format: "number", precision: 0, suffix: " mm²" },
-          { key: "flatFootFraction", label: "Derived contact fraction", value: flatFootFraction, format: "number", precision: 3 },
-        ],
+        rationale: levelingFeetEnabled
+          ? "Four independently adjustable corner pads can be brought onto one plane, so the score no longer depends on a perfectly flat floor. The small final term rewards clearance around the centered threaded-rod entry; adjuster travel, insert capacity, floor friction, and settling still require physical checks."
+          : "Four fixed legs are statically over-constrained on an uneven floor. Chamfered feet retain most of their nominal contact area, but cannot independently level themselves; the finished table may still need field shimming.",
+        formula: levelingFeetEnabled
+          ? "96 + 2 × clamp(rodEntryClearance ÷ rodDiameter, 0, 1)"
+          : "52 + 20 × clamp((footWidth × footThickness − 2 × chamfer²) ÷ (footWidth × footThickness), 0, 1)",
+        inputs: levelingFeetEnabled
+          ? [
+              { key: "levelingFeetEnabled", label: "Floor-contact system", value: "four independent adjusters", format: "choice" },
+              { key: "levelingFootPadDiameter", label: "Pad diameter", value: levelingFootPadDiameter, format: "length" },
+              { key: "levelingFootRodDiameter", label: "Threaded-rod diameter", value: levelingFootRodDiameter, format: "length" },
+              { key: "levelingFootExtension", label: "Installed extension", value: levelingFootExtension, format: "length" },
+              { key: "rodEntryClearance", label: "Derived rod-entry clearance", value: rodEntryClearance, format: "length" },
+            ]
+          : [
+              { key: "levelingFeetEnabled", label: "Floor-contact system", value: "fixed wood contacts", format: "choice" },
+              { key: "legFootWidth", label: "Foot width", value: legFootWidth, format: "length" },
+              { key: "legThickness", label: "Foot thickness", value: legThickness, format: "length" },
+              { key: "legFootChamfer", label: "Foot corner chamfer", value: legFootChamfer, format: "length" },
+              { key: "flatFootArea", label: "Derived flat contact area", value: flatFootArea, format: "number", precision: 0, suffix: " mm²" },
+              { key: "flatFootFraction", label: "Derived contact fraction", value: flatFootFraction, format: "number", precision: 3 },
+            ],
       },
     ),
     whispererStructuralMetric(
@@ -726,6 +836,13 @@ export function getWhispererTableParameterLimits(
   const legTopWidth = getParam(params, "legTopWidth");
   const legFootWidth = getParam(params, "legFootWidth");
   const legThickness = getParam(params, "legThickness");
+  const feetEnabled = whispererLevelingFeetEnabled(params);
+  const footExtension = feetEnabled
+    ? getParam(params, "levelingFootExtension")
+    : 0;
+  const footPadThickness = getParam(params, "levelingFootPadThickness");
+  const footRodDiameter = getParam(params, "levelingFootRodDiameter");
+  const footRodLength = getParam(params, "levelingFootRodLength");
 
   if (key === "topThickness") {
     limits.max = Math.min(limits.max, overallHeight / 4);
@@ -735,17 +852,24 @@ export function getWhispererTableParameterLimits(
   } else if (key === "undersideBevelInset") {
     limits.max = Math.min(limits.max, Math.min(length, width) / 2 - limits.step);
   } else if (key === "overallHeight") {
-    limits.min = Math.max(limits.min, topThickness + 20 * 25.4);
+    limits.min = Math.max(
+      limits.min,
+      topThickness + footExtension + 20 * 25.4,
+    );
   } else if (key === "legTopWidth") {
     limits.max = Math.min(limits.max, length / 8);
     limits.min = Math.max(limits.min, legFootWidth);
   } else if (key === "legFootWidth") {
     limits.max = Math.min(limits.max, legTopWidth);
+    if (feetEnabled) {
+      limits.min = Math.max(limits.min, footRodDiameter + limits.step);
+    }
   } else if (key === "legThickness") {
     limits.max = Math.min(limits.max, width / 8);
     limits.min = Math.max(
       limits.min,
       getParam(params, "legFootChamfer") * 2 + limits.step,
+      ...(feetEnabled ? [footRodDiameter + limits.step] : []),
     );
   } else if (key === "legFootChamfer") {
     limits.max = Math.min(
@@ -763,6 +887,28 @@ export function getWhispererTableParameterLimits(
     limits.max = Math.min(limits.max, legThickness);
   } else if (key === "apronSetback") {
     limits.max = Math.min(limits.max, legThickness / 2 - limits.step);
+  } else if (key === "levelingFootPadThickness" && feetEnabled) {
+    limits.max = Math.min(limits.max, footExtension);
+  } else if (key === "levelingFootRodDiameter" && feetEnabled) {
+    limits.max = Math.min(
+      limits.max,
+      legFootWidth - limits.step,
+      legThickness - limits.step,
+    );
+  } else if (key === "levelingFootRodLength" && feetEnabled) {
+    const exposedRodLength = Math.max(0, footExtension - footPadThickness);
+    limits.min = Math.max(limits.min, exposedRodLength + limits.step);
+    limits.max = Math.min(
+      limits.max,
+      overallHeight - topThickness - footExtension + exposedRodLength,
+    );
+  } else if (key === "levelingFootExtension" && feetEnabled) {
+    limits.min = Math.max(limits.min, footPadThickness);
+    limits.max = Math.min(
+      limits.max,
+      footPadThickness + footRodLength - limits.step,
+      overallHeight - topThickness - 20 * 25.4,
+    );
   }
   return limits;
 }
@@ -781,8 +927,14 @@ export function getWhispererTableAuditValue(
   unit: LengthUnit,
 ): AuditItem {
   const scale = getParam(params, "mockScale");
+  const feetEnabled = whispererLevelingFeetEnabled(params);
+  const footExtension = feetEnabled
+    ? getParam(params, "levelingFootExtension")
+    : 0;
   const legVerticalHeight =
-    getParam(params, "overallHeight") - getParam(params, "topThickness");
+    getParam(params, "overallHeight") -
+    getParam(params, "topThickness") -
+    footExtension;
   const legBlankLength = legVerticalHeight / Math.cos(LEG_SPLAY_RADIANS);
   switch (check.key) {
     case "tableEnvelope":
@@ -801,10 +953,15 @@ export function getWhispererTableAuditValue(
         `4 × ${formatLength(legBlankLength, unit)} blanks · 15° splay · ${formatLength(getParam(params, "legTopWidth"), unit)} to ${formatLength(getParam(params, "legFootWidth"), unit)} taper`,
       );
     case "legEndRoundovers":
-      return item(
-        check.label,
-        `${formatLength(getParam(params, "legFootChamfer"), unit)} foot chamfers taper to zero at the top`,
-      );
+      return feetEnabled
+        ? item(
+            check.label,
+            `4 independent ${formatLength(getParam(params, "levelingFootPadDiameter"), unit)} pads · ${formatLength(getParam(params, "levelingFootRodDiameter"), unit)} rods · ${formatLength(footExtension, unit)} installed · ${formatLength(getParam(params, "legFootChamfer"), unit)} wood chamfers`,
+          )
+        : item(
+            check.label,
+            `${formatLength(getParam(params, "legFootChamfer"), unit)} wood chamfers · fixed floor contact`,
+          );
     case "cornerPlates":
       return item(
         check.label,
@@ -813,7 +970,7 @@ export function getWhispererTableAuditValue(
     case "channelLayout":
       return item(
         check.label,
-        `1 top · 4 legs · 2 × ${formatLength(getParam(params, "longApronLength"), unit)} long aprons · 2 × ${formatLength(getParam(params, "sideApronLength"), unit)} side aprons`,
+        `1 top · 4 legs · 2 × ${formatLength(getParam(params, "longApronLength"), unit)} long aprons · 2 × ${formatLength(getParam(params, "sideApronLength"), unit)} side aprons${feetEnabled ? " · 4 leveling feet" : ""}`,
       );
     case "printEnvelope": {
       const length = getParam(params, "tableLength") / scale;

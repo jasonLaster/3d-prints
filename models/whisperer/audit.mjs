@@ -37,6 +37,12 @@ close(params.legTopWidth, 4 * inch, "leg top width");
 close(params.legFootWidth, 2.375 * inch, "leg foot width");
 close(params.legThickness, 1.75 * inch, "leg thickness");
 close(params.legFootChamfer, 0.5 * inch, "leg foot chamfer");
+assert.equal(params.levelingFeetEnabled, 1);
+close(params.levelingFootPadDiameter, 1.5 * inch, "leveling-foot pad diameter");
+close(params.levelingFootPadThickness, 0.25 * inch, "leveling-foot pad thickness");
+close(params.levelingFootRodDiameter, 0.375 * inch, "leveling-foot rod diameter");
+close(params.levelingFootRodLength, 3 * inch, "leveling-foot rod length");
+close(params.levelingFootExtension, 0.75 * inch, "leveling-foot extension");
 close(params.longApronLength, 52.25 * inch, "long apron length");
 close(params.longApronHeight, 3.5 * inch, "long apron height");
 close(params.sideApronLength, 25.5 * inch, "side apron length");
@@ -44,21 +50,31 @@ close(params.sideApronHeight, 4 * inch, "side apron height");
 close(params.apronThickness, 1.5 * inch, "apron thickness");
 close(params.apronSetback, 0.25 * inch, "apron setback");
 
-const verticalLegHeight = params.overallHeight - params.topThickness;
+const verticalLegHeight =
+  params.overallHeight - params.topThickness - params.levelingFootExtension;
 const legBlankLength =
   verticalLegHeight / Math.cos((model.geometry.legSplayDegrees * Math.PI) / 180);
-close(legBlankLength, 29.25 * inch, "derived leg blank length", 0.1);
+close(legBlankLength, 28.47 * inch, "derived leg blank length", 0.1);
 assert.ok(params.topEdgeThickness < params.topThickness);
 assert.ok(params.undersideBevelInset * 2 < params.tableWidth);
 assert.ok(params.legFootWidth < params.legTopWidth);
 assert.ok(params.legFootChamfer * 2 < params.legThickness);
+assert.ok(params.levelingFootRodDiameter < params.legFootWidth);
+assert.ok(params.levelingFootRodDiameter < params.legThickness);
+assert.ok(params.levelingFootPadThickness <= params.levelingFootExtension);
+assert.ok(
+  params.levelingFootExtension - params.levelingFootPadThickness <
+    params.levelingFootRodLength,
+  "leveling-foot rod must retain positive embedment",
+);
 assert.ok(params.apronThickness <= params.legThickness);
 assert.ok(params.longApronLength + params.legTopWidth < params.tableLength);
 assert.ok(params.sideApronLength + params.legThickness < params.tableWidth);
 
 const splayRun = verticalLegHeight * Math.tan((15 * Math.PI) / 180);
 const topLegCenter = params.longApronLength / 2;
-const outerFoot = topLegCenter + splayRun + params.legFootWidth / 2;
+const outerFoot =
+  topLegCenter + splayRun + params.levelingFootPadDiameter / 2;
 assert.ok(outerFoot <= params.tableLength / 2, "feet must remain inside the top plan");
 
 const mockEnvelope = [
@@ -80,6 +96,10 @@ for (const required of [
   "createWhispererLegGeometry",
   "createLongApronGeometry",
   "createSideApronGeometry",
+  "createWhispererLevelingFootGeometry",
+  "createWhispererTableHardwareGeometries",
+  "getWhispererWoodBottom",
+  "whispererLevelingFeetEnabled",
   "LEG_SPLAY_RADIANS",
   "WHISPERER_STRUCTURAL_WEIGHTS",
   "evaluateWhispererTableStructure",
@@ -88,6 +108,7 @@ for (const required of [
   "sideApronFactor",
   "controllingTippingRatio",
   "flatFootFraction",
+  "rodEntryClearance",
 ]) {
   assert.ok(source.includes(required), `procedural source is missing ${required}`);
 }
@@ -104,6 +125,9 @@ for (const required of [
   "Floor rocking tolerance",
   "Member stiffness",
   "Overall weighting and grades",
+  "Adjustable leveling-foot contract",
+  "four independently adjustable leveling feet",
+  "registered support-free wood and hardware STLs",
   "physical result overrides this screen",
 ]) {
   assert.ok(structuralSpec.includes(required), `structural spec is missing ${required}`);

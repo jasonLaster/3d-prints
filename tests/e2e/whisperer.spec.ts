@@ -16,7 +16,7 @@ const model = JSON.parse(
   fs.readFileSync(path.join(root, "public/models/whisperer/model.json"), "utf8"),
 ) as DiningTableModelDefinition;
 
-test("builds the plan-derived Whisperer geometry without separate hardware", () => {
+test("builds the Whisperer on four independent leveling feet", () => {
   const params = getDefaultParams(model);
   const geometry = createDiningTableWoodGeometry(params, model);
   geometry.computeBoundingBox();
@@ -25,8 +25,8 @@ test("builds the plan-derived Whisperer geometry without separate hardware", () 
 
   expect(bounds.max.x - bounds.min.x).toBeCloseTo(182.88, 2);
   expect(bounds.max.y - bounds.min.y).toBeCloseTo(101.6, 2);
-  expect(bounds.max.z - bounds.min.z).toBeCloseTo(76.2, 2);
-  expect(bounds.min.z).toBeCloseTo(0, 4);
+  expect(bounds.max.z).toBeCloseTo(76.2, 2);
+  expect(bounds.min.z).toBeCloseTo(1.905, 3);
   expect(
     Array.from({ length: position.count }, (_, index) => [
       position.getX(index),
@@ -38,6 +38,35 @@ test("builds the plan-derived Whisperer geometry without separate hardware", () 
   const hardware = createDiningTableHardwareGeometries(params);
   expect(hardware.plates).toEqual([]);
   expect(hardware.channels).toEqual([]);
+  expect(hardware.feet).toHaveLength(4);
+  const footCenters: string[] = [];
+  for (const foot of hardware.feet) {
+    foot.computeBoundingBox();
+    const footBounds = foot.boundingBox!;
+    expect(footBounds.min.z).toBeCloseTo(0, 4);
+    expect(footBounds.max.z).toBeCloseTo(8.255, 3);
+    footCenters.push(
+      `${((footBounds.min.x + footBounds.max.x) / 2).toFixed(3)}:${((footBounds.min.y + footBounds.max.y) / 2).toFixed(3)}`,
+    );
+  }
+  expect(new Set(footCenters).size).toBe(4);
+
+  const directContactParams = { ...params, levelingFeetEnabled: 0 };
+  const directContactWood = createDiningTableWoodGeometry(
+    directContactParams,
+    model,
+  );
+  directContactWood.computeBoundingBox();
+  expect(directContactWood.boundingBox!.min.z).toBeCloseTo(0, 4);
+  expect(
+    directContactWood.boundingBox!.max.z -
+      directContactWood.boundingBox!.min.z,
+  ).toBeCloseTo(76.2, 2);
+  expect(
+    createDiningTableHardwareGeometries(directContactParams).feet,
+  ).toEqual([]);
+  hardware.feet.forEach((foot) => foot.dispose());
+  directContactWood.dispose();
   geometry.dispose();
 });
 
@@ -134,12 +163,28 @@ test("screens the Whisperer apron frame and responds to structural dimensions", 
     score(baseline, "member-stiffness"),
   );
 
+  const fixedWoodFeet = getDiningTableStructuralAssessment({
+    ...params,
+    levelingFeetEnabled: 0,
+  });
+  expect(score(baseline, "floor-rocking")).toBeGreaterThan(
+    score(fixedWoodFeet, "floor-rocking"),
+  );
+  expect(
+    baseline.metrics.find((metric) => metric.key === "floor-rocking")!.detail,
+  ).toContain("independently adjustable pads");
+  expect(
+    fixedWoodFeet.metrics.find((metric) => metric.key === "floor-rocking")!
+      .detail,
+  ).toContain("fixed chamfered wood contacts");
+
   const widerChamfers = getDiningTableStructuralAssessment({
     ...params,
+    levelingFeetEnabled: 0,
     legFootChamfer: params.legFootChamfer + 3.175,
   });
   expect(score(widerChamfers, "floor-rocking")).toBeLessThan(
-    score(baseline, "floor-rocking"),
+    score(fixedWoodFeet, "floor-rocking"),
   );
 });
 
@@ -162,9 +207,11 @@ test("documents each Whisperer structural formula", () => {
   expect(structuralSpec).toContain("geometry-only comparison");
   expect(structuralSpec).toContain("full-size corner mock");
   expect(structuralSpec).toContain("physical result overrides this screen");
+  expect(structuralSpec).toContain("four independently adjustable leveling feet");
+  expect(structuralSpec).toContain("registered support-free wood and hardware STLs");
 });
 
-test("renders, persists a plan parameter, and exports one Whisperer STL", async ({
+test("renders, persists its feet, and exports registered Whisperer STLs", async ({
   page,
 }) => {
   const pageErrors: string[] = [];
@@ -180,6 +227,11 @@ test("renders, persists a plan parameter, and exports one Whisperer STL", async 
   await expect(page.getByLabel("Table length in inches")).toHaveValue("72");
   await expect(page.getByLabel("Table width in inches")).toHaveValue("40");
   await expect(page.getByLabel("Tabletop thickness in inches")).toHaveValue("1 3/4");
+  const feetToggle = page.getByLabel("Use independent leveling feet");
+  await expect(feetToggle).toBeChecked();
+  await expect(page.getByLabel("Leveling-foot pad diameter in inches")).toHaveValue("1 1/2");
+  await expect(page.getByLabel("Installed floor-to-leg extension in inches")).toHaveValue("3/4");
+  await expect(page.getByText(/4 independent 1 1\/2 in pads/)).toBeVisible();
   const bevelInset = page.getByLabel("Underside bevel inset in inches");
   await expect(bevelInset).toHaveValue("5");
   await bevelInset.fill("4 1/2");
@@ -191,13 +243,23 @@ test("renders, persists a plan parameter, and exports one Whisperer STL", async 
   await expect(page.getByText(/1 top · 4 legs/)).toBeVisible();
 
   await page.getByRole("button", { name: "Workspace actions" }).click();
-  const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export", exact: true }).click();
-  const download: Download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe(
-    "whisperer-scale-1-10-length-1828.8-width-1016.0.stl",
+  const downloads: Download[] = [];
+  page.on("download", (download) => downloads.push(download));
+  await page.getByRole("button", { name: "Export two-color STLs" }).click();
+  await expect.poll(() => downloads.length).toBe(2);
+  const woodDownload = downloads.find((download) =>
+    download.suggestedFilename().endsWith("-support-free-wood-color-1.stl"),
   );
-  const downloadPath = await download.path();
+  const hardwareDownload = downloads.find((download) =>
+    download.suggestedFilename().endsWith("-support-free-hardware-color-2.stl"),
+  );
+  expect(woodDownload?.suggestedFilename()).toBe(
+    "whisperer-scale-1-10-length-1828.8-width-1016.0-support-free-wood-color-1.stl",
+  );
+  expect(hardwareDownload?.suggestedFilename()).toBe(
+    "whisperer-scale-1-10-length-1828.8-width-1016.0-support-free-hardware-color-2.stl",
+  );
+  const downloadPath = await woodDownload?.path();
   const buffer = fs.readFileSync(downloadPath!);
   const arrayBuffer = buffer.buffer.slice(
     buffer.byteOffset,
@@ -208,7 +270,7 @@ test("renders, persists a plan parameter, and exports one Whisperer STL", async 
   expect(exported.boundingBox!.min.z).toBeCloseTo(0, 3);
   expect(
     exported.boundingBox!.max.z - exported.boundingBox!.min.z,
-  ).toBeCloseTo(76.2, 1);
+  ).toBeCloseTo(74.295, 1);
   const exportedPosition = exported.getAttribute("position");
   let bedMinX = Infinity;
   let bedMaxX = -Infinity;
@@ -230,6 +292,34 @@ test("renders, persists a plan parameter, and exports one Whisperer STL", async 
   expect(bedMaxX - bedMinX).toBeGreaterThan(180);
   expect(bedMaxY - bedMinY).toBeGreaterThan(100);
   exported.dispose();
+
+  const hardwarePath = await hardwareDownload?.path();
+  const hardwareBuffer = fs.readFileSync(hardwarePath!);
+  const hardwareArrayBuffer = hardwareBuffer.buffer.slice(
+    hardwareBuffer.byteOffset,
+    hardwareBuffer.byteOffset + hardwareBuffer.byteLength,
+  );
+  const exportedHardware = new STLLoader().parse(hardwareArrayBuffer);
+  exportedHardware.computeBoundingBox();
+  expect(exportedHardware.boundingBox!.min.z).toBeCloseTo(67.945, 2);
+  expect(exportedHardware.boundingBox!.max.z).toBeCloseTo(76.2, 2);
+  expect(
+    exportedHardware.boundingBox!.max.x - exportedHardware.boundingBox!.min.x,
+  ).toBeGreaterThan(170);
+  expect(
+    exportedHardware.boundingBox!.max.y - exportedHardware.boundingBox!.min.y,
+  ).toBeGreaterThan(65);
+  exportedHardware.dispose();
+
+  await page.getByRole("button", { name: "Workspace actions" }).click();
+  await page.getByText("Use independent leveling feet", { exact: true }).click();
+  await expect(feetToggle).not.toBeChecked();
+  await expect(page).toHaveURL(/levelingFeetEnabled=0/);
+  await page.reload();
+  await expect(feetToggle).not.toBeChecked();
+  await expect(page.getByText(/fixed floor contact/)).toBeVisible();
+  await page.getByRole("button", { name: "Workspace actions" }).click();
+  await expect(page.getByRole("button", { name: "Export", exact: true })).toBeVisible();
   expect(pageErrors).toEqual([]);
 });
 
@@ -282,7 +372,7 @@ test("shows Whisperer structural checks with its own formulas and sources", asyn
     calculation.getByRole("link", {
       name: "Long-apron racking formula source code",
     }),
-  ).toHaveAttribute("href", /whispererTable\.ts#L449-L539$/);
+  ).toHaveAttribute("href", /whispererTable\.ts#L527-L634$/);
 
   const baselineScore = Number(
     await structuralAssessment.getAttribute("data-overall-score"),
