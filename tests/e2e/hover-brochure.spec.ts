@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { parseRequest } from "../../api/brochure";
+import { buildBrochurePrompt, parseRequest } from "../../api/brochure";
 
 const MOCK_BROCHURE_IMAGE =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
@@ -19,6 +19,28 @@ test("accepts brochure requests from tabs opened before generation IDs shipped",
   });
 
   expect(request?.generationId).toMatch(/^[a-zA-Z0-9-]{20,64}$/);
+});
+
+test("accepts Wave brochure requests with model-specific geometry guidance", () => {
+  const request = parseRequest({
+    clientId: "wave-client-123",
+    dimensions: {
+      height: 749.3,
+      length: 1905,
+      topThickness: 31.75,
+      width: 901.7,
+    },
+    generationId: "wave-generation-1234567890",
+    images: Array.from({ length: 4 }, () => MOCK_BROCHURE_IMAGE),
+    modelId: "wave-dining-table",
+    modelName: "The Wave",
+  });
+
+  expect(request).not.toBeNull();
+  const prompt = buildBrochurePrompt(request!);
+  expect(prompt).toContain("two open end frames");
+  expect(prompt).toContain("four short triangular corner braces");
+  expect(prompt).toContain("no floor-level stretcher or diagonal X-members");
 });
 
 test("brochure mode captures four CAD angles and presents the generated image", async ({

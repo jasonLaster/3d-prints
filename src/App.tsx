@@ -4977,7 +4977,7 @@ export default function App({
         modelKey: model.id,
         modelName: model.name,
         params,
-        promptVersion: "v1",
+        promptVersion: "v2",
         referenceCount: 4,
       };
       try {
