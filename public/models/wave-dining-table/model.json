@@ -1,17 +1,17 @@
 {
-  "id": "k-hover-dining-table",
-  "name": "K-Hover Dining Table",
-  "subtitle": "Open-leg Hover-table variation",
-  "description": "A 1:10 manipulation model that keeps the Hover top, paired K-curve rail shoulders, and two lengthwise upper rails while replacing each closed end box with two full-height legs.",
+  "id": "wave-dining-table",
+  "name": "The Wave",
+  "subtitle": "Open-leg dining table",
+  "description": "A 1:10 manipulation model that keeps the Hover top, paired wave-curve rail shoulders, and two lengthwise upper rails while replacing each closed end box with two full-height legs.",
   "viewer": "hover-dining-table-v1",
   "stl": {
-    "fileName": "k-hover-dining-table.stl",
-    "sourceName": "procedural-k-hover-dining-table-default.stl",
+    "fileName": "wave-dining-table.stl",
+    "sourceName": "procedural-wave-dining-table-default.stl",
     "units": "mm",
-    "url": "/models/k-hover-dining-table/k-hover-dining-table.stl"
+    "url": "/models/wave-dining-table/wave-dining-table.stl"
   },
   "export": {
-    "filePrefix": "k-hover-dining-table"
+    "filePrefix": "wave-dining-table"
   },
   "geometry": {
     "mainAxis": { "x": 0, "y": 0, "z": 0 },
@@ -411,12 +411,12 @@
       "The tabletop has independently editable plan-view corner radii, length-end face round-overs, and continuous Bézier-rolled long edges.",
       "Exactly three blackened-steel C-channels run widthwise in flush underside mortises: one centered and two symmetrically derived between the leg frames, all clear of the rolled long edges.",
       "The default base contains two open transverse frames, each built from one sculpted top rail and two full-height legs, with two parallel lengthwise upper rails and no floor connector.",
-      "Each top rail owns paired outer and inner cubic Bézier returns that flow tangent into the legs and preserve the distinctive K-curve shoulder; the floor remains open between the legs.",
+      "Each top rail owns paired outer and inner cubic Bézier returns that flow tangent into the legs and preserve the distinctive wave-shaped shoulder; the floor remains open between the legs.",
       "Every selected X crosses at the table center with a derived 50/50 half-lap and no overlapping solid volume; straight-support layouts contain no artificial lap.",
       "Top and bottom support width, thickness, bearing-zone inset, and bottom-edge round-over contracts are independently editable; the bottom supports also expose an independent top-edge round-over. An optional shared-dimension mode applies to the matching crossbar dimensions while both layouts are Xs; half-lap fit clearance applies only to selected Xs.",
       "Four optional adjustable feet align beneath the full-height legs, but the default design uses direct wood-to-floor contact.",
       "The two default upper lengthwise rails bear directly against the tabletop underside and terminate flush against the inside faces of the two open leg frames.",
-      "Exploded mode presents 12 default pieces: one profiled tabletop, three steel C-channels, two K-curve top rails, four full-height legs, and two lengthwise upper rails; optional feet or lower supports add only their selected pieces.",
+      "Exploded mode presents 12 default pieces: one profiled tabletop, three steel C-channels, two wave-curve top rails, four full-height legs, and two lengthwise upper rails; optional feet or lower supports add only their selected pieces.",
       "Cut List mode presents the same selected pieces as five default grouped schedule lines with full-size finished dimensions, quantities, material, oak grain direction where applicable, exact constrained profiles, edge treatment, hardware, and joinery notes.",
       "The default 1:10 manipulation model retains the full 75 × 35.5 × 29.5 in proportions."
     ],
@@ -458,7 +458,7 @@
       { "key": "hoverChannels", "label": "Three flush C-channels" },
       { "key": "hoverEndBoxes", "label": "Two open leg frames" },
       { "key": "hoverBoxOpening", "label": "Open floor clearance" },
-      { "key": "hoverCornerCurves", "label": "K-curve rail shoulders" },
+      { "key": "hoverCornerCurves", "label": "Wave-curve rail shoulders" },
       { "key": "hoverBoxSplay", "label": "Leg-frame splay hypothesis" },
       { "key": "hoverUpperX", "label": "Selected top supports" },
       { "key": "hoverLowerX", "label": "Selected floor supports" },
@@ -475,9 +475,9 @@
   "scripts": [
     {
       "name": "audit",
-      "path": "models/k-hover-dining-table/audit.mjs",
-      "command": "npm run audit -- k-hover-dining-table",
-      "description": "Validates the open-leg frames, K-curve top rails, two lengthwise supports, direct floor contact, and shared procedural source contract."
+      "path": "models/wave-dining-table/audit.mjs",
+      "command": "npm run audit -- wave-dining-table",
+      "description": "Validates the open-leg frames, wave-curve top rails, two lengthwise supports, direct floor contact, and shared procedural source contract."
     }
   ]
 }

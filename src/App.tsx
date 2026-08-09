@@ -2605,7 +2605,7 @@ function HoverDiningTableParameterControls({
               ) : group === "End boxes" ? (
                 <p className="parameter-group-description">
                   {openLegFrames
-                    ? "Each end uses one sculpted K-curve top rail and two full-height legs; no bottom rail closes the frame."
+                    ? "Each end uses one sculpted wave-curve top rail and two full-height legs; no bottom rail closes the frame."
                     : "Top and bottom radii are independent. Inner and outer rail-side sweeps shape the horizontal returns; their stile-side sweeps control how long the sides stay straight."}
                 </p>
               ) : group === "Adjustable feet" ? (

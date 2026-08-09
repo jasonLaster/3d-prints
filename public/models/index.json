@@ -37,9 +37,9 @@
       "configUrl": "/models/hover-dining-table/model.json"
     },
     {
-      "id": "k-hover-dining-table",
-      "name": "K-Hover Dining Table",
-      "configUrl": "/models/k-hover-dining-table/model.json"
+      "id": "wave-dining-table",
+      "name": "The Wave",
+      "configUrl": "/models/wave-dining-table/model.json"
     }
   ]
 }

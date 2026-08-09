@@ -9,15 +9,15 @@ import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 const root = path.resolve(import.meta.dirname, "../..");
 const configPath = path.join(
   root,
-  "public/models/k-hover-dining-table/model.json",
+  "public/models/wave-dining-table/model.json",
 );
 const outputPath = path.join(
   root,
-  "public/models/k-hover-dining-table/k-hover-dining-table.stl",
+  "public/models/wave-dining-table/wave-dining-table.stl",
 );
 const bundlePath = path.join(
   os.tmpdir(),
-  `k-hover-dining-table-${process.pid}-${Date.now()}.mjs`,
+  `wave-dining-table-${process.pid}-${Date.now()}.mjs`,
 );
 const model = JSON.parse(fs.readFileSync(configPath, "utf8"));
 const params = Object.fromEntries(

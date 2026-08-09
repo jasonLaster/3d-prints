@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const configPath = process.argv[2] ?? path.join(
   root,
-  "public/models/k-hover-dining-table/model.json",
+  "public/models/wave-dining-table/model.json",
 );
 const model = JSON.parse(fs.readFileSync(configPath, "utf8"));
 const params = Object.fromEntries(
@@ -19,8 +19,8 @@ const close = (actual, expected, label, tolerance = 1e-6) =>
     `${label}: expected ${expected}, received ${actual}`,
   );
 
-assert.equal(model.id, "k-hover-dining-table");
-assert.equal(model.name, "K-Hover Dining Table");
+assert.equal(model.id, "wave-dining-table");
+assert.equal(model.name, "The Wave");
 assert.equal(model.viewer, "hover-dining-table-v1");
 assert.equal(model.export.filePrefix, model.id);
 assert.equal(model.stl.url, `/models/${model.id}/${model.stl.fileName}`);
@@ -58,7 +58,7 @@ for (const required of [
   'HoverDiningTableEndFrameStyle = "box" | "legs"',
   'spec.endFrameStyle === "legs"',
   "Unable to merge open-leg end-frame geometry",
-  "K-curve top rail",
+  "Wave-curve top rail",
   "Full-height leg",
   "basePieceCount = frameStyle === \"box\" ? 14 : 12",
   "one or two square rail-tangent seams",
@@ -80,7 +80,7 @@ const auditText = [
 ].join(" ");
 for (const phrase of [
   "two open transverse frames",
-  "distinctive K-curve shoulder",
+  "distinctive wave-shaped shoulder",
   "two parallel lengthwise upper rails",
   "no floor connector",
   "12 default pieces",
@@ -90,5 +90,5 @@ for (const phrase of [
 }
 
 console.log(
-  `k-hover-dining-table audit passed: open K-curve leg frames, 2 lengthwise rails, direct floor contact, ${supportSpan.toFixed(1)} mm support span`,
+  `wave-dining-table audit passed: open wave-curve leg frames, 2 lengthwise rails, direct floor contact, ${supportSpan.toFixed(1)} mm support span`,
 );

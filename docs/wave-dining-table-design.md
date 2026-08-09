@@ -1,16 +1,16 @@
-# K-Hover dining table
+# The Wave
 
 ## Design intent
 
-K-Hover keeps the 75 × 35.5 × 29.5 in Hover-table envelope, profiled oak top, three recessed widthwise C-channels, and two lengthwise upper rails. It replaces each closed transverse end box with an open frame made from one sculpted top rail and two full-height legs.
+The Wave keeps the 75 × 35.5 × 29.5 in Hover-table envelope, profiled oak top, three recessed widthwise C-channels, and two lengthwise upper rails. It replaces each closed transverse end box with an open frame made from one sculpted top rail and two full-height legs.
 
-The top rail owns both the outer and inner cubic Bézier returns. Those returns meet each leg at square tangent seams, preserving the recognizable K-shaped shoulder while keeping the leg blank straight-grained and independently fabricable. The opening continues to the floor; there is no hidden bottom rail.
+The top rail owns both the outer and inner cubic Bézier returns. Those returns meet each leg at square tangent seams, creating the recognizable wave-shaped shoulder while keeping the leg blank straight-grained and independently fabricable. The opening continues to the floor; there is no hidden bottom rail.
 
 ## Default assembly
 
 - 1 profiled oak tabletop
 - 3 flush blackened-steel C-channels
-- 2 mirrored K-curve top rails
+- 2 mirrored wave-curve top rails
 - 4 full-height oak legs
 - 2 parallel lengthwise upper rails
 - no lower lengthwise member

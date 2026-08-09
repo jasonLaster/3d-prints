@@ -34,14 +34,14 @@ const model = JSON.parse(
 const defaultParams = Object.fromEntries(
   model.parameters.map((parameter) => [parameter.key, parameter.default]),
 ) as ModelParams;
-const kHoverModel = JSON.parse(
+const waveModel = JSON.parse(
   fs.readFileSync(
-    path.join(root, "public/models/k-hover-dining-table/model.json"),
+    path.join(root, "public/models/wave-dining-table/model.json"),
     "utf8",
   ),
 ) as HoverDiningTableModelDefinition;
-const kHoverDefaultParams = Object.fromEntries(
-  kHoverModel.parameters.map((parameter) => [parameter.key, parameter.default]),
+const waveDefaultParams = Object.fromEntries(
+  waveModel.parameters.map((parameter) => [parameter.key, parameter.default]),
 ) as ModelParams;
 
 function inspectGeometry(geometry: THREE.BufferGeometry) {
@@ -207,8 +207,8 @@ function centerlineZRange(
   };
 }
 
-test("builds the K-Hover default as two open leg frames with lengthwise rails", () => {
-  const { fullSize } = getHoverDiningTableSpec(kHoverDefaultParams);
+test("builds The Wave as two open leg frames with lengthwise rails", () => {
+  const { fullSize } = getHoverDiningTableSpec(waveDefaultParams);
   expect(fullSize.endFrameStyle).toBe("legs");
   expect(fullSize.topSupportStyle).toBe("stretchers");
   expect(fullSize.bottomSupportStyle).toBe("none");
@@ -218,9 +218,9 @@ test("builds the K-Hover default as two open leg frames with lengthwise rails", 
     6,
   );
 
-  const cutList = getHoverDiningTableCutList(kHoverDefaultParams);
+  const cutList = getHoverDiningTableCutList(waveDefaultParams);
   expect(cutList.totalPieces).toBe(12);
-  expect(getHoverDiningTablePieceCount(kHoverDefaultParams)).toBe(12);
+  expect(getHoverDiningTablePieceCount(waveDefaultParams)).toBe(12);
   expect(cutList.parts.map((part) => part.id)).toEqual([
     "T1",
     "H1",
@@ -234,7 +234,7 @@ test("builds the K-Hover default as two open leg frames with lengthwise rails", 
 
   const topRail = cutList.parts.find((part) => part.id === "B1")!;
   const leg = cutList.parts.find((part) => part.id === "B3")!;
-  expect(topRail.name).toBe("K-curve top rail");
+  expect(topRail.name).toBe("Wave-curve top rail");
   expect(
     topRail.fabricationProfile.outline.filter((command) => command.kind === "cubic"),
   ).toHaveLength(4);
@@ -249,8 +249,8 @@ test("builds the K-Hover default as two open leg frames with lengthwise rails", 
   ).toHaveLength(1);
 
   const geometry = createHoverDiningTableGeometry(
-    kHoverDefaultParams,
-    kHoverModel,
+    waveDefaultParams,
+    waveModel,
   );
   const inspected = inspectGeometry(geometry);
   expect(inspected.finite).toBe(true);
@@ -261,8 +261,8 @@ test("builds the K-Hover default as two open leg frames with lengthwise rails", 
   geometry.dispose();
 
   const exploded = createHoverDiningTableExplodedParts(
-    kHoverDefaultParams,
-    kHoverModel,
+    waveDefaultParams,
+    waveModel,
   );
   expect(exploded).toHaveLength(12);
   expect(
@@ -271,27 +271,27 @@ test("builds the K-Hover default as two open leg frames with lengthwise rails", 
   expect(exploded.some((part) => part.name.includes("bottom-rail"))).toBe(false);
   exploded.forEach((part) => part.geometry.dispose());
 
-  const hardware = createHoverDiningTableHardwareGeometries(kHoverDefaultParams);
+  const hardware = createHoverDiningTableHardwareGeometries(waveDefaultParams);
   expect(hardware.channels).toHaveLength(3);
   expect(hardware.feet).toHaveLength(0);
   [...hardware.channels, ...hardware.feet].forEach((part) => part.dispose());
 
   const templateSummary = getHoverDiningTableTemplateSummary(
-    kHoverDefaultParams,
-    kHoverModel,
+    waveDefaultParams,
+    waveModel,
   );
   expect(templateSummary.templates.map((template) => template.kind)).toEqual([
     "top-rail",
     "vertical-stile",
   ]);
   const templateSegments = createHoverDiningTableTemplateSegments(
-    kHoverDefaultParams,
-    kHoverModel,
+    waveDefaultParams,
+    waveModel,
   );
   expect(templateSegments).toHaveLength(templateSummary.totalSegments);
   expect(
     templateSegments.every((segment) =>
-      segment.fileName.startsWith("k-hover-dining-table-"),
+      segment.fileName.startsWith("wave-dining-table-"),
     ),
   ).toBe(true);
   templateSegments.forEach((segment) => segment.geometry.dispose());
@@ -2025,7 +2025,7 @@ test("builds three full-size routing templates as plate-safe dovetailed STLs", (
   });
 });
 
-test("renders the K-Hover open-leg design across assembly and fabrication views", async ({
+test("renders The Wave across assembly and fabrication views", async ({
   page,
 }) => {
   test.setTimeout(60_000);
@@ -2035,12 +2035,12 @@ test("renders the K-Hover open-leg design across assembly and fabrication views"
     if (message.type() === "error") pageErrors.push(message.text());
   });
 
-  await page.goto("/?model=k-hover-dining-table&unit=in");
+  await page.goto("/?model=wave-dining-table&unit=in");
   await expect(
-    page.getByRole("heading", { name: "K-Hover Dining Table" }),
+    page.getByRole("heading", { name: "The Wave" }),
   ).toBeVisible();
   await expect(
-    page.getByLabel("K-Hover Dining Table model viewer"),
+    page.getByLabel("The Wave model viewer"),
   ).toBeVisible();
   await expect(page.locator(".scene-panel canvas")).toBeVisible();
   await expect(page.getByText(/2 open frames · 4 full-height legs/)).toBeVisible();
@@ -2079,7 +2079,7 @@ test("renders the K-Hover open-leg design across assembly and fabrication views"
 
   await page.getByRole("button", { name: "Cut list" }).click();
   await expect(page.getByText("Cut list · full-size · 12 pieces")).toBeVisible();
-  await expect(page.getByLabel("K-Hover full-size cut list")).toBeVisible();
+  await expect(page.getByLabel("The Wave full-size cut list")).toBeVisible();
   await expect(page.locator(".hover-cut-table tbody tr")).toHaveCount(5);
   await expect(page.locator('.hover-cut-card[data-part-id="B2"]')).toHaveCount(0);
   await expect(page.locator('.hover-cut-card[data-part-id="B3"]')).toContainText(

@@ -3224,7 +3224,7 @@ export function getHoverDiningTableCutList(
     },
     {
       id: "B1",
-      name: spec.endFrameStyle === "box" ? "End-box top rail" : "K-curve top rail",
+      name: spec.endFrameStyle === "box" ? "End-box top rail" : "Wave-curve top rail",
       assembly: "end boxes",
       kind: "rail",
       material: "Oak",
@@ -3237,7 +3237,7 @@ export function getHoverDiningTableCutList(
       notes: [
         spec.endFrameStyle === "box"
           ? "One finished top rail per end box; profile includes both routed inner and outer corner curves."
-          : "One finished top rail per open leg frame; its paired inner and outer Bézier returns form the distinctive K-curve shoulder.",
+          : "One finished top rail per open leg frame; its paired inner and outer Bézier returns form the distinctive wave-shaped shoulder.",
         "Tangent seams remain square for the leg glue joints.",
       ],
       processDimensions: [
@@ -4565,7 +4565,7 @@ function evaluateHoverDiningTableStructure(
         rationale:
           spec.endFrameStyle === "box"
             ? "Each end box behaves like a portal frame. Wider stiles, deeper members, and taller rails increase its resistance; increasing overall height increases the lever arm and is penalized quadratically."
-            : "Each open leg frame behaves like a top-connected portal. Wider and deeper legs plus a taller K-curve rail increase resistance, while the missing bottom rail receives an explicit closure penalty and increasing height is penalized quadratically.",
+            : "Each open leg frame behaves like a top-connected portal. Wider and deeper legs plus a taller wave-curve rail increase resistance, while the missing bottom rail receives an explicit closure penalty and increasing height is penalized quadratically.",
         formula:
           "78 × (sideWidth ÷ 2.25 in)^1.2 × (frameDepth ÷ 2.5 in)^0.8 × (effectiveRailHeight ÷ 1.5 in)^0.4 × heightFactor^2 × closureFactor",
         inputs: [
@@ -5054,7 +5054,7 @@ export function getHoverDiningTableAuditValue(
         check.label,
         spec.endFrameStyle === "box"
           ? `2 × ${formatLength(spec.frameTopWidth, unit)} wide closed boxes`
-          : `2 open frames · 4 full-height legs · ${formatLength(spec.frameTopWidth, unit)} wide K-curve top rails`,
+          : `2 open frames · 4 full-height legs · ${formatLength(spec.frameTopWidth, unit)} wide wave-curve top rails`,
       );
     case "hoverBoxOpening":
       return item(
@@ -5066,7 +5066,7 @@ export function getHoverDiningTableAuditValue(
         check.label,
         spec.endFrameStyle === "box"
           ? `outer top/bottom ${formatLength(spec.frameOuterTopCornerRadius, unit)} / ${formatLength(spec.frameOuterBottomCornerRadius, unit)} κ rail ${spec.frameOuterRailCurveTension.toFixed(3)} / stile ${spec.frameOuterStileCurveTension.toFixed(3)} · inner top/bottom ${formatLength(spec.frameInnerTopCornerRadius, unit)} / ${formatLength(spec.frameInnerBottomCornerRadius, unit)} κ rail ${spec.frameInnerRailCurveTension.toFixed(3)} / stile ${spec.frameInnerStileCurveTension.toFixed(3)}`
-          : `K-curve top shoulders · outer ${formatLength(spec.frameOuterTopCornerRadius, unit)} / inner ${formatLength(spec.frameInnerTopCornerRadius, unit)} · κ rail ${spec.frameOuterRailCurveTension.toFixed(3)} / ${spec.frameInnerRailCurveTension.toFixed(3)} · κ leg ${spec.frameOuterStileCurveTension.toFixed(3)} / ${spec.frameInnerStileCurveTension.toFixed(3)}`,
+          : `Wave-curve top shoulders · outer ${formatLength(spec.frameOuterTopCornerRadius, unit)} / inner ${formatLength(spec.frameInnerTopCornerRadius, unit)} · κ rail ${spec.frameOuterRailCurveTension.toFixed(3)} / ${spec.frameInnerRailCurveTension.toFixed(3)} · κ leg ${spec.frameOuterStileCurveTension.toFixed(3)} / ${spec.frameInnerStileCurveTension.toFixed(3)}`,
       );
     case "hoverBoxSplay":
       return item(
@@ -5123,7 +5123,7 @@ export function getHoverDiningTableAuditValue(
     case "hoverExplodedAssembly":
       return item(
         check.label,
-        `${getHoverDiningTablePieceCount(params)} constrained solids · mortised profiled top · 3 steel C-channels · ${spec.endFrameStyle === "box" ? "4 Bézier rails · 4 tangent-seam stiles" : "2 K-curve rails · 4 full-height legs"} · selected finished supports${spec.levelingFeet.enabled ? " · 4 leveling feet" : ""}`,
+        `${getHoverDiningTablePieceCount(params)} constrained solids · mortised profiled top · 3 steel C-channels · ${spec.endFrameStyle === "box" ? "4 Bézier rails · 4 tangent-seam stiles" : "2 wave-curve rails · 4 full-height legs"} · selected finished supports${spec.levelingFeet.enabled ? " · 4 leveling feet" : ""}`,
       );
     case "hoverCutList":
       {
