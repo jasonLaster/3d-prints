@@ -3330,7 +3330,10 @@ type StructuralReferenceKey =
   | HoverDiningTableStructuralMetric["key"]
   | "overall";
 
-type StructuralAssessmentModel = "dining-table" | "hover-dining-table";
+type StructuralAssessmentModel =
+  | "dining-table"
+  | "hover-dining-table"
+  | "whisperer";
 
 const STRUCTURAL_SOURCE_URLS: Record<
   StructuralAssessmentModel,
@@ -3347,6 +3350,12 @@ const STRUCTURAL_SOURCE_URLS: Record<
       "https://github.com/jasonLaster/3d-prints/blob/main/src/models/hoverDiningTable.ts",
     spec:
       "https://github.com/jasonLaster/3d-prints/blob/main/docs/hover-dining-table-audit-specifications.md",
+  },
+  whisperer: {
+    source:
+      "https://github.com/jasonLaster/3d-prints/blob/main/src/models/whispererTable.ts",
+    spec:
+      "https://github.com/jasonLaster/3d-prints/blob/main/docs/whisperer-table-audit-specifications.md",
   },
 };
 
@@ -3432,6 +3441,47 @@ const PLATE_STRUCTURAL_REFERENCES: Record<
   },
 };
 
+const WHISPERER_STRUCTURAL_REFERENCES: Record<
+  StructuralReferenceKey,
+  { label: string; specAnchor: string; sourceLines: string }
+> = {
+  overall: {
+    label: "Overall structural score",
+    specAnchor: "overall-weighting-and-grades",
+    sourceLines: "L639-L691",
+  },
+  "longitudinal-racking": {
+    label: "Long-apron racking",
+    specAnchor: "long-apron-racking",
+    sourceLines: "L449-L539",
+  },
+  "end-box-racking": {
+    label: "Side-frame racking",
+    specAnchor: "side-frame-racking",
+    sourceLines: "L453-L559",
+  },
+  torsion: {
+    label: "Apron-frame torsion",
+    specAnchor: "apron-frame-torsion",
+    sourceLines: "L467-L579",
+  },
+  tipping: {
+    label: "Splayed-foot tipping margin",
+    specAnchor: "splayed-foot-tipping-margin",
+    sourceLines: "L487-L598",
+  },
+  "floor-rocking": {
+    label: "Floor rocking tolerance",
+    specAnchor: "floor-rocking-tolerance",
+    sourceLines: "L497-L617",
+  },
+  "member-stiffness": {
+    label: "Member stiffness",
+    specAnchor: "member-stiffness",
+    sourceLines: "L505-L638",
+  },
+};
+
 function StructuralReferenceLinks({
   assessmentModel,
   referenceKey,
@@ -3439,10 +3489,13 @@ function StructuralReferenceLinks({
   assessmentModel: StructuralAssessmentModel;
   referenceKey: StructuralReferenceKey;
 }) {
-  const reference =
+  const references =
     assessmentModel === "dining-table"
-      ? PLATE_STRUCTURAL_REFERENCES[referenceKey]
-      : HOVER_STRUCTURAL_REFERENCES[referenceKey];
+      ? PLATE_STRUCTURAL_REFERENCES
+      : assessmentModel === "whisperer"
+        ? WHISPERER_STRUCTURAL_REFERENCES
+        : HOVER_STRUCTURAL_REFERENCES;
+  const reference = references[referenceKey];
   const urls = STRUCTURAL_SOURCE_URLS[assessmentModel];
   return (
     <p className="structural-reference-links">
@@ -3573,16 +3626,20 @@ function HoverStructuralMetric({
 }
 
 function HoverStructuralAssessment({
+  modelId,
   modelViewer,
   params,
   unit,
 }: {
+  modelId: string;
   modelViewer: "dining-table-v1" | "hover-dining-table-v1";
   params: ModelParams;
   unit: LengthUnit;
 }) {
   const assessmentModel: StructuralAssessmentModel =
-    modelViewer === "dining-table-v1"
+    modelId === "whisperer"
+      ? "whisperer"
+      : modelViewer === "dining-table-v1"
       ? "dining-table"
       : "hover-dining-table";
   const assessment =
@@ -3732,6 +3789,7 @@ function HoverDesignChecks({
   auditExpanded,
   auditItems,
   idPrefix,
+  modelId,
   modelViewer,
   onAuditToggle,
   onStructureToggle,
@@ -3742,6 +3800,7 @@ function HoverDesignChecks({
   auditExpanded: boolean;
   auditItems: AuditItem[];
   idPrefix: string;
+  modelId: string;
   modelViewer: "dining-table-v1" | "hover-dining-table-v1";
   onAuditToggle: () => void;
   onStructureToggle: () => void;
@@ -3758,6 +3817,7 @@ function HoverDesignChecks({
         title="Structure"
       >
         <HoverStructuralAssessment
+          modelId={modelId}
           modelViewer={modelViewer}
           params={params}
           unit={unit}
@@ -5364,13 +5424,13 @@ export default function App({
           catalogModels={catalogSeedModels}
           convexEnabled={convexEnabled}
           designChecks={
-            model.id !== "whisperer" &&
             (model.viewer === "dining-table-v1" ||
               model.viewer === "hover-dining-table-v1") ? (
               <HoverDesignChecks
                 auditExpanded={isAuditExpanded}
                 auditItems={auditItems}
                 idPrefix="sidebar-design-checks"
+                modelId={model.id}
                 modelViewer={model.viewer}
                 onAuditToggle={() =>
                   setIsAuditExpanded((current) => !current)
@@ -5701,8 +5761,7 @@ export default function App({
                   </section>
                 ) : null}
 
-                {model.id !== "whisperer" &&
-                (model.viewer === "dining-table-v1" ||
+                {(model.viewer === "dining-table-v1" ||
                   model.viewer === "hover-dining-table-v1") ? (
                   isCompactWorkspace ? (
                     <div className="inspector-design-checks">
@@ -5710,6 +5769,7 @@ export default function App({
                         auditExpanded={isAuditExpanded}
                         auditItems={auditItems}
                         idPrefix="inspector-design-checks"
+                        modelId={model.id}
                         modelViewer={model.viewer}
                         onAuditToggle={() =>
                           setIsAuditExpanded((current) => !current)

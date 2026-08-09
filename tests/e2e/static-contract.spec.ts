@@ -427,6 +427,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   const hoverTableDoc = readText(
     path.join(root, "docs/hover-dining-table-audit-specifications.md"),
   );
+  const whispererTableDoc = readText(
+    path.join(root, "docs/whisperer-table-audit-specifications.md"),
+  );
 
   for (const phrase of [
     "weighted sand chamber",
@@ -508,6 +511,20 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "full-size finished dimensions",
   ]) {
     expect(hoverTableDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "72 × 40 × 30 in",
+    "recessed four-apron frame",
+    "geometry-only comparison",
+    "Long-apron racking",
+    "Side-frame racking",
+    "Apron-frame torsion",
+    "Splayed-foot tipping margin",
+    "full-size corner mock",
+    "physical result overrides this screen",
+  ]) {
+    expect(whispererTableDoc).toContain(phrase);
   }
 });
 

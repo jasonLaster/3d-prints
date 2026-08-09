@@ -6,6 +6,7 @@ import {
   createWhispererTableWoodGeometry,
   getWhispererTableAuditValue,
   getWhispererTableParameterLimits,
+  getWhispererTableStructuralAssessment,
   isWhispererParams,
 } from "./whispererTable";
 import type {
@@ -920,6 +921,9 @@ function evaluatePlateTableStructure(
 export function getDiningTableStructuralAssessment(
   params: ModelParams,
 ): HoverDiningTableStructuralAssessment {
+  if (isWhispererParams(params)) {
+    return getWhispererTableStructuralAssessment(params);
+  }
   const current = evaluatePlateTableStructure(params);
   const height = getParam(params, "overallHeight");
   const stepMm = 25.4;

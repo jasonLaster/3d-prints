@@ -10,6 +10,11 @@ import type {
   ModelParams,
   NumberLimits,
 } from "./types";
+import type {
+  HoverDiningTableStructuralAssessment,
+  HoverDiningTableStructuralGrade,
+  HoverDiningTableStructuralMetric,
+} from "./hoverDiningTable";
 
 const EPSILON = 1e-5;
 const LEG_SPLAY_RADIANS = THREE.MathUtils.degToRad(15);
@@ -342,6 +347,350 @@ function createSideApronGeometry(params: ModelParams, xSign: -1 | 1) {
 
 export function isWhispererParams(params: ModelParams) {
   return Number.isFinite(params.undersideBevelInset);
+}
+
+const WHISPERER_STRUCTURAL_REFERENCE = {
+  height: 30 * 25.4,
+  topThickness: 1.75 * 25.4,
+  topEdgeThickness: 0.5 * 25.4,
+  legTopWidth: 4 * 25.4,
+  legFootWidth: 2.375 * 25.4,
+  legThickness: 1.75 * 25.4,
+  longApronLength: 52.25 * 25.4,
+  longApronHeight: 3.5 * 25.4,
+  sideApronLength: 25.5 * 25.4,
+  sideApronHeight: 4 * 25.4,
+  apronThickness: 1.5 * 25.4,
+} as const;
+
+const WHISPERER_STRUCTURAL_WEIGHTS: Record<
+  HoverDiningTableStructuralMetric["key"],
+  number
+> = {
+  "longitudinal-racking": 0.24,
+  "end-box-racking": 0.22,
+  torsion: 0.18,
+  tipping: 0.14,
+  "floor-rocking": 0.1,
+  "member-stiffness": 0.12,
+};
+
+function whispererStructuralScore(value: number) {
+  return Number(Math.max(0, Math.min(100, value)).toFixed(1));
+}
+
+function whispererStructuralGrade(
+  score: number,
+): HoverDiningTableStructuralGrade {
+  if (score >= 85) return "A";
+  if (score >= 75) return "B";
+  if (score >= 65) return "C";
+  if (score >= 50) return "D";
+  return "F";
+}
+
+function whispererStructuralMetric(
+  key: HoverDiningTableStructuralMetric["key"],
+  label: string,
+  rawScore: number,
+  detail: string,
+  calculation: Pick<
+    HoverDiningTableStructuralMetric["calculation"],
+    "rationale" | "formula" | "inputs"
+  >,
+): HoverDiningTableStructuralMetric {
+  const score = whispererStructuralScore(rawScore);
+  const weight = WHISPERER_STRUCTURAL_WEIGHTS[key];
+  return {
+    key,
+    label,
+    score,
+    grade: whispererStructuralGrade(score),
+    detail,
+    calculation: {
+      ...calculation,
+      rawScore: Number(rawScore.toFixed(1)),
+      weight,
+      scoringNote: `Raw result ${rawScore.toFixed(1)} is clamped to 0–100, then contributes ${(weight * 100).toFixed(0)}% of the overall score (${(score * weight).toFixed(1)} weighted points). Grade bands: A ≥ 85, B ≥ 75, C ≥ 65, D ≥ 50, F < 50.`,
+    },
+  };
+}
+
+function evaluateWhispererTableStructure(
+  params: ModelParams,
+): Omit<HoverDiningTableStructuralAssessment, "heightSensitivity"> {
+  const height = getParam(params, "overallHeight");
+  const topThickness = getParam(params, "topThickness");
+  const topEdgeThickness = getParam(params, "topEdgeThickness");
+  const tableWidth = getParam(params, "tableWidth");
+  const bevelInset = getParam(params, "undersideBevelInset");
+  const legTopWidth = getParam(params, "legTopWidth");
+  const legFootWidth = getParam(params, "legFootWidth");
+  const legThickness = getParam(params, "legThickness");
+  const legFootChamfer = getParam(params, "legFootChamfer");
+  const longApronLength = getParam(params, "longApronLength");
+  const longApronHeight = getParam(params, "longApronHeight");
+  const sideApronLength = getParam(params, "sideApronLength");
+  const sideApronHeight = getParam(params, "sideApronHeight");
+  const apronThickness = getParam(params, "apronThickness");
+  const apronSetback = getParam(params, "apronSetback");
+  const legHeight = height - topThickness;
+  const heightFactor = WHISPERER_STRUCTURAL_REFERENCE.height / height;
+  const legSectionFactor = Math.sqrt(
+    (legTopWidth * legThickness) /
+      (WHISPERER_STRUCTURAL_REFERENCE.legTopWidth *
+        WHISPERER_STRUCTURAL_REFERENCE.legThickness),
+  );
+  const setbackFactor = Math.max(
+    0.7,
+    Math.min(1, 1 - (apronSetback / legThickness) * 0.25),
+  );
+  const longApronFactor =
+    (longApronHeight / WHISPERER_STRUCTURAL_REFERENCE.longApronHeight) ** 1.5 *
+    (apronThickness / WHISPERER_STRUCTURAL_REFERENCE.apronThickness) ** 0.5 *
+    (WHISPERER_STRUCTURAL_REFERENCE.longApronLength / longApronLength) ** 0.5;
+  const sideApronFactor =
+    (sideApronHeight / WHISPERER_STRUCTURAL_REFERENCE.sideApronHeight) ** 1.5 *
+    (apronThickness / WHISPERER_STRUCTURAL_REFERENCE.apronThickness) ** 0.5 *
+    (WHISPERER_STRUCTURAL_REFERENCE.sideApronLength / sideApronLength) ** 0.5;
+
+  const longitudinalRacking =
+    25 +
+    42 * longApronFactor * setbackFactor * heightFactor ** 1.5 +
+    18 * legSectionFactor * heightFactor;
+  const sideFrameRacking =
+    25 +
+    44 * sideApronFactor * setbackFactor * heightFactor ** 1.5 +
+    16 * legSectionFactor * heightFactor;
+
+  const centerFieldFraction = Math.max(
+    0,
+    Math.min(1, (tableWidth - 2 * bevelInset) / tableWidth),
+  );
+  const effectiveTopThickness =
+    topEdgeThickness +
+    (topThickness - topEdgeThickness) * Math.cbrt(centerFieldFraction);
+  const topTorsionFactor =
+    effectiveTopThickness /
+    (WHISPERER_STRUCTURAL_REFERENCE.topEdgeThickness +
+      (WHISPERER_STRUCTURAL_REFERENCE.topThickness -
+        WHISPERER_STRUCTURAL_REFERENCE.topEdgeThickness) *
+        Math.cbrt(0.75));
+  const torsion =
+    25 +
+    42 *
+      Math.sqrt(longApronFactor * sideApronFactor) *
+      setbackFactor *
+      heightFactor ** 0.6 +
+    18 * topTorsionFactor;
+
+  const splayRun = legHeight * Math.tan(LEG_SPLAY_RADIANS);
+  const footprintLength = longApronLength + 2 * splayRun + legFootWidth;
+  const footprintWidth = sideApronLength + legThickness;
+  const controllingTippingRatio = Math.min(
+    footprintLength / (2 * height),
+    footprintWidth / (2 * height),
+  );
+  const tipping =
+    20 + 80 * Math.min(1, controllingTippingRatio / 0.65);
+
+  const nominalFootArea = legFootWidth * legThickness;
+  const flatFootArea = Math.max(
+    0,
+    nominalFootArea - 2 * legFootChamfer ** 2,
+  );
+  const flatFootFraction = flatFootArea / nominalFootArea;
+  const floorRocking = 52 + 20 * flatFootFraction;
+
+  const averageLegWidth = (legTopWidth + legFootWidth) / 2;
+  const legSlenderness = legHeight / Math.sqrt(averageLegWidth * legThickness);
+  const longApronSlenderness =
+    longApronLength / Math.sqrt(longApronHeight * apronThickness);
+  const sideApronSlenderness =
+    sideApronLength / Math.sqrt(sideApronHeight * apronThickness);
+  const tabletopSlenderness = tableWidth / effectiveTopThickness;
+  const memberStiffness =
+    100 -
+    Math.max(0, legSlenderness - 11) * 3 -
+    Math.max(0, longApronSlenderness - 24) * 1 -
+    Math.max(0, sideApronSlenderness - 14) * 0.7 -
+    Math.max(0, tabletopSlenderness - 24) * 0.9;
+
+  const metrics = [
+    whispererStructuralMetric(
+      "longitudinal-racking",
+      "Long-apron racking",
+      longitudinalRacking,
+      `${formatLength(longApronHeight, "in")} deep apron · ${longApronSlenderness.toFixed(1)}:1 span ratio`,
+      {
+        rationale:
+          "Lengthwise sway is screened from the long-apron section, span, leg section, table height, and apron setback. The model does not specify mortise-and-tenon dimensions, glue area, or fasteners, so joint rotation remains uncredited and must be tested physically.",
+        formula:
+          "25 + 42 × longApronFactor × setbackFactor × heightFactor^1.5 + 18 × legSectionFactor × heightFactor",
+        inputs: [
+          { key: "overallHeight", label: "Overall height", value: height, format: "length" },
+          { key: "longApronLength", label: "Long apron span", value: longApronLength, format: "length" },
+          { key: "longApronHeight", label: "Long apron depth", value: longApronHeight, format: "length" },
+          { key: "apronThickness", label: "Apron thickness", value: apronThickness, format: "length" },
+          { key: "apronSetback", label: "Apron setback", value: apronSetback, format: "length" },
+          { key: "longApronFactor", label: "Derived long-apron factor", value: longApronFactor, format: "number", precision: 3 },
+        ],
+      },
+    ),
+    whispererStructuralMetric(
+      "end-box-racking",
+      "Side-frame racking",
+      sideFrameRacking,
+      `${formatLength(sideApronHeight, "in")} deep apron · ${sideApronSlenderness.toFixed(1)}:1 span ratio`,
+      {
+        rationale:
+          "Crosswise sway is screened from each side apron and its two leg sections. The splayed geometry is represented by height and section proportions, but the unknown apron-to-leg joint stiffness is deliberately not treated as proven capacity.",
+        formula:
+          "25 + 44 × sideApronFactor × setbackFactor × heightFactor^1.5 + 16 × legSectionFactor × heightFactor",
+        inputs: [
+          { key: "overallHeight", label: "Overall height", value: height, format: "length" },
+          { key: "sideApronLength", label: "Side apron span", value: sideApronLength, format: "length" },
+          { key: "sideApronHeight", label: "Side apron depth", value: sideApronHeight, format: "length" },
+          { key: "apronThickness", label: "Apron thickness", value: apronThickness, format: "length" },
+          { key: "apronSetback", label: "Apron setback", value: apronSetback, format: "length" },
+          { key: "sideApronFactor", label: "Derived side-apron factor", value: sideApronFactor, format: "number", precision: 3 },
+        ],
+      },
+    ),
+    whispererStructuralMetric(
+      "torsion",
+      "Apron-frame torsion",
+      torsion,
+      `closed four-apron frame · ${formatLength(effectiveTopThickness, "in")} effective top thickness`,
+      {
+        rationale:
+          "The closed four-apron loop and the beveled solid top provide the modeled torsional load paths. The effective top thickness preserves the full center field while discounting the thin perimeter; tabletop fastener slip and joint rotation remain outside the screen.",
+        formula:
+          "25 + 42 × sqrt(longApronFactor × sideApronFactor) × setbackFactor × heightFactor^0.6 + 18 × topTorsionFactor",
+        inputs: [
+          { key: "topThickness", label: "Full top thickness", value: topThickness, format: "length" },
+          { key: "topEdgeThickness", label: "Perimeter edge thickness", value: topEdgeThickness, format: "length" },
+          { key: "undersideBevelInset", label: "Underside bevel inset", value: bevelInset, format: "length" },
+          { key: "centerFieldFraction", label: "Full-thickness center fraction", value: centerFieldFraction, format: "number", precision: 3 },
+          { key: "effectiveTopThickness", label: "Derived effective top thickness", value: effectiveTopThickness, format: "length" },
+          { key: "topTorsionFactor", label: "Derived tabletop factor", value: topTorsionFactor, format: "number", precision: 3 },
+        ],
+      },
+    ),
+    whispererStructuralMetric(
+      "tipping",
+      "Splayed-foot tipping margin",
+      tipping,
+      `controlling half-footprint / height ${controllingTippingRatio.toFixed(2)}`,
+      {
+        rationale:
+          "The support polygon uses the actual longitudinal 15-degree splay and the crosswise foot spacing. Its smaller half-footprint-to-height ratio controls. This is static geometry, not a safe-load prediction for sitting, leaning, or climbing.",
+        formula:
+          "20 + 80 × min(1, min(footprintLength ÷ 2 ÷ height, footprintWidth ÷ 2 ÷ height) ÷ 0.65)",
+        inputs: [
+          { key: "overallHeight", label: "Overall height", value: height, format: "length" },
+          { key: "legSplayDegrees", label: "Fixed leg splay", value: 15, format: "number", precision: 0, suffix: "°" },
+          { key: "splayRun", label: "Derived longitudinal splay run", value: splayRun, format: "length" },
+          { key: "footprintLength", label: "Contact footprint length", value: footprintLength, format: "length" },
+          { key: "footprintWidth", label: "Contact footprint width", value: footprintWidth, format: "length" },
+        ],
+      },
+    ),
+    whispererStructuralMetric(
+      "floor-rocking",
+      "Floor rocking tolerance",
+      floorRocking,
+      `four fixed chamfered wood contacts · ${(flatFootFraction * 100).toFixed(0)}% nominal foot area`,
+      {
+        rationale:
+          "Four fixed legs are statically over-constrained on an uneven floor. Chamfered feet retain most of their nominal contact area, but cannot independently level themselves; the finished table may still need field shimming.",
+        formula:
+          "52 + 20 × clamp((footWidth × footThickness − 2 × chamfer²) ÷ (footWidth × footThickness), 0, 1)",
+        inputs: [
+          { key: "legFootWidth", label: "Foot width", value: legFootWidth, format: "length" },
+          { key: "legThickness", label: "Foot thickness", value: legThickness, format: "length" },
+          { key: "legFootChamfer", label: "Foot corner chamfer", value: legFootChamfer, format: "length" },
+          { key: "flatFootArea", label: "Derived flat contact area", value: flatFootArea, format: "number", precision: 0, suffix: " mm²" },
+          { key: "flatFootFraction", label: "Derived contact fraction", value: flatFootFraction, format: "number", precision: 3 },
+        ],
+      },
+    ),
+    whispererStructuralMetric(
+      "member-stiffness",
+      "Member stiffness",
+      memberStiffness,
+      `leg ${legSlenderness.toFixed(1)}:1 · long apron ${longApronSlenderness.toFixed(1)}:1 · top ${tabletopSlenderness.toFixed(1)}:1`,
+      {
+        rationale:
+          "This relative screen compares tapered-leg, apron, and effective tabletop slenderness. It does not calculate load deflection, allowable stress, buckling, grain direction, or connection capacity.",
+        formula:
+          "100 − max(0, legSlenderness − 11) × 3 − max(0, longApronSlenderness − 24) − max(0, sideApronSlenderness − 14) × 0.7 − max(0, tabletopSlenderness − 24) × 0.9",
+        inputs: [
+          { key: "legHeight", label: "Clear leg height", value: legHeight, format: "length" },
+          { key: "averageLegWidth", label: "Average tapered-leg width", value: averageLegWidth, format: "length" },
+          { key: "legSlenderness", label: "Derived leg slenderness", value: legSlenderness, format: "number", precision: 2, suffix: ":1" },
+          { key: "longApronSlenderness", label: "Derived long-apron slenderness", value: longApronSlenderness, format: "number", precision: 2, suffix: ":1" },
+          { key: "sideApronSlenderness", label: "Derived side-apron slenderness", value: sideApronSlenderness, format: "number", precision: 2, suffix: ":1" },
+          { key: "tabletopSlenderness", label: "Derived tabletop slenderness", value: tabletopSlenderness, format: "number", precision: 2, suffix: ":1" },
+        ],
+      },
+    ),
+  ];
+  const overallScore = whispererStructuralScore(
+    metrics.reduce(
+      (total, metric) =>
+        total + metric.score * WHISPERER_STRUCTURAL_WEIGHTS[metric.key],
+      0,
+    ),
+  );
+  return {
+    overallScore,
+    overallGrade: whispererStructuralGrade(overallScore),
+    overallCalculation: {
+      rationale:
+        "The Whisperer composite emphasizes its two orthogonal apron-frame racking screens, followed by closed-frame torsion. Splayed-foot tipping, fixed-floor contact, and member slenderness remain visible without implying that undocumented joinery has been validated.",
+      formula: metrics
+        .map(
+          (metric) =>
+            `${(WHISPERER_STRUCTURAL_WEIGHTS[metric.key] * 100).toFixed(0)}% × ${metric.label}`,
+        )
+        .join(" + "),
+      scoringNote: `The weighted sum is ${overallScore.toFixed(1)}. Grade bands: A ≥ 85, B ≥ 75, C ≥ 65, D ≥ 50, F < 50. This remains a geometry-only comparison, not a load, joint, or durability certification.`,
+    },
+    metrics,
+    basis: "geometry-only screening",
+  };
+}
+
+export function getWhispererTableStructuralAssessment(
+  params: ModelParams,
+): HoverDiningTableStructuralAssessment {
+  const current = evaluateWhispererTableStructure(params);
+  const height = getParam(params, "overallHeight");
+  const stepMm = 25.4;
+  const assessHeight = (heightMm: number) => {
+    try {
+      const score = evaluateWhispererTableStructure({
+        ...params,
+        overallHeight: heightMm,
+      }).overallScore;
+      return {
+        heightMm,
+        score,
+        delta: Number((score - current.overallScore).toFixed(1)),
+      };
+    } catch {
+      return null;
+    }
+  };
+  return {
+    ...current,
+    heightSensitivity: {
+      stepMm,
+      lower: assessHeight(height - stepMm),
+      higher: assessHeight(height + stepMm),
+    },
+  };
 }
 
 export function createWhispererTableWoodGeometry(params: ModelParams) {

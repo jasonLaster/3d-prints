@@ -6,6 +6,7 @@ import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import {
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
+  getDiningTableStructuralAssessment,
 } from "../../src/models/diningTable";
 import { getDefaultParams } from "../../src/models/shared";
 import type { DiningTableModelDefinition } from "../../src/models/types";
@@ -38,6 +39,129 @@ test("builds the plan-derived Whisperer geometry without separate hardware", () 
   expect(hardware.plates).toEqual([]);
   expect(hardware.channels).toEqual([]);
   geometry.dispose();
+});
+
+test("screens the Whisperer apron frame and responds to structural dimensions", () => {
+  const params = getDefaultParams(model);
+  const baseline = getDiningTableStructuralAssessment(params);
+  const score = (
+    assessment: ReturnType<typeof getDiningTableStructuralAssessment>,
+    key: ReturnType<
+      typeof getDiningTableStructuralAssessment
+    >["metrics"][number]["key"],
+  ) => assessment.metrics.find((metric) => metric.key === key)!.score;
+
+  expect(baseline.metrics.map((metric) => metric.key)).toEqual([
+    "longitudinal-racking",
+    "end-box-racking",
+    "torsion",
+    "tipping",
+    "floor-rocking",
+    "member-stiffness",
+  ]);
+  expect(baseline.metrics.every((metric) =>
+    Number.isFinite(metric.score) && metric.score >= 0 && metric.score <= 100,
+  )).toBe(true);
+  expect(
+    baseline.metrics.reduce(
+      (total, metric) => total + metric.calculation.weight,
+      0,
+    ),
+  ).toBeCloseTo(1, 10);
+  expect(
+    baseline.metrics.reduce(
+      (total, metric) => total + metric.score * metric.calculation.weight,
+      0,
+    ),
+  ).toBeCloseTo(baseline.overallScore, 1);
+  expect(baseline.overallCalculation.formula).toContain(
+    "24% × Long-apron racking",
+  );
+  expect(baseline.heightSensitivity.lower?.delta).toBeGreaterThan(0);
+  expect(baseline.heightSensitivity.higher?.delta).toBeLessThan(0);
+
+  for (const metric of baseline.metrics) {
+    expect(metric.calculation.rationale.length, metric.key).toBeGreaterThan(40);
+    expect(metric.calculation.formula.length, metric.key).toBeGreaterThan(20);
+    expect(metric.calculation.inputs.length, metric.key).toBeGreaterThanOrEqual(5);
+    expect(
+      new Set(metric.calculation.inputs.map((input) => input.key)).size,
+      metric.key,
+    ).toBe(metric.calculation.inputs.length);
+  }
+
+  const taller = getDiningTableStructuralAssessment({
+    ...params,
+    overallHeight: params.overallHeight + 25.4,
+  });
+  expect(taller.overallScore).toBeLessThan(baseline.overallScore);
+  for (const key of [
+    "longitudinal-racking",
+    "end-box-racking",
+    "tipping",
+    "member-stiffness",
+  ] as const) {
+    expect(score(taller, key), key).toBeLessThan(score(baseline, key));
+  }
+
+  const deeperLongAprons = getDiningTableStructuralAssessment({
+    ...params,
+    longApronHeight: params.longApronHeight + 25.4,
+  });
+  expect(score(deeperLongAprons, "longitudinal-racking")).toBeGreaterThan(
+    score(baseline, "longitudinal-racking"),
+  );
+  expect(score(deeperLongAprons, "torsion")).toBeGreaterThan(
+    score(baseline, "torsion"),
+  );
+
+  const deeperSideAprons = getDiningTableStructuralAssessment({
+    ...params,
+    sideApronHeight: params.sideApronHeight + 25.4,
+  });
+  expect(score(deeperSideAprons, "end-box-racking")).toBeGreaterThan(
+    score(baseline, "end-box-racking"),
+  );
+
+  const thickerTop = getDiningTableStructuralAssessment({
+    ...params,
+    topThickness: params.topThickness + 12.7,
+  });
+  expect(score(thickerTop, "torsion")).toBeGreaterThan(
+    score(baseline, "torsion"),
+  );
+  expect(score(thickerTop, "member-stiffness")).toBeGreaterThan(
+    score(baseline, "member-stiffness"),
+  );
+
+  const widerChamfers = getDiningTableStructuralAssessment({
+    ...params,
+    legFootChamfer: params.legFootChamfer + 3.175,
+  });
+  expect(score(widerChamfers, "floor-rocking")).toBeLessThan(
+    score(baseline, "floor-rocking"),
+  );
+});
+
+test("documents each Whisperer structural formula", () => {
+  const structuralSpec = fs.readFileSync(
+    path.join(root, "docs/whisperer-table-audit-specifications.md"),
+    "utf8",
+  );
+  for (const heading of [
+    "Long-apron racking",
+    "Side-frame racking",
+    "Apron-frame torsion",
+    "Splayed-foot tipping margin",
+    "Floor rocking tolerance",
+    "Member stiffness",
+    "Overall weighting and grades",
+  ]) {
+    expect(structuralSpec).toContain(`### ${heading}`);
+  }
+  expect(structuralSpec).toContain("geometry-only comparison");
+  expect(structuralSpec).toContain("full-size corner mock");
+  expect(structuralSpec).toContain("physical result overrides this screen");
 });
 
 test("renders, persists a plan parameter, and exports one Whisperer STL", async ({
@@ -107,4 +231,64 @@ test("renders, persists a plan parameter, and exports one Whisperer STL", async 
   expect(bedMaxY - bedMinY).toBeGreaterThan(100);
   exported.dispose();
   expect(pageErrors).toEqual([]);
+});
+
+test("shows Whisperer structural checks with its own formulas and sources", async ({
+  page,
+}) => {
+  await page.goto("/?model=whisperer&unit=in");
+  const designChecks = page.getByLabel("Workspace model library");
+  await expect(
+    designChecks.getByRole("button", { name: "Design checks", exact: true }),
+  ).toHaveClass(/active/);
+  const structuralAssessment = designChecks.getByLabel(
+    "Structural wobble assessment",
+  );
+  await expect(structuralAssessment).toBeVisible();
+  await expect(structuralAssessment.getByRole("listitem")).toHaveCount(6);
+  await expect(
+    structuralAssessment
+      .locator('[data-metric="longitudinal-racking"]')
+      .getByText("Long-apron racking", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    structuralAssessment
+      .locator('[data-metric="end-box-racking"]')
+      .getByText("Side-frame racking", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    structuralAssessment
+      .locator('[data-metric="torsion"]')
+      .getByText("Apron-frame torsion", { exact: true }),
+  ).toBeVisible();
+
+  await structuralAssessment
+    .getByRole("button", { name: "Explain Long-apron racking calculation" })
+    .click();
+  const calculation = structuralAssessment.getByLabel(
+    "Long-apron racking calculation details",
+  );
+  await expect(calculation).toContainText("Long apron depth");
+  await expect(calculation).toContainText("mortise-and-tenon dimensions");
+  await expect(
+    calculation.getByRole("link", {
+      name: "Long-apron racking detailed specification",
+    }),
+  ).toHaveAttribute(
+    "href",
+    /whisperer-table-audit-specifications\.md#long-apron-racking$/,
+  );
+  await expect(
+    calculation.getByRole("link", {
+      name: "Long-apron racking formula source code",
+    }),
+  ).toHaveAttribute("href", /whispererTable\.ts#L449-L539$/);
+
+  const baselineScore = Number(
+    await structuralAssessment.getAttribute("data-overall-score"),
+  );
+  await page.getByLabel("Overall height in inches").fill("31");
+  await expect.poll(async () =>
+    Number(await structuralAssessment.getAttribute("data-overall-score")),
+  ).toBeLessThan(baselineScore);
 });

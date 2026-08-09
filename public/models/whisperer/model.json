@@ -166,6 +166,8 @@
       "Keep the apron tops registered to the tabletop underside and the apron faces recessed from the leg faces.",
       "Keep the top underside bevel centered and leave a positive flat center field.",
       "Treat the PDF as the dimensional source while leaving joinery that is not dimensioned in the plan out of the visual model.",
+      "Keep structural scores tied to the Whisperer's four-apron frame, splayed contact footprint, beveled top, and fixed chamfered feet; do not reuse the Plate Table's apronless steel-plate assumptions.",
+      "Treat the structural panel as a geometry-only comparison and require full-size joint, rocking, lateral-push, deflection, and repeated-load tests before build approval.",
       "Export one same-origin wood STL because the plan does not specify separate metal hardware."
     ],
     "checks": [

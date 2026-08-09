@@ -81,8 +81,32 @@ for (const required of [
   "createLongApronGeometry",
   "createSideApronGeometry",
   "LEG_SPLAY_RADIANS",
+  "WHISPERER_STRUCTURAL_WEIGHTS",
+  "evaluateWhispererTableStructure",
+  "getWhispererTableStructuralAssessment",
+  "longApronFactor",
+  "sideApronFactor",
+  "controllingTippingRatio",
+  "flatFootFraction",
 ]) {
   assert.ok(source.includes(required), `procedural source is missing ${required}`);
+}
+
+const structuralSpec = fs.readFileSync(
+  path.join(root, "docs/whisperer-table-audit-specifications.md"),
+  "utf8",
+);
+for (const required of [
+  "Long-apron racking",
+  "Side-frame racking",
+  "Apron-frame torsion",
+  "Splayed-foot tipping margin",
+  "Floor rocking tolerance",
+  "Member stiffness",
+  "Overall weighting and grades",
+  "physical result overrides this screen",
+]) {
+  assert.ok(structuralSpec.includes(required), `structural spec is missing ${required}`);
 }
 
 console.log(
