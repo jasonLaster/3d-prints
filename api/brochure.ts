@@ -39,17 +39,21 @@ function isFinitePositive(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
-function parseRequest(value: unknown): BrochureRequest | null {
+export function parseRequest(value: unknown): BrochureRequest | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<BrochureRequest>;
+  const generationId =
+    candidate.generationId === undefined
+      ? globalThis.crypto.randomUUID()
+      : candidate.generationId;
   if (
     candidate.modelId !== "hover-dining-table" ||
     typeof candidate.modelName !== "string" ||
     candidate.modelName.length > 80 ||
     typeof candidate.clientId !== "string" ||
     !/^[a-zA-Z0-9-]{8,64}$/.test(candidate.clientId) ||
-    typeof candidate.generationId !== "string" ||
-    !/^[a-zA-Z0-9-]{20,64}$/.test(candidate.generationId) ||
+    typeof generationId !== "string" ||
+    !/^[a-zA-Z0-9-]{20,64}$/.test(generationId) ||
     !Array.isArray(candidate.images) ||
     candidate.images.length !== MAX_REFERENCE_COUNT ||
     !candidate.dimensions ||
@@ -60,7 +64,7 @@ function parseRequest(value: unknown): BrochureRequest | null {
   ) {
     return null;
   }
-  return candidate as BrochureRequest;
+  return { ...candidate, generationId } as BrochureRequest;
 }
 
 function decodeReferenceImage(dataUrl: string) {

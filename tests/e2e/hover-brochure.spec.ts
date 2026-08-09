@@ -1,7 +1,25 @@
 import { expect, test } from "@playwright/test";
+import { parseRequest } from "../../api/brochure";
 
 const MOCK_BROCHURE_IMAGE =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+
+test("accepts brochure requests from tabs opened before generation IDs shipped", () => {
+  const request = parseRequest({
+    clientId: "legacy-client-123",
+    dimensions: {
+      height: 749.3,
+      length: 1905,
+      topThickness: 31.75,
+      width: 901.7,
+    },
+    images: Array.from({ length: 4 }, () => MOCK_BROCHURE_IMAGE),
+    modelId: "hover-dining-table",
+    modelName: "X-Hover Dining Table",
+  });
+
+  expect(request?.generationId).toMatch(/^[a-zA-Z0-9-]{20,64}$/);
+});
 
 test("brochure mode captures four CAD angles and presents the generated image", async ({
   page,
