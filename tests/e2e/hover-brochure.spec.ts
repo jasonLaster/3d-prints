@@ -61,7 +61,13 @@ test("brochure mode captures four CAD angles and presents the generated image", 
     .locator(".orientation-cube")
     .getAttribute("style");
 
-  await page.getByRole("button", { name: "Brochure", exact: true }).click();
+  await expect(
+    page
+      .locator('[aria-label="X-Hover assembly view"]')
+      .getByRole("button", { name: /brochure/i }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Brochures", exact: true }).click();
+  await page.getByRole("button", { name: "Generate brochure" }).click();
   const brochure = page.getByTestId("hover-brochure-panel");
   await expect(viewer).toHaveAttribute("data-assembly-mode", "brochure");
   await expect(brochure).toHaveAttribute("data-status", "generating");

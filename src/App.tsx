@@ -3152,7 +3152,6 @@ function HoverAssemblyControl({
         ["exploded", "Exploded", <Layers3 aria-hidden="true" />],
         ["cut-list", "Cut list", <Ruler aria-hidden="true" />],
         ["templates", "Templates", <Focus aria-hidden="true" />],
-        ["brochure", "Brochure", <Sparkles aria-hidden="true" />],
       ] as const).map(([mode, label, icon]) => (
         <button
           aria-pressed={value === mode}
@@ -3965,6 +3964,7 @@ type WorkspaceLibrarySidebarProps = {
   isCompactOpen: boolean;
   selectedModelId: string;
   theme: ThemeMode;
+  onGenerateBrochure?: () => void;
   onOpenModel: (modelId: string) => void;
   onOpenBrochure: (brochure: SavedBrochure) => void;
   onOpenVersion: (version: SavedLibraryVersion) => void;
@@ -3981,6 +3981,7 @@ function WorkspaceLibrarySidebar({
   isCompactOpen,
   selectedModelId,
   theme,
+  onGenerateBrochure,
   onOpenModel,
   onOpenBrochure,
   onOpenVersion,
@@ -4194,6 +4195,7 @@ function WorkspaceLibrarySidebar({
         <WorkspaceSavedBrochures
           brochures={brochures}
           convexEnabled={convexEnabled}
+          onGenerateBrochure={onGenerateBrochure}
           onOpenBrochure={onOpenBrochure}
           selectedModelId={selectedModelId}
           selectedModelName={selectedModelName}
@@ -4213,12 +4215,14 @@ function WorkspaceLibrarySidebar({
 function WorkspaceSavedBrochures({
   brochures,
   convexEnabled,
+  onGenerateBrochure,
   onOpenBrochure,
   selectedModelId,
   selectedModelName,
 }: {
   brochures?: SavedBrochure[];
   convexEnabled: boolean;
+  onGenerateBrochure?: () => void;
   onOpenBrochure: (brochure: SavedBrochure) => void;
   selectedModelId: string;
   selectedModelName: string;
@@ -4232,6 +4236,16 @@ function WorkspaceSavedBrochures({
         <span>Brochures</span>
         <strong title={selectedModelName}>{selectedModelName}</strong>
       </div>
+      {onGenerateBrochure ? (
+        <button
+          className="workspace-brochure-generate"
+          onClick={onGenerateBrochure}
+          type="button"
+        >
+          <Sparkles aria-hidden="true" />
+          Generate brochure
+        </button>
+      ) : null}
       <div className="workspace-brochure-content">
         {!convexEnabled ? (
           <LibraryUnavailableMessage>
@@ -4241,7 +4255,7 @@ function WorkspaceSavedBrochures({
           <p className="library-empty">Loading brochures...</p>
         ) : visibleBrochures.length === 0 ? (
           <p className="library-empty">
-            No brochures yet. Generate one from the Assembly panel.
+            No brochures yet. Generate the first one above.
           </p>
         ) : (
           <div className="workspace-brochure-grid">
@@ -5548,6 +5562,14 @@ export default function App({
           isCompactOpen={isCompactWorkspace && isCompactLibraryOpen}
           selectedModelId={selectedModelId}
           theme={theme}
+          onGenerateBrochure={
+            model.viewer === "hover-dining-table-v1"
+              ? () => {
+                  setIsCompactLibraryOpen(false);
+                  startBrochureGeneration();
+                }
+              : undefined
+          }
           onOpenModel={openModel}
           onOpenBrochure={openSavedBrochure}
           onOpenVersion={openLibraryVersion}
@@ -5724,9 +5746,7 @@ export default function App({
                     <p className="assembly-mode-note">
                       Switch between the assembled model, all{" "}
                       {getHoverDiningTablePieceCount(params)} pieces, the
-                      full-size cut sheet, routing templates, and an AI brochure
-                      render. Brochure mode captures four CAD angles before
-                      generating through Vercel AI Gateway.
+                      full-size cut sheet, and routing templates.
                     </p>
                   </section>
                 ) : null}

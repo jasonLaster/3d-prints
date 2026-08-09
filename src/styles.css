@@ -263,6 +263,10 @@ html.dark .inspector {
   grid-template-rows: max-content max-content minmax(0, 1fr);
 }
 
+.workspace-brochures-section {
+  grid-template-rows: max-content max-content minmax(0, 1fr);
+}
+
 .workspace-version-content {
   display: grid;
   align-content: start;
@@ -548,6 +552,32 @@ html.dark .workspace-version-row.active {
 .workspace-brochure-content {
   min-height: 0;
   overflow-y: auto;
+}
+
+.workspace-brochure-generate {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.workspace-brochure-generate:hover,
+.workspace-brochure-generate:focus-visible {
+  background: color-mix(in srgb, var(--accent) 88%, black);
+  outline: 0;
+}
+
+.workspace-brochure-generate svg {
+  width: 16px;
+  height: 16px;
 }
 
 .workspace-brochure-grid {
@@ -2234,10 +2264,6 @@ html.dark .panel-section:nth-child(even) {
 .assembly-panel-section .segmented-control svg {
   width: 15px;
   height: 15px;
-}
-
-.assembly-panel-section .segmented-control button[data-mode="brochure"] {
-  grid-column: 1 / -1;
 }
 
 .assembly-mode-note {
