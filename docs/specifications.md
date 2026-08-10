@@ -75,7 +75,7 @@ The app must never solve parameter changes by uniformly scaling all axes.
 
 Drill Bit Holder:
 
-- Seven blind holes retain the fixed ordered set 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch.
+- Seven independently adjustable blind-hole positions default to the ordered set 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch.
 - Shared clearance and spacing controls derive the opening sizes and compact one-row box envelope.
 - Holder height and hole depth preserve a printable blind floor; rounded corners and outer/hole-entry bevels remain associative.
 - See `docs/drill-bit-holder-audit-specifications.md` for the full geometry and audit contract.

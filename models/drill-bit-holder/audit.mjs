@@ -102,8 +102,8 @@ assert(fs.existsSync(stlPath), "default holder STL exists");
 
 const expectedBits = [3.175, 3.96875, 4.7625, 6.35, 7.9375, 9.525, 12.7];
 assert(
-  JSON.stringify(model.geometry.bitDiametersMm) === JSON.stringify(expectedBits),
-  "bit set is exactly 1/8 through 1/2 inch in the requested order",
+  JSON.stringify(model.geometry.defaultBitDiametersMm) === JSON.stringify(expectedBits),
+  "default bit set is exactly 1/8 through 1/2 inch in the requested order",
 );
 for (const key of [
   "bitClearance",
@@ -112,6 +112,13 @@ for (const key of [
   "holeDepth",
   "cornerRadius",
   "edgeBevel",
+  "bitDiameter1",
+  "bitDiameter2",
+  "bitDiameter3",
+  "bitDiameter4",
+  "bitDiameter5",
+  "bitDiameter6",
+  "bitDiameter7",
 ]) {
   const entry = parameter(key);
   assert(Boolean(entry), `${key} parameter is defined`);
@@ -120,13 +127,22 @@ for (const key of [
     `${key} default is inside limits`,
   );
 }
+assert(
+  expectedBits.every(
+    (diameter, index) => parameter(`bitDiameter${index + 1}`).default === diameter,
+  ),
+  "seven editable bit parameters retain the requested defaults",
+);
 
 const clearance = parameter("bitClearance").default;
 const spacing = parameter("bitSpacing").default;
 const height = parameter("holderHeight").default;
 const holeDepth = parameter("holeDepth").default;
 const bevel = parameter("edgeBevel").default;
-const holeDiameters = expectedBits.map((diameter) => diameter + clearance);
+const selectedBits = expectedBits.map(
+  (_, index) => parameter(`bitDiameter${index + 1}`).default,
+);
+const holeDiameters = selectedBits.map((diameter) => diameter + clearance);
 const length =
   holeDiameters.reduce((sum, diameter) => sum + diameter, 0) +
   spacing * (holeDiameters.length - 1) +

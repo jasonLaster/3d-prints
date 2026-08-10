@@ -74,7 +74,7 @@ export {
 } from "./concentricTubeJig";
 export {
   createDrillBitHolderGeometry,
-  DRILL_BIT_LABELS,
+  DRILL_BIT_PARAMETER_KEYS,
   getDrillBitHolderLayout,
   updateDrillBitHolderGuide,
 } from "./drillBitHolder";

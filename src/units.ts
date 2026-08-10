@@ -26,7 +26,7 @@ export function fromUnit(value: number, unit: LengthUnit) {
   return value * UNIT_OPTIONS[unit].mmPerUnit;
 }
 
-const FRACTIONAL_INCH_DENOMINATORS = [1, 2, 4, 8, 16, 32] as const;
+const FRACTIONAL_INCH_DENOMINATORS = [1, 2, 4, 8, 16, 32, 64] as const;
 const FRACTIONAL_INCH_EPSILON = 1e-6;
 
 function getFractionalInchStepDenominator(valueIn: number) {

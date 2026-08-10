@@ -284,7 +284,7 @@ test("model-specific parameter dependencies are declared auditable", () => {
     path.join(root, "public/models/drill-bit-holder/model.json"),
   ) as ModelJson & {
     geometry: {
-      bitDiametersMm: number[];
+      defaultBitDiametersMm: number[];
       sideWall: number;
       minimumFloorThickness: number;
       minimumWallThickness: number;
@@ -391,7 +391,7 @@ test("model-specific parameter dependencies are declared auditable", () => {
   const drillParams = Object.fromEntries(
     drillBitHolder.parameters.map((parameter) => [parameter.key, parameter]),
   );
-  expect(drillBitHolder.geometry.bitDiametersMm).toEqual([
+  expect(drillBitHolder.geometry.defaultBitDiametersMm).toEqual([
     3.175,
     3.96875,
     4.7625,
@@ -402,6 +402,11 @@ test("model-specific parameter dependencies are declared auditable", () => {
   ]);
   expect(drillParams.bitClearance.default).toBe(0.5);
   expect(drillParams.bitSpacing.default).toBe(3);
+  expect(
+    Array.from({ length: 7 }, (_, index) =>
+      drillParams[`bitDiameter${index + 1}`].default,
+    ),
+  ).toEqual(drillBitHolder.geometry.defaultBitDiametersMm);
   expect(drillParams.holderHeight.default - drillParams.holeDepth.default).toBeGreaterThanOrEqual(
     drillBitHolder.geometry.minimumFloorThickness,
   );
@@ -409,7 +414,7 @@ test("model-specific parameter dependencies are declared auditable", () => {
     drillParams.bitSpacing.default - drillParams.edgeBevel.default * 2,
   ).toBeGreaterThanOrEqual(drillBitHolder.geometry.minimumWallThickness);
   expect(drillBitHolder.audit.invariants.join(" ")).toContain(
-    "ordered from smallest to largest",
+    "independently editable bit positions",
   );
 });
 
@@ -429,7 +434,7 @@ test("request coverage document tracks the app behaviors under Playwright", () =
     "Original inlay/source overlay can be toggled",
     "per-model JSON for parameters, audit, and scripts",
     "Japandi tray supports width, length, height, floor thickness, rib relief, and rotation",
-    "Drill Bit Holder keeps the seven requested fractional sizes",
+    "Drill Bit Holder defaults to the seven requested fractional sizes",
     "Dark theme is available",
     "Parameter state is saved in the URL",
     "Sidebars have collapsible and resizable rails",

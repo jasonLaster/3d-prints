@@ -2,7 +2,7 @@
 
 ## Geometry contract
 
-- The holder has seven blind vertical holes in one increasing-size row: 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch.
+- The holder has seven independently adjustable blind vertical holes in one left-to-right row. Defaults are 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch.
 - Each default hole diameter is the nominal bit diameter plus 0.5 mm of diametral clearance.
 - The derived outer box is only as large as the seven openings, 3 mm nominal webs, and a 3.2 mm perimeter wall require. The default envelope is approximately 76.3 × 19.6 × 24 mm.
 - The default holes are 20 mm deep, leaving a 4 mm solid floor.
@@ -10,7 +10,9 @@
 
 ## Parametric limits
 
-- Clearance changes all seven holes together without changing the fixed bit-size set.
+- Clearance changes all seven holes together without changing the individually selected nominal bit diameters.
+- Each bit-position diameter accepts typed metric values or imperial fractions and uses 1/64 inch control steps.
+- Changing any position recomputes the compact box envelope without reordering the other positions.
 - Spacing changes the derived holder length; the beveled top web must retain at least 1.2 mm of printable material.
 - Hole depth is capped so at least 2.4 mm of floor remains.
 - Holder height cannot be reduced below the selected hole depth plus the minimum floor.

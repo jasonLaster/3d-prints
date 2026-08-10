@@ -12,14 +12,14 @@ import type {
 } from "./types";
 
 const EPSILON = 1e-6;
-export const DRILL_BIT_LABELS = [
-  "1/8 in",
-  "5/32 in",
-  "3/16 in",
-  "1/4 in",
-  "5/16 in",
-  "3/8 in",
-  "1/2 in",
+export const DRILL_BIT_PARAMETER_KEYS = [
+  "bitDiameter1",
+  "bitDiameter2",
+  "bitDiameter3",
+  "bitDiameter4",
+  "bitDiameter5",
+  "bitDiameter6",
+  "bitDiameter7",
 ] as const;
 
 type Point = THREE.Vector2;
@@ -139,7 +139,9 @@ export function getDrillBitHolderLayout(
   const spacing = getParam(params, "bitSpacing");
   const height = getParam(params, "holderHeight");
   const holeDepth = Math.min(getParam(params, "holeDepth"), height);
-  const bitDiameters = [...model.geometry.bitDiametersMm];
+  const bitDiameters = DRILL_BIT_PARAMETER_KEYS.map((key) =>
+    getParam(params, key),
+  );
   const holeDiameters = bitDiameters.map((diameter) => diameter + clearance);
   const openingSpan =
     holeDiameters.reduce((sum, diameter) => sum + diameter, 0) +
@@ -284,6 +286,9 @@ export function getDrillBitHolderParameterLimits(
       limits.min,
       getParam(params, "holeDepth") + model.geometry.minimumFloorThickness,
     );
+  } else if (key === "cornerRadius") {
+    const layout = getDrillBitHolderLayout(params, model);
+    limits.max = Math.min(limits.max, layout.width / 2 - EPSILON);
   } else if (key === "edgeBevel") {
     limits.max = Math.max(
       limits.min,
@@ -313,7 +318,11 @@ export function getDrillBitHolderAuditValue(
 
   switch (check.key) {
     case "bitSet":
-      return pass(DRILL_BIT_LABELS.join(" · "));
+      return pass(
+        layout.bitDiameters
+          .map((diameter) => formatLength(diameter, unit))
+          .join(" · "),
+      );
     case "bitClearance":
       return pass(`${formatLength(getParam(params, "bitClearance"), unit)} diametral`);
     case "holeSpacing":

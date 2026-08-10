@@ -1,8 +1,8 @@
 {
   "id": "drill-bit-holder",
   "name": "Drill Bit Holder",
-  "subtitle": "Compact seven-bit fractional index",
-  "description": "A compact one-row holder for 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch drill bits, with rounded corners and softened outer and hole-entry edges.",
+  "subtitle": "Compact adjustable seven-bit index",
+  "description": "A compact one-row holder with seven independently adjustable drill-bit positions, defaulting to 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch, with rounded corners and softened outer and hole-entry edges.",
   "viewer": "drill-bit-holder-v1",
   "stl": {
     "fileName": "drill-bit-holder.stl",
@@ -15,7 +15,7 @@
   },
   "geometry": {
     "mainAxis": { "x": 0, "y": 0, "z": 0 },
-    "bitDiametersMm": [3.175, 3.96875, 4.7625, 6.35, 7.9375, 9.525, 12.7],
+    "defaultBitDiametersMm": [3.175, 3.96875, 4.7625, 6.35, 7.9375, 9.525, 12.7],
     "radialSegments": 64,
     "cornerSegments": 9,
     "sideWall": 3.2,
@@ -64,19 +64,61 @@
       "statusLabel": "Bevel",
       "default": 0.8,
       "limits": { "min": 0.2, "max": 0.9, "step": 0.1 }
+    },
+    {
+      "key": "bitDiameter1",
+      "label": "Bit 1 diameter",
+      "default": 3.175,
+      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
+    },
+    {
+      "key": "bitDiameter2",
+      "label": "Bit 2 diameter",
+      "default": 3.96875,
+      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
+    },
+    {
+      "key": "bitDiameter3",
+      "label": "Bit 3 diameter",
+      "default": 4.7625,
+      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
+    },
+    {
+      "key": "bitDiameter4",
+      "label": "Bit 4 diameter",
+      "default": 6.35,
+      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
+    },
+    {
+      "key": "bitDiameter5",
+      "label": "Bit 5 diameter",
+      "default": 7.9375,
+      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
+    },
+    {
+      "key": "bitDiameter6",
+      "label": "Bit 6 diameter",
+      "default": 9.525,
+      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
+    },
+    {
+      "key": "bitDiameter7",
+      "label": "Bit 7 diameter",
+      "default": 12.7,
+      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
     }
   ],
   "audit": {
     "toleranceMm": 0.1,
     "dimensionTargets": [
-      "Seven blind holes fit 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch drill bits in increasing-size order.",
+      "Seven blind holes default to 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch drill bits in increasing-size order.",
       "Each default hole adds 0.5 mm diametral clearance to its bit diameter.",
       "Adjacent nominal holes have 3 mm of material between them.",
       "The default holder is approximately 76.3 mm long, 19.6 mm wide, and 24 mm high.",
       "Blind holes are 20 mm deep and retain a 4 mm floor."
     ],
     "invariants": [
-      "Keep all seven bit sizes fixed and ordered from smallest to largest along one row.",
+      "Keep seven independently editable bit positions arranged from left to right along one row.",
       "Derive every hole diameter from its bit diameter plus the shared diametral clearance.",
       "Derive the box length and width from the hole set, spacing, and fixed compact side wall.",
       "Keep every hole blind with at least the configured minimum floor thickness.",
@@ -85,7 +127,7 @@
       "Preserve one closed, support-free shell resting flat on Z=0."
     ],
     "checks": [
-      { "key": "bitSet", "label": "Seven-bit set" },
+      { "key": "bitSet", "label": "Current bit sizes" },
       { "key": "bitClearance", "label": "Bit fit allowance" },
       { "key": "holeSpacing", "label": "Hole spacing" },
       { "key": "holderEnvelope", "label": "Compact envelope" },
@@ -100,7 +142,7 @@
       "name": "audit",
       "path": "models/drill-bit-holder/audit.mjs",
       "command": "npm run audit -- drill-bit-holder",
-      "description": "Validates the seven fixed bit sizes, compact derived envelope, blind-hole floor, bevel clearances, and STL topology."
+      "description": "Validates the seven adjustable bit positions, default fractional set, compact derived envelope, blind-hole floor, bevel clearances, and STL topology."
     }
   ]
 }

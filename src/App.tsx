@@ -73,6 +73,7 @@ import {
   buildAuditItems,
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
+  DRILL_BIT_PARAMETER_KEYS,
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
   getDiningTableStructuralAssessment,
@@ -143,6 +144,10 @@ type AssemblyMode =
   | "brochure";
 type ViewerInteractionMode = "orbit" | "pan";
 type MobileInspectorSection = "assembly" | "parameters" | "checks";
+
+const DRILL_BIT_PARAMETER_KEY_SET = new Set<string>(
+  DRILL_BIT_PARAMETER_KEYS,
+);
 
 type ViewerHandle = {
   captureBrochureViews: () => Promise<string[]>;
@@ -261,6 +266,13 @@ const PARAM_QUERY_KEYS = [
   "increment",
   "tubeHeight",
   "boreDiameter",
+  "bitClearance",
+  "bitSpacing",
+  "holderHeight",
+  "holeDepth",
+  "cornerRadius",
+  "edgeBevel",
+  ...DRILL_BIT_PARAMETER_KEYS,
   "mockScale",
   "tableLength",
   "tableWidth",
@@ -998,6 +1010,14 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
   }
   if (model.viewer === "hover-dining-table-v1") {
     return `${model.export.filePrefix}-scale-1-${getParam(params, "mockScale").toFixed(0)}-length-${getParam(params, "tableLength").toFixed(1)}-width-${getParam(params, "tableWidth").toFixed(1)}.stl`;
+  }
+  if (model.viewer === "drill-bit-holder-v1") {
+    const compact = (value: number) =>
+      value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+    const bits = DRILL_BIT_PARAMETER_KEYS.map((key) =>
+      compact(getParam(params, key)),
+    ).join("_");
+    return `${model.export.filePrefix}-bits-${bits}-clearance-${compact(getParam(params, "bitClearance"))}-spacing-${compact(getParam(params, "bitSpacing"))}-height-${compact(getParam(params, "holderHeight"))}-depth-${compact(getParam(params, "holeDepth"))}-radius-${compact(getParam(params, "cornerRadius"))}-bevel-${compact(getParam(params, "edgeBevel"))}.stl`;
   }
   const suffix = model.parameters
     .map(
@@ -5281,7 +5301,8 @@ export default function App({
         ...current,
         [key]: Number(
           nextValue.toFixed(
-            model.viewer === "concentric-tube-jig-v1"
+            model.viewer === "concentric-tube-jig-v1" ||
+            model.viewer === "drill-bit-holder-v1"
               ? 4
               : CURVE_PARAM_KEYS.has(key)
                 ? 3
@@ -5289,6 +5310,22 @@ export default function App({
           ),
         ),
       };
+      if (model.viewer === "drill-bit-holder-v1") {
+        for (let pass = 0; pass < 2; pass += 1) {
+          for (const parameter of model.parameters) {
+            const dependentLimits = getParameterLimits(
+              model,
+              next,
+              parameter.key,
+            );
+            next[parameter.key] = clamp(
+              next[parameter.key],
+              dependentLimits.min,
+              dependentLimits.max,
+            );
+          }
+        }
+      }
       if (
         model.id === "whisperer" &&
         key === "levelingFeetEnabled" &&
@@ -5962,6 +5999,7 @@ export default function App({
                       }
                       return (
                         parameter.key !== "mockScale" &&
+                        !DRILL_BIT_PARAMETER_KEY_SET.has(parameter.key) &&
                         !ANGLE_PARAM_KEYS.has(parameter.key) &&
                         !CURVE_PARAM_KEYS.has(parameter.key) &&
                         !DIVIDER_PARAM_KEYS.has(parameter.key) &&
@@ -6011,6 +6049,38 @@ export default function App({
                     />
                   ) : null}
                 </section>
+
+                {model.viewer === "drill-bit-holder-v1" ? (
+                  <section className="panel-section">
+                    <h2>Bit sizes</h2>
+                    <p className="parameter-group-description">
+                      Positions run left to right. The shared fit clearance is
+                      added to each selected bit diameter.
+                    </p>
+                    {model.parameters
+                      .filter((parameter) =>
+                        DRILL_BIT_PARAMETER_KEY_SET.has(parameter.key),
+                      )
+                      .map((parameter) => (
+                        <NumberControl
+                          key={parameter.key}
+                          label={parameter.label}
+                          limits={getParameterLimits(
+                            model,
+                            params,
+                            parameter.key,
+                          )}
+                          onChange={(value) =>
+                            updateParam(parameter.key, value)
+                          }
+                          onUnitChange={setUnit}
+                          preferFineStep
+                          unit={unit}
+                          valueMm={params[parameter.key]}
+                        />
+                      ))}
+                  </section>
+                ) : null}
 
                 {model.viewer === "simple-box-v1" ? (
                   <section className="panel-section">
