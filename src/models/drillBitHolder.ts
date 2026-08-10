@@ -347,7 +347,9 @@ export function getDrillBitHolderAuditValue(
     case "largestBit":
       return pass(formatLength(Math.max(...layout.bitDiameters), unit));
     case "bitClearance":
-      return pass(`${formatLength(getParam(params, "bitClearance"), unit)} diametral`);
+      return pass(
+        `${formatLength(getParam(params, "bitClearance"), unit)} total · ${formatLength(getParam(params, "bitClearance") / 2, unit)} per side`,
+      );
     case "holeSpacing":
       return topWeb >= model.geometry.minimumWallThickness
         ? pass(`${formatLength(layout.minimumWeb, unit)} nominal; ${formatLength(topWeb, unit)} at entries`)
@@ -360,6 +362,8 @@ export function getDrillBitHolderAuditValue(
       return pass(
         `${formatLength(layout.length, unit)} × ${formatLength(layout.width, unit)} × ${formatLength(layout.height, unit)}`,
       );
+    case "printOrientation":
+      return pass("Upright · base flat, holes up · continuous walls, no supports");
     case "holeDepth":
       return layout.floorThickness >= model.geometry.minimumFloorThickness
         ? pass(`${formatLength(getParam(params, "holeDepth"), unit)} deep`)

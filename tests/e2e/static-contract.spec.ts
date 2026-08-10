@@ -135,6 +135,7 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "holeSpacing",
       "edgeMargin",
       "holderEnvelope",
+      "printOrientation",
       "holeDepth",
       "roundedCorners",
       "bevels",
@@ -405,6 +406,7 @@ test("model-specific parameter dependencies are declared auditable", () => {
     12.7,
   ]);
   expect(drillParams.bitClearance.default).toBe(0.5);
+  expect(drillParams.bitClearance.label).toContain("wiggle room");
   expect(drillParams.bitSpacing.default).toBe(3);
   expect(drillParams.edgeMargin.default).toBe(3.2);
   expect(drillParams.bitCount.default).toBe(7);
@@ -427,6 +429,9 @@ test("model-specific parameter dependencies are declared auditable", () => {
   ).toBeGreaterThanOrEqual(drillBitHolder.geometry.minimumWallThickness);
   expect(drillBitHolder.audit.invariants.join(" ")).toContain(
     "one to twenty-four editable bit positions",
+  );
+  expect(drillBitHolder.audit.invariants.join(" ")).toContain(
+    "flat base on the build plate",
   );
 });
 
@@ -546,7 +551,8 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
 
   for (const phrase of [
     "1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch",
-    "0.5 mm of diametral clearance",
+    "0.5 mm of total diametral wiggle room",
+    "flat base on the build plate and the holes facing up",
     "76.3 × 19.6 × 24 mm",
     "leaving a 4 mm solid floor",
     "exactly two triangles per mesh edge",

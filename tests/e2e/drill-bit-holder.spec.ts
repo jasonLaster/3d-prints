@@ -129,6 +129,12 @@ test("derives a compact, watertight holder around the requested bit set", () => 
   );
   expect(looser.length - layout.length).toBeCloseTo(8.1, 5);
   expect(looser.width - layout.width).toBeCloseTo(0.3, 5);
+  expect(
+    looser.holeDiameters.every(
+      (diameter, index) =>
+        Math.abs(diameter - layout.holeDiameters[index] - 0.3) < 1e-6,
+    ),
+  ).toBe(true);
 
   const widerMargin = getDrillBitHolderLayout(
     { ...params, edgeMargin: 5 },
@@ -174,6 +180,27 @@ test("renders, audits, edits, and exports the drill bit holder", async ({ page }
   await expect(page.getByText("Current bit sizes")).toBeVisible();
   await expect(page.getByText("1/8 in · 5/32 in · 3/16 in · 1/4 in · 5/16 in · 3/8 in · 1/2 in")).toBeVisible();
   await expect(page.getByText("Compact envelope")).toBeVisible();
+  await expect(page.getByText("Recommended print orientation")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Upright · base flat, holes up · continuous walls, no supports",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("Bit wiggle room", { exact: true })).toBeVisible();
+  await expect(page.getByText("0.02 in total · 0.01 in per side")).toBeVisible();
+  const wiggleRoom = page.getByLabel(
+    "Bit wiggle room (total diameter) in inches",
+  );
+  await expect(wiggleRoom).toBeVisible();
+  await wiggleRoom.fill("0.03");
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("bitClearance"))
+    .toBe("0.03");
+  await expect(page.getByText("0.03 in total · 0.015 in per side")).toBeVisible();
+  await page.getByRole("button", { name: "Reset parameters" }).click();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("bitClearance"))
+    .toBe("0.0197");
   await expect(page.getByText("Largest bit")).toBeVisible();
   await expect(page.getByLabel("Box height in inches")).toBeVisible();
   await expect(page.getByLabel("Horizontal gap between bits in inches")).toBeVisible();

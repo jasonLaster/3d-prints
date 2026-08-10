@@ -159,7 +159,12 @@ const floor = height - holeDepth;
 const topWeb = spacing - bevel * 2;
 const topSideWall = edgeMargin - bevel * 2;
 
-assert(clearance === 0.5, "default holes add 0.5 mm diametral clearance");
+assert(clearance === 0.5, "default holes add 0.5 mm total wiggle room");
+assert(clearance / 2 === 0.25, "default wiggle room leaves 0.25 mm per side");
+assert(
+  model.audit.checks.some((check) => check.key === "printOrientation"),
+  "audit recommends an explicit print orientation",
+);
 assert(spacing === 3, "default nominal hole spacing is 3 mm");
 assert(edgeMargin === 3.2, "default nominal bit-to-edge margin is 3.2 mm");
 assert(nearlyEqual(length, 76.31875), "default length is derived compactly");

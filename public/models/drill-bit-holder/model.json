@@ -33,8 +33,8 @@
     },
     {
       "key": "bitClearance",
-      "label": "Hole clearance",
-      "statusLabel": "Clearance",
+      "label": "Bit wiggle room (total diameter)",
+      "statusLabel": "Wiggle room",
       "default": 0.5,
       "limits": { "min": 0.2, "max": 1, "step": 0.1 }
     },
@@ -127,27 +127,29 @@
     "toleranceMm": 0.1,
     "dimensionTargets": [
       "Seven blind holes default to 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch drill bits in increasing-size order.",
-      "Each default hole adds 0.5 mm diametral clearance to its bit diameter.",
+      "Each default hole adds 0.5 mm of total diametral wiggle room, or 0.25 mm per side, to its bit diameter.",
       "Adjacent nominal holes have 3 mm of material between them.",
       "The default holder is approximately 76.3 mm long, 19.6 mm wide, and 24 mm high.",
       "Blind holes are 20 mm deep and retain a 4 mm floor."
     ],
     "invariants": [
       "Keep one to twenty-four editable bit positions arranged from left to right along one row.",
-      "Derive every hole diameter from its bit diameter plus the shared diametral clearance.",
+      "Derive every hole diameter from its bit diameter plus the shared total diametral wiggle room.",
       "Derive the box length and width from the hole set, horizontal gap, and adjustable bit-to-edge margin.",
       "Keep every hole blind with at least the configured minimum floor thickness.",
       "Round all four plan corners and bevel the outer top and bottom edges.",
       "Bevel each hole entry without reducing the remaining top web below the printable minimum.",
-      "Preserve one closed, support-free shell resting flat on Z=0."
+      "Preserve one closed, support-free shell resting flat on Z=0.",
+      "Recommend printing upright with the flat base on the build plate and all holes facing up."
     ],
     "checks": [
       { "key": "bitSet", "label": "Current bit sizes" },
       { "key": "largestBit", "label": "Largest bit" },
-      { "key": "bitClearance", "label": "Bit fit allowance" },
+      { "key": "bitClearance", "label": "Bit wiggle room" },
       { "key": "holeSpacing", "label": "Horizontal bit gap" },
       { "key": "edgeMargin", "label": "Bit-to-edge margin" },
       { "key": "holderEnvelope", "label": "Compact envelope" },
+      { "key": "printOrientation", "label": "Recommended print orientation" },
       { "key": "holeDepth", "label": "Blind-hole depth" },
       { "key": "roundedCorners", "label": "Rounded corners" },
       { "key": "bevels", "label": "Softened edges" },
