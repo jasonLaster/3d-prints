@@ -2,7 +2,7 @@
   "id": "drill-bit-holder",
   "name": "Drill Bit Holder",
   "subtitle": "Compact adjustable seven-bit index",
-  "description": "A compact one-row holder with seven independently adjustable drill-bit positions, defaulting to 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch, with rounded corners and softened outer and hole-entry edges.",
+  "description": "A compact one-row holder with a comma-delimited bit list for adding, removing, or resizing holes. It defaults to 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch, with rounded corners and softened outer and hole-entry edges.",
   "viewer": "drill-bit-holder-v1",
   "stl": {
     "fileName": "drill-bit-holder.stl",
@@ -16,6 +16,9 @@
   "geometry": {
     "mainAxis": { "x": 0, "y": 0, "z": 0 },
     "defaultBitDiametersMm": [3.175, 3.96875, 4.7625, 6.35, 7.9375, 9.525, 12.7],
+    "minimumBitDiameter": 0.79375,
+    "maximumBitDiameter": 25.4,
+    "maximumBitCount": 24,
     "radialSegments": 64,
     "cornerSegments": 9,
     "sideWall": 3.2,
@@ -23,6 +26,12 @@
     "minimumWallThickness": 1.2
   },
   "parameters": [
+    {
+      "key": "bitCount",
+      "label": "Bit count",
+      "default": 7,
+      "limits": { "min": 1, "max": 24, "step": 1 }
+    },
     {
       "key": "bitClearance",
       "label": "Bit clearance",
@@ -69,43 +78,43 @@
       "key": "bitDiameter1",
       "label": "Bit 1 diameter",
       "default": 3.175,
-      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
+      "limits": { "min": 0.79375, "max": 25.4, "step": 0.396875 }
     },
     {
       "key": "bitDiameter2",
       "label": "Bit 2 diameter",
       "default": 3.96875,
-      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
+      "limits": { "min": 0.79375, "max": 25.4, "step": 0.396875 }
     },
     {
       "key": "bitDiameter3",
       "label": "Bit 3 diameter",
       "default": 4.7625,
-      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
+      "limits": { "min": 0.79375, "max": 25.4, "step": 0.396875 }
     },
     {
       "key": "bitDiameter4",
       "label": "Bit 4 diameter",
       "default": 6.35,
-      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
+      "limits": { "min": 0.79375, "max": 25.4, "step": 0.396875 }
     },
     {
       "key": "bitDiameter5",
       "label": "Bit 5 diameter",
       "default": 7.9375,
-      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
+      "limits": { "min": 0.79375, "max": 25.4, "step": 0.396875 }
     },
     {
       "key": "bitDiameter6",
       "label": "Bit 6 diameter",
       "default": 9.525,
-      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
+      "limits": { "min": 0.79375, "max": 25.4, "step": 0.396875 }
     },
     {
       "key": "bitDiameter7",
       "label": "Bit 7 diameter",
       "default": 12.7,
-      "limits": { "min": 1.5875, "max": 19.05, "step": 0.396875 }
+      "limits": { "min": 0.79375, "max": 25.4, "step": 0.396875 }
     }
   ],
   "audit": {
@@ -118,7 +127,7 @@
       "Blind holes are 20 mm deep and retain a 4 mm floor."
     ],
     "invariants": [
-      "Keep seven independently editable bit positions arranged from left to right along one row.",
+      "Keep one to twenty-four editable bit positions arranged from left to right along one row.",
       "Derive every hole diameter from its bit diameter plus the shared diametral clearance.",
       "Derive the box length and width from the hole set, spacing, and fixed compact side wall.",
       "Keep every hole blind with at least the configured minimum floor thickness.",
@@ -142,7 +151,7 @@
       "name": "audit",
       "path": "models/drill-bit-holder/audit.mjs",
       "command": "npm run audit -- drill-bit-holder",
-      "description": "Validates the seven adjustable bit positions, default fractional set, compact derived envelope, blind-hole floor, bevel clearances, and STL topology."
+      "description": "Validates the editable bit-list limits, default fractional set, compact derived envelope, blind-hole floor, bevel clearances, and STL topology."
     }
   ]
 }

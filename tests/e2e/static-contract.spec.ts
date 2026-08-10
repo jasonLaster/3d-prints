@@ -285,6 +285,9 @@ test("model-specific parameter dependencies are declared auditable", () => {
   ) as ModelJson & {
     geometry: {
       defaultBitDiametersMm: number[];
+      minimumBitDiameter: number;
+      maximumBitDiameter: number;
+      maximumBitCount: number;
       sideWall: number;
       minimumFloorThickness: number;
       minimumWallThickness: number;
@@ -402,6 +405,10 @@ test("model-specific parameter dependencies are declared auditable", () => {
   ]);
   expect(drillParams.bitClearance.default).toBe(0.5);
   expect(drillParams.bitSpacing.default).toBe(3);
+  expect(drillParams.bitCount.default).toBe(7);
+  expect(drillBitHolder.geometry.maximumBitCount).toBe(24);
+  expect(drillBitHolder.geometry.minimumBitDiameter).toBe(0.79375);
+  expect(drillBitHolder.geometry.maximumBitDiameter).toBe(25.4);
   expect(
     Array.from({ length: 7 }, (_, index) =>
       drillParams[`bitDiameter${index + 1}`].default,
@@ -414,7 +421,7 @@ test("model-specific parameter dependencies are declared auditable", () => {
     drillParams.bitSpacing.default - drillParams.edgeBevel.default * 2,
   ).toBeGreaterThanOrEqual(drillBitHolder.geometry.minimumWallThickness);
   expect(drillBitHolder.audit.invariants.join(" ")).toContain(
-    "independently editable bit positions",
+    "one to twenty-four editable bit positions",
   );
 });
 

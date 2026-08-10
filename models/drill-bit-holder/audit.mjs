@@ -106,6 +106,7 @@ assert(
   "default bit set is exactly 1/8 through 1/2 inch in the requested order",
 );
 for (const key of [
+  "bitCount",
   "bitClearance",
   "bitSpacing",
   "holderHeight",
@@ -133,6 +134,10 @@ assert(
   ),
   "seven editable bit parameters retain the requested defaults",
 );
+assert(parameter("bitCount").default === 7, "default bit count is seven");
+assert(model.geometry.maximumBitCount >= 16, "text list supports a practical number of bits");
+assert(model.geometry.minimumBitDiameter <= 0.79375, "text list accepts bits down to 1/32 in");
+assert(model.geometry.maximumBitDiameter >= 25.4, "text list accepts bits through 1 in");
 
 const clearance = parameter("bitClearance").default;
 const spacing = parameter("bitSpacing").default;

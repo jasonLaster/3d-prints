@@ -11,8 +11,9 @@
 ## Parametric limits
 
 - Clearance changes all seven holes together without changing the individually selected nominal bit diameters.
-- Each bit-position diameter accepts typed metric values or imperial fractions and uses 1/64 inch control steps.
-- Changing any position recomputes the compact box envelope without reordering the other positions.
+- One comma-delimited text field owns the complete left-to-right bit list. Adding an entry adds a hole; deleting an entry removes it.
+- The field accepts typed metric values or imperial fractions in the selected workspace unit, with 1 to 24 entries from 1/32 through 1 inch.
+- Applying the list recomputes the compact box envelope without reordering the remaining positions.
 - Spacing changes the derived holder length; the beveled top web must retain at least 1.2 mm of printable material.
 - Hole depth is capped so at least 2.4 mm of floor remains.
 - Holder height cannot be reduced below the selected hole depth plus the minimum floor.

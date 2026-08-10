@@ -4,7 +4,7 @@ import {
   getHolderDimensions,
   getHolderParameterLimits,
 } from "./paperTowelHolder";
-import { getParam } from "./shared";
+import { getParam, getParameter } from "./shared";
 import {
   getTrayAuditValue,
   getTrayDimensions,
@@ -75,7 +75,9 @@ export {
 export {
   createDrillBitHolderGeometry,
   DRILL_BIT_PARAMETER_KEYS,
+  getDrillBitDiameters,
   getDrillBitHolderLayout,
+  isDrillBitDiameterKey,
   updateDrillBitHolderGuide,
 } from "./drillBitHolder";
 export {
@@ -225,6 +227,15 @@ export function getStatusItems(
       `Width ${formatLength(getParam(params, "tableWidth"), unit)}`,
       `Height ${formatLength(getParam(params, "overallHeight"), unit)}`,
     ];
+  }
+  if (model.viewer === "drill-bit-holder-v1") {
+    return ["bitClearance", "bitSpacing", "holderHeight", "holeDepth"].map(
+      (key) => {
+        const parameter = getParameter(model, key);
+        const label = parameter.statusLabel ?? parameter.label;
+        return `${label} ${formatLength(getParam(params, key), unit)}`;
+      },
+    );
   }
   return model.parameters.slice(0, 4).map((parameter) => {
     const label = parameter.statusLabel ?? parameter.label;

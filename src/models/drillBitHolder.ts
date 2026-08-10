@@ -22,6 +22,26 @@ export const DRILL_BIT_PARAMETER_KEYS = [
   "bitDiameter7",
 ] as const;
 
+export function isDrillBitDiameterKey(key: string) {
+  return /^bitDiameter[1-9]\d*$/.test(key);
+}
+
+export function getDrillBitDiameters(
+  params: ModelParams,
+  model?: DrillBitHolderModelDefinition,
+) {
+  const fallback = model?.geometry.defaultBitDiametersMm ?? [];
+  const rawCount = params.bitCount;
+  const count = Number.isFinite(rawCount)
+    ? Math.max(1, Math.round(rawCount))
+    : fallback.length;
+  return Array.from({ length: count }, (_, index) => {
+    const value = params[`bitDiameter${index + 1}`];
+    if (Number.isFinite(value)) return value;
+    return fallback[index] ?? fallback[fallback.length - 1] ?? 6.35;
+  });
+}
+
 type Point = THREE.Vector2;
 
 export type DrillBitHolderLayout = {
@@ -139,9 +159,7 @@ export function getDrillBitHolderLayout(
   const spacing = getParam(params, "bitSpacing");
   const height = getParam(params, "holderHeight");
   const holeDepth = Math.min(getParam(params, "holeDepth"), height);
-  const bitDiameters = DRILL_BIT_PARAMETER_KEYS.map((key) =>
-    getParam(params, key),
-  );
+  const bitDiameters = getDrillBitDiameters(params, model);
   const holeDiameters = bitDiameters.map((diameter) => diameter + clearance);
   const openingSpan =
     holeDiameters.reduce((sum, diameter) => sum + diameter, 0) +

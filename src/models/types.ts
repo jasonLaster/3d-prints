@@ -123,6 +123,9 @@ export type ConcentricTubeJigGeometry = {
 export type DrillBitHolderGeometry = {
   mainAxis: { x: number; y: number; z: number };
   defaultBitDiametersMm: number[];
+  minimumBitDiameter: number;
+  maximumBitDiameter: number;
+  maximumBitCount: number;
   radialSegments: number;
   cornerSegments: number;
   sideWall: number;

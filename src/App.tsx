@@ -74,6 +74,7 @@ import {
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
   DRILL_BIT_PARAMETER_KEYS,
+  getDrillBitDiameters,
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
   getDiningTableStructuralAssessment,
@@ -98,6 +99,7 @@ import {
   getParam,
   getParameterLimits,
   getStatusItems,
+  isDrillBitDiameterKey,
   snapGridfinityDimension,
   updateDoorLockAdapterGuide,
   updateConcentricTubeJigGuide,
@@ -266,6 +268,8 @@ const PARAM_QUERY_KEYS = [
   "increment",
   "tubeHeight",
   "boreDiameter",
+  "bits",
+  "bitCount",
   "bitClearance",
   "bitSpacing",
   "holderHeight",
@@ -396,6 +400,7 @@ const PARAM_QUERY_KEYS = [
 ];
 const ANGLE_PARAM_KEYS = new Set(["rotation", "cutoutRotation"]);
 const SCALAR_PARAM_KEYS = new Set([
+  "bitCount",
   "dividerCount",
   "gridfinityCompatible",
   "legGrooveEnabled",
@@ -419,6 +424,7 @@ const CURVE_PARAM_KEYS = new Set([
   "frameInnerStileCurveTension",
 ]);
 const OPTION_PARAM_KEYS = new Set([
+  "bitCount",
   "gridfinityCompatible",
   "legGrooveEnabled",
   "endFrameStyle",
@@ -722,6 +728,31 @@ function getParamsFromUrl(model: ModelDefinition) {
     }
   }
 
+  if (model.viewer === "drill-bit-holder-v1") {
+    const rawBits = searchParams.get("bits");
+    if (rawBits !== null) {
+      const parsedBits = rawBits
+        .split(",")
+        .map((value) => parseLengthInput(value.trim(), unit));
+      const validBits = parsedBits.filter(
+        (value): value is number =>
+          value !== null &&
+          value >= model.geometry.minimumBitDiameter &&
+          value <= model.geometry.maximumBitDiameter,
+      );
+      if (
+        validBits.length === parsedBits.length &&
+        validBits.length >= 1 &&
+        validBits.length <= model.geometry.maximumBitCount
+      ) {
+        params.bitCount = validBits.length;
+        validBits.forEach((value, index) => {
+          params[`bitDiameter${index + 1}`] = Number(value.toFixed(4));
+        });
+      }
+    }
+  }
+
   if (
     model.viewer === "simple-box-v1" &&
     params.gridfinityCompatible >= 0.5
@@ -788,6 +819,35 @@ function serializeUrlParam(key: string, valueMm: number, unit: LengthUnit) {
   return Number(value.toFixed(4)).toString();
 }
 
+function writeParamsToUrl(
+  url: URL,
+  modelId: string,
+  params: ModelParams,
+  unit: LengthUnit,
+) {
+  for (const key of PARAM_QUERY_KEYS) {
+    url.searchParams.delete(key);
+  }
+
+  for (const [key, value] of Object.entries(params)) {
+    if (
+      Number.isFinite(value) &&
+      !(
+        modelId === "drill-bit-holder" &&
+        (key === "bitCount" || isDrillBitDiameterKey(key))
+      )
+    ) {
+      url.searchParams.set(key, serializeUrlParam(key, value, unit));
+    }
+  }
+  if (modelId === "drill-bit-holder") {
+    const bits = getDrillBitDiameters(params)
+      .map((value) => serializeUrlParam("bits", value, unit))
+      .join(",");
+    url.searchParams.set("bits", bits);
+  }
+}
+
 function writeUrlState({
   modelId,
   params,
@@ -801,16 +861,7 @@ function writeUrlState({
   url.searchParams.set("model", modelId);
   url.searchParams.set("unit", unit);
   url.searchParams.delete("theme");
-
-  for (const key of PARAM_QUERY_KEYS) {
-    url.searchParams.delete(key);
-  }
-
-  for (const [key, value] of Object.entries(params)) {
-    if (Number.isFinite(value)) {
-      url.searchParams.set(key, serializeUrlParam(key, value, unit));
-    }
-  }
+  writeParamsToUrl(url, modelId, params, unit);
 
   window.history.replaceState(null, "", url);
 }
@@ -1014,10 +1065,10 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
   if (model.viewer === "drill-bit-holder-v1") {
     const compact = (value: number) =>
       value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
-    const bits = DRILL_BIT_PARAMETER_KEYS.map((key) =>
-      compact(getParam(params, key)),
-    ).join("_");
-    return `${model.export.filePrefix}-bits-${bits}-clearance-${compact(getParam(params, "bitClearance"))}-spacing-${compact(getParam(params, "bitSpacing"))}-height-${compact(getParam(params, "holderHeight"))}-depth-${compact(getParam(params, "holeDepth"))}-radius-${compact(getParam(params, "cornerRadius"))}-bevel-${compact(getParam(params, "edgeBevel"))}.stl`;
+    const compactSetting = (value: number) =>
+      value.toFixed(1).replace(/0+$/, "").replace(/\.$/, "");
+    const bits = getDrillBitDiameters(params, model).map(compact).join("_");
+    return `${model.export.filePrefix}-bits-${bits}-clearance-${compactSetting(getParam(params, "bitClearance"))}-spacing-${compactSetting(getParam(params, "bitSpacing"))}-height-${compactSetting(getParam(params, "holderHeight"))}-depth-${compactSetting(getParam(params, "holeDepth"))}-radius-${compactSetting(getParam(params, "cornerRadius"))}-bevel-${compactSetting(getParam(params, "edgeBevel"))}.stl`;
   }
   const suffix = model.parameters
     .map(
@@ -2635,6 +2686,94 @@ function NumberControl({
           </SelectContent>
         </Select>
       </div>
+    </div>
+  );
+}
+
+function DrillBitSizesControl({
+  bitDiameters,
+  maximumBitCount,
+  maximumBitDiameter,
+  minimumBitDiameter,
+  onChange,
+  unit,
+}: {
+  bitDiameters: number[];
+  maximumBitCount: number;
+  maximumBitDiameter: number;
+  minimumBitDiameter: number;
+  onChange: (values: number[]) => void;
+  unit: LengthUnit;
+}) {
+  const formatValues = () =>
+    bitDiameters.map((value) => formatLengthInput(value, unit)).join(", ");
+  const [draft, setDraft] = useState(formatValues);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setDraft(formatValues());
+    setError("");
+  }, [bitDiameters, unit]);
+
+  const apply = () => {
+    const entries = draft
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    if (entries.length === 0) {
+      setError("Enter at least one bit diameter.");
+      return;
+    }
+    if (entries.length > maximumBitCount) {
+      setError(`Use no more than ${maximumBitCount} bit diameters.`);
+      return;
+    }
+    const values = entries.map((entry) => parseLengthInput(entry, unit));
+    if (values.some((value) => value === null)) {
+      setError("Separate valid dimensions with commas.");
+      return;
+    }
+    const parsed = values as number[];
+    if (
+      parsed.some(
+        (value) => value < minimumBitDiameter || value > maximumBitDiameter,
+      )
+    ) {
+      setError(
+        `Each bit must be between ${formatLength(minimumBitDiameter, unit)} and ${formatLength(maximumBitDiameter, unit)}.`,
+      );
+      return;
+    }
+    setError("");
+    onChange(parsed.map((value) => Number(value.toFixed(4))));
+  };
+
+  return (
+    <div className="drill-bit-list-control">
+      <label htmlFor="drill-bit-sizes">
+        Bit diameters ({UNIT_OPTIONS[unit].label})
+      </label>
+      <input
+        aria-describedby="drill-bit-sizes-help"
+        aria-invalid={error ? "true" : "false"}
+        id="drill-bit-sizes"
+        onBlur={apply}
+        onChange={(event) => setDraft(event.currentTarget.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            apply();
+          }
+        }}
+        spellCheck={false}
+        type="text"
+        value={draft}
+      />
+      <small id="drill-bit-sizes-help">
+        Comma-separated, left to right. Add an entry for a hole; delete one to
+        remove it. Press Enter or leave the field to apply.
+      </small>
+      {error ? <p role="alert">{error}</p> : null}
     </div>
   );
 }
@@ -5492,6 +5631,25 @@ export default function App({
     });
   };
 
+  const updateDrillBitSizes = (values: number[]) => {
+    if (model?.viewer !== "drill-bit-holder-v1") return;
+    setParams((current) => {
+      if (!current) return current;
+      const next: ModelParams = { ...current, bitCount: values.length };
+      for (const key of Object.keys(next)) {
+        if (isDrillBitDiameterKey(key)) delete next[key];
+      }
+      values.forEach((value, index) => {
+        next[`bitDiameter${index + 1}`] = value;
+      });
+      for (const key of ["cornerRadius", "edgeBevel"] as const) {
+        const limits = getParameterLimits(model, next, key);
+        next[key] = clamp(next[key], limits.min, limits.max);
+      }
+      return next;
+    });
+  };
+
   const resetParams = () => {
     if (model) {
       setParams(getDefaultParams(model));
@@ -5527,14 +5685,7 @@ export default function App({
     url.searchParams.set("unit", version.unit);
     url.searchParams.delete("theme");
     url.searchParams.delete("brochure");
-    for (const key of PARAM_QUERY_KEYS) {
-      url.searchParams.delete(key);
-    }
-    for (const [key, value] of Object.entries(version.params)) {
-      if (Number.isFinite(value)) {
-        url.searchParams.set(key, serializeUrlParam(key, value, version.unit));
-      }
-    }
+    writeParamsToUrl(url, version.modelKey, version.params, version.unit);
     window.history.replaceState(null, "", url);
 
     setUnit(version.unit);
@@ -5551,6 +5702,25 @@ export default function App({
             parameter.limits.min,
             parameter.limits.max,
           );
+        }
+      }
+      if (model.viewer === "drill-bit-holder-v1") {
+        const count = version.params.bitCount;
+        if (Number.isFinite(count)) {
+          nextParams.bitCount = clamp(
+            Math.round(count),
+            1,
+            model.geometry.maximumBitCount,
+          );
+          for (const [key, value] of Object.entries(version.params)) {
+            if (isDrillBitDiameterKey(key) && Number.isFinite(value)) {
+              nextParams[key] = clamp(
+                value,
+                model.geometry.minimumBitDiameter,
+                model.geometry.maximumBitDiameter,
+              );
+            }
+          }
         }
       }
       setParams(nextParams);
@@ -6053,32 +6223,14 @@ export default function App({
                 {model.viewer === "drill-bit-holder-v1" ? (
                   <section className="panel-section">
                     <h2>Bit sizes</h2>
-                    <p className="parameter-group-description">
-                      Positions run left to right. The shared fit clearance is
-                      added to each selected bit diameter.
-                    </p>
-                    {model.parameters
-                      .filter((parameter) =>
-                        DRILL_BIT_PARAMETER_KEY_SET.has(parameter.key),
-                      )
-                      .map((parameter) => (
-                        <NumberControl
-                          key={parameter.key}
-                          label={parameter.label}
-                          limits={getParameterLimits(
-                            model,
-                            params,
-                            parameter.key,
-                          )}
-                          onChange={(value) =>
-                            updateParam(parameter.key, value)
-                          }
-                          onUnitChange={setUnit}
-                          preferFineStep
-                          unit={unit}
-                          valueMm={params[parameter.key]}
-                        />
-                      ))}
+                    <DrillBitSizesControl
+                      bitDiameters={getDrillBitDiameters(params, model)}
+                      maximumBitCount={model.geometry.maximumBitCount}
+                      maximumBitDiameter={model.geometry.maximumBitDiameter}
+                      minimumBitDiameter={model.geometry.minimumBitDiameter}
+                      onChange={updateDrillBitSizes}
+                      unit={unit}
+                    />
                   </section>
                 ) : null}
 

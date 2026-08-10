@@ -2686,6 +2686,47 @@ html.dark .panel-section:nth-child(even) {
   margin-top: 14px;
 }
 
+.drill-bit-list-control label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.drill-bit-list-control input {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: 700 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.drill-bit-list-control input:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-soft);
+}
+
+.drill-bit-list-control input[aria-invalid="true"] {
+  border-color: #b94b43;
+}
+
+.drill-bit-list-control small,
+.drill-bit-list-control p {
+  display: block;
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.drill-bit-list-control p {
+  color: #b94b43;
+}
+
 .nested-parameter-section {
   margin-top: 22px;
   padding-top: 18px;

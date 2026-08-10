@@ -130,13 +130,19 @@ test("derives a compact, watertight holder around the requested bit set", () => 
   expect(looser.width - layout.width).toBeCloseTo(0.3, 5);
 
   const customBits = getDrillBitHolderLayout(
-    { ...params, bitDiameter1: 6.35, bitDiameter7: 9.525 },
+    {
+      ...params,
+      bitCount: 3,
+      bitDiameter1: 6.35,
+      bitDiameter2: 9.525,
+      bitDiameter3: 12.7,
+    },
     model,
   );
   expect(customBits.bitDiameters[0]).toBe(6.35);
-  expect(customBits.bitDiameters[6]).toBe(9.525);
-  expect(customBits.length - layout.length).toBeCloseTo(0, 5);
-  expect(customBits.width - layout.width).toBeCloseTo(-3.175, 5);
+  expect(customBits.bitDiameters).toEqual([6.35, 9.525, 12.7]);
+  expect(customBits.length).toBeCloseTo(42.475, 5);
+  expect(customBits.width).toBeCloseTo(19.6, 5);
 });
 
 test("renders, audits, edits, and exports the drill bit holder", async ({ page }) => {
@@ -150,24 +156,35 @@ test("renders, audits, edits, and exports the drill bit holder", async ({ page }
   await expect(page.getByRole("heading", { name: "Drill Bit Holder" })).toBeVisible();
   await expect(page.getByLabel("Drill Bit Holder model viewer")).toBeVisible();
   await expect(page.locator(".scene-panel canvas")).toBeVisible();
-  await expect(page.getByLabel("Bit 1 diameter in inches")).toHaveValue("1/8");
-  await expect(page.getByLabel("Bit 2 diameter in inches")).toHaveValue("5/32");
-  await expect(page.getByLabel("Bit 3 diameter in inches")).toHaveValue("3/16");
-  await expect(page.getByLabel("Bit 4 diameter in inches")).toHaveValue("1/4");
-  await expect(page.getByLabel("Bit 5 diameter in inches")).toHaveValue("5/16");
-  await expect(page.getByLabel("Bit 6 diameter in inches")).toHaveValue("3/8");
-  await expect(page.getByLabel("Bit 7 diameter in inches")).toHaveValue("1/2");
+  await expect(page.getByTestId("viewer-status")).not.toContainText("Bit count");
+  const bitList = page.getByLabel("Bit diameters (in)");
+  await expect(bitList).toHaveValue(
+    "1/8, 5/32, 3/16, 1/4, 5/16, 3/8, 1/2",
+  );
+  await expect(page.getByLabel("Bit 1 diameter in inches")).toHaveCount(0);
   await expect(page.getByText("Current bit sizes")).toBeVisible();
   await expect(page.getByText("1/8 in · 5/32 in · 3/16 in · 1/4 in · 5/16 in · 3/8 in · 1/2 in")).toBeVisible();
   await expect(page.getByText("Compact envelope")).toBeVisible();
 
-  const firstBit = page.getByLabel("Bit 1 diameter in inches");
-  await firstBit.press("ArrowUp");
-  await expect(firstBit).toHaveValue("9/64");
-  await expect(page).toHaveURL(/bitDiameter1=0\.1406/);
+  await bitList.fill("1/8, 5/32, 3/16, 1/4, 5/16, 3/8, 1/2, 5/8");
+  await bitList.press("Enter");
   await expect(
-    page.getByText("9/64 in · 5/32 in · 3/16 in · 1/4 in · 5/16 in · 3/8 in · 1/2 in"),
+    page.getByText("1/8 in · 5/32 in · 3/16 in · 1/4 in · 5/16 in · 3/8 in · 1/2 in · 5/8 in"),
   ).toBeVisible();
+
+  await bitList.fill("1/8, 1/4, 1/2");
+  await bitList.blur();
+  await expect(bitList).toHaveValue("1/8, 1/4, 1/2");
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("bits"))
+    .toBe("0.125,0.25,0.5");
+  await expect(
+    page.getByText("1/8 in · 1/4 in · 1/2 in"),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Bit diameters (in)")).toHaveValue(
+    "1/8, 1/4, 1/2",
+  );
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
@@ -176,7 +193,7 @@ test("renders, audits, edits, and exports the drill bit holder", async ({ page }
     ),
   ]);
   expect(download.suggestedFilename()).toBe(
-    "drill-bit-holder-bits-3.5719_3.9688_4.7625_6.35_7.9375_9.525_12.7-clearance-0.5-spacing-3-height-24-depth-20-radius-3.2-bevel-0.8.stl",
+    "drill-bit-holder-bits-3.175_6.35_12.7-clearance-0.5-spacing-3-height-24-depth-20-radius-3.2-bevel-0.8.stl",
   );
   const downloadPath = await download.path();
   expect(downloadPath).not.toBeNull();
@@ -188,7 +205,7 @@ test("renders, audits, edits, and exports the drill bit holder", async ({ page }
   expect(topology.finite).toBe(true);
   expect(topology.degenerateTriangles).toBe(0);
   expect(topology.nonManifoldEdges).toBe(0);
-  expect(topology.bounds.max.x - topology.bounds.min.x).toBeCloseTo(76.71565, 1);
+  expect(topology.bounds.max.x - topology.bounds.min.x).toBeCloseTo(36.125, 1);
   expect(topology.bounds.max.y - topology.bounds.min.y).toBeCloseTo(19.6, 1);
   expect(topology.bounds.max.z - topology.bounds.min.z).toBeCloseTo(24, 1);
   exported.dispose();
