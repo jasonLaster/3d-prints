@@ -1,0 +1,24 @@
+# Drill Bit Holder Audit Specifications
+
+## Geometry contract
+
+- The holder has seven blind vertical holes in one increasing-size row: 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch.
+- Each default hole diameter is the nominal bit diameter plus 0.5 mm of diametral clearance.
+- The derived outer box is only as large as the seven openings, 3 mm nominal webs, and a 3.2 mm perimeter wall require. The default envelope is approximately 76.3 × 19.6 × 24 mm.
+- The default holes are 20 mm deep, leaving a 4 mm solid floor.
+- The four plan corners use a 3.2 mm radius. A 0.8 mm bevel softens the top and bottom outer edges and forms a lead-in at every hole.
+
+## Parametric limits
+
+- Clearance changes all seven holes together without changing the fixed bit-size set.
+- Spacing changes the derived holder length; the beveled top web must retain at least 1.2 mm of printable material.
+- Hole depth is capped so at least 2.4 mm of floor remains.
+- Holder height cannot be reduced below the selected hole depth plus the minimum floor.
+- Bevel size is capped by the hole spacing, perimeter wall, and corner radius.
+
+## Printable STL checks
+
+- The STL contains finite, nondegenerate triangles and exactly two triangles per mesh edge.
+- The complete holder is one connected, positive-volume shell resting flat on Z=0.
+- The generated bounds match the derived compact envelope within 0.1 mm.
+- Seven distinct blind-hole floors appear at the configured depth, and no hole passes through the build-plate face.

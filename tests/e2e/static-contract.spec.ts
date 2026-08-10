@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(4);
+  expect(catalog.models).toHaveLength(5);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -127,6 +127,16 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "tubeHeight",
       "tubeBore",
       "minimumWall",
+    ],
+    "drill-bit-holder-v1": [
+      "bitSet",
+      "bitClearance",
+      "holeSpacing",
+      "holderEnvelope",
+      "holeDepth",
+      "roundedCorners",
+      "bevels",
+      "minimumWalls",
     ],
     "dining-table-v1": [
       "tableEnvelope",
@@ -270,6 +280,16 @@ test("model-specific parameter dependencies are declared auditable", () => {
       minimumWallThickness: number;
     };
   };
+  const drillBitHolder = readJson(
+    path.join(root, "public/models/drill-bit-holder/model.json"),
+  ) as ModelJson & {
+    geometry: {
+      bitDiametersMm: number[];
+      sideWall: number;
+      minimumFloorThickness: number;
+      minimumWallThickness: number;
+    };
+  };
 
   const holderParams = Object.fromEntries(
     holder.parameters.map((parameter) => [parameter.key, parameter]),
@@ -367,6 +387,30 @@ test("model-specific parameter dependencies are declared auditable", () => {
   expect(adapter.audit.invariants.join(" ")).toContain(
     "rectangular slot open through both tube ends",
   );
+
+  const drillParams = Object.fromEntries(
+    drillBitHolder.parameters.map((parameter) => [parameter.key, parameter]),
+  );
+  expect(drillBitHolder.geometry.bitDiametersMm).toEqual([
+    3.175,
+    3.96875,
+    4.7625,
+    6.35,
+    7.9375,
+    9.525,
+    12.7,
+  ]);
+  expect(drillParams.bitClearance.default).toBe(0.5);
+  expect(drillParams.bitSpacing.default).toBe(3);
+  expect(drillParams.holderHeight.default - drillParams.holeDepth.default).toBeGreaterThanOrEqual(
+    drillBitHolder.geometry.minimumFloorThickness,
+  );
+  expect(
+    drillParams.bitSpacing.default - drillParams.edgeBevel.default * 2,
+  ).toBeGreaterThanOrEqual(drillBitHolder.geometry.minimumWallThickness);
+  expect(drillBitHolder.audit.invariants.join(" ")).toContain(
+    "ordered from smallest to largest",
+  );
 });
 
 test("request coverage document tracks the app behaviors under Playwright", () => {
@@ -385,6 +429,7 @@ test("request coverage document tracks the app behaviors under Playwright", () =
     "Original inlay/source overlay can be toggled",
     "per-model JSON for parameters, audit, and scripts",
     "Japandi tray supports width, length, height, floor thickness, rib relief, and rotation",
+    "Drill Bit Holder keeps the seven requested fractional sizes",
     "Dark theme is available",
     "Parameter state is saved in the URL",
     "Sidebars have collapsible and resizable rails",
@@ -433,6 +478,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   const adapterDoc = readText(
     path.join(root, "docs/door-lock-adapter-audit-specifications.md"),
   );
+  const drillBitHolderDoc = readText(
+    path.join(root, "docs/drill-bit-holder-audit-specifications.md"),
+  );
   const tubeJigDoc = readText(
     path.join(root, "docs/concentric-tube-jig-audit-specifications.md"),
   );
@@ -477,6 +525,16 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "Every mesh edge belongs to exactly two triangles",
   ]) {
     expect(adapterDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch",
+    "0.5 mm of diametral clearance",
+    "76.3 × 19.6 × 24 mm",
+    "leaving a 4 mm solid floor",
+    "exactly two triangles per mesh edge",
+  ]) {
+    expect(drillBitHolderDoc).toContain(phrase);
   }
 
   for (const phrase of [

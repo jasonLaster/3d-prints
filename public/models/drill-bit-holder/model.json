@@ -1,0 +1,106 @@
+{
+  "id": "drill-bit-holder",
+  "name": "Drill Bit Holder",
+  "subtitle": "Compact seven-bit fractional index",
+  "description": "A compact one-row holder for 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch drill bits, with rounded corners and softened outer and hole-entry edges.",
+  "viewer": "drill-bit-holder-v1",
+  "stl": {
+    "fileName": "drill-bit-holder.stl",
+    "sourceName": "procedural-seven-bit-holder.stl",
+    "units": "mm",
+    "url": "/models/drill-bit-holder/drill-bit-holder.stl"
+  },
+  "export": {
+    "filePrefix": "drill-bit-holder"
+  },
+  "geometry": {
+    "mainAxis": { "x": 0, "y": 0, "z": 0 },
+    "bitDiametersMm": [3.175, 3.96875, 4.7625, 6.35, 7.9375, 9.525, 12.7],
+    "radialSegments": 64,
+    "cornerSegments": 9,
+    "sideWall": 3.2,
+    "minimumFloorThickness": 2.4,
+    "minimumWallThickness": 1.2
+  },
+  "parameters": [
+    {
+      "key": "bitClearance",
+      "label": "Bit clearance",
+      "statusLabel": "Clearance",
+      "default": 0.5,
+      "limits": { "min": 0.2, "max": 1, "step": 0.1 }
+    },
+    {
+      "key": "bitSpacing",
+      "label": "Space between holes",
+      "statusLabel": "Spacing",
+      "default": 3,
+      "limits": { "min": 2.8, "max": 8, "step": 0.2 }
+    },
+    {
+      "key": "holderHeight",
+      "label": "Holder height",
+      "statusLabel": "Height",
+      "default": 24,
+      "limits": { "min": 12, "max": 40, "step": 0.5 }
+    },
+    {
+      "key": "holeDepth",
+      "label": "Hole depth",
+      "statusLabel": "Depth",
+      "default": 20,
+      "limits": { "min": 8, "max": 30, "step": 0.5 }
+    },
+    {
+      "key": "cornerRadius",
+      "label": "Corner radius",
+      "statusLabel": "Radius",
+      "default": 3.2,
+      "limits": { "min": 2, "max": 8, "step": 0.2 }
+    },
+    {
+      "key": "edgeBevel",
+      "label": "Edge bevel",
+      "statusLabel": "Bevel",
+      "default": 0.8,
+      "limits": { "min": 0.2, "max": 0.9, "step": 0.1 }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.1,
+    "dimensionTargets": [
+      "Seven blind holes fit 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch drill bits in increasing-size order.",
+      "Each default hole adds 0.5 mm diametral clearance to its bit diameter.",
+      "Adjacent nominal holes have 3 mm of material between them.",
+      "The default holder is approximately 76.3 mm long, 19.6 mm wide, and 24 mm high.",
+      "Blind holes are 20 mm deep and retain a 4 mm floor."
+    ],
+    "invariants": [
+      "Keep all seven bit sizes fixed and ordered from smallest to largest along one row.",
+      "Derive every hole diameter from its bit diameter plus the shared diametral clearance.",
+      "Derive the box length and width from the hole set, spacing, and fixed compact side wall.",
+      "Keep every hole blind with at least the configured minimum floor thickness.",
+      "Round all four plan corners and bevel the outer top and bottom edges.",
+      "Bevel each hole entry without reducing the remaining top web below the printable minimum.",
+      "Preserve one closed, support-free shell resting flat on Z=0."
+    ],
+    "checks": [
+      { "key": "bitSet", "label": "Seven-bit set" },
+      { "key": "bitClearance", "label": "Bit fit allowance" },
+      { "key": "holeSpacing", "label": "Hole spacing" },
+      { "key": "holderEnvelope", "label": "Compact envelope" },
+      { "key": "holeDepth", "label": "Blind-hole depth" },
+      { "key": "roundedCorners", "label": "Rounded corners" },
+      { "key": "bevels", "label": "Softened edges" },
+      { "key": "minimumWalls", "label": "Minimum printable wall" }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/drill-bit-holder/audit.mjs",
+      "command": "npm run audit -- drill-bit-holder",
+      "description": "Validates the seven fixed bit sizes, compact derived envelope, blind-hole floor, bevel clearances, and STL topology."
+    }
+  ]
+}

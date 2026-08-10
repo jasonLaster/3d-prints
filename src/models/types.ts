@@ -120,6 +120,16 @@ export type ConcentricTubeJigGeometry = {
   tubeCount: number;
 };
 
+export type DrillBitHolderGeometry = {
+  mainAxis: { x: number; y: number; z: number };
+  bitDiametersMm: number[];
+  radialSegments: number;
+  cornerSegments: number;
+  sideWall: number;
+  minimumFloorThickness: number;
+  minimumWallThickness: number;
+};
+
 export type DiningTableGeometry = {
   mainAxis: { x: number; y: number; z: number };
   cornerSegments: number;
@@ -145,6 +155,7 @@ export type SupportedViewer =
   | "simple-box-v1"
   | "door-lock-adapter-v1"
   | "concentric-tube-jig-v1"
+  | "drill-bit-holder-v1"
   | "dining-table-v1"
   | "hover-dining-table-v1";
 
@@ -198,6 +209,11 @@ export type ConcentricTubeJigModelDefinition = BaseModelDefinition & {
   geometry: ConcentricTubeJigGeometry;
 };
 
+export type DrillBitHolderModelDefinition = BaseModelDefinition & {
+  viewer: "drill-bit-holder-v1";
+  geometry: DrillBitHolderGeometry;
+};
+
 export type DiningTableModelDefinition = BaseModelDefinition & {
   viewer: "dining-table-v1";
   geometry: DiningTableGeometry;
@@ -214,6 +230,7 @@ export type ModelDefinition =
   | SimpleBoxModelDefinition
   | DoorLockAdapterModelDefinition
   | ConcentricTubeJigModelDefinition
+  | DrillBitHolderModelDefinition
   | DiningTableModelDefinition
   | HoverDiningTableModelDefinition;
 

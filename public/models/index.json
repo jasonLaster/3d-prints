@@ -20,6 +20,11 @@
       "id": "door-lock-adapter",
       "name": "Door Lock Adapter",
       "configUrl": "/models/door-lock-adapter/model.json"
+    },
+    {
+      "id": "drill-bit-holder",
+      "name": "Drill Bit Holder",
+      "configUrl": "/models/drill-bit-holder/model.json"
     }
   ]
 }

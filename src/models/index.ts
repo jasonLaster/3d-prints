@@ -21,6 +21,11 @@ import {
   getConcentricTubeJigParameterLimits,
 } from "./concentricTubeJig";
 import {
+  getDrillBitHolderAuditValue,
+  getDrillBitHolderDimensions,
+  getDrillBitHolderParameterLimits,
+} from "./drillBitHolder";
+import {
   getDiningTableAuditValue,
   getDiningTableDimensions,
   getDiningTableParameterLimits,
@@ -67,6 +72,12 @@ export {
   createConcentricTubeJigGeometry,
   updateConcentricTubeJigGuide,
 } from "./concentricTubeJig";
+export {
+  createDrillBitHolderGeometry,
+  DRILL_BIT_LABELS,
+  getDrillBitHolderLayout,
+  updateDrillBitHolderGuide,
+} from "./drillBitHolder";
 export {
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
@@ -117,6 +128,9 @@ function getAuditValue(
   if (model.viewer === "concentric-tube-jig-v1") {
     return getConcentricTubeJigAuditValue(check, params, unit, model);
   }
+  if (model.viewer === "drill-bit-holder-v1") {
+    return getDrillBitHolderAuditValue(check, params, unit, model);
+  }
   if (model.viewer === "dining-table-v1") {
     return getDiningTableAuditValue(check, params, unit);
   }
@@ -152,6 +166,9 @@ export function getParameterLimits(
   if (model.viewer === "concentric-tube-jig-v1") {
     return getConcentricTubeJigParameterLimits(model, params, key);
   }
+  if (model.viewer === "drill-bit-holder-v1") {
+    return getDrillBitHolderParameterLimits(model, params, key);
+  }
   if (model.viewer === "dining-table-v1") {
     return getDiningTableParameterLimits(model, params, key);
   }
@@ -175,6 +192,9 @@ export function getModelDimensions(
   }
   if (model.viewer === "concentric-tube-jig-v1") {
     return getConcentricTubeJigDimensions(params, model);
+  }
+  if (model.viewer === "drill-bit-holder-v1") {
+    return getDrillBitHolderDimensions(params, model);
   }
   if (model.viewer === "dining-table-v1") {
     return getDiningTableDimensions(params);

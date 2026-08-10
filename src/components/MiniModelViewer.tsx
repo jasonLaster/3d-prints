@@ -11,6 +11,7 @@ import {
   applyHolderMorph,
   applyTrayMorph,
   createConcentricTubeJigGeometry,
+  createDrillBitHolderGeometry,
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
   createDoorLockAdapterGeometry,
@@ -169,6 +170,14 @@ function createPreviewObject(
     group.add(
       new THREE.Mesh(
         createConcentricTubeJigGeometry(params, definition),
+        mainMaterial,
+      ),
+    );
+  } else if (definition.viewer === "drill-bit-holder-v1") {
+    sourceGeometry.dispose();
+    group.add(
+      new THREE.Mesh(
+        createDrillBitHolderGeometry(params, definition),
         mainMaterial,
       ),
     );

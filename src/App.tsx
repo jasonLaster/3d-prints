@@ -72,6 +72,7 @@ import {
   applyTrayMorph,
   buildAuditItems,
   createConcentricTubeJigGeometry,
+  createDrillBitHolderGeometry,
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
   getDiningTableStructuralAssessment,
@@ -99,6 +100,7 @@ import {
   snapGridfinityDimension,
   updateDoorLockAdapterGuide,
   updateConcentricTubeJigGuide,
+  updateDrillBitHolderGuide,
   updateDiningTableGuide,
   updateHoverDiningTableGuide,
   updateHolderGuide,
@@ -723,14 +725,20 @@ function getParamsFromUrl(model: ModelDefinition) {
     }
   }
 
-  if (model.viewer === "door-lock-adapter-v1") {
-    for (const parameter of model.parameters) {
-      const limits = getParameterLimits(model, params, parameter.key);
-      params[parameter.key] = clamp(
-        params[parameter.key],
-        limits.min,
-        limits.max,
-      );
+  if (
+    model.viewer === "door-lock-adapter-v1" ||
+    model.viewer === "drill-bit-holder-v1"
+  ) {
+    const passes = model.viewer === "drill-bit-holder-v1" ? 2 : 1;
+    for (let pass = 0; pass < passes; pass += 1) {
+      for (const parameter of model.parameters) {
+        const limits = getParameterLimits(model, params, parameter.key);
+        params[parameter.key] = clamp(
+          params[parameter.key],
+          limits.min,
+          limits.max,
+        );
+      }
     }
   }
 
@@ -1273,6 +1281,13 @@ const HolderViewer = forwardRef<
         model,
       );
       updateConcentricTubeJigGuide(guideMesh, latestParamsRef.current, model);
+    } else if (model.viewer === "drill-bit-holder-v1") {
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createDrillBitHolderGeometry(
+        latestParamsRef.current,
+        model,
+      );
+      updateDrillBitHolderGuide(guideMesh, latestParamsRef.current, model);
     } else if (model.viewer === "dining-table-v1") {
       if (!diningHardwareGroup || !diningMetalMaterial) return;
       mainMesh.geometry.dispose();
@@ -1948,7 +1963,11 @@ const HolderViewer = forwardRef<
         ? THREE.TOUCH.PAN
         : THREE.TOUCH.ROTATE;
     controls.minDistance =
-      model.viewer === "door-lock-adapter-v1" || model.viewer === "concentric-tube-jig-v1" ? 18 : 80;
+      model.viewer === "door-lock-adapter-v1" ||
+      model.viewer === "concentric-tube-jig-v1" ||
+      model.viewer === "drill-bit-holder-v1"
+        ? 18
+        : 80;
     controls.maxDistance = 1400;
     controlsRef.current = controls;
     const handleControlChange = () => updateCubeOrientation();
@@ -2135,6 +2154,8 @@ const HolderViewer = forwardRef<
           ? createDoorLockAdapterGeometry(latestParamsRef.current, model)
           : model.viewer === "concentric-tube-jig-v1"
             ? createConcentricTubeJigGeometry(latestParamsRef.current, model)
+            : model.viewer === "drill-bit-holder-v1"
+              ? createDrillBitHolderGeometry(latestParamsRef.current, model)
             : model.viewer === "dining-table-v1"
               ? createDiningTableWoodGeometry(latestParamsRef.current, model)
             : model.viewer === "hover-dining-table-v1"
@@ -2252,6 +2273,7 @@ const HolderViewer = forwardRef<
         if (
           model.viewer === "door-lock-adapter-v1" ||
           model.viewer === "concentric-tube-jig-v1" ||
+          model.viewer === "drill-bit-holder-v1" ||
           model.viewer === "dining-table-v1" ||
           model.viewer === "hover-dining-table-v1"
         ) {

@@ -28,6 +28,11 @@ Current models:
   - Config: `public/models/door-lock-adapter/model.json`
   - Audit script: `models/door-lock-adapter/audit.mjs`
   - Source generator: `models/door-lock-adapter/generate-source.mjs`
+- `drill-bit-holder`
+  - STL: `public/models/drill-bit-holder/drill-bit-holder.stl`
+  - Config: `public/models/drill-bit-holder/model.json`
+  - Audit script: `models/drill-bit-holder/audit.mjs`
+  - Source generator: `models/drill-bit-holder/generate-source.mjs`
 
 The model JSON owns the display name, STL URL, parameter definitions, audit
 checks, dimension invariants, and associated scripts for that print.
@@ -64,6 +69,7 @@ npm run audit
 npm run audit -- japandi-tray
 npm run audit -- simple-box
 npm run audit -- door-lock-adapter
+npm run audit -- drill-bit-holder
 npm run test:e2e
 npm run verify
 npm run build:vercel
