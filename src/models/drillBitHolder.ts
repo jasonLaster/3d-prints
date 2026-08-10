@@ -51,6 +51,7 @@ export type DrillBitHolderLayout = {
   length: number;
   width: number;
   height: number;
+  edgeMargin: number;
   floorThickness: number;
   minimumWeb: number;
 };
@@ -157,6 +158,7 @@ export function getDrillBitHolderLayout(
 ): DrillBitHolderLayout {
   const clearance = getParam(params, "bitClearance");
   const spacing = getParam(params, "bitSpacing");
+  const edgeMargin = getParam(params, "edgeMargin");
   const height = getParam(params, "holderHeight");
   const holeDepth = Math.min(getParam(params, "holeDepth"), height);
   const bitDiameters = getDrillBitDiameters(params, model);
@@ -175,9 +177,10 @@ export function getDrillBitHolderLayout(
     bitDiameters,
     holeDiameters,
     holeCenters,
-    length: openingSpan + model.geometry.sideWall * 2,
-    width: Math.max(...holeDiameters) + model.geometry.sideWall * 2,
+    length: openingSpan + edgeMargin * 2,
+    width: Math.max(...holeDiameters) + edgeMargin * 2,
     height,
+    edgeMargin,
     floorThickness: height - holeDepth,
     minimumWeb: spacing,
   };
@@ -313,7 +316,7 @@ export function getDrillBitHolderParameterLimits(
       Math.min(
         limits.max,
         (getParam(params, "bitSpacing") - model.geometry.minimumWallThickness) / 2,
-        (model.geometry.sideWall - model.geometry.minimumWallThickness) / 2,
+        (getParam(params, "edgeMargin") - model.geometry.minimumWallThickness) / 2,
         getParam(params, "cornerRadius"),
       ),
     );
@@ -330,7 +333,7 @@ export function getDrillBitHolderAuditValue(
   const layout = getDrillBitHolderLayout(params, model);
   const bevel = getParam(params, "edgeBevel");
   const topWeb = layout.minimumWeb - bevel * 2;
-  const topSideWall = model.geometry.sideWall - bevel * 2;
+  const topSideWall = layout.edgeMargin - bevel * 2;
   const pass = (value: string): AuditItem => ({ label: check.label, value, status: "pass" });
   const warn = (value: string): AuditItem => ({ label: check.label, value, status: "warn" });
 
@@ -341,12 +344,18 @@ export function getDrillBitHolderAuditValue(
           .map((diameter) => formatLength(diameter, unit))
           .join(" · "),
       );
+    case "largestBit":
+      return pass(formatLength(Math.max(...layout.bitDiameters), unit));
     case "bitClearance":
       return pass(`${formatLength(getParam(params, "bitClearance"), unit)} diametral`);
     case "holeSpacing":
       return topWeb >= model.geometry.minimumWallThickness
         ? pass(`${formatLength(layout.minimumWeb, unit)} nominal; ${formatLength(topWeb, unit)} at entries`)
         : warn(`${formatLength(topWeb, unit)} at beveled entries`);
+    case "edgeMargin":
+      return topSideWall >= model.geometry.minimumWallThickness
+        ? pass(`${formatLength(layout.edgeMargin, unit)} nominal; ${formatLength(topSideWall, unit)} at entries`)
+        : warn(`${formatLength(topSideWall, unit)} at beveled entries`);
     case "holderEnvelope":
       return pass(
         `${formatLength(layout.length, unit)} × ${formatLength(layout.width, unit)} × ${formatLength(layout.height, unit)}`,

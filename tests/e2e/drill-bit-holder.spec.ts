@@ -83,6 +83,7 @@ test("derives a compact, watertight holder around the requested bit set", () => 
   expect(layout.width).toBeCloseTo(19.6, 5);
   expect(layout.height).toBe(24);
   expect(layout.floorThickness).toBe(4);
+  expect(layout.edgeMargin).toBe(3.2);
 
   for (let index = 1; index < layout.holeCenters.length; index += 1) {
     const centerDistance = layout.holeCenters[index] - layout.holeCenters[index - 1];
@@ -129,6 +130,13 @@ test("derives a compact, watertight holder around the requested bit set", () => 
   expect(looser.length - layout.length).toBeCloseTo(8.1, 5);
   expect(looser.width - layout.width).toBeCloseTo(0.3, 5);
 
+  const widerMargin = getDrillBitHolderLayout(
+    { ...params, edgeMargin: 5 },
+    model,
+  );
+  expect(widerMargin.length - layout.length).toBeCloseTo(3.6, 5);
+  expect(widerMargin.width - layout.width).toBeCloseTo(3.6, 5);
+
   const customBits = getDrillBitHolderLayout(
     {
       ...params,
@@ -161,10 +169,24 @@ test("renders, audits, edits, and exports the drill bit holder", async ({ page }
   await expect(bitList).toHaveValue(
     "1/8, 5/32, 3/16, 1/4, 5/16, 3/8, 1/2",
   );
+  await expect(page.getByText("The largest entry sets the box width.", { exact: false })).toBeVisible();
   await expect(page.getByLabel("Bit 1 diameter in inches")).toHaveCount(0);
   await expect(page.getByText("Current bit sizes")).toBeVisible();
   await expect(page.getByText("1/8 in · 5/32 in · 3/16 in · 1/4 in · 5/16 in · 3/8 in · 1/2 in")).toBeVisible();
   await expect(page.getByText("Compact envelope")).toBeVisible();
+  await expect(page.getByText("Largest bit")).toBeVisible();
+  await expect(page.getByLabel("Box height in inches")).toBeVisible();
+  await expect(page.getByLabel("Horizontal gap between bits in inches")).toBeVisible();
+  const edgeMargin = page.getByLabel("Bit-to-edge margin in inches");
+  await expect(edgeMargin).toBeVisible();
+  await edgeMargin.fill("0.2");
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("edgeMargin"))
+    .toBe("0.2");
+  await page.getByRole("button", { name: "Reset parameters" }).click();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("edgeMargin"))
+    .toBe("0.126");
 
   await bitList.fill("1/8, 5/32, 3/16, 1/4, 5/16, 3/8, 1/2, 5/8");
   await bitList.press("Enter");
@@ -193,7 +215,7 @@ test("renders, audits, edits, and exports the drill bit holder", async ({ page }
     ),
   ]);
   expect(download.suggestedFilename()).toBe(
-    "drill-bit-holder-bits-3.175_6.35_12.7-clearance-0.5-spacing-3-height-24-depth-20-radius-3.2-bevel-0.8.stl",
+    "drill-bit-holder-bits-3.175_6.35_12.7-clearance-0.5-gap-3-margin-3.2-height-24-depth-20-radius-3.2-bevel-0.8.stl",
   );
   const downloadPath = await download.path();
   expect(downloadPath).not.toBeNull();

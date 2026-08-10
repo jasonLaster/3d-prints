@@ -21,7 +21,6 @@
     "maximumBitCount": 24,
     "radialSegments": 64,
     "cornerSegments": 9,
-    "sideWall": 3.2,
     "minimumFloorThickness": 2.4,
     "minimumWallThickness": 1.2
   },
@@ -34,21 +33,28 @@
     },
     {
       "key": "bitClearance",
-      "label": "Bit clearance",
+      "label": "Hole clearance",
       "statusLabel": "Clearance",
       "default": 0.5,
       "limits": { "min": 0.2, "max": 1, "step": 0.1 }
     },
     {
       "key": "bitSpacing",
-      "label": "Space between holes",
-      "statusLabel": "Spacing",
+      "label": "Horizontal gap between bits",
+      "statusLabel": "Bit gap",
       "default": 3,
       "limits": { "min": 2.8, "max": 8, "step": 0.2 }
     },
     {
+      "key": "edgeMargin",
+      "label": "Bit-to-edge margin",
+      "statusLabel": "Edge margin",
+      "default": 3.2,
+      "limits": { "min": 2.8, "max": 12, "step": 0.2 }
+    },
+    {
       "key": "holderHeight",
-      "label": "Holder height",
+      "label": "Box height",
       "statusLabel": "Height",
       "default": 24,
       "limits": { "min": 12, "max": 40, "step": 0.5 }
@@ -129,7 +135,7 @@
     "invariants": [
       "Keep one to twenty-four editable bit positions arranged from left to right along one row.",
       "Derive every hole diameter from its bit diameter plus the shared diametral clearance.",
-      "Derive the box length and width from the hole set, spacing, and fixed compact side wall.",
+      "Derive the box length and width from the hole set, horizontal gap, and adjustable bit-to-edge margin.",
       "Keep every hole blind with at least the configured minimum floor thickness.",
       "Round all four plan corners and bevel the outer top and bottom edges.",
       "Bevel each hole entry without reducing the remaining top web below the printable minimum.",
@@ -137,8 +143,10 @@
     ],
     "checks": [
       { "key": "bitSet", "label": "Current bit sizes" },
+      { "key": "largestBit", "label": "Largest bit" },
       { "key": "bitClearance", "label": "Bit fit allowance" },
-      { "key": "holeSpacing", "label": "Hole spacing" },
+      { "key": "holeSpacing", "label": "Horizontal bit gap" },
+      { "key": "edgeMargin", "label": "Bit-to-edge margin" },
       { "key": "holderEnvelope", "label": "Compact envelope" },
       { "key": "holeDepth", "label": "Blind-hole depth" },
       { "key": "roundedCorners", "label": "Rounded corners" },

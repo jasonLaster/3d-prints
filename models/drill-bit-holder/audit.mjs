@@ -109,6 +109,7 @@ for (const key of [
   "bitCount",
   "bitClearance",
   "bitSpacing",
+  "edgeMargin",
   "holderHeight",
   "holeDepth",
   "cornerRadius",
@@ -141,6 +142,7 @@ assert(model.geometry.maximumBitDiameter >= 25.4, "text list accepts bits throug
 
 const clearance = parameter("bitClearance").default;
 const spacing = parameter("bitSpacing").default;
+const edgeMargin = parameter("edgeMargin").default;
 const height = parameter("holderHeight").default;
 const holeDepth = parameter("holeDepth").default;
 const bevel = parameter("edgeBevel").default;
@@ -151,14 +153,15 @@ const holeDiameters = selectedBits.map((diameter) => diameter + clearance);
 const length =
   holeDiameters.reduce((sum, diameter) => sum + diameter, 0) +
   spacing * (holeDiameters.length - 1) +
-  model.geometry.sideWall * 2;
-const width = Math.max(...holeDiameters) + model.geometry.sideWall * 2;
+  edgeMargin * 2;
+const width = Math.max(...holeDiameters) + edgeMargin * 2;
 const floor = height - holeDepth;
 const topWeb = spacing - bevel * 2;
-const topSideWall = model.geometry.sideWall - bevel * 2;
+const topSideWall = edgeMargin - bevel * 2;
 
 assert(clearance === 0.5, "default holes add 0.5 mm diametral clearance");
 assert(spacing === 3, "default nominal hole spacing is 3 mm");
+assert(edgeMargin === 3.2, "default nominal bit-to-edge margin is 3.2 mm");
 assert(nearlyEqual(length, 76.31875), "default length is derived compactly");
 assert(nearlyEqual(width, 19.6), "default width is derived compactly");
 assert(height === 24, "default holder height is 24 mm");

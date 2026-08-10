@@ -272,6 +272,7 @@ const PARAM_QUERY_KEYS = [
   "bitCount",
   "bitClearance",
   "bitSpacing",
+  "edgeMargin",
   "holderHeight",
   "holeDepth",
   "cornerRadius",
@@ -1068,7 +1069,7 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
     const compactSetting = (value: number) =>
       value.toFixed(1).replace(/0+$/, "").replace(/\.$/, "");
     const bits = getDrillBitDiameters(params, model).map(compact).join("_");
-    return `${model.export.filePrefix}-bits-${bits}-clearance-${compactSetting(getParam(params, "bitClearance"))}-spacing-${compactSetting(getParam(params, "bitSpacing"))}-height-${compactSetting(getParam(params, "holderHeight"))}-depth-${compactSetting(getParam(params, "holeDepth"))}-radius-${compactSetting(getParam(params, "cornerRadius"))}-bevel-${compactSetting(getParam(params, "edgeBevel"))}.stl`;
+    return `${model.export.filePrefix}-bits-${bits}-clearance-${compactSetting(getParam(params, "bitClearance"))}-gap-${compactSetting(getParam(params, "bitSpacing"))}-margin-${compactSetting(getParam(params, "edgeMargin"))}-height-${compactSetting(getParam(params, "holderHeight"))}-depth-${compactSetting(getParam(params, "holeDepth"))}-radius-${compactSetting(getParam(params, "cornerRadius"))}-bevel-${compactSetting(getParam(params, "edgeBevel"))}.stl`;
   }
   const suffix = model.parameters
     .map(
@@ -2771,7 +2772,8 @@ function DrillBitSizesControl({
       />
       <small id="drill-bit-sizes-help">
         Comma-separated, left to right. Add an entry for a hole; delete one to
-        remove it. Press Enter or leave the field to apply.
+        remove it. The largest entry sets the box width. Press Enter or leave
+        the field to apply.
       </small>
       {error ? <p role="alert">{error}</p> : null}
     </div>

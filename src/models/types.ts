@@ -128,7 +128,6 @@ export type DrillBitHolderGeometry = {
   maximumBitCount: number;
   radialSegments: number;
   cornerSegments: number;
-  sideWall: number;
   minimumFloorThickness: number;
   minimumWallThickness: number;
 };

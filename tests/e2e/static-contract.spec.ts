@@ -130,8 +130,10 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
     ],
     "drill-bit-holder-v1": [
       "bitSet",
+      "largestBit",
       "bitClearance",
       "holeSpacing",
+      "edgeMargin",
       "holderEnvelope",
       "holeDepth",
       "roundedCorners",
@@ -288,7 +290,6 @@ test("model-specific parameter dependencies are declared auditable", () => {
       minimumBitDiameter: number;
       maximumBitDiameter: number;
       maximumBitCount: number;
-      sideWall: number;
       minimumFloorThickness: number;
       minimumWallThickness: number;
     };
@@ -405,6 +406,7 @@ test("model-specific parameter dependencies are declared auditable", () => {
   ]);
   expect(drillParams.bitClearance.default).toBe(0.5);
   expect(drillParams.bitSpacing.default).toBe(3);
+  expect(drillParams.edgeMargin.default).toBe(3.2);
   expect(drillParams.bitCount.default).toBe(7);
   expect(drillBitHolder.geometry.maximumBitCount).toBe(24);
   expect(drillBitHolder.geometry.minimumBitDiameter).toBe(0.79375);
@@ -419,6 +421,9 @@ test("model-specific parameter dependencies are declared auditable", () => {
   );
   expect(
     drillParams.bitSpacing.default - drillParams.edgeBevel.default * 2,
+  ).toBeGreaterThanOrEqual(drillBitHolder.geometry.minimumWallThickness);
+  expect(
+    drillParams.edgeMargin.default - drillParams.edgeBevel.default * 2,
   ).toBeGreaterThanOrEqual(drillBitHolder.geometry.minimumWallThickness);
   expect(drillBitHolder.audit.invariants.join(" ")).toContain(
     "one to twenty-four editable bit positions",
