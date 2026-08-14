@@ -317,7 +317,8 @@ export function getStatusItems(
       `Tenon ${formatLength(getParam(params, "tenonThickness"), unit)} T × ${formatLength(getParam(params, "tenonWidth"), unit)} W × ${formatLength(getParam(params, "tenonLength"), unit)} L`,
       `Bearing bit ${formatLength(getParam(params, "routerCutterDiameter"), unit)} cutter / ${formatLength(getParam(params, "guideBearingDiameter"), unit)} bearing`,
       `Stock ${formatLength(getParam(params, "workpieceWidth"), unit)} × ${formatLength(getParam(params, "workpieceThickness"), unit)}`,
-      "M5 heat-set inserts × 6",
+      `${getParam(params, "activeGuidePair") >= 0.5 ? "Thickness / edge" : "Width / cheek"} guide pair`,
+      "M5 heat-set inserts × 8",
     ];
   }
   return model.parameters.slice(0, 4).map((parameter) => {

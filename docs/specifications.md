@@ -93,11 +93,12 @@ Handheld Router Mortise Jig:
 
 Handheld Router Tenon Jig:
 
-- The printable set is one 210 × 160 mm base bridge, two adjustable cheek guides, and two adjustable edge guides; six blind pockets receive M5 heat-set inserts.
+- The printable set is one 210 × 170 mm stepped base bridge, two adjustable cheek guides, and two adjustable edge guides; eight blind pockets receive M5 heat-set inserts.
 - Each external bearing-guide opening derives from `target tenon + total fit allowance − guide-bearing diameter + cutter diameter`.
 - Four common-tenon preset markers set 6 × 30 × 25, 8 × 40 × 30, 10 × 40 × 30, and 12 × 50 × 35 mm thickness × width × length targets without hiding the underlying parameters.
 - Physical witness marks cover 6, 8, 10, and 12 mm thicknesses and 30, 40, 50, and 60 mm widths.
-- The two-level sliding-guide arrangement avoids plate collisions and is used one opposing pair at a time.
+- One opposing guide pair seats in the recessed floor at a time, flush to the raised router-support platform; two M5 screws per guide prevent plate pivot.
+- The 150 mm auxiliary sub-base stand-in reaches the active guide and raised platform throughout the configured range, while geometry-only 75 N base and guide screens check deflection and comparative stress margin.
 - The router base, bearing bit, hose-band depth stop, heat-set inserts, finished tenon, and sample stock are visible stand-ins and excluded from printable exports.
 - The bridge and four guides download as five individual support-free STL files.
 - See `docs/router-tenon-jig-audit-specifications.md` for the full geometry, hardware, use, and audit contract.

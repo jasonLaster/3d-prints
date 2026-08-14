@@ -18,6 +18,7 @@ export type RouterTenonJigSpec = {
   baseLength: number;
   baseWidth: number;
   baseThickness: number;
+  platformThickness: number;
   throatWidth: number;
   throatThickness: number;
   plateThickness: number;
@@ -35,13 +36,28 @@ export type RouterTenonJigSpec = {
   tenonAllowance: number;
   guideOpeningWidth: number;
   guideOpeningThickness: number;
+  activeGuidePair: "width" | "thickness";
   cheekGuideCenterX: number;
   edgeGuideCenterY: number;
   insertPocketDiameter: number;
   insertDepth: number;
   insertFloor: number;
   minimumInsertWeb: number;
+  screwEngagement: number;
+  screwTipClearance: number;
+  slotTravelMargin: number;
   minimumPlateWeb: number;
+  minimumBaseWeb: number;
+  clampLedge: number;
+  routerSupportOverlap: number;
+  routerSupportRequiredDiameter: number;
+  baseScreenDeflection: number;
+  baseScreenStress: number;
+  baseScreenSafetyFactor: number;
+  guideScreenSpan: number;
+  guideScreenDeflection: number;
+  guideScreenStress: number;
+  guideScreenSafetyFactor: number;
   shoulderWidth: number;
   shoulderThickness: number;
   routerBaseDiameter: number;
@@ -142,6 +158,32 @@ function capsuleRing(
   );
 }
 
+function crossRing(
+  horizontalLength: number,
+  horizontalWidth: number,
+  verticalLength: number,
+  verticalWidth: number,
+) {
+  const horizontalHalf = horizontalLength / 2;
+  const horizontalBandHalf = horizontalWidth / 2;
+  const verticalHalf = verticalLength / 2;
+  const verticalBandHalf = verticalWidth / 2;
+  return [
+    new THREE.Vector2(-verticalBandHalf, -verticalHalf),
+    new THREE.Vector2(verticalBandHalf, -verticalHalf),
+    new THREE.Vector2(verticalBandHalf, -horizontalBandHalf),
+    new THREE.Vector2(horizontalHalf, -horizontalBandHalf),
+    new THREE.Vector2(horizontalHalf, horizontalBandHalf),
+    new THREE.Vector2(verticalBandHalf, horizontalBandHalf),
+    new THREE.Vector2(verticalBandHalf, verticalHalf),
+    new THREE.Vector2(-verticalBandHalf, verticalHalf),
+    new THREE.Vector2(-verticalBandHalf, horizontalBandHalf),
+    new THREE.Vector2(-horizontalHalf, horizontalBandHalf),
+    new THREE.Vector2(-horizontalHalf, -horizontalBandHalf),
+    new THREE.Vector2(-verticalBandHalf, -horizontalBandHalf),
+  ];
+}
+
 function addTriangle(
   positions: number[],
   a: THREE.Vector3,
@@ -227,21 +269,103 @@ export function getRouterTenonJigSpec(
     tenonThickness - bearingDiameter + cutterDiameter + tenonAllowance;
   const insertPocketDiameter = getParam(params, "insertPocketDiameter");
   const baseThickness = getParam(params, "baseThickness");
+  const plateThickness = getParam(params, "guidePlateThickness");
   const insertDepth = getParam(params, "insertDepth");
   const pocketRadius = insertPocketDiameter / 2;
-  const throatGapAtCheekStation =
-    Math.abs(model.geometry.cheekInsertY) - model.geometry.throatThickness / 2;
   const minimumInsertWeb = Math.min(
-    throatGapAtCheekStation - pocketRadius,
-    model.geometry.baseWidth / 2 - Math.abs(model.geometry.edgeInsertY) - pocketRadius,
+    model.geometry.horizontalRecessWidth / 2 -
+      model.geometry.cheekInsertY -
+      pocketRadius,
+    model.geometry.verticalRecessWidth / 2 -
+      model.geometry.edgeInsertX -
+      pocketRadius,
+    model.geometry.cheekInsertY -
+      model.geometry.throatThickness / 2 -
+      pocketRadius,
+    model.geometry.edgeInsertY -
+      model.geometry.throatThickness / 2 -
+      pocketRadius,
   );
+  const cheekGuideCenterX =
+    guideOpeningWidth / 2 + model.geometry.cheekPlateLength / 2;
+  const edgeGuideCenterY =
+    guideOpeningThickness / 2 + model.geometry.edgePlateWidth / 2;
+  const cheekScrewLocalX = model.geometry.cheekInsertX - cheekGuideCenterX;
+  const edgeScrewLocalY = model.geometry.edgeInsertY - edgeGuideCenterY;
+  const cheekTravelMargin =
+    (model.geometry.adjustmentSlotLength - 5) / 2 -
+    Math.abs(cheekScrewLocalX - model.geometry.cheekSlotCenterLocalX);
+  const edgeTravelMargin =
+    (model.geometry.edgeAdjustmentSlotLength - 5) / 2 -
+    Math.abs(edgeScrewLocalY - model.geometry.edgeSlotCenterLocalY);
+  const activeGuidePair =
+    getParam(params, "activeGuidePair") >= 0.5 ? "thickness" : "width";
+  const routerCenterX =
+    activeGuidePair === "width"
+      ? guideOpeningWidth / 2 + bearingDiameter / 2
+      : 0;
+  const routerCenterY =
+    activeGuidePair === "thickness"
+      ? guideOpeningThickness / 2 + bearingDiameter / 2
+      : 0;
+  const cornerStartX = model.geometry.verticalRecessWidth / 2;
+  const cornerStartY = model.geometry.horizontalRecessWidth / 2;
+  const distanceToRaisedCorner = Math.hypot(
+    Math.max(0, cornerStartX - Math.abs(routerCenterX)),
+    Math.max(0, cornerStartY - Math.abs(routerCenterY)),
+  );
+  const routerBaseDiameter = getParam(params, "routerBaseDiameter");
+  const routerSupportOverlap =
+    routerBaseDiameter / 2 - distanceToRaisedCorner;
+  const effectiveBeamWidth =
+    (model.geometry.baseWidth - model.geometry.throatThickness) / 2 -
+    insertPocketDiameter;
+  const beamMoment = (effectiveBeamWidth * baseThickness ** 3) / 12;
+  const baseScreenDeflection =
+    (model.geometry.screenLoadN * model.geometry.throatWidth ** 3) /
+    (48 * model.geometry.screenModulusMpa * beamMoment);
+  const baseScreenStress =
+    (3 * model.geometry.screenLoadN * model.geometry.throatWidth) /
+    (2 * effectiveBeamWidth * baseThickness ** 2);
+  const cheekGuideSpan =
+    model.geometry.throatWidth / 2 - guideOpeningWidth / 2;
+  const edgeGuideSpan =
+    model.geometry.throatThickness / 2 - guideOpeningThickness / 2;
+  const cheekGuideBeamWidth =
+    model.geometry.cheekPlateWidth - 2 * model.geometry.boltSlotWidth;
+  const edgeGuideBeamWidth =
+    model.geometry.edgePlateLength - 2 * model.geometry.boltSlotWidth;
+  const guideScreens = [
+    { span: cheekGuideSpan, width: cheekGuideBeamWidth },
+    { span: edgeGuideSpan, width: edgeGuideBeamWidth },
+  ].map(({ span, width }) => {
+    const moment = (width * plateThickness ** 3) / 12;
+    const deflection =
+      (model.geometry.screenLoadN * span ** 3) /
+      (3 * model.geometry.screenModulusMpa * moment);
+    const stress =
+      (6 * model.geometry.screenLoadN * span) /
+      (width * plateThickness ** 2);
+    return { deflection, span, stress };
+  });
+  const worstGuideDeflection = Math.max(
+    ...guideScreens.map(({ deflection }) => deflection),
+  );
+  const worstGuideStress = Math.max(
+    ...guideScreens.map(({ stress }) => stress),
+  );
+  const screwEngagement =
+    getParam(params, "knobScrewLength") -
+    model.geometry.washerThickness -
+    plateThickness;
   return {
     baseLength: model.geometry.baseLength,
     baseWidth: model.geometry.baseWidth,
     baseThickness,
+    platformThickness: baseThickness + plateThickness,
     throatWidth: model.geometry.throatWidth,
     throatThickness: model.geometry.throatThickness,
-    plateThickness: getParam(params, "guidePlateThickness"),
+    plateThickness,
     cheekPlateLength: model.geometry.cheekPlateLength,
     cheekPlateWidth: model.geometry.cheekPlateWidth,
     edgePlateLength: model.geometry.edgePlateLength,
@@ -256,19 +380,53 @@ export function getRouterTenonJigSpec(
     tenonAllowance,
     guideOpeningWidth,
     guideOpeningThickness,
-    cheekGuideCenterX: guideOpeningWidth / 2 + model.geometry.cheekPlateLength / 2,
-    edgeGuideCenterY: guideOpeningThickness / 2 + model.geometry.edgePlateWidth / 2,
+    activeGuidePair,
+    cheekGuideCenterX,
+    edgeGuideCenterY,
     insertPocketDiameter,
     insertDepth,
     insertFloor: baseThickness - insertDepth,
     minimumInsertWeb,
+    screwEngagement,
+    screwTipClearance: insertDepth - screwEngagement,
+    slotTravelMargin: Math.min(cheekTravelMargin, edgeTravelMargin),
     minimumPlateWeb: Math.min(
-      (model.geometry.cheekPlateWidth - model.geometry.boltSlotWidth) / 2,
-      (model.geometry.edgePlateLength - model.geometry.boltSlotWidth) / 2,
+      model.geometry.cheekPlateWidth / 2 -
+        model.geometry.cheekInsertY -
+        model.geometry.boltSlotWidth / 2,
+      model.geometry.edgePlateLength / 2 -
+        model.geometry.edgeInsertX -
+        model.geometry.boltSlotWidth / 2,
+      model.geometry.cheekPlateLength / 2 -
+        (model.geometry.cheekSlotCenterLocalX +
+          model.geometry.adjustmentSlotLength / 2),
+      model.geometry.edgePlateWidth / 2 -
+        (model.geometry.edgeSlotCenterLocalY +
+          model.geometry.edgeAdjustmentSlotLength / 2),
     ),
+    minimumBaseWeb: Math.min(
+      (model.geometry.baseLength - model.geometry.throatWidth) / 2,
+      (model.geometry.baseWidth - model.geometry.throatThickness) / 2,
+      minimumInsertWeb,
+    ),
+    clampLedge:
+      (model.geometry.baseWidth - model.geometry.verticalRecessLength) / 2,
+    routerSupportOverlap,
+    routerSupportRequiredDiameter:
+      2 *
+      (distanceToRaisedCorner + model.geometry.minimumRouterSupportOverlap),
+    baseScreenDeflection,
+    baseScreenStress,
+    baseScreenSafetyFactor:
+      model.geometry.screenAllowableStressMpa / baseScreenStress,
+    guideScreenSpan: Math.max(...guideScreens.map(({ span }) => span)),
+    guideScreenDeflection: worstGuideDeflection,
+    guideScreenStress: worstGuideStress,
+    guideScreenSafetyFactor:
+      model.geometry.screenAllowableStressMpa / worstGuideStress,
     shoulderWidth: (getParam(params, "workpieceWidth") - tenonWidth) / 2,
     shoulderThickness: (getParam(params, "workpieceThickness") - tenonThickness) / 2,
-    routerBaseDiameter: getParam(params, "routerBaseDiameter"),
+    routerBaseDiameter,
   };
 }
 
@@ -280,8 +438,12 @@ function insertCenters(model: RouterTenonJigModelDefinition) {
         y: ySign * model.geometry.cheekInsertY,
       })),
     ),
-    { x: 0, y: -model.geometry.edgeInsertY },
-    { x: 0, y: model.geometry.edgeInsertY },
+    ...[-1, 1].flatMap((ySign) =>
+      [-1, 1].map((xSign) => ({
+        x: xSign * model.geometry.edgeInsertX,
+        y: ySign * model.geometry.edgeInsertY,
+      })),
+    ),
   ];
 }
 
@@ -302,6 +464,12 @@ export function createRouterTenonJigBaseGeometry(
     model.geometry.throatCornerRadius,
     model.geometry.cornerSegments,
   );
+  const recess = crossRing(
+    model.geometry.horizontalRecessLength,
+    model.geometry.horizontalRecessWidth,
+    model.geometry.verticalRecessLength,
+    model.geometry.verticalRecessWidth,
+  );
   const nominalPockets = insertCenters(model).map(({ x, y }) =>
     circleRing(spec.insertPocketDiameter / 2, model.geometry.radialSegments, x, y),
   );
@@ -316,9 +484,30 @@ export function createRouterTenonJigBaseGeometry(
   const leadInHeight = Math.min(model.geometry.insertLeadIn, spec.insertDepth / 2);
   const positions: number[] = [];
   addHorizontalFace(positions, outer, [throat], 0, false);
-  addRingBridge(positions, outer, outer, 0, spec.baseThickness);
+  addRingBridge(positions, outer, outer, 0, spec.platformThickness);
   addRingBridge(positions, throat, throat, 0, spec.baseThickness, true);
-  addHorizontalFace(positions, outer, [throat, ...entryPockets], spec.baseThickness, true);
+  addHorizontalFace(
+    positions,
+    recess,
+    [throat, ...entryPockets],
+    spec.baseThickness,
+    true,
+  );
+  addRingBridge(
+    positions,
+    recess,
+    recess,
+    spec.baseThickness,
+    spec.platformThickness,
+    true,
+  );
+  addHorizontalFace(
+    positions,
+    outer,
+    [recess],
+    spec.platformThickness,
+    true,
+  );
   nominalPockets.forEach((pocket, index) => {
     addHorizontalFace(positions, pocket, [], spec.insertFloor, true);
     addRingBridge(
@@ -394,8 +583,6 @@ export function createRouterTenonJigCheekGuideGeometry(
   sideSign: -1 | 1,
 ) {
   const spec = getRouterTenonJigSpec(params, model);
-  const localScrewX =
-    sideSign * model.geometry.cheekInsertX - sideSign * spec.cheekGuideCenterX;
   const holes = [
     ...[-1, 1].map((ySign) =>
       capsuleRing(
@@ -403,7 +590,7 @@ export function createRouterTenonJigCheekGuideGeometry(
         model.geometry.boltSlotWidth,
         "x",
         model.geometry.slotArcSegments,
-        localScrewX,
+        sideSign * model.geometry.cheekSlotCenterLocalX,
         ySign * model.geometry.cheekInsertY,
       ),
     ),
@@ -426,18 +613,20 @@ function edgePresetMarkerRings(
   const cutter = getParam(params, "routerCutterDiameter");
   const bearing = getParam(params, "guideBearingDiameter");
   const allowance = getParam(params, "tenonAllowance");
-  return model.geometry.presetTenonThicknessesMm.map((tenonThickness) => {
+  return model.geometry.presetTenonThicknessesMm.flatMap((tenonThickness) => {
     const opening = tenonThickness - bearing + cutter + allowance;
     const guideCenter = sideSign * (opening / 2 + model.geometry.edgePlateWidth / 2);
     const screwY = sideSign * model.geometry.edgeInsertY;
     const localY = screwY - guideCenter;
-    return capsuleRing(
-      model.geometry.markerLength,
-      model.geometry.markerWidth,
-      "x",
-      model.geometry.markerArcSegments,
-      9,
-      localY,
+    return [-1, 1].map((xSign) =>
+      capsuleRing(
+        model.geometry.markerLength,
+        model.geometry.markerWidth,
+        "x",
+        model.geometry.markerArcSegments,
+        xSign * (model.geometry.edgeInsertX - 8),
+        localY,
+      ),
     );
   });
 }
@@ -448,16 +637,16 @@ export function createRouterTenonJigEdgeGuideGeometry(
   sideSign: -1 | 1,
 ) {
   const spec = getRouterTenonJigSpec(params, model);
-  const localScrewY =
-    sideSign * model.geometry.edgeInsertY - sideSign * spec.edgeGuideCenterY;
   const holes = [
-    capsuleRing(
-      model.geometry.edgeAdjustmentSlotLength,
-      model.geometry.boltSlotWidth,
-      "y",
-      model.geometry.slotArcSegments,
-      0,
-      localScrewY,
+    ...[-1, 1].map((xSign) =>
+      capsuleRing(
+        model.geometry.edgeAdjustmentSlotLength,
+        model.geometry.boltSlotWidth,
+        "y",
+        model.geometry.slotArcSegments,
+        xSign * model.geometry.edgeInsertX,
+        sideSign * model.geometry.edgeSlotCenterLocalY,
+      ),
     ),
     ...edgePresetMarkerRings(sideSign, model, params),
   ];
@@ -490,34 +679,41 @@ export function createRouterTenonJigPreviewParts(
   const spec = getRouterTenonJigSpec(params, model);
   const parts: RouterTenonJigPreviewPart[] = [];
   for (const sideSign of [-1, 1] as const) {
-    const cheek = createRouterTenonJigCheekGuideGeometry(params, model, sideSign);
-    cheek.translate(
-      sideSign * spec.cheekGuideCenterX,
-      0,
-      spec.baseThickness + spec.plateThickness,
-    );
-    parts.push({
-      key: sideSign < 0 ? "left-cheek-guide" : "right-cheek-guide",
-      material: "printed",
-      geometry: cheek,
-    });
-    const edge = createRouterTenonJigEdgeGuideGeometry(params, model, sideSign);
-    edge.translate(0, sideSign * spec.edgeGuideCenterY, spec.baseThickness);
-    parts.push({
-      key: sideSign < 0 ? "front-edge-guide" : "rear-edge-guide",
-      material: "printed",
-      geometry: edge,
-    });
+    if (spec.activeGuidePair === "width") {
+      const cheek = createRouterTenonJigCheekGuideGeometry(params, model, sideSign);
+      cheek.translate(
+        sideSign * spec.cheekGuideCenterX,
+        0,
+        spec.baseThickness,
+      );
+      parts.push({
+        key: sideSign < 0 ? "left-cheek-guide" : "right-cheek-guide",
+        material: "printed",
+        geometry: cheek,
+      });
+    } else {
+      const edge = createRouterTenonJigEdgeGuideGeometry(params, model, sideSign);
+      edge.translate(0, sideSign * spec.edgeGuideCenterY, spec.baseThickness);
+      parts.push({
+        key: sideSign < 0 ? "front-edge-guide" : "rear-edge-guide",
+        material: "printed",
+        geometry: edge,
+      });
+    }
   }
 
-  const guideTop = spec.baseThickness + spec.plateThickness * 2;
+  const guideTop = spec.platformThickness;
   const stockHeight = model.geometry.workpiecePreviewHeight;
   const stock = new THREE.BoxGeometry(
     spec.workpieceWidth,
     spec.workpieceThickness,
     stockHeight,
   );
-  stock.translate(0, 0, guideTop - stockHeight / 2);
+  stock.translate(
+    0,
+    0,
+    spec.baseThickness - spec.tenonLength - stockHeight / 2,
+  );
   parts.push({ key: "workpiece-stock", material: "workpiece", geometry: stock });
 
   const tenon = new THREE.BoxGeometry(
@@ -525,11 +721,18 @@ export function createRouterTenonJigPreviewParts(
     spec.tenonThickness,
     spec.tenonLength,
   );
-  tenon.translate(0, 0, guideTop + spec.tenonLength / 2);
+  tenon.translate(0, 0, spec.baseThickness - spec.tenonLength / 2);
   parts.push({ key: "finished-tenon", material: "tenon", geometry: tenon });
 
-  const routerX = spec.guideOpeningWidth / 2 + spec.bearingDiameter / 2;
-  const baseGap = 5;
+  const routerX =
+    spec.activeGuidePair === "width"
+      ? spec.guideOpeningWidth / 2 + spec.bearingDiameter / 2
+      : 0;
+  const routerY =
+    spec.activeGuidePair === "thickness"
+      ? spec.guideOpeningThickness / 2 + spec.bearingDiameter / 2
+      : 0;
+  const baseGap = 0;
   const routerBase = orientCylinderAlongZ(
     new THREE.CylinderGeometry(
       spec.routerBaseDiameter / 2,
@@ -540,7 +743,7 @@ export function createRouterTenonJigPreviewParts(
   );
   routerBase.translate(
     routerX,
-    0,
+    routerY,
     guideTop + baseGap + model.geometry.routerBaseThickness / 2,
   );
   parts.push({ key: "router-base", material: "router", geometry: routerBase });
@@ -555,7 +758,7 @@ export function createRouterTenonJigPreviewParts(
   );
   motor.translate(
     routerX,
-    0,
+    routerY,
     guideTop + baseGap + model.geometry.routerBaseThickness + model.geometry.routerMotorHeight / 2,
   );
   parts.push({ key: "router-motor", material: "router", geometry: motor });
@@ -572,7 +775,7 @@ export function createRouterTenonJigPreviewParts(
   );
   hoseBand.translate(
     routerX,
-    0,
+    routerY,
     guideTop + baseGap + model.geometry.routerBaseThickness + model.geometry.routerMotorHeight * 0.28,
   );
   parts.push({ key: "depth-stop-band", material: "metal", geometry: hoseBand });
@@ -585,7 +788,11 @@ export function createRouterTenonJigPreviewParts(
       model.geometry.radialSegments,
     ),
   );
-  bearing.translate(routerX, 0, guideTop - model.geometry.bearingHeight / 2);
+  bearing.translate(
+    routerX,
+    routerY,
+    guideTop - model.geometry.bearingHeight / 2,
+  );
   parts.push({ key: "guide-bearing", material: "metal", geometry: bearing });
 
   const cutterLength = Math.min(spec.tenonLength, model.geometry.cutterPreviewLength);
@@ -597,7 +804,11 @@ export function createRouterTenonJigPreviewParts(
       model.geometry.radialSegments,
     ),
   );
-  cutter.translate(routerX, 0, guideTop - model.geometry.bearingHeight - cutterLength / 2);
+  cutter.translate(
+    routerX,
+    routerY,
+    spec.baseThickness - cutterLength / 2,
+  );
   parts.push({ key: "router-cutter", material: "bit", geometry: cutter });
 
   for (const [index, center] of insertCenters(model).entries()) {
@@ -612,6 +823,36 @@ export function createRouterTenonJigPreviewParts(
     insert.translate(center.x, center.y, spec.baseThickness - spec.insertDepth / 2);
     parts.push({ key: `m5-insert-${index + 1}`, material: "metal", geometry: insert });
   }
+  const activeCenters = insertCenters(model).slice(
+    spec.activeGuidePair === "width" ? 0 : 4,
+    spec.activeGuidePair === "width" ? 4 : 8,
+  );
+  for (const [index, center] of activeCenters.entries()) {
+    const washer = orientCylinderAlongZ(
+      new THREE.CylinderGeometry(
+        model.geometry.washerDiameter / 2,
+        model.geometry.washerDiameter / 2,
+        model.geometry.washerThickness,
+        model.geometry.radialSegments,
+      ),
+    );
+    washer.translate(
+      center.x,
+      center.y,
+      spec.platformThickness + model.geometry.washerThickness / 2,
+    );
+    parts.push({ key: `active-washer-${index + 1}`, material: "metal", geometry: washer });
+
+    const screw = orientCylinderAlongZ(
+      new THREE.CylinderGeometry(2.5, 2.5, spec.screwEngagement + spec.plateThickness, 24),
+    );
+    screw.translate(
+      center.x,
+      center.y,
+      spec.platformThickness - (spec.screwEngagement + spec.plateThickness) / 2,
+    );
+    parts.push({ key: `active-screw-${index + 1}`, material: "metal", geometry: screw });
+  }
   return parts;
 }
 
@@ -624,8 +865,7 @@ export function getRouterTenonJigDimensions(
     length: Math.max(spec.baseLength, spec.routerBaseDiameter),
     width: Math.max(spec.baseWidth, spec.routerBaseDiameter),
     height:
-      spec.baseThickness +
-      spec.plateThickness * 2 +
+      spec.platformThickness +
       model.geometry.routerBaseThickness +
       model.geometry.routerMotorHeight +
       5,
@@ -642,9 +882,9 @@ export function updateRouterTenonJigGuide(
   mesh.geometry = new THREE.BoxGeometry(
     spec.baseLength,
     spec.baseWidth,
-    spec.baseThickness + spec.plateThickness * 2,
+    spec.platformThickness,
   );
-  mesh.position.z = (spec.baseThickness + spec.plateThickness * 2) / 2;
+  mesh.position.z = spec.platformThickness / 2;
 }
 
 export function getRouterTenonJigParameterLimits(
@@ -683,6 +923,17 @@ export function getRouterTenonJigParameterLimits(
     limits.min = Math.max(limits.min, getParam(params, "tenonThickness") + 6);
     limits.max = Math.min(limits.max, model.geometry.throatThickness - 4);
   } else if (key === "guideBearingDiameter") {
+    limits.min = Math.max(
+      limits.min,
+      getParam(params, "tenonWidth") +
+        cutter +
+        allowance -
+        model.geometry.maximumGuideOpeningWidth,
+      getParam(params, "tenonThickness") +
+        cutter +
+        allowance -
+        model.geometry.maximumGuideOpeningThickness,
+    );
     limits.max = Math.min(
       limits.max,
       Math.min(getParam(params, "tenonWidth"), getParam(params, "tenonThickness")) +
@@ -698,7 +949,45 @@ export function getRouterTenonJigParameterLimits(
         bearing -
         allowance,
     );
+    limits.max = Math.min(
+      limits.max,
+      model.geometry.maximumGuideOpeningWidth -
+        getParam(params, "tenonWidth") +
+        bearing -
+        allowance,
+      model.geometry.maximumGuideOpeningThickness -
+        getParam(params, "tenonThickness") +
+        bearing -
+        allowance,
+    );
+  } else if (key === "tenonAllowance") {
+    limits.min = Math.max(
+      limits.min,
+      model.geometry.minimumGuideOpening -
+        Math.min(getParam(params, "tenonWidth"), getParam(params, "tenonThickness")) +
+        bearing -
+        cutter,
+    );
+    limits.max = Math.min(
+      limits.max,
+      model.geometry.maximumGuideOpeningWidth -
+        getParam(params, "tenonWidth") +
+        bearing -
+        cutter,
+      model.geometry.maximumGuideOpeningThickness -
+        getParam(params, "tenonThickness") +
+        bearing -
+        cutter,
+    );
   } else if (key === "insertDepth") {
+    const engagement =
+      getParam(params, "knobScrewLength") -
+      model.geometry.washerThickness -
+      getParam(params, "guidePlateThickness");
+    limits.min = Math.max(
+      limits.min,
+      engagement + model.geometry.minimumPocketTipClearance,
+    );
     limits.max = Math.min(
       limits.max,
       getParam(params, "baseThickness") - model.geometry.minimumInsertFloor,
@@ -708,6 +997,37 @@ export function getRouterTenonJigParameterLimits(
       limits.min,
       getParam(params, "insertDepth") + model.geometry.minimumInsertFloor,
     );
+  } else if (key === "guidePlateThickness") {
+    limits.min = Math.max(
+      limits.min,
+      getParam(params, "knobScrewLength") -
+        model.geometry.washerThickness -
+        getParam(params, "insertDepth") +
+        model.geometry.minimumPocketTipClearance,
+    );
+    limits.max = Math.min(
+      limits.max,
+      getParam(params, "knobScrewLength") -
+        model.geometry.washerThickness -
+        model.geometry.minimumInsertEngagement,
+    );
+  } else if (key === "knobScrewLength") {
+    limits.min = Math.max(
+      limits.min,
+      getParam(params, "guidePlateThickness") +
+        model.geometry.washerThickness +
+        model.geometry.minimumInsertEngagement,
+    );
+    limits.max = Math.min(
+      limits.max,
+      getParam(params, "guidePlateThickness") +
+        model.geometry.washerThickness +
+        getParam(params, "insertDepth") -
+        model.geometry.minimumPocketTipClearance,
+    );
+  } else if (key === "routerBaseDiameter") {
+    const spec = getRouterTenonJigSpec(params, model);
+    limits.min = Math.max(limits.min, spec.routerSupportRequiredDiameter);
   }
   limits.max = Math.max(limits.min, limits.max);
   return limits;
@@ -733,7 +1053,7 @@ export function getRouterTenonJigAuditValue(
       );
     case "routerInterface":
       return pass(
-        `${formatLength(spec.cutterDiameter, unit)} cutter · ${formatLength(spec.bearingDiameter, unit)} guide bearing · ${formatLength(spec.routerBaseDiameter, unit)} base`,
+        `${formatLength(spec.cutterDiameter, unit)} cutter · ${formatLength(spec.bearingDiameter, unit)} guide bearing · ${formatLength(spec.routerBaseDiameter, unit)} auxiliary sub-base`,
       );
     case "shoulderMargins":
       return spec.shoulderWidth >= 3 && spec.shoulderThickness >= 3
@@ -741,29 +1061,84 @@ export function getRouterTenonJigAuditValue(
             `${formatLength(spec.shoulderThickness, unit)} per face · ${formatLength(spec.shoulderWidth, unit)} per edge`,
           )
         : warn("Keep at least 3 mm of shoulder on every side");
+    case "assemblyClearance": {
+      const cheekOuter = spec.guideOpeningWidth / 2 + spec.cheekPlateLength;
+      const edgeOuter = spec.guideOpeningThickness / 2 + spec.edgePlateWidth;
+      const seated =
+        cheekOuter <= model.geometry.horizontalRecessLength / 2 &&
+        edgeOuter <= model.geometry.verticalRecessLength / 2;
+      return seated
+        ? pass(
+            `${spec.activeGuidePair === "width" ? "Width / cheek" : "Thickness / edge"} pair installed · guides flush at ${formatLength(spec.platformThickness, unit)}`,
+          )
+        : warn("A guide extends beyond its recessed support floor");
+    }
+    case "fastenerEngagement":
+      return spec.screwEngagement >= model.geometry.minimumInsertEngagement &&
+        spec.screwTipClearance >= model.geometry.minimumPocketTipClearance
+        ? pass(
+            `${formatLength(spec.screwEngagement, unit)} engagement · ${formatLength(spec.screwTipClearance, unit)} tip clearance · 2 screws per guide`,
+          )
+        : warn(
+            `${formatLength(spec.screwEngagement, unit)} engagement · ${formatLength(spec.screwTipClearance, unit)} tip clearance`,
+          );
     case "heatSetInserts":
       return spec.minimumInsertWeb >= model.geometry.minimumInsertSideWall &&
         spec.insertFloor >= model.geometry.minimumInsertFloor
         ? pass(
-            `6 × M5 · ${formatLength(spec.insertPocketDiameter, unit)} Ø × ${formatLength(spec.insertDepth, unit)} deep blind pockets`,
+            `8 × M5 · ${formatLength(spec.insertPocketDiameter, unit)} Ø × ${formatLength(spec.insertDepth, unit)} deep blind pockets`,
           )
         : warn(
             `${formatLength(spec.minimumInsertWeb, unit)} side web · ${formatLength(spec.insertFloor, unit)} floor`,
           );
     case "adjustmentRange":
-      return pass(
-        `${model.geometry.presetTenonThicknessesMm.map((value) => formatLength(value, unit)).join(" · ")} T and ${model.geometry.presetTenonWidthsMm.map((value) => formatLength(value, unit)).join(" · ")} W witness marks`,
-      );
+      return spec.slotTravelMargin >= 0
+        ? pass(
+            `${formatLength(spec.slotTravelMargin, unit)} bolt-center margin · ${model.geometry.presetTenonThicknessesMm.map((value) => formatLength(value, unit)).join(" · ")} T · ${model.geometry.presetTenonWidthsMm.map((value) => formatLength(value, unit)).join(" · ")} W`,
+          )
+        : warn(`${formatLength(spec.slotTravelMargin, unit)} slot travel margin`);
+    case "routerSupport":
+      return spec.routerSupportOverlap >= model.geometry.minimumRouterSupportOverlap
+        ? pass(
+            `${formatLength(spec.routerSupportOverlap, unit)} reach onto a raised support region · ${formatLength(spec.routerSupportRequiredDiameter, unit)} minimum sub-base`,
+          )
+        : warn(
+            `${formatLength(spec.routerSupportOverlap, unit)} reach · enlarge the auxiliary sub-base to ${formatLength(spec.routerSupportRequiredDiameter, unit)}`,
+          );
+    case "baseStrength":
+      return spec.baseScreenDeflection <= model.geometry.maximumScreenDeflection &&
+        spec.baseScreenSafetyFactor >= model.geometry.minimumScreenSafetyFactor
+        ? pass(
+            `${formatLength(spec.baseScreenDeflection, unit)} beam-screen deflection · ${spec.baseScreenStress.toFixed(2)} MPa · ${spec.baseScreenSafetyFactor.toFixed(1)}× stress margin at ${model.geometry.screenLoadN} N`,
+          )
+        : warn(
+            `${formatLength(spec.baseScreenDeflection, unit)} deflection · ${spec.baseScreenSafetyFactor.toFixed(1)}× stress margin`,
+          );
+    case "guideStrength":
+      return spec.guideScreenDeflection <= model.geometry.maximumScreenDeflection &&
+        spec.guideScreenSafetyFactor >= model.geometry.minimumScreenSafetyFactor
+        ? pass(
+            `${formatLength(spec.guideScreenDeflection, unit)} cantilever-screen deflection · ${spec.guideScreenStress.toFixed(2)} MPa · ${spec.guideScreenSafetyFactor.toFixed(1)}× stress margin at ${model.geometry.screenLoadN} N`,
+          )
+        : warn(
+            `${formatLength(spec.guideScreenDeflection, unit)} deflection · ${spec.guideScreenSafetyFactor.toFixed(1)}× stress margin`,
+          );
     case "minimumBaseWeb":
-      return spec.minimumInsertWeb >= model.geometry.minimumInsertSideWall
-        ? pass(formatLength(spec.minimumInsertWeb, unit))
-        : warn(`${formatLength(spec.minimumInsertWeb, unit)} around the closest insert pocket`);
+      return spec.minimumBaseWeb >= model.geometry.minimumInsertSideWall &&
+        spec.minimumPlateWeb >= model.geometry.minimumInsertSideWall &&
+        spec.clampLedge >= model.geometry.minimumClampLedge
+        ? pass(
+            `${formatLength(spec.minimumBaseWeb, unit)} base web · ${formatLength(spec.minimumPlateWeb, unit)} guide web · ${formatLength(spec.clampLedge, unit)} front/rear clamp ledge`,
+          )
+        : warn(
+            `${formatLength(spec.minimumBaseWeb, unit)} base · ${formatLength(spec.minimumPlateWeb, unit)} guide · ${formatLength(spec.clampLedge, unit)} clamp ledge`,
+          );
     case "printSet":
       return pass("5 individual STLs · bridge + 2 cheek guides + 2 edge guides");
     case "previewStandIn":
-      return pass("Router base, bearing bit, depth-stop band, inserts, and sample stock · preview only");
+      return pass("Auxiliary sub-base, bearing bit, depth-stop band, 8 inserts, active screws, and sample stock · preview only");
     case "printOrientation":
-      return pass("All five parts flat · insert pockets or slot faces up · no supports");
+      return pass("Base recess and insert pockets up · all four guides slot faces up · no supports");
     default:
       return warn("Unsupported audit check");
   }

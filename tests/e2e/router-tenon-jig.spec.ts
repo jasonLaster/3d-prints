@@ -84,7 +84,29 @@ test("derives a watertight five-part jig from the tenon and bearing bit", () => 
   expect(spec.guideOpeningWidth).toBeCloseTo(40.2, 5);
   expect(spec.shoulderThickness).toBe(14);
   expect(spec.shoulderWidth).toBe(12);
-  expect(spec.insertFloor).toBe(6);
+  expect(spec.insertFloor).toBe(5);
+  expect(spec.platformThickness).toBe(22);
+  expect(spec.screwEngagement).toBe(4.5);
+  expect(spec.screwTipClearance).toBe(2.5);
+  expect(spec.slotTravelMargin).toBeGreaterThanOrEqual(0);
+  expect(spec.routerSupportOverlap).toBeGreaterThanOrEqual(
+    model.geometry.minimumRouterSupportOverlap,
+  );
+  expect(spec.baseScreenDeflection).toBeLessThanOrEqual(
+    model.geometry.maximumScreenDeflection,
+  );
+  expect(spec.baseScreenSafetyFactor).toBeGreaterThanOrEqual(
+    model.geometry.minimumScreenSafetyFactor,
+  );
+  expect(spec.guideScreenDeflection).toBeLessThanOrEqual(
+    model.geometry.maximumScreenDeflection,
+  );
+  expect(spec.guideScreenSafetyFactor).toBeGreaterThanOrEqual(
+    model.geometry.minimumScreenSafetyFactor,
+  );
+  expect(spec.clampLedge).toBeGreaterThanOrEqual(
+    model.geometry.minimumClampLedge,
+  );
   expect(spec.minimumInsertWeb).toBeGreaterThanOrEqual(
     model.geometry.minimumInsertSideWall,
   );
@@ -94,10 +116,11 @@ test("derives a watertight five-part jig from the tenon and bearing bit", () => 
   expect(baseTopology.finite).toBe(true);
   expect(baseTopology.degenerateTriangles).toBe(0);
   expect(baseTopology.nonManifoldEdges).toBe(0);
-  expect(baseTopology.triangles).toBeGreaterThan(900);
+  expect(baseTopology.triangles).toBeGreaterThan(1200);
   expect(baseTopology.bounds.min.z).toBeCloseTo(0, 5);
+  expect(baseTopology.bounds.max.z).toBeCloseTo(spec.platformThickness, 5);
   expect(baseTopology.bounds.max.x - baseTopology.bounds.min.x).toBeCloseTo(210, 3);
-  expect(baseTopology.bounds.max.y - baseTopology.bounds.min.y).toBeCloseTo(160, 3);
+  expect(baseTopology.bounds.max.y - baseTopology.bounds.min.y).toBeCloseTo(170, 3);
   base.dispose();
 
   const parts = createRouterTenonJigPartGeometries(params, model);
@@ -118,26 +141,57 @@ test("derives a watertight five-part jig from the tenon and bearing bit", () => 
   });
 
   const preview = createRouterTenonJigPreviewParts(params, model);
-  expect(preview.map((part) => part.key)).toEqual([
+  expect(preview.slice(0, 2).map((part) => part.key)).toEqual([
     "left-cheek-guide",
-    "front-edge-guide",
     "right-cheek-guide",
-    "rear-edge-guide",
-    "workpiece-stock",
-    "finished-tenon",
-    "router-base",
-    "router-motor",
-    "depth-stop-band",
-    "guide-bearing",
-    "router-cutter",
-    "m5-insert-1",
-    "m5-insert-2",
-    "m5-insert-3",
-    "m5-insert-4",
-    "m5-insert-5",
-    "m5-insert-6",
   ]);
+  expect(preview.filter((part) => part.key.startsWith("m5-insert-"))).toHaveLength(8);
+  expect(preview.filter((part) => part.key.startsWith("active-washer-"))).toHaveLength(4);
+  expect(preview.filter((part) => part.key.startsWith("active-screw-"))).toHaveLength(4);
+
+  const widthGuides = preview.slice(0, 2).map((part) => analyzeGeometry(part.geometry));
+  expect(widthGuides[0].bounds.max.x).toBeCloseTo(-spec.guideOpeningWidth / 2, 4);
+  expect(widthGuides[1].bounds.min.x).toBeCloseTo(spec.guideOpeningWidth / 2, 4);
+  widthGuides.forEach(({ bounds }) => {
+    expect(bounds.min.z).toBeCloseTo(spec.baseThickness, 5);
+    expect(bounds.max.z).toBeCloseTo(spec.platformThickness, 5);
+  });
+  const routerBase = analyzeGeometry(
+    preview.find((part) => part.key === "router-base")!.geometry,
+  );
+  expect(routerBase.bounds.min.z).toBeCloseTo(spec.platformThickness, 5);
+  const finishedTenon = analyzeGeometry(
+    preview.find((part) => part.key === "finished-tenon")!.geometry,
+  );
+  expect(finishedTenon.bounds.max.z).toBeCloseTo(spec.baseThickness, 5);
+  expect(finishedTenon.bounds.min.z).toBeCloseTo(
+    spec.baseThickness - spec.tenonLength,
+    5,
+  );
   preview.forEach((part) => part.geometry.dispose());
+
+  const thicknessParams = { ...params, activeGuidePair: 1 };
+  const thicknessSpec = getRouterTenonJigSpec(thicknessParams, model);
+  const thicknessPreview = createRouterTenonJigPreviewParts(thicknessParams, model);
+  expect(thicknessPreview.slice(0, 2).map((part) => part.key)).toEqual([
+    "front-edge-guide",
+    "rear-edge-guide",
+  ]);
+  const thicknessGuides = thicknessPreview
+    .slice(0, 2)
+    .map((part) => analyzeGeometry(part.geometry));
+  expect(thicknessGuides[0].bounds.max.y).toBeCloseTo(
+    -thicknessSpec.guideOpeningThickness / 2,
+    4,
+  );
+  expect(thicknessGuides[1].bounds.min.y).toBeCloseTo(
+    thicknessSpec.guideOpeningThickness / 2,
+    4,
+  );
+  expect(thicknessSpec.routerSupportOverlap).toBeGreaterThanOrEqual(
+    model.geometry.minimumRouterSupportOverlap,
+  );
+  thicknessPreview.forEach((part) => part.geometry.dispose());
 });
 
 test("keeps presets and coupled tenon, stock, bearing, and insert limits safe", () => {
@@ -167,11 +221,43 @@ test("keeps presets and coupled tenon, stock, bearing, and insert limits safe", 
     getParameterLimits(model, { ...defaults, tenonThickness: 12 }, "workpieceThickness").min,
   ).toBe(18);
   expect(
-    getParameterLimits(model, { ...defaults, baseThickness: 10 }, "insertDepth").max,
-  ).toBe(7);
+    getParameterLimits(model, { ...defaults, baseThickness: 11 }, "insertDepth").max,
+  ).toBe(8);
   expect(
     getParameterLimits(model, { ...defaults, insertDepth: 9 }, "baseThickness").min,
   ).toBe(12);
+  expect(
+    getParameterLimits(model, defaults, "knobScrewLength"),
+  ).toMatchObject({ min: 16, max: 18 });
+  expect(
+    getParameterLimits(model, { ...defaults, activeGuidePair: 1 }, "routerBaseDiameter").min,
+  ).toBeLessThanOrEqual(defaults.routerBaseDiameter);
+  expect(
+    getParameterLimits(
+      model,
+      {
+        ...defaults,
+        tenonWidth: 60,
+        tenonThickness: 16,
+        guideBearingDiameter: 6,
+        tenonAllowance: 0.8,
+      },
+      "routerCutterDiameter",
+    ).max,
+  ).toBeCloseTo(7.2, 5);
+  expect(
+    getParameterLimits(
+      model,
+      {
+        ...defaults,
+        tenonWidth: 60,
+        tenonThickness: 16,
+        routerCutterDiameter: 19.05,
+        tenonAllowance: 0.8,
+      },
+      "guideBearingDiameter",
+    ).min,
+  ).toBeCloseTo(17.85, 5);
 });
 
 test("renders, applies tenon presets, audits, and exports five individual STLs", async ({ page }) => {
@@ -186,14 +272,23 @@ test("renders, applies tenon presets, audits, and exports five individual STLs",
   await expect(page.getByLabel("Handheld Router Tenon Jig model viewer")).toBeVisible();
   await expect(page.locator(".scene-panel canvas")).toBeVisible();
   await expect(page.getByTestId("viewer-status")).toContainText(
-    "Router base stand-in 90.0 mm Ø · preview only",
+    "Auxiliary sub-base stand-in 150.0 mm Ø · preview only",
   );
   await expect(
     page.locator(".audit-row").filter({ hasText: "Calculated bearing-guide openings" }),
   ).toContainText("10.2 mm T × 40.2 mm W");
   await expect(
     page.locator(".audit-row").filter({ hasText: "Heat-set inserts" }),
-  ).toContainText("6 × M5");
+  ).toContainText("8 × M5");
+  await expect(
+    page.locator(".audit-row").filter({ hasText: "Sequential assembly clearance" }),
+  ).toContainText("Width / cheek pair installed");
+  await expect(
+    page.locator(".audit-row").filter({ hasText: "Base strength screen" }),
+  ).toContainText("75 N");
+  await expect(
+    page.locator(".audit-row").filter({ hasText: "Guide-plate strength screen" }),
+  ).toContainText("75 N");
   await expect(page.getByText("1 base-bridge STL")).toBeVisible();
   await expect(page.getByText("2 individual cheek-guide STLs")).toBeVisible();
 
@@ -208,8 +303,18 @@ test("renders, applies tenon presets, audits, and exports five individual STLs",
   const stock = page.getByLabel("Workpiece width in millimeters");
   await stock.fill("76");
   await expect.poll(() => new URL(page.url()).searchParams.get("workpieceWidth")).toBe("76");
+
+  const thicknessPass = page.getByRole("button", { name: /Thickness pass.*Edge guides/ });
+  await thicknessPass.click();
+  await expect(thicknessPass).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => new URL(page.url()).searchParams.get("activeGuidePair")).toBe("1");
+  await expect(
+    page.locator(".audit-row").filter({ hasText: "Sequential assembly clearance" }),
+  ).toContainText("Thickness / edge pair installed");
+  await expect(page.locator(".scene-panel canvas")).toBeVisible();
   await page.reload();
   await expect(stock).toHaveValue("76.0");
+  await expect(thicknessPass).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(".scene-panel canvas")).toBeVisible();
 
   const downloads: Array<import("@playwright/test").Download> = [];
@@ -241,5 +346,6 @@ test("keeps the tenon workspace usable on a narrow screen", async ({ page }) => 
   await expect(page.getByRole("heading", { name: "Handheld Router Tenon Jig" })).toBeVisible();
   await expect(page.locator(".scene-panel canvas")).toBeVisible();
   await expect(page.getByRole("button", { name: /10 × 40 × 30 mm/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Thickness pass.*Edge guides/ })).toBeVisible();
   await expect(page.getByLabel("Tenon thickness in millimeters")).toBeVisible();
 });

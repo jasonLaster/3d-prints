@@ -2743,6 +2743,24 @@ html.dark .panel-section:nth-child(even) {
   line-height: 1.45;
 }
 
+.router-tenon-guide-pair {
+  display: grid;
+  gap: 9px;
+  margin: 0 0 18px;
+}
+
+.router-tenon-guide-pair > span {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.router-tenon-guide-pair small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .router-mortise-print-set ul {
   display: grid;
   gap: 6px;

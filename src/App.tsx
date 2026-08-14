@@ -307,8 +307,10 @@ const PARAM_QUERY_KEYS = [
   "guideBearingDiameter",
   "tenonAllowance",
   "workpieceThickness",
+  "activeGuidePair",
   "baseThickness",
   "guidePlateThickness",
+  "knobScrewLength",
   "mockScale",
   "tableLength",
   "tableWidth",
@@ -2774,7 +2776,7 @@ const HolderViewer = forwardRef<
         ) : null}
         {model.viewer === "router-tenon-jig-v1" ? (
           <span>
-            Router base stand-in {formatLength(getParam(params, "routerBaseDiameter"), unit)} Ø · preview only
+            Auxiliary sub-base stand-in {formatLength(getParam(params, "routerBaseDiameter"), unit)} Ø · preview only
           </span>
         ) : null}
         <span>{RENDER_MODE_LABELS[renderMode]}</span>
@@ -3179,6 +3181,41 @@ function RouterTenonPresetControl({
         Quick starting points. Measure the bearing and cutter, then confirm both
         guide levels and the depth stop with a scrap cut.
       </small>
+    </div>
+  );
+}
+
+function RouterTenonGuidePairControl({
+  onChange,
+  value,
+}: {
+  onChange: (value: number) => void;
+  value: number;
+}) {
+  return (
+    <div className="router-tenon-guide-pair">
+      <span>Assembly setup</span>
+      <div aria-label="Active tenon guide pair" className="preset-marker-grid" role="group">
+        <button
+          aria-pressed={value < 0.5}
+          className={value < 0.5 ? "active" : ""}
+          onClick={() => onChange(0)}
+          type="button"
+        >
+          <strong>Width pass</strong>
+          <span>Cheek guides</span>
+        </button>
+        <button
+          aria-pressed={value >= 0.5}
+          className={value >= 0.5 ? "active" : ""}
+          onClick={() => onChange(1)}
+          type="button"
+        >
+          <strong>Thickness pass</strong>
+          <span>Edge guides</span>
+        </button>
+      </div>
+      <small>Install only the selected opposing pair; both screws in each guide must be tight before routing.</small>
     </div>
   );
 }
@@ -6626,6 +6663,10 @@ export default function App({
                         onSelect={applyRouterTenonPreset}
                         params={params}
                       />
+                      <RouterTenonGuidePairControl
+                        onChange={(value) => updateParam("activeGuidePair", value)}
+                        value={getParam(params, "activeGuidePair")}
+                      />
                     </div>
                   ) : null}
                   {model.viewer === "dining-table-v1" ? (
@@ -6690,6 +6731,10 @@ export default function App({
                       }
                       return (
                         parameter.key !== "mockScale" &&
+                        !(
+                          model.viewer === "router-tenon-jig-v1" &&
+                          parameter.key === "activeGuidePair"
+                        ) &&
                         !DRILL_BIT_PARAMETER_KEY_SET.has(parameter.key) &&
                         !ANGLE_PARAM_KEYS.has(parameter.key) &&
                         !CURVE_PARAM_KEYS.has(parameter.key) &&
@@ -6779,15 +6824,16 @@ export default function App({
                       <li>1 base-bridge STL</li>
                       <li>2 individual cheek-guide STLs</li>
                       <li>2 individual edge-guide STLs</li>
-                      <li>6 M5 heat-set inserts</li>
-                      <li>6 M5 knob screws + 16 mm washers</li>
+                      <li>8 M5 heat-set inserts</li>
+                      <li>8 M5 × 16 mm knob screws + 16 mm washers at the defaults</li>
                     </ul>
                     <p>
-                      The cheek guides sit on the upper level and the edge
-                      guides on the lower level. Register the bit bearing to one
-                      opposing pair at a time. Router, bit, depth-stop band,
-                      hardware, and sample stock are preview-only. Clamp the
-                      setup and prove it with shallow passes on scrap.
+                      Install one opposing guide pair in the recessed floor; its
+                      top seats flush with the raised platform. Use both screws
+                      in every guide. The 150 mm auxiliary sub-base, router, bit,
+                      depth-stop band, hardware, and sample stock are preview-only.
+                      Measure your actual sub-base and screw stack, clamp the
+                      setup, and prove it with shallow passes on scrap.
                     </p>
                   </section>
                 ) : null}
