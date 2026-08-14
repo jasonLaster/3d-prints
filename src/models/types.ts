@@ -132,6 +132,40 @@ export type DrillBitHolderGeometry = {
   minimumWallThickness: number;
 };
 
+export type RouterMortiseJigGeometry = {
+  mainAxis: { x: number; y: number; z: number };
+  radialSegments: number;
+  cornerSegments: number;
+  slotArcSegments: number;
+  markerArcSegments: number;
+  plateLength: number;
+  plateWidth: number;
+  plateCornerRadius: number;
+  jawLength: number;
+  jawThickness: number;
+  jawCornerRadius: number;
+  boltStationX: number;
+  boltSlotWidth: number;
+  insertLeadIn: number;
+  minimumInsertSideWall: number;
+  minimumInsertFloor: number;
+  minimumBushingRadialClearance: number;
+  minimumPlateWeb: number;
+  minimumWorkpieceWidth: number;
+  maximumWorkpieceWidth: number;
+  maximumWorkpieceWiggle: number;
+  presetWorkpieceWidthsMm: number[];
+  markerOffsetX: number;
+  markerLength: number;
+  markerWidth: number;
+  workpiecePreviewLength: number;
+  routerBaseThickness: number;
+  routerMotorDiameter: number;
+  routerMotorHeight: number;
+  bushingProjection: number;
+  bitPreviewDepth: number;
+};
+
 export type DiningTableGeometry = {
   mainAxis: { x: number; y: number; z: number };
   cornerSegments: number;
@@ -158,6 +192,7 @@ export type SupportedViewer =
   | "door-lock-adapter-v1"
   | "concentric-tube-jig-v1"
   | "drill-bit-holder-v1"
+  | "router-mortise-jig-v1"
   | "dining-table-v1"
   | "hover-dining-table-v1";
 
@@ -216,6 +251,28 @@ export type DrillBitHolderModelDefinition = BaseModelDefinition & {
   geometry: DrillBitHolderGeometry;
 };
 
+export type RouterMortisePreset = {
+  label: string;
+  mortiseWidth: number;
+  mortiseLength: number;
+  routerBitDiameter: number;
+};
+
+export type RouterMortiseJigPartDefinition = {
+  key: "guide-plate" | "left-fence" | "right-fence";
+  label: string;
+  quantity: number;
+  fileName: string;
+  url: string;
+};
+
+export type RouterMortiseJigModelDefinition = BaseModelDefinition & {
+  viewer: "router-mortise-jig-v1";
+  geometry: RouterMortiseJigGeometry;
+  presets: RouterMortisePreset[];
+  parts: RouterMortiseJigPartDefinition[];
+};
+
 export type DiningTableModelDefinition = BaseModelDefinition & {
   viewer: "dining-table-v1";
   geometry: DiningTableGeometry;
@@ -233,6 +290,7 @@ export type ModelDefinition =
   | DoorLockAdapterModelDefinition
   | ConcentricTubeJigModelDefinition
   | DrillBitHolderModelDefinition
+  | RouterMortiseJigModelDefinition
   | DiningTableModelDefinition
   | HoverDiningTableModelDefinition;
 

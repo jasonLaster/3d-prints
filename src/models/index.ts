@@ -26,6 +26,11 @@ import {
   getDrillBitHolderParameterLimits,
 } from "./drillBitHolder";
 import {
+  getRouterMortiseJigAuditValue,
+  getRouterMortiseJigDimensions,
+  getRouterMortiseJigParameterLimits,
+} from "./routerMortiseJig";
+import {
   getDiningTableAuditValue,
   getDiningTableDimensions,
   getDiningTableParameterLimits,
@@ -81,6 +86,19 @@ export {
   updateDrillBitHolderGuide,
 } from "./drillBitHolder";
 export {
+  createRouterMortiseJigFenceGeometry,
+  createRouterMortiseJigGuideGeometry,
+  createRouterMortiseJigPartGeometries,
+  createRouterMortiseJigPreviewParts,
+  getRouterMortiseJigSpec,
+  updateRouterMortiseJigGuide,
+} from "./routerMortiseJig";
+export type {
+  RouterMortiseJigPart,
+  RouterMortiseJigPreviewPart,
+  RouterMortiseJigSpec,
+} from "./routerMortiseJig";
+export {
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
   getDiningTableStructuralAssessment,
@@ -133,6 +151,9 @@ function getAuditValue(
   if (model.viewer === "drill-bit-holder-v1") {
     return getDrillBitHolderAuditValue(check, params, unit, model);
   }
+  if (model.viewer === "router-mortise-jig-v1") {
+    return getRouterMortiseJigAuditValue(check, params, unit, model);
+  }
   if (model.viewer === "dining-table-v1") {
     return getDiningTableAuditValue(check, params, unit);
   }
@@ -171,6 +192,9 @@ export function getParameterLimits(
   if (model.viewer === "drill-bit-holder-v1") {
     return getDrillBitHolderParameterLimits(model, params, key);
   }
+  if (model.viewer === "router-mortise-jig-v1") {
+    return getRouterMortiseJigParameterLimits(model, params, key);
+  }
   if (model.viewer === "dining-table-v1") {
     return getDiningTableParameterLimits(model, params, key);
   }
@@ -197,6 +221,9 @@ export function getModelDimensions(
   }
   if (model.viewer === "drill-bit-holder-v1") {
     return getDrillBitHolderDimensions(params, model);
+  }
+  if (model.viewer === "router-mortise-jig-v1") {
+    return getRouterMortiseJigDimensions(params, model);
   }
   if (model.viewer === "dining-table-v1") {
     return getDiningTableDimensions(params);
@@ -236,6 +263,26 @@ export function getStatusItems(
         return `${label} ${formatLength(getParam(params, key), unit)}`;
       },
     );
+  }
+  if (model.viewer === "router-mortise-jig-v1") {
+    const width = getParam(params, "mortiseWidth");
+    const length = getParam(params, "mortiseLength");
+    const openingWidth =
+      width +
+      getParam(params, "guideBushingDiameter") -
+      getParam(params, "routerBitDiameter") +
+      getParam(params, "templateWiggle");
+    const openingLength =
+      length +
+      getParam(params, "guideBushingDiameter") -
+      getParam(params, "routerBitDiameter") +
+      getParam(params, "templateWiggle");
+    return [
+      `Mortise ${formatLength(width, unit)} × ${formatLength(length, unit)}`,
+      `Opening ${formatLength(openingWidth, unit)} × ${formatLength(openingLength, unit)}`,
+      `Stock ${formatLength(getParam(params, "workpieceWidth"), unit)}`,
+      "M5 heat-set inserts × 4",
+    ];
   }
   return model.parameters.slice(0, 4).map((parameter) => {
     const label = parameter.statusLabel ?? parameter.label;

@@ -81,6 +81,16 @@ Drill Bit Holder:
 - The audit recommends printing upright with the flat base on the build plate and holes facing up for continuous wall perimeters, round unsupported openings, and support-free blind holes.
 - See `docs/drill-bit-holder-audit-specifications.md` for the full geometry and audit contract.
 
+Handheld Router Mortise Jig:
+
+- The printable set is one 220 × 120 mm guide plate plus two identical adjustable fence jaws; each jaw contains two blind M5 heat-set insert pockets.
+- The guide opening derives from `mortise + guide-bushing diameter − cutter diameter + total template wiggle room` on both axes.
+- Four common-mortise preset markers set 6 × 25, 8 × 30, 10 × 40, and 12 × 50 mm targets without hiding the underlying parameters.
+- Adjustment slots span 20–80 mm workpieces, with physical witness marks at 38, 50, 64, and 76 mm stock widths.
+- The router base, guide bushing, cutter, and sample stock are visible stand-ins in the assembled preview and are excluded from printable exports.
+- The guide plate and left/right jaws download as three individual support-free STL files.
+- See `docs/router-mortise-jig-audit-specifications.md` for the full geometry, hardware, use, and audit contract.
+
 Paper towel holder:
 
 - Holder height changes remap the middle body span between fixed bottom and top bands.
@@ -174,6 +184,7 @@ X-Hover Dining Table:
 - The generated STL snapshot used by Save/Fork follows the same geometry as Export.
 - Simple Box provides a separate lid export whose registration skirt uses the same wall-derived clearance contract as stacking.
 - X-Hover provides a routing-template STL-set export. Every file is flat, full-size, normalized to its own print origin, inside the selected square plate envelope, and uniquely names its template family and part index.
+- Handheld Router Mortise Jig export downloads three current-parameter STL files: guide plate, left fence jaw, and right fence jaw. Preview-only router and stock geometry is never exported.
 
 ## Accessibility And Responsiveness
 

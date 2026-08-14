@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(5);
+  expect(catalog.models).toHaveLength(6);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -140,6 +140,18 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "roundedCorners",
       "bevels",
       "minimumWalls",
+    ],
+    "router-mortise-jig-v1": [
+      "mortiseTarget",
+      "templateOpening",
+      "routerInterface",
+      "workpieceFit",
+      "heatSetInserts",
+      "adjustmentRange",
+      "minimumPlateWeb",
+      "printSet",
+      "previewStandIn",
+      "printOrientation",
     ],
     "dining-table-v1": [
       "tableEnvelope",
@@ -452,6 +464,7 @@ test("request coverage document tracks the app behaviors under Playwright", () =
     "per-model JSON for parameters, audit, and scripts",
     "Japandi tray supports width, length, height, floor thickness, rib relief, and rotation",
     "Drill Bit Holder defaults to the seven requested fractional sizes",
+    "Handheld Router Mortise Jig derives its opening from the mortise, cutter, and guide bushing",
     "Dark theme is available",
     "Parameter state is saved in the URL",
     "Sidebars have collapsible and resizable rails",
@@ -502,6 +515,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   );
   const drillBitHolderDoc = readText(
     path.join(root, "docs/drill-bit-holder-audit-specifications.md"),
+  );
+  const routerMortiseJigDoc = readText(
+    path.join(root, "docs/router-mortise-jig-audit-specifications.md"),
   );
   const tubeJigDoc = readText(
     path.join(root, "docs/concentric-tube-jig-audit-specifications.md"),
@@ -558,6 +574,16 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "exactly two triangles per mesh edge",
   ]) {
     expect(drillBitHolderDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "mortise + guide-bushing outside diameter − cutter diameter",
+    "M5 heat-set insert pockets",
+    "38, 50, 64, and 76 mm",
+    "three individual files",
+    "preview-only stand-ins",
+  ]) {
+    expect(routerMortiseJigDoc).toContain(phrase);
   }
 
   for (const phrase of [

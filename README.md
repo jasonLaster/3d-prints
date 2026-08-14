@@ -33,6 +33,11 @@ Current models:
   - Config: `public/models/drill-bit-holder/model.json`
   - Audit script: `models/drill-bit-holder/audit.mjs`
   - Source generator: `models/drill-bit-holder/generate-source.mjs`
+- `router-mortise-jig`
+  - STLs: `public/models/router-mortise-jig/router-mortise-jig-*.stl`
+  - Config: `public/models/router-mortise-jig/model.json`
+  - Audit script: `models/router-mortise-jig/audit.mjs`
+  - Source generator: `models/router-mortise-jig/generate-source.mjs`
 
 The model JSON owns the display name, STL URL, parameter definitions, audit
 checks, dimension invariants, and associated scripts for that print.
@@ -70,6 +75,7 @@ npm run audit -- japandi-tray
 npm run audit -- simple-box
 npm run audit -- door-lock-adapter
 npm run audit -- drill-bit-holder
+npm run audit -- router-mortise-jig
 npm run test:e2e
 npm run verify
 npm run build:vercel

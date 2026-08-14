@@ -12,6 +12,8 @@ import {
   applyTrayMorph,
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
+  createRouterMortiseJigGuideGeometry,
+  createRouterMortiseJigPreviewParts,
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
   createDoorLockAdapterGeometry,
@@ -181,6 +183,22 @@ function createPreviewObject(
         mainMaterial,
       ),
     );
+  } else if (definition.viewer === "router-mortise-jig-v1") {
+    sourceGeometry.dispose();
+    group.add(
+      new THREE.Mesh(
+        createRouterMortiseJigGuideGeometry(params, definition),
+        mainMaterial,
+      ),
+    );
+    createRouterMortiseJigPreviewParts(params, definition).forEach((part) => {
+      group.add(
+        new THREE.Mesh(
+          part.geometry,
+          part.material === "printed" ? mainMaterial : metalMaterial,
+        ),
+      );
+    });
   } else if (definition.viewer === "dining-table-v1") {
     sourceGeometry.dispose();
     group.add(

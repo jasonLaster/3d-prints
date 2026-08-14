@@ -1,0 +1,231 @@
+{
+  "id": "router-mortise-jig",
+  "name": "Handheld Router Mortise Jig",
+  "subtitle": "Adjustable guide-bushing jig with M5 heat-set inserts",
+  "description": "A printable bridge-style mortising jig for a handheld trim router. The guide opening is derived from the desired mortise, cutter, and guide bushing; two adjustable fence jaws register the jig on 20–80 mm stock.",
+  "viewer": "router-mortise-jig-v1",
+  "stl": {
+    "fileName": "router-mortise-jig-guide-plate.stl",
+    "sourceName": "procedural-router-mortise-guide-plate.stl",
+    "units": "mm",
+    "url": "/models/router-mortise-jig/router-mortise-jig-guide-plate.stl"
+  },
+  "export": {
+    "filePrefix": "router-mortise-jig"
+  },
+  "geometry": {
+    "mainAxis": { "x": 0, "y": 0, "z": 0 },
+    "radialSegments": 48,
+    "cornerSegments": 10,
+    "slotArcSegments": 24,
+    "markerArcSegments": 6,
+    "plateLength": 220,
+    "plateWidth": 120,
+    "plateCornerRadius": 8,
+    "jawLength": 190,
+    "jawThickness": 14,
+    "jawCornerRadius": 3,
+    "boltStationX": 75,
+    "boltSlotWidth": 6.6,
+    "insertLeadIn": 0.4,
+    "minimumInsertSideWall": 2.5,
+    "minimumInsertFloor": 3,
+    "minimumBushingRadialClearance": 1,
+    "minimumPlateWeb": 6,
+    "minimumWorkpieceWidth": 20,
+    "maximumWorkpieceWidth": 80,
+    "maximumWorkpieceWiggle": 1.2,
+    "presetWorkpieceWidthsMm": [38, 50, 64, 76],
+    "markerOffsetX": 8,
+    "markerLength": 3.6,
+    "markerWidth": 0.9,
+    "workpiecePreviewLength": 180,
+    "routerBaseThickness": 7,
+    "routerMotorDiameter": 65,
+    "routerMotorHeight": 68,
+    "bushingProjection": 5,
+    "bitPreviewDepth": 22
+  },
+  "presets": [
+    {
+      "label": "6 × 25 mm",
+      "mortiseWidth": 6,
+      "mortiseLength": 25,
+      "routerBitDiameter": 6
+    },
+    {
+      "label": "8 × 30 mm",
+      "mortiseWidth": 8,
+      "mortiseLength": 30,
+      "routerBitDiameter": 6
+    },
+    {
+      "label": "10 × 40 mm",
+      "mortiseWidth": 10,
+      "mortiseLength": 40,
+      "routerBitDiameter": 8
+    },
+    {
+      "label": "12 × 50 mm",
+      "mortiseWidth": 12,
+      "mortiseLength": 50,
+      "routerBitDiameter": 10
+    }
+  ],
+  "parts": [
+    {
+      "key": "guide-plate",
+      "label": "Guide plate",
+      "quantity": 1,
+      "fileName": "router-mortise-jig-guide-plate.stl",
+      "url": "/models/router-mortise-jig/router-mortise-jig-guide-plate.stl"
+    },
+    {
+      "key": "left-fence",
+      "label": "Left fence jaw",
+      "quantity": 1,
+      "fileName": "router-mortise-jig-left-fence.stl",
+      "url": "/models/router-mortise-jig/router-mortise-jig-left-fence.stl"
+    },
+    {
+      "key": "right-fence",
+      "label": "Right fence jaw",
+      "quantity": 1,
+      "fileName": "router-mortise-jig-right-fence.stl",
+      "url": "/models/router-mortise-jig/router-mortise-jig-right-fence.stl"
+    }
+  ],
+  "parameters": [
+    {
+      "key": "mortiseWidth",
+      "label": "Mortise width",
+      "statusLabel": "Mortise W",
+      "default": 8,
+      "limits": { "min": 4, "max": 20, "step": 0.5 }
+    },
+    {
+      "key": "mortiseLength",
+      "label": "Mortise length",
+      "statusLabel": "Mortise L",
+      "default": 30,
+      "limits": { "min": 20, "max": 80, "step": 1 }
+    },
+    {
+      "key": "routerBitDiameter",
+      "label": "Router cutter diameter",
+      "statusLabel": "Cutter Ø",
+      "default": 6,
+      "limits": { "min": 3, "max": 12, "step": 0.5 }
+    },
+    {
+      "key": "guideBushingDiameter",
+      "label": "Guide bushing outside diameter",
+      "statusLabel": "Bushing Ø",
+      "default": 16,
+      "limits": { "min": 10, "max": 24, "step": 0.5 }
+    },
+    {
+      "key": "templateWiggle",
+      "label": "Template wiggle room (total)",
+      "statusLabel": "Template wiggle",
+      "default": 0.25,
+      "limits": { "min": 0.1, "max": 0.8, "step": 0.05 }
+    },
+    {
+      "key": "workpieceWidth",
+      "label": "Workpiece width",
+      "statusLabel": "Stock",
+      "default": 50,
+      "limits": { "min": 20, "max": 80, "step": 1 }
+    },
+    {
+      "key": "stockThickness",
+      "label": "Preview stock thickness",
+      "statusLabel": "Stock T",
+      "default": 30,
+      "limits": { "min": 18, "max": 60, "step": 1 }
+    },
+    {
+      "key": "workpieceWiggle",
+      "label": "Fence wiggle room (total)",
+      "statusLabel": "Fence wiggle",
+      "default": 0.5,
+      "limits": { "min": 0.2, "max": 1.2, "step": 0.1 }
+    },
+    {
+      "key": "plateThickness",
+      "label": "Guide plate thickness",
+      "statusLabel": "Plate T",
+      "default": 12,
+      "limits": { "min": 8, "max": 18, "step": 1 }
+    },
+    {
+      "key": "jawDepth",
+      "label": "Fence jaw depth",
+      "statusLabel": "Jaw D",
+      "default": 24,
+      "limits": { "min": 16, "max": 36, "step": 1 }
+    },
+    {
+      "key": "insertPocketDiameter",
+      "label": "M5 heat-set insert pocket diameter",
+      "statusLabel": "Insert Ø",
+      "default": 7.2,
+      "limits": { "min": 6.5, "max": 8.5, "step": 0.1 }
+    },
+    {
+      "key": "insertDepth",
+      "label": "M5 heat-set insert pocket depth",
+      "statusLabel": "Insert D",
+      "default": 6,
+      "limits": { "min": 4.5, "max": 8, "step": 0.1 }
+    },
+    {
+      "key": "routerBaseDiameter",
+      "label": "Router base stand-in diameter",
+      "statusLabel": "Router base",
+      "default": 90,
+      "limits": { "min": 70, "max": 120, "step": 1 }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.2,
+    "dimensionTargets": [
+      "The default target mortise is 8 × 30 mm with a 6 mm cutter and 16 mm guide bushing.",
+      "The default guide opening is 18.25 × 40.25 mm after adding 0.25 mm of total template wiggle room.",
+      "The 220 × 120 × 12 mm guide plate spans 20–80 mm workpieces.",
+      "Two 190 × 14 × 24 mm fence jaws each receive two M5 heat-set inserts.",
+      "Four one-click mortise presets cover 6 × 25, 8 × 30, 10 × 40, and 12 × 50 mm targets."
+    ],
+    "invariants": [
+      "Derive the template opening from mortise + guide-bushing diameter − cutter diameter + total wiggle room.",
+      "Keep the cutter no larger than the mortise width and maintain radial clearance inside the guide bushing.",
+      "Keep four independent M5 adjustment slots aligned with two heat-set insert pockets in each fence jaw.",
+      "Keep at least 2.5 mm around every insert pocket and at least 3 mm beneath each blind pocket.",
+      "Keep common 38, 50, 64, and 76 mm stock-width witness marks beside the adjustment slots.",
+      "Export the guide plate and both fence jaws as individual, support-free STL files.",
+      "Treat the router base, guide bushing, cutter, and workpiece as preview-only stand-ins rather than printable jig parts.",
+      "Test the jig on scrap, clamp the work securely, use shallow passes, and follow the router and cutter manufacturers' instructions."
+    ],
+    "checks": [
+      { "key": "mortiseTarget", "label": "Mortise target" },
+      { "key": "templateOpening", "label": "Calculated template opening" },
+      { "key": "routerInterface", "label": "Router interface" },
+      { "key": "workpieceFit", "label": "Workpiece fit" },
+      { "key": "heatSetInserts", "label": "Heat-set inserts" },
+      { "key": "adjustmentRange", "label": "Stock-width markers" },
+      { "key": "minimumPlateWeb", "label": "Minimum guide-plate web" },
+      { "key": "printSet", "label": "Printable part set" },
+      { "key": "previewStandIn", "label": "Preview stand-ins" },
+      { "key": "printOrientation", "label": "Recommended print orientation" }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/router-mortise-jig/audit.mjs",
+      "command": "npm run audit -- router-mortise-jig",
+      "description": "Validates the guide-bushing formula, heat-set insert pockets, adjustment range, witness marks, and all three printable STLs."
+    }
+  ]
+}

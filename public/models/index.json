@@ -25,6 +25,11 @@
       "id": "drill-bit-holder",
       "name": "Drill Bit Holder",
       "configUrl": "/models/drill-bit-holder/model.json"
+    },
+    {
+      "id": "router-mortise-jig",
+      "name": "Handheld Router Mortise Jig",
+      "configUrl": "/models/router-mortise-jig/model.json"
     }
   ]
 }

@@ -73,6 +73,9 @@ import {
   buildAuditItems,
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
+  createRouterMortiseJigGuideGeometry,
+  createRouterMortiseJigPartGeometries,
+  createRouterMortiseJigPreviewParts,
   DRILL_BIT_PARAMETER_KEYS,
   getDrillBitDiameters,
   createDiningTableHardwareGeometries,
@@ -98,12 +101,14 @@ import {
   getModelDimensions,
   getParam,
   getParameterLimits,
+  getRouterMortiseJigSpec,
   getStatusItems,
   isDrillBitDiameterKey,
   snapGridfinityDimension,
   updateDoorLockAdapterGuide,
   updateConcentricTubeJigGuide,
   updateDrillBitHolderGuide,
+  updateRouterMortiseJigGuide,
   updateDiningTableGuide,
   updateHoverDiningTableGuide,
   updateHolderGuide,
@@ -278,6 +283,18 @@ const PARAM_QUERY_KEYS = [
   "cornerRadius",
   "edgeBevel",
   ...DRILL_BIT_PARAMETER_KEYS,
+  "mortiseWidth",
+  "mortiseLength",
+  "routerBitDiameter",
+  "guideBushingDiameter",
+  "templateWiggle",
+  "workpieceWidth",
+  "stockThickness",
+  "workpieceWiggle",
+  "jawDepth",
+  "insertPocketDiameter",
+  "insertDepth",
+  "routerBaseDiameter",
   "mockScale",
   "tableLength",
   "tableWidth",
@@ -771,9 +788,14 @@ function getParamsFromUrl(model: ModelDefinition) {
 
   if (
     model.viewer === "door-lock-adapter-v1" ||
-    model.viewer === "drill-bit-holder-v1"
+    model.viewer === "drill-bit-holder-v1" ||
+    model.viewer === "router-mortise-jig-v1"
   ) {
-    const passes = model.viewer === "drill-bit-holder-v1" ? 2 : 1;
+    const passes =
+      model.viewer === "drill-bit-holder-v1" ||
+      model.viewer === "router-mortise-jig-v1"
+        ? 2
+        : 1;
     for (let pass = 0; pass < passes; pass += 1) {
       for (const parameter of model.parameters) {
         const limits = getParameterLimits(model, params, parameter.key);
@@ -1071,6 +1093,11 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
     const bits = getDrillBitDiameters(params, model).map(compact).join("_");
     return `${model.export.filePrefix}-bits-${bits}-clearance-${compactSetting(getParam(params, "bitClearance"))}-gap-${compactSetting(getParam(params, "bitSpacing"))}-margin-${compactSetting(getParam(params, "edgeMargin"))}-height-${compactSetting(getParam(params, "holderHeight"))}-depth-${compactSetting(getParam(params, "holeDepth"))}-radius-${compactSetting(getParam(params, "cornerRadius"))}-bevel-${compactSetting(getParam(params, "edgeBevel"))}.stl`;
   }
+  if (model.viewer === "router-mortise-jig-v1") {
+    const compact = (value: number) =>
+      value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    return `${model.export.filePrefix}-${compact(getParam(params, "mortiseWidth"))}x${compact(getParam(params, "mortiseLength"))}-bit-${compact(getParam(params, "routerBitDiameter"))}-bushing-${compact(getParam(params, "guideBushingDiameter"))}-stock-${compact(getParam(params, "workpieceWidth"))}.stl`;
+  }
   const suffix = model.parameters
     .map(
       (parameter) => {
@@ -1170,11 +1197,15 @@ const HolderViewer = forwardRef<
   const diningHardwareGroupRef = useRef<THREE.Group | null>(null);
   const hoverHardwareGroupRef = useRef<THREE.Group | null>(null);
   const hoverExplodedGroupRef = useRef<THREE.Group | null>(null);
+  const routerMortisePreviewGroupRef = useRef<THREE.Group | null>(null);
   const ghostMeshRef = useRef<THREE.Mesh | null>(null);
   const guideMeshRef = useRef<THREE.Mesh | null>(null);
   const mainMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const domeMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const diningMetalMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const routerPreviewMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const routerWorkpieceMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const routerBitMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const mainBaseRef = useRef<Float32Array | null>(null);
   const animationRef = useRef<number | null>(null);
   const latestParamsRef = useRef(params);
@@ -1310,11 +1341,15 @@ const HolderViewer = forwardRef<
     const diningHardwareGroup = diningHardwareGroupRef.current;
     const hoverHardwareGroup = hoverHardwareGroupRef.current;
     const hoverExplodedGroup = hoverExplodedGroupRef.current;
+    const routerMortisePreviewGroup = routerMortisePreviewGroupRef.current;
     const ghostMesh = ghostMeshRef.current;
     const guideMesh = guideMeshRef.current;
     const holderMaterial = mainMaterialRef.current;
     const domeMaterial = domeMaterialRef.current;
     const diningMetalMaterial = diningMetalMaterialRef.current;
+    const routerPreviewMaterial = routerPreviewMaterialRef.current;
+    const routerWorkpieceMaterial = routerWorkpieceMaterialRef.current;
+    const routerBitMaterial = routerBitMaterialRef.current;
     const base = mainBaseRef.current;
     if (
       !mainMesh ||
@@ -1360,6 +1395,48 @@ const HolderViewer = forwardRef<
         model,
       );
       updateDrillBitHolderGuide(guideMesh, latestParamsRef.current, model);
+    } else if (model.viewer === "router-mortise-jig-v1") {
+      if (
+        !routerMortisePreviewGroup ||
+        !routerPreviewMaterial ||
+        !routerWorkpieceMaterial ||
+        !routerBitMaterial ||
+        !diningMetalMaterial
+      ) {
+        return;
+      }
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createRouterMortiseJigGuideGeometry(
+        latestParamsRef.current,
+        model,
+      );
+      routerMortisePreviewGroup.children.forEach((child) => {
+        if (child instanceof THREE.Mesh) child.geometry.dispose();
+      });
+      routerMortisePreviewGroup.clear();
+      for (const part of createRouterMortiseJigPreviewParts(
+        latestParamsRef.current,
+        model,
+      )) {
+        const material =
+          part.material === "printed"
+            ? holderMaterial
+            : part.material === "workpiece"
+              ? routerWorkpieceMaterial
+              : part.material === "router"
+                ? routerPreviewMaterial
+                : part.material === "bit"
+                  ? routerBitMaterial
+                  : diningMetalMaterial;
+        const mesh = new THREE.Mesh(part.geometry, material);
+        mesh.name = `${model.id}-${part.key}`;
+        routerMortisePreviewGroup.add(mesh);
+      }
+      updateRouterMortiseJigGuide(
+        guideMesh,
+        latestParamsRef.current,
+        model,
+      );
     } else if (model.viewer === "dining-table-v1") {
       if (!diningHardwareGroup || !diningMetalMaterial) return;
       mainMesh.geometry.dispose();
@@ -1708,6 +1785,25 @@ const HolderViewer = forwardRef<
         }
       });
     }
+    const exportRouterMortiseFences: THREE.Mesh[] = [];
+    if (model.viewer === "router-mortise-jig-v1") {
+      const parts = createRouterMortiseJigPartGeometries(
+        latestParamsRef.current,
+        model,
+      );
+      parts[0]?.geometry.dispose();
+      const spec = getRouterMortiseJigSpec(latestParamsRef.current, model);
+      parts.slice(1).forEach((part, index) => {
+        const mesh = new THREE.Mesh(createCleanExportGeometry(part.geometry));
+        mesh.name = `${model.id}-${part.key}`;
+        mesh.position.y =
+          (index === 0 ? -1 : 1) *
+          (spec.plateWidth / 2 + spec.jawThickness / 2 + 5);
+        part.geometry.dispose();
+        exportRouterMortiseFences.push(mesh);
+        group.add(mesh);
+      });
+    }
     group.updateMatrixWorld(true);
 
     const exporter = new STLExporter();
@@ -1722,6 +1818,7 @@ const HolderViewer = forwardRef<
     exportHoverHardware.forEach((hardwareMesh) =>
       hardwareMesh.geometry.dispose(),
     );
+    exportRouterMortiseFences.forEach((fence) => fence.geometry.dispose());
 
     return blob;
   }, [model]);
@@ -1766,7 +1863,43 @@ const HolderViewer = forwardRef<
     return new Blob([result], { type: "model/stl" });
   }, [model]);
 
+  const exportRouterMortiseJigStls = useCallback(() => {
+    if (model.viewer !== "router-mortise-jig-v1") return;
+    const baseName = getExportFileName(model, latestParamsRef.current).replace(
+      /\.stl$/,
+      "",
+    );
+    const files = createRouterMortiseJigPartGeometries(
+      latestParamsRef.current,
+      model,
+    ).map((part) => {
+      const mesh = new THREE.Mesh(createCleanExportGeometry(part.geometry));
+      mesh.name = `${model.id}-${part.key}`;
+      mesh.updateMatrixWorld(true);
+      const result = new STLExporter().parse(mesh, { binary: true });
+      part.geometry.dispose();
+      mesh.geometry.dispose();
+      return {
+        blob: new Blob([result], { type: "model/stl" }),
+        fileName: `${baseName}-${part.key}.stl`,
+      };
+    });
+    const downloadNext = (index: number) => {
+      const file = files[index];
+      if (!file) return;
+      downloadBlob(file.blob, file.fileName);
+      if (index + 1 < files.length) {
+        window.setTimeout(() => downloadNext(index + 1), 100);
+      }
+    };
+    downloadNext(0);
+  }, [model]);
+
   const exportStl = useCallback(() => {
+    if (model.viewer === "router-mortise-jig-v1") {
+      exportRouterMortiseJigStls();
+      return;
+    }
     const blob = createStlBlob();
     if (!blob) {
       return;
@@ -1791,7 +1924,12 @@ const HolderViewer = forwardRef<
       return;
     }
     downloadBlob(blob, fileName);
-  }, [createDiningTableHardwareStlBlob, createStlBlob, model]);
+  }, [
+    createDiningTableHardwareStlBlob,
+    createStlBlob,
+    exportRouterMortiseJigStls,
+    model,
+  ]);
 
   const exportLidStl = useCallback(() => {
     if (model.viewer !== "simple-box-v1") return;
@@ -2037,7 +2175,8 @@ const HolderViewer = forwardRef<
     controls.minDistance =
       model.viewer === "door-lock-adapter-v1" ||
       model.viewer === "concentric-tube-jig-v1" ||
-      model.viewer === "drill-bit-holder-v1"
+      model.viewer === "drill-bit-holder-v1" ||
+      model.viewer === "router-mortise-jig-v1"
         ? 18
         : 80;
     controls.maxDistance = 1400;
@@ -2208,6 +2347,32 @@ const HolderViewer = forwardRef<
           polygonOffsetUnits: -2,
         });
         diningMetalMaterialRef.current = diningMetalMaterial;
+        const routerPreviewMaterial = new THREE.MeshStandardMaterial({
+          color: "#4f7fa8",
+          roughness: 0.32,
+          metalness: 0.42,
+          transparent: true,
+          opacity: 0.34,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        });
+        routerPreviewMaterialRef.current = routerPreviewMaterial;
+        const routerWorkpieceMaterial = new THREE.MeshStandardMaterial({
+          color: "#c99a62",
+          roughness: 0.78,
+          metalness: 0,
+          transparent: true,
+          opacity: 0.58,
+          side: THREE.DoubleSide,
+        });
+        routerWorkpieceMaterialRef.current = routerWorkpieceMaterial;
+        const routerBitMaterial = new THREE.MeshStandardMaterial({
+          color: "#d14f44",
+          roughness: 0.38,
+          metalness: 0.72,
+          side: THREE.DoubleSide,
+        });
+        routerBitMaterialRef.current = routerBitMaterial;
         const sandMaterial = new THREE.MeshStandardMaterial({
           color: "#c7a45d",
           roughness: 0.86,
@@ -2228,6 +2393,8 @@ const HolderViewer = forwardRef<
             ? createConcentricTubeJigGeometry(latestParamsRef.current, model)
             : model.viewer === "drill-bit-holder-v1"
               ? createDrillBitHolderGeometry(latestParamsRef.current, model)
+            : model.viewer === "router-mortise-jig-v1"
+              ? createRouterMortiseJigGuideGeometry(latestParamsRef.current, model)
             : model.viewer === "dining-table-v1"
               ? createDiningTableWoodGeometry(latestParamsRef.current, model)
             : model.viewer === "hover-dining-table-v1"
@@ -2284,6 +2451,11 @@ const HolderViewer = forwardRef<
           assemblyPreviewGroup.name = `${model.id}-assembly-preview`;
           scene.add(assemblyPreviewGroup);
           assemblyPreviewGroupRef.current = assemblyPreviewGroup;
+        } else if (model.viewer === "router-mortise-jig-v1") {
+          const previewGroup = new THREE.Group();
+          previewGroup.name = `${model.id}-preview-stand-ins`;
+          scene.add(previewGroup);
+          routerMortisePreviewGroupRef.current = previewGroup;
         } else if (model.viewer === "dining-table-v1") {
           const hardwareGroup = new THREE.Group();
           hardwareGroup.name = `${model.id}-hardware`;
@@ -2346,6 +2518,7 @@ const HolderViewer = forwardRef<
           model.viewer === "door-lock-adapter-v1" ||
           model.viewer === "concentric-tube-jig-v1" ||
           model.viewer === "drill-bit-holder-v1" ||
+          model.viewer === "router-mortise-jig-v1" ||
           model.viewer === "dining-table-v1" ||
           model.viewer === "hover-dining-table-v1"
         ) {
@@ -2466,6 +2639,11 @@ const HolderViewer = forwardRef<
         {getStatusItems(model, params, unit).map((item) => (
           <span key={item}>{item}</span>
         ))}
+        {model.viewer === "router-mortise-jig-v1" ? (
+          <span>
+            Router base stand-in {formatLength(getParam(params, "routerBaseDiameter"), unit)} Ø · preview only
+          </span>
+        ) : null}
         <span>{RENDER_MODE_LABELS[renderMode]}</span>
         {model.viewer === "hover-dining-table-v1" &&
         assemblyMode === "exploded" ? (
@@ -2776,6 +2954,54 @@ function DrillBitSizesControl({
         the field to apply.
       </small>
       {error ? <p role="alert">{error}</p> : null}
+    </div>
+  );
+}
+
+function RouterMortisePresetControl({
+  model,
+  params,
+  onSelect,
+}: {
+  model: Extract<ModelDefinition, { viewer: "router-mortise-jig-v1" }>;
+  params: ModelParams;
+  onSelect: (
+    preset: Extract<
+      ModelDefinition,
+      { viewer: "router-mortise-jig-v1" }
+    >["presets"][number],
+  ) => void;
+}) {
+  return (
+    <div className="router-mortise-presets">
+      <div aria-label="Common mortise presets" className="preset-marker-grid" role="group">
+        {model.presets.map((preset) => {
+          const active =
+            Math.abs(getParam(params, "mortiseWidth") - preset.mortiseWidth) <
+              1e-6 &&
+            Math.abs(getParam(params, "mortiseLength") - preset.mortiseLength) <
+              1e-6 &&
+            Math.abs(
+              getParam(params, "routerBitDiameter") - preset.routerBitDiameter,
+            ) < 1e-6;
+          return (
+            <button
+              aria-pressed={active}
+              className={active ? "active" : ""}
+              key={preset.label}
+              onClick={() => onSelect(preset)}
+              type="button"
+            >
+              <strong>{preset.label}</strong>
+              <span>{preset.routerBitDiameter} mm cutter</span>
+            </button>
+          );
+        })}
+      </div>
+      <small>
+        Quick starting points. Confirm the cutter, guide bushing, and a scrap cut
+        before routing the workpiece.
+      </small>
     </div>
   );
 }
@@ -4831,6 +5057,8 @@ function WorkspaceActionsMenu({
                 (model.id !== "whisperer" ||
                   getParam(params, "levelingFeetEnabled") >= 0.5)
                   ? "Export two-color STLs"
+                  : model.viewer === "router-mortise-jig-v1"
+                    ? "Export 3 individual STLs"
                   : "Export"}
               </button>
               {model.viewer === "simple-box-v1" ? (
@@ -5443,7 +5671,8 @@ export default function App({
         [key]: Number(
           nextValue.toFixed(
             model.viewer === "concentric-tube-jig-v1" ||
-            model.viewer === "drill-bit-holder-v1"
+            model.viewer === "drill-bit-holder-v1" ||
+            model.viewer === "router-mortise-jig-v1"
               ? 4
               : CURVE_PARAM_KEYS.has(key)
                 ? 3
@@ -5452,6 +5681,22 @@ export default function App({
         ),
       };
       if (model.viewer === "drill-bit-holder-v1") {
+        for (let pass = 0; pass < 2; pass += 1) {
+          for (const parameter of model.parameters) {
+            const dependentLimits = getParameterLimits(
+              model,
+              next,
+              parameter.key,
+            );
+            next[parameter.key] = clamp(
+              next[parameter.key],
+              dependentLimits.min,
+              dependentLimits.max,
+            );
+          }
+        }
+      }
+      if (model.viewer === "router-mortise-jig-v1") {
         for (let pass = 0; pass < 2; pass += 1) {
           for (const parameter of model.parameters) {
             const dependentLimits = getParameterLimits(
@@ -5647,6 +5892,35 @@ export default function App({
       for (const key of ["cornerRadius", "edgeBevel"] as const) {
         const limits = getParameterLimits(model, next, key);
         next[key] = clamp(next[key], limits.min, limits.max);
+      }
+      return next;
+    });
+  };
+
+  const applyRouterMortisePreset = (
+    preset: Extract<
+      ModelDefinition,
+      { viewer: "router-mortise-jig-v1" }
+    >["presets"][number],
+  ) => {
+    if (model?.viewer !== "router-mortise-jig-v1") return;
+    setParams((current) => {
+      if (!current) return current;
+      const next: ModelParams = {
+        ...current,
+        mortiseWidth: preset.mortiseWidth,
+        mortiseLength: preset.mortiseLength,
+        routerBitDiameter: preset.routerBitDiameter,
+      };
+      for (let pass = 0; pass < 2; pass += 1) {
+        for (const parameter of model.parameters) {
+          const limits = getParameterLimits(model, next, parameter.key);
+          next[parameter.key] = clamp(
+            next[parameter.key],
+            limits.min,
+            limits.max,
+          );
+        }
       }
       return next;
     });
@@ -6109,6 +6383,16 @@ export default function App({
                       ? "Model controls"
                       : "Parameters"}
                   </h2>
+                  {model.viewer === "router-mortise-jig-v1" ? (
+                    <div className="router-mortise-preset-section">
+                      <h3>Common mortises</h3>
+                      <RouterMortisePresetControl
+                        model={model}
+                        onSelect={applyRouterMortisePreset}
+                        params={params}
+                      />
+                    </div>
+                  ) : null}
                   {model.viewer === "dining-table-v1" ? (
                     <>
                       <ScaleControl
@@ -6233,6 +6517,23 @@ export default function App({
                       onChange={updateDrillBitSizes}
                       unit={unit}
                     />
+                  </section>
+                ) : null}
+
+                {model.viewer === "router-mortise-jig-v1" ? (
+                  <section className="panel-section router-mortise-print-set">
+                    <h2>Print set &amp; hardware</h2>
+                    <ul>
+                      <li>1 guide plate STL</li>
+                      <li>2 individual fence-jaw STLs</li>
+                      <li>4 M5 heat-set inserts</li>
+                      <li>4 M5 × 20 mm knob screws + 16 mm washers at the 12 mm default plate</li>
+                    </ul>
+                    <p>
+                      Match screw length to any plate-thickness change. Router,
+                      bushing, cutter, and sample stock are preview-only. Test the
+                      setup on scrap and use shallow passes.
+                    </p>
                   </section>
                 ) : null}
 
