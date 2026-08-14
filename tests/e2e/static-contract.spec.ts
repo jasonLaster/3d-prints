@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(6);
+  expect(catalog.models).toHaveLength(7);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -149,6 +149,18 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "heatSetInserts",
       "adjustmentRange",
       "minimumPlateWeb",
+      "printSet",
+      "previewStandIn",
+      "printOrientation",
+    ],
+    "router-tenon-jig-v1": [
+      "tenonTarget",
+      "guideOpenings",
+      "routerInterface",
+      "shoulderMargins",
+      "heatSetInserts",
+      "adjustmentRange",
+      "minimumBaseWeb",
       "printSet",
       "previewStandIn",
       "printOrientation",
@@ -465,6 +477,7 @@ test("request coverage document tracks the app behaviors under Playwright", () =
     "Japandi tray supports width, length, height, floor thickness, rib relief, and rotation",
     "Drill Bit Holder defaults to the seven requested fractional sizes",
     "Handheld Router Mortise Jig derives its opening from the mortise, cutter, and guide bushing",
+    "Handheld Router Tenon Jig derives external guide openings from the tenon, cutter, and bearing",
     "Dark theme is available",
     "Parameter state is saved in the URL",
     "Sidebars have collapsible and resizable rails",
@@ -518,6 +531,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   );
   const routerMortiseJigDoc = readText(
     path.join(root, "docs/router-mortise-jig-audit-specifications.md"),
+  );
+  const routerTenonJigDoc = readText(
+    path.join(root, "docs/router-tenon-jig-audit-specifications.md"),
   );
   const tubeJigDoc = readText(
     path.join(root, "docs/concentric-tube-jig-audit-specifications.md"),
@@ -584,6 +600,17 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "preview-only stand-ins",
   ]) {
     expect(routerMortiseJigDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "target tenon + total fit allowance − guide-bearing outside diameter + cutter diameter",
+    "Six blind, top-opening M5 heat-set insert pockets",
+    "6, 8, 10, and 12 mm tenon thicknesses",
+    "five individual files",
+    "preview-only stand-ins",
+    "does not prescribe a climb cut",
+  ]) {
+    expect(routerTenonJigDoc).toContain(phrase);
   }
 
   for (const phrase of [

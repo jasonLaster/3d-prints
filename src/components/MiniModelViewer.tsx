@@ -14,6 +14,8 @@ import {
   createDrillBitHolderGeometry,
   createRouterMortiseJigGuideGeometry,
   createRouterMortiseJigPreviewParts,
+  createRouterTenonJigBaseGeometry,
+  createRouterTenonJigPreviewParts,
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
   createDoorLockAdapterGeometry,
@@ -108,6 +110,14 @@ function createPreviewObject(
     roughness: 0.42,
     side: THREE.DoubleSide,
   });
+  const workpieceMaterial = new THREE.MeshStandardMaterial({
+    color: "#c99a62",
+    roughness: 0.78,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.7,
+    side: THREE.DoubleSide,
+  });
 
   if (definition.viewer === "weighted-paper-towel-holder-v1") {
     const normalized = normalizeSourceGeometry(
@@ -196,6 +206,26 @@ function createPreviewObject(
         new THREE.Mesh(
           part.geometry,
           part.material === "printed" ? mainMaterial : metalMaterial,
+        ),
+      );
+    });
+  } else if (definition.viewer === "router-tenon-jig-v1") {
+    sourceGeometry.dispose();
+    group.add(
+      new THREE.Mesh(
+        createRouterTenonJigBaseGeometry(params, definition),
+        mainMaterial,
+      ),
+    );
+    createRouterTenonJigPreviewParts(params, definition).forEach((part) => {
+      group.add(
+        new THREE.Mesh(
+          part.geometry,
+          part.material === "printed"
+            ? mainMaterial
+            : part.material === "workpiece" || part.material === "tenon"
+              ? workpieceMaterial
+              : metalMaterial,
         ),
       );
     });

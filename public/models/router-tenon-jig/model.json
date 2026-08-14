@@ -1,0 +1,120 @@
+{
+  "id": "router-tenon-jig",
+  "name": "Handheld Router Tenon Jig",
+  "subtitle": "Adjustable bearing-bit guide with M5 heat-set inserts",
+  "description": "A printable bench-edge jig for shaping centered tenons with a handheld trim router. Four sliding guide plates set the tenon width and thickness, while the protruding stock and router depth stop set its length.",
+  "viewer": "router-tenon-jig-v1",
+  "stl": {
+    "fileName": "router-tenon-jig-base-bridge.stl",
+    "sourceName": "procedural-router-tenon-jig-base-bridge.stl",
+    "units": "mm",
+    "url": "/models/router-tenon-jig/router-tenon-jig-base-bridge.stl"
+  },
+  "export": {
+    "filePrefix": "router-tenon-jig"
+  },
+  "geometry": {
+    "mainAxis": { "x": 0, "y": 0, "z": 0 },
+    "radialSegments": 48,
+    "cornerSegments": 10,
+    "slotArcSegments": 24,
+    "markerArcSegments": 6,
+    "baseLength": 210,
+    "baseWidth": 160,
+    "baseCornerRadius": 8,
+    "throatWidth": 96,
+    "throatThickness": 64,
+    "throatCornerRadius": 4,
+    "cheekPlateLength": 84,
+    "cheekPlateWidth": 120,
+    "edgePlateLength": 110,
+    "edgePlateWidth": 52,
+    "plateCornerRadius": 5,
+    "cheekInsertX": 72,
+    "cheekInsertY": 47,
+    "edgeInsertY": 46,
+    "adjustmentSlotLength": 42,
+    "edgeAdjustmentSlotLength": 18,
+    "boltSlotWidth": 6.6,
+    "insertLeadIn": 0.4,
+    "minimumInsertSideWall": 3,
+    "minimumInsertFloor": 3,
+    "minimumGuideOpening": 5,
+    "maximumGuideOpeningWidth": 62,
+    "maximumGuideOpeningThickness": 18,
+    "presetTenonWidthsMm": [30, 40, 50, 60],
+    "presetTenonThicknessesMm": [6, 8, 10, 12],
+    "markerLength": 3.6,
+    "markerWidth": 0.9,
+    "workpiecePreviewHeight": 105,
+    "routerBaseThickness": 7,
+    "routerMotorDiameter": 65,
+    "routerMotorHeight": 68,
+    "bearingHeight": 8,
+    "cutterPreviewLength": 34,
+    "hoseBandHeight": 5
+  },
+  "presets": [
+    { "label": "6 × 30 × 25 mm", "tenonThickness": 6, "tenonWidth": 30, "tenonLength": 25 },
+    { "label": "8 × 40 × 30 mm", "tenonThickness": 8, "tenonWidth": 40, "tenonLength": 30 },
+    { "label": "10 × 40 × 30 mm", "tenonThickness": 10, "tenonWidth": 40, "tenonLength": 30 },
+    { "label": "12 × 50 × 35 mm", "tenonThickness": 12, "tenonWidth": 50, "tenonLength": 35 }
+  ],
+  "parts": [
+    { "key": "base-bridge", "label": "Base bridge", "quantity": 1, "fileName": "router-tenon-jig-base-bridge.stl", "url": "/models/router-tenon-jig/router-tenon-jig-base-bridge.stl" },
+    { "key": "left-cheek-guide", "label": "Left cheek guide", "quantity": 1, "fileName": "router-tenon-jig-left-cheek-guide.stl", "url": "/models/router-tenon-jig/router-tenon-jig-left-cheek-guide.stl" },
+    { "key": "right-cheek-guide", "label": "Right cheek guide", "quantity": 1, "fileName": "router-tenon-jig-right-cheek-guide.stl", "url": "/models/router-tenon-jig/router-tenon-jig-right-cheek-guide.stl" },
+    { "key": "front-edge-guide", "label": "Front edge guide", "quantity": 1, "fileName": "router-tenon-jig-front-edge-guide.stl", "url": "/models/router-tenon-jig/router-tenon-jig-front-edge-guide.stl" },
+    { "key": "rear-edge-guide", "label": "Rear edge guide", "quantity": 1, "fileName": "router-tenon-jig-rear-edge-guide.stl", "url": "/models/router-tenon-jig/router-tenon-jig-rear-edge-guide.stl" }
+  ],
+  "parameters": [
+    { "key": "tenonThickness", "label": "Tenon thickness", "statusLabel": "Tenon T", "default": 10, "limits": { "min": 6, "max": 16, "step": 0.5 } },
+    { "key": "tenonWidth", "label": "Tenon width", "statusLabel": "Tenon W", "default": 40, "limits": { "min": 24, "max": 60, "step": 1 } },
+    { "key": "tenonLength", "label": "Tenon length / cut depth", "statusLabel": "Tenon L", "default": 30, "limits": { "min": 15, "max": 45, "step": 1 } },
+    { "key": "routerCutterDiameter", "label": "Bearing-bit cutter diameter", "statusLabel": "Cutter Ø", "default": 12.7, "limits": { "min": 6, "max": 19.05, "step": 0.05 } },
+    { "key": "guideBearingDiameter", "label": "Guide bearing outside diameter", "statusLabel": "Bearing Ø", "default": 12.7, "limits": { "min": 6, "max": 19.05, "step": 0.05 } },
+    { "key": "tenonAllowance", "label": "Tenon fit allowance (total)", "statusLabel": "Extra material", "default": 0.2, "limits": { "min": 0, "max": 0.8, "step": 0.05 } },
+    { "key": "workpieceWidth", "label": "Workpiece width", "statusLabel": "Stock W", "default": 64, "limits": { "min": 30, "max": 92, "step": 1 } },
+    { "key": "workpieceThickness", "label": "Workpiece thickness", "statusLabel": "Stock T", "default": 38, "limits": { "min": 18, "max": 60, "step": 1 } },
+    { "key": "baseThickness", "label": "Base bridge thickness", "statusLabel": "Base T", "default": 12, "limits": { "min": 10, "max": 18, "step": 1 } },
+    { "key": "guidePlateThickness", "label": "Sliding guide thickness", "statusLabel": "Guide T", "default": 8, "limits": { "min": 6, "max": 12, "step": 1 } },
+    { "key": "insertPocketDiameter", "label": "M5 heat-set insert pocket diameter", "statusLabel": "Insert Ø", "default": 7.2, "limits": { "min": 6.5, "max": 8.5, "step": 0.1 } },
+    { "key": "insertDepth", "label": "M5 heat-set insert pocket depth", "statusLabel": "Insert D", "default": 6, "limits": { "min": 4.5, "max": 9, "step": 0.1 } },
+    { "key": "routerBaseDiameter", "label": "Router base stand-in diameter", "statusLabel": "Router base", "default": 90, "limits": { "min": 70, "max": 120, "step": 1 } }
+  ],
+  "audit": {
+    "toleranceMm": 0.2,
+    "dimensionTargets": [
+      "The default centered tenon is 10 mm thick × 40 mm wide × 30 mm long on 64 × 38 mm stock.",
+      "A 12.7 mm cutter and equal 12.7 mm guide bearing make the default guide openings 10.2 × 40.2 mm after adding 0.2 mm of total extra material.",
+      "The 210 × 160 × 12 mm bridge has a 96 × 64 mm stock throat and six blind M5 insert pockets.",
+      "Two 84 × 120 mm cheek guides and two 110 × 52 mm edge guides form a two-level adjustable guide set.",
+      "Four one-click preset markers cover 6 × 30 × 25 through 12 × 50 × 35 mm tenons."
+    ],
+    "invariants": [
+      "Derive each external bearing-guide opening as target tenon + total extra material − guide-bearing diameter + cutter diameter.",
+      "Keep at least 3 mm of shoulder on every side of the selected tenon.",
+      "Keep six M5 heat-set insert pockets blind with at least 3 mm of floor and 3 mm of side web.",
+      "Keep thickness witness marks at 6, 8, 10, and 12 mm and width witness marks at 30, 40, 50, and 60 mm.",
+      "Export the bridge and four sliding guides as five individual, support-free STL files.",
+      "Treat the router base, bearing bit, hose-band depth stop, inserts, and workpiece as preview-only stand-ins.",
+      "Use the two guide levels one opposing pair at a time and verify the bearing is registered to the intended guide before cutting.",
+      "Clamp the jig and stock, check rotation direction and clearance, take shallow conventional passes, and follow the router and bit manufacturers' instructions."
+    ],
+    "checks": [
+      { "key": "tenonTarget", "label": "Tenon target" },
+      { "key": "guideOpenings", "label": "Calculated bearing-guide openings" },
+      { "key": "routerInterface", "label": "Router interface" },
+      { "key": "shoulderMargins", "label": "Centered shoulder margins" },
+      { "key": "heatSetInserts", "label": "Heat-set inserts" },
+      { "key": "adjustmentRange", "label": "Preset witness marks" },
+      { "key": "minimumBaseWeb", "label": "Minimum bridge web" },
+      { "key": "printSet", "label": "Printable part set" },
+      { "key": "previewStandIn", "label": "Preview stand-ins" },
+      { "key": "printOrientation", "label": "Recommended print orientation" }
+    ]
+  },
+  "scripts": [
+    { "name": "audit", "path": "models/router-tenon-jig/audit.mjs", "command": "npm run audit -- router-tenon-jig", "description": "Validates the external bearing-guide formula, shoulder margins, blind heat-set pockets, preset markers, and all five printable STLs." }
+  ]
+}

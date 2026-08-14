@@ -38,6 +38,11 @@ Current models:
   - Config: `public/models/router-mortise-jig/model.json`
   - Audit script: `models/router-mortise-jig/audit.mjs`
   - Source generator: `models/router-mortise-jig/generate-source.mjs`
+- `router-tenon-jig`
+  - STLs: `public/models/router-tenon-jig/router-tenon-jig-*.stl`
+  - Config: `public/models/router-tenon-jig/model.json`
+  - Audit script: `models/router-tenon-jig/audit.mjs`
+  - Source generator: `models/router-tenon-jig/generate-source.mjs`
 
 The model JSON owns the display name, STL URL, parameter definitions, audit
 checks, dimension invariants, and associated scripts for that print.
@@ -76,6 +81,7 @@ npm run audit -- simple-box
 npm run audit -- door-lock-adapter
 npm run audit -- drill-bit-holder
 npm run audit -- router-mortise-jig
+npm run audit -- router-tenon-jig
 npm run test:e2e
 npm run verify
 npm run build:vercel

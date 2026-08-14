@@ -76,6 +76,9 @@ import {
   createRouterMortiseJigGuideGeometry,
   createRouterMortiseJigPartGeometries,
   createRouterMortiseJigPreviewParts,
+  createRouterTenonJigBaseGeometry,
+  createRouterTenonJigPartGeometries,
+  createRouterTenonJigPreviewParts,
   DRILL_BIT_PARAMETER_KEYS,
   getDrillBitDiameters,
   createDiningTableHardwareGeometries,
@@ -102,6 +105,7 @@ import {
   getParam,
   getParameterLimits,
   getRouterMortiseJigSpec,
+  getRouterTenonJigSpec,
   getStatusItems,
   isDrillBitDiameterKey,
   snapGridfinityDimension,
@@ -109,6 +113,7 @@ import {
   updateConcentricTubeJigGuide,
   updateDrillBitHolderGuide,
   updateRouterMortiseJigGuide,
+  updateRouterTenonJigGuide,
   updateDiningTableGuide,
   updateHoverDiningTableGuide,
   updateHolderGuide,
@@ -295,6 +300,15 @@ const PARAM_QUERY_KEYS = [
   "insertPocketDiameter",
   "insertDepth",
   "routerBaseDiameter",
+  "tenonThickness",
+  "tenonWidth",
+  "tenonLength",
+  "routerCutterDiameter",
+  "guideBearingDiameter",
+  "tenonAllowance",
+  "workpieceThickness",
+  "baseThickness",
+  "guidePlateThickness",
   "mockScale",
   "tableLength",
   "tableWidth",
@@ -789,11 +803,13 @@ function getParamsFromUrl(model: ModelDefinition) {
   if (
     model.viewer === "door-lock-adapter-v1" ||
     model.viewer === "drill-bit-holder-v1" ||
-    model.viewer === "router-mortise-jig-v1"
+    model.viewer === "router-mortise-jig-v1" ||
+    model.viewer === "router-tenon-jig-v1"
   ) {
     const passes =
       model.viewer === "drill-bit-holder-v1" ||
-      model.viewer === "router-mortise-jig-v1"
+      model.viewer === "router-mortise-jig-v1" ||
+      model.viewer === "router-tenon-jig-v1"
         ? 2
         : 1;
     for (let pass = 0; pass < passes; pass += 1) {
@@ -1097,6 +1113,11 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
     const compact = (value: number) =>
       value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
     return `${model.export.filePrefix}-${compact(getParam(params, "mortiseWidth"))}x${compact(getParam(params, "mortiseLength"))}-bit-${compact(getParam(params, "routerBitDiameter"))}-bushing-${compact(getParam(params, "guideBushingDiameter"))}-stock-${compact(getParam(params, "workpieceWidth"))}.stl`;
+  }
+  if (model.viewer === "router-tenon-jig-v1") {
+    const compact = (value: number) =>
+      value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    return `${model.export.filePrefix}-${compact(getParam(params, "tenonThickness"))}x${compact(getParam(params, "tenonWidth"))}x${compact(getParam(params, "tenonLength"))}-cutter-${compact(getParam(params, "routerCutterDiameter"))}-bearing-${compact(getParam(params, "guideBearingDiameter"))}.stl`;
   }
   const suffix = model.parameters
     .map(
@@ -1433,6 +1454,50 @@ const HolderViewer = forwardRef<
         routerMortisePreviewGroup.add(mesh);
       }
       updateRouterMortiseJigGuide(
+        guideMesh,
+        latestParamsRef.current,
+        model,
+      );
+    } else if (model.viewer === "router-tenon-jig-v1") {
+      if (
+        !routerMortisePreviewGroup ||
+        !routerPreviewMaterial ||
+        !routerWorkpieceMaterial ||
+        !routerBitMaterial ||
+        !diningMetalMaterial
+      ) {
+        return;
+      }
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createRouterTenonJigBaseGeometry(
+        latestParamsRef.current,
+        model,
+      );
+      routerMortisePreviewGroup.children.forEach((child) => {
+        if (child instanceof THREE.Mesh) child.geometry.dispose();
+      });
+      routerMortisePreviewGroup.clear();
+      for (const part of createRouterTenonJigPreviewParts(
+        latestParamsRef.current,
+        model,
+      )) {
+        const material =
+          part.material === "printed"
+            ? holderMaterial
+            : part.material === "workpiece"
+              ? routerWorkpieceMaterial
+              : part.material === "tenon"
+                ? routerWorkpieceMaterial
+                : part.material === "router"
+                  ? routerPreviewMaterial
+                  : part.material === "bit"
+                    ? routerBitMaterial
+                    : diningMetalMaterial;
+        const mesh = new THREE.Mesh(part.geometry, material);
+        mesh.name = `${model.id}-${part.key}`;
+        routerMortisePreviewGroup.add(mesh);
+      }
+      updateRouterTenonJigGuide(
         guideMesh,
         latestParamsRef.current,
         model,
@@ -1804,6 +1869,24 @@ const HolderViewer = forwardRef<
         group.add(mesh);
       });
     }
+    const exportRouterTenonGuides: THREE.Mesh[] = [];
+    if (model.viewer === "router-tenon-jig-v1") {
+      const parts = createRouterTenonJigPartGeometries(
+        latestParamsRef.current,
+        model,
+      );
+      parts[0]?.geometry.dispose();
+      const spec = getRouterTenonJigSpec(latestParamsRef.current, model);
+      parts.slice(1).forEach((part, index) => {
+        const mesh = new THREE.Mesh(createCleanExportGeometry(part.geometry));
+        mesh.name = `${model.id}-${part.key}`;
+        mesh.position.x = (index - 1.5) * 120;
+        mesh.position.y = spec.baseWidth / 2 + spec.cheekPlateWidth / 2 + 10;
+        part.geometry.dispose();
+        exportRouterTenonGuides.push(mesh);
+        group.add(mesh);
+      });
+    }
     group.updateMatrixWorld(true);
 
     const exporter = new STLExporter();
@@ -1819,6 +1902,7 @@ const HolderViewer = forwardRef<
       hardwareMesh.geometry.dispose(),
     );
     exportRouterMortiseFences.forEach((fence) => fence.geometry.dispose());
+    exportRouterTenonGuides.forEach((guide) => guide.geometry.dispose());
 
     return blob;
   }, [model]);
@@ -1895,9 +1979,45 @@ const HolderViewer = forwardRef<
     downloadNext(0);
   }, [model]);
 
+  const exportRouterTenonJigStls = useCallback(() => {
+    if (model.viewer !== "router-tenon-jig-v1") return;
+    const baseName = getExportFileName(model, latestParamsRef.current).replace(
+      /\.stl$/,
+      "",
+    );
+    const files = createRouterTenonJigPartGeometries(
+      latestParamsRef.current,
+      model,
+    ).map((part) => {
+      const mesh = new THREE.Mesh(createCleanExportGeometry(part.geometry));
+      mesh.name = `${model.id}-${part.key}`;
+      mesh.updateMatrixWorld(true);
+      const result = new STLExporter().parse(mesh, { binary: true });
+      part.geometry.dispose();
+      mesh.geometry.dispose();
+      return {
+        blob: new Blob([result], { type: "model/stl" }),
+        fileName: `${baseName}-${part.key}.stl`,
+      };
+    });
+    const downloadNext = (index: number) => {
+      const file = files[index];
+      if (!file) return;
+      downloadBlob(file.blob, file.fileName);
+      if (index + 1 < files.length) {
+        window.setTimeout(() => downloadNext(index + 1), 100);
+      }
+    };
+    downloadNext(0);
+  }, [model]);
+
   const exportStl = useCallback(() => {
     if (model.viewer === "router-mortise-jig-v1") {
       exportRouterMortiseJigStls();
+      return;
+    }
+    if (model.viewer === "router-tenon-jig-v1") {
+      exportRouterTenonJigStls();
       return;
     }
     const blob = createStlBlob();
@@ -1928,6 +2048,7 @@ const HolderViewer = forwardRef<
     createDiningTableHardwareStlBlob,
     createStlBlob,
     exportRouterMortiseJigStls,
+    exportRouterTenonJigStls,
     model,
   ]);
 
@@ -2176,7 +2297,8 @@ const HolderViewer = forwardRef<
       model.viewer === "door-lock-adapter-v1" ||
       model.viewer === "concentric-tube-jig-v1" ||
       model.viewer === "drill-bit-holder-v1" ||
-      model.viewer === "router-mortise-jig-v1"
+      model.viewer === "router-mortise-jig-v1" ||
+      model.viewer === "router-tenon-jig-v1"
         ? 18
         : 80;
     controls.maxDistance = 1400;
@@ -2395,6 +2517,8 @@ const HolderViewer = forwardRef<
               ? createDrillBitHolderGeometry(latestParamsRef.current, model)
             : model.viewer === "router-mortise-jig-v1"
               ? createRouterMortiseJigGuideGeometry(latestParamsRef.current, model)
+            : model.viewer === "router-tenon-jig-v1"
+              ? createRouterTenonJigBaseGeometry(latestParamsRef.current, model)
             : model.viewer === "dining-table-v1"
               ? createDiningTableWoodGeometry(latestParamsRef.current, model)
             : model.viewer === "hover-dining-table-v1"
@@ -2451,7 +2575,10 @@ const HolderViewer = forwardRef<
           assemblyPreviewGroup.name = `${model.id}-assembly-preview`;
           scene.add(assemblyPreviewGroup);
           assemblyPreviewGroupRef.current = assemblyPreviewGroup;
-        } else if (model.viewer === "router-mortise-jig-v1") {
+        } else if (
+          model.viewer === "router-mortise-jig-v1" ||
+          model.viewer === "router-tenon-jig-v1"
+        ) {
           const previewGroup = new THREE.Group();
           previewGroup.name = `${model.id}-preview-stand-ins`;
           scene.add(previewGroup);
@@ -2519,6 +2646,7 @@ const HolderViewer = forwardRef<
           model.viewer === "concentric-tube-jig-v1" ||
           model.viewer === "drill-bit-holder-v1" ||
           model.viewer === "router-mortise-jig-v1" ||
+          model.viewer === "router-tenon-jig-v1" ||
           model.viewer === "dining-table-v1" ||
           model.viewer === "hover-dining-table-v1"
         ) {
@@ -2640,6 +2768,11 @@ const HolderViewer = forwardRef<
           <span key={item}>{item}</span>
         ))}
         {model.viewer === "router-mortise-jig-v1" ? (
+          <span>
+            Router base stand-in {formatLength(getParam(params, "routerBaseDiameter"), unit)} Ø · preview only
+          </span>
+        ) : null}
+        {model.viewer === "router-tenon-jig-v1" ? (
           <span>
             Router base stand-in {formatLength(getParam(params, "routerBaseDiameter"), unit)} Ø · preview only
           </span>
@@ -3001,6 +3134,50 @@ function RouterMortisePresetControl({
       <small>
         Quick starting points. Confirm the cutter, guide bushing, and a scrap cut
         before routing the workpiece.
+      </small>
+    </div>
+  );
+}
+
+function RouterTenonPresetControl({
+  model,
+  params,
+  onSelect,
+}: {
+  model: Extract<ModelDefinition, { viewer: "router-tenon-jig-v1" }>;
+  params: ModelParams;
+  onSelect: (
+    preset: Extract<
+      ModelDefinition,
+      { viewer: "router-tenon-jig-v1" }
+    >["presets"][number],
+  ) => void;
+}) {
+  return (
+    <div className="router-mortise-presets">
+      <div aria-label="Common tenon presets" className="preset-marker-grid" role="group">
+        {model.presets.map((preset) => {
+          const active =
+            Math.abs(getParam(params, "tenonThickness") - preset.tenonThickness) < 1e-6 &&
+            Math.abs(getParam(params, "tenonWidth") - preset.tenonWidth) < 1e-6 &&
+            Math.abs(getParam(params, "tenonLength") - preset.tenonLength) < 1e-6;
+          return (
+            <button
+              aria-pressed={active}
+              className={active ? "active" : ""}
+              key={preset.label}
+              onClick={() => onSelect(preset)}
+              type="button"
+            >
+              <strong>{preset.label}</strong>
+              <span>T × W × L</span>
+            </button>
+          );
+        })}
+      </div>
+      <small>
+        Quick starting points. Measure the bearing and cutter, then confirm both
+        guide levels and the depth stop with a scrap cut.
       </small>
     </div>
   );
@@ -5059,6 +5236,8 @@ function WorkspaceActionsMenu({
                   ? "Export two-color STLs"
                   : model.viewer === "router-mortise-jig-v1"
                     ? "Export 3 individual STLs"
+                  : model.viewer === "router-tenon-jig-v1"
+                    ? "Export 5 individual STLs"
                   : "Export"}
               </button>
               {model.viewer === "simple-box-v1" ? (
@@ -5672,7 +5851,8 @@ export default function App({
           nextValue.toFixed(
             model.viewer === "concentric-tube-jig-v1" ||
             model.viewer === "drill-bit-holder-v1" ||
-            model.viewer === "router-mortise-jig-v1"
+            model.viewer === "router-mortise-jig-v1" ||
+            model.viewer === "router-tenon-jig-v1"
               ? 4
               : CURVE_PARAM_KEYS.has(key)
                 ? 3
@@ -5697,6 +5877,22 @@ export default function App({
         }
       }
       if (model.viewer === "router-mortise-jig-v1") {
+        for (let pass = 0; pass < 2; pass += 1) {
+          for (const parameter of model.parameters) {
+            const dependentLimits = getParameterLimits(
+              model,
+              next,
+              parameter.key,
+            );
+            next[parameter.key] = clamp(
+              next[parameter.key],
+              dependentLimits.min,
+              dependentLimits.max,
+            );
+          }
+        }
+      }
+      if (model.viewer === "router-tenon-jig-v1") {
         for (let pass = 0; pass < 2; pass += 1) {
           for (const parameter of model.parameters) {
             const dependentLimits = getParameterLimits(
@@ -5911,6 +6107,35 @@ export default function App({
         mortiseWidth: preset.mortiseWidth,
         mortiseLength: preset.mortiseLength,
         routerBitDiameter: preset.routerBitDiameter,
+      };
+      for (let pass = 0; pass < 2; pass += 1) {
+        for (const parameter of model.parameters) {
+          const limits = getParameterLimits(model, next, parameter.key);
+          next[parameter.key] = clamp(
+            next[parameter.key],
+            limits.min,
+            limits.max,
+          );
+        }
+      }
+      return next;
+    });
+  };
+
+  const applyRouterTenonPreset = (
+    preset: Extract<
+      ModelDefinition,
+      { viewer: "router-tenon-jig-v1" }
+    >["presets"][number],
+  ) => {
+    if (model?.viewer !== "router-tenon-jig-v1") return;
+    setParams((current) => {
+      if (!current) return current;
+      const next: ModelParams = {
+        ...current,
+        tenonThickness: preset.tenonThickness,
+        tenonWidth: preset.tenonWidth,
+        tenonLength: preset.tenonLength,
       };
       for (let pass = 0; pass < 2; pass += 1) {
         for (const parameter of model.parameters) {
@@ -6393,6 +6618,16 @@ export default function App({
                       />
                     </div>
                   ) : null}
+                  {model.viewer === "router-tenon-jig-v1" ? (
+                    <div className="router-mortise-preset-section">
+                      <h3>Common tenons · T × W × L</h3>
+                      <RouterTenonPresetControl
+                        model={model}
+                        onSelect={applyRouterTenonPreset}
+                        params={params}
+                      />
+                    </div>
+                  ) : null}
                   {model.viewer === "dining-table-v1" ? (
                     <>
                       <ScaleControl
@@ -6533,6 +6768,26 @@ export default function App({
                       Match screw length to any plate-thickness change. Router,
                       bushing, cutter, and sample stock are preview-only. Test the
                       setup on scrap and use shallow passes.
+                    </p>
+                  </section>
+                ) : null}
+
+                {model.viewer === "router-tenon-jig-v1" ? (
+                  <section className="panel-section router-mortise-print-set">
+                    <h2>Print set &amp; hardware</h2>
+                    <ul>
+                      <li>1 base-bridge STL</li>
+                      <li>2 individual cheek-guide STLs</li>
+                      <li>2 individual edge-guide STLs</li>
+                      <li>6 M5 heat-set inserts</li>
+                      <li>6 M5 knob screws + 16 mm washers</li>
+                    </ul>
+                    <p>
+                      The cheek guides sit on the upper level and the edge
+                      guides on the lower level. Register the bit bearing to one
+                      opposing pair at a time. Router, bit, depth-stop band,
+                      hardware, and sample stock are preview-only. Clamp the
+                      setup and prove it with shallow passes on scrap.
                     </p>
                   </section>
                 ) : null}

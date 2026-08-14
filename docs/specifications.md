@@ -91,6 +91,17 @@ Handheld Router Mortise Jig:
 - The guide plate and left/right jaws download as three individual support-free STL files.
 - See `docs/router-mortise-jig-audit-specifications.md` for the full geometry, hardware, use, and audit contract.
 
+Handheld Router Tenon Jig:
+
+- The printable set is one 210 × 160 mm base bridge, two adjustable cheek guides, and two adjustable edge guides; six blind pockets receive M5 heat-set inserts.
+- Each external bearing-guide opening derives from `target tenon + total fit allowance − guide-bearing diameter + cutter diameter`.
+- Four common-tenon preset markers set 6 × 30 × 25, 8 × 40 × 30, 10 × 40 × 30, and 12 × 50 × 35 mm thickness × width × length targets without hiding the underlying parameters.
+- Physical witness marks cover 6, 8, 10, and 12 mm thicknesses and 30, 40, 50, and 60 mm widths.
+- The two-level sliding-guide arrangement avoids plate collisions and is used one opposing pair at a time.
+- The router base, bearing bit, hose-band depth stop, heat-set inserts, finished tenon, and sample stock are visible stand-ins and excluded from printable exports.
+- The bridge and four guides download as five individual support-free STL files.
+- See `docs/router-tenon-jig-audit-specifications.md` for the full geometry, hardware, use, and audit contract.
+
 Paper towel holder:
 
 - Holder height changes remap the middle body span between fixed bottom and top bands.
@@ -185,6 +196,7 @@ X-Hover Dining Table:
 - Simple Box provides a separate lid export whose registration skirt uses the same wall-derived clearance contract as stacking.
 - X-Hover provides a routing-template STL-set export. Every file is flat, full-size, normalized to its own print origin, inside the selected square plate envelope, and uniquely names its template family and part index.
 - Handheld Router Mortise Jig export downloads three current-parameter STL files: guide plate, left fence jaw, and right fence jaw. Preview-only router and stock geometry is never exported.
+- Handheld Router Tenon Jig export downloads five current-parameter STL files: base bridge, left/right cheek guides, and front/rear edge guides. Preview-only router, bit, depth stop, hardware, and stock geometry is never exported.
 
 ## Accessibility And Responsiveness
 

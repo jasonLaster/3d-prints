@@ -31,6 +31,11 @@ import {
   getRouterMortiseJigParameterLimits,
 } from "./routerMortiseJig";
 import {
+  getRouterTenonJigAuditValue,
+  getRouterTenonJigDimensions,
+  getRouterTenonJigParameterLimits,
+} from "./routerTenonJig";
+import {
   getDiningTableAuditValue,
   getDiningTableDimensions,
   getDiningTableParameterLimits,
@@ -99,6 +104,20 @@ export type {
   RouterMortiseJigSpec,
 } from "./routerMortiseJig";
 export {
+  createRouterTenonJigBaseGeometry,
+  createRouterTenonJigCheekGuideGeometry,
+  createRouterTenonJigEdgeGuideGeometry,
+  createRouterTenonJigPartGeometries,
+  createRouterTenonJigPreviewParts,
+  getRouterTenonJigSpec,
+  updateRouterTenonJigGuide,
+} from "./routerTenonJig";
+export type {
+  RouterTenonJigPart,
+  RouterTenonJigPreviewPart,
+  RouterTenonJigSpec,
+} from "./routerTenonJig";
+export {
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
   getDiningTableStructuralAssessment,
@@ -154,6 +173,9 @@ function getAuditValue(
   if (model.viewer === "router-mortise-jig-v1") {
     return getRouterMortiseJigAuditValue(check, params, unit, model);
   }
+  if (model.viewer === "router-tenon-jig-v1") {
+    return getRouterTenonJigAuditValue(check, params, unit, model);
+  }
   if (model.viewer === "dining-table-v1") {
     return getDiningTableAuditValue(check, params, unit);
   }
@@ -195,6 +217,9 @@ export function getParameterLimits(
   if (model.viewer === "router-mortise-jig-v1") {
     return getRouterMortiseJigParameterLimits(model, params, key);
   }
+  if (model.viewer === "router-tenon-jig-v1") {
+    return getRouterTenonJigParameterLimits(model, params, key);
+  }
   if (model.viewer === "dining-table-v1") {
     return getDiningTableParameterLimits(model, params, key);
   }
@@ -224,6 +249,9 @@ export function getModelDimensions(
   }
   if (model.viewer === "router-mortise-jig-v1") {
     return getRouterMortiseJigDimensions(params, model);
+  }
+  if (model.viewer === "router-tenon-jig-v1") {
+    return getRouterTenonJigDimensions(params, model);
   }
   if (model.viewer === "dining-table-v1") {
     return getDiningTableDimensions(params);
@@ -282,6 +310,14 @@ export function getStatusItems(
       `Opening ${formatLength(openingWidth, unit)} × ${formatLength(openingLength, unit)}`,
       `Stock ${formatLength(getParam(params, "workpieceWidth"), unit)}`,
       "M5 heat-set inserts × 4",
+    ];
+  }
+  if (model.viewer === "router-tenon-jig-v1") {
+    return [
+      `Tenon ${formatLength(getParam(params, "tenonThickness"), unit)} T × ${formatLength(getParam(params, "tenonWidth"), unit)} W × ${formatLength(getParam(params, "tenonLength"), unit)} L`,
+      `Bearing bit ${formatLength(getParam(params, "routerCutterDiameter"), unit)} cutter / ${formatLength(getParam(params, "guideBearingDiameter"), unit)} bearing`,
+      `Stock ${formatLength(getParam(params, "workpieceWidth"), unit)} × ${formatLength(getParam(params, "workpieceThickness"), unit)}`,
+      "M5 heat-set inserts × 6",
     ];
   }
   return model.parameters.slice(0, 4).map((parameter) => {

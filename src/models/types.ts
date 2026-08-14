@@ -166,6 +166,48 @@ export type RouterMortiseJigGeometry = {
   bitPreviewDepth: number;
 };
 
+export type RouterTenonJigGeometry = {
+  mainAxis: { x: number; y: number; z: number };
+  radialSegments: number;
+  cornerSegments: number;
+  slotArcSegments: number;
+  markerArcSegments: number;
+  baseLength: number;
+  baseWidth: number;
+  baseCornerRadius: number;
+  throatWidth: number;
+  throatThickness: number;
+  throatCornerRadius: number;
+  cheekPlateLength: number;
+  cheekPlateWidth: number;
+  edgePlateLength: number;
+  edgePlateWidth: number;
+  plateCornerRadius: number;
+  cheekInsertX: number;
+  cheekInsertY: number;
+  edgeInsertY: number;
+  adjustmentSlotLength: number;
+  edgeAdjustmentSlotLength: number;
+  boltSlotWidth: number;
+  insertLeadIn: number;
+  minimumInsertSideWall: number;
+  minimumInsertFloor: number;
+  minimumGuideOpening: number;
+  maximumGuideOpeningWidth: number;
+  maximumGuideOpeningThickness: number;
+  presetTenonWidthsMm: number[];
+  presetTenonThicknessesMm: number[];
+  markerLength: number;
+  markerWidth: number;
+  workpiecePreviewHeight: number;
+  routerBaseThickness: number;
+  routerMotorDiameter: number;
+  routerMotorHeight: number;
+  bearingHeight: number;
+  cutterPreviewLength: number;
+  hoseBandHeight: number;
+};
+
 export type DiningTableGeometry = {
   mainAxis: { x: number; y: number; z: number };
   cornerSegments: number;
@@ -193,6 +235,7 @@ export type SupportedViewer =
   | "concentric-tube-jig-v1"
   | "drill-bit-holder-v1"
   | "router-mortise-jig-v1"
+  | "router-tenon-jig-v1"
   | "dining-table-v1"
   | "hover-dining-table-v1";
 
@@ -273,6 +316,28 @@ export type RouterMortiseJigModelDefinition = BaseModelDefinition & {
   parts: RouterMortiseJigPartDefinition[];
 };
 
+export type RouterTenonPreset = {
+  label: string;
+  tenonThickness: number;
+  tenonWidth: number;
+  tenonLength: number;
+};
+
+export type RouterTenonJigPartDefinition = {
+  key: "base-bridge" | "left-cheek-guide" | "right-cheek-guide" | "front-edge-guide" | "rear-edge-guide";
+  label: string;
+  quantity: number;
+  fileName: string;
+  url: string;
+};
+
+export type RouterTenonJigModelDefinition = BaseModelDefinition & {
+  viewer: "router-tenon-jig-v1";
+  geometry: RouterTenonJigGeometry;
+  presets: RouterTenonPreset[];
+  parts: RouterTenonJigPartDefinition[];
+};
+
 export type DiningTableModelDefinition = BaseModelDefinition & {
   viewer: "dining-table-v1";
   geometry: DiningTableGeometry;
@@ -291,6 +356,7 @@ export type ModelDefinition =
   | ConcentricTubeJigModelDefinition
   | DrillBitHolderModelDefinition
   | RouterMortiseJigModelDefinition
+  | RouterTenonJigModelDefinition
   | DiningTableModelDefinition
   | HoverDiningTableModelDefinition;
 

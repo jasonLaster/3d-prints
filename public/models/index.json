@@ -30,6 +30,11 @@
       "id": "router-mortise-jig",
       "name": "Handheld Router Mortise Jig",
       "configUrl": "/models/router-mortise-jig/model.json"
+    },
+    {
+      "id": "router-tenon-jig",
+      "name": "Handheld Router Tenon Jig",
+      "configUrl": "/models/router-tenon-jig/model.json"
     }
   ]
 }
