@@ -379,6 +379,14 @@ const PARAM_QUERY_KEYS = [
   "channelLength",
   "channelWidth",
   "channelDepth",
+  "finishSystem",
+  "coreThickness",
+  "surfaceThickness",
+  "edgeBandWidth",
+  "stripWidth",
+  "stripLengthMin",
+  "stripLengthMax",
+  "seamGap",
   "topEdgeRoll",
   "topEdgeTension",
   "topPlanCornerRadius",
@@ -476,6 +484,13 @@ const SCALAR_PARAM_KEYS = new Set([
   "bottomSupportStyle",
   "syncCrossbarDimensions",
   "levelingFeetEnabled",
+  "finishSystem",
+]);
+const DESK_FLOORING_PARAM_KEYS = new Set([
+  "stripWidth",
+  "stripLengthMin",
+  "stripLengthMax",
+  "seamGap",
 ]);
 const CURVE_PARAM_KEYS = new Set([
   "topEdgeTension",
@@ -492,6 +507,7 @@ const OPTION_PARAM_KEYS = new Set([
   "endFrameStyle",
   "syncCrossbarDimensions",
   "levelingFeetEnabled",
+  "finishSystem",
 ]);
 const LEG_GROOVE_PARAM_KEYS = new Set([
   "legGrooveHeight",
@@ -845,6 +861,19 @@ function getParamsFromUrl(model: ModelDefinition) {
         ? 2
         : 1;
     for (let pass = 0; pass < passes; pass += 1) {
+      for (const parameter of model.parameters) {
+        const limits = getParameterLimits(model, params, parameter.key);
+        params[parameter.key] = clamp(
+          params[parameter.key],
+          limits.min,
+          limits.max,
+        );
+      }
+    }
+  }
+
+  if (model.id === "desk-tabletop") {
+    for (let pass = 0; pass < 2; pass += 1) {
       for (const parameter of model.parameters) {
         const limits = getParameterLimits(model, params, parameter.key);
         params[parameter.key] = clamp(
@@ -2123,6 +2152,7 @@ const HolderViewer = forwardRef<
     const fileName = getExportFileName(model, latestParamsRef.current);
     if (
       model.viewer === "dining-table-v1" &&
+      model.id !== "desk-tabletop" &&
       (model.id !== "whisperer" ||
         getParam(latestParamsRef.current, "levelingFeetEnabled") >= 0.5)
     ) {
@@ -4153,6 +4183,46 @@ function PlateLevelingFeetToggle({
   );
 }
 
+function DeskSurfaceSystemControl({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const flooring = value >= 0.5;
+  return (
+    <div className="gridfinity-option">
+      <div
+        aria-label="White-oak surface system"
+        className="segmented-control"
+      >
+        <button
+          aria-pressed={!flooring}
+          className={!flooring ? "active" : ""}
+          onClick={() => onChange(0)}
+          type="button"
+        >
+          Plywood veneer
+        </button>
+        <button
+          aria-pressed={flooring}
+          className={flooring ? "active" : ""}
+          onClick={() => onChange(1)}
+          type="button"
+        >
+          Flooring strips
+        </button>
+      </div>
+      <small>
+        {flooring
+          ? "Staggered unfinished white-oak strips use the editable face width and length range below."
+          : "One continuous inset white-oak plywood field; the default surface thickness is 1/8 in."}
+      </small>
+    </div>
+  );
+}
+
 function TrayOrientationSnapControl({
   maxRotation,
   onChange,
@@ -4735,19 +4805,21 @@ function HoverDesignChecks({
 }) {
   return (
     <>
-      <CollapsiblePanelSection
-        expanded={structureExpanded}
-        id={`${idPrefix}-structure`}
-        onToggle={onStructureToggle}
-        title="Structure"
-      >
-        <HoverStructuralAssessment
-          modelId={modelId}
-          modelViewer={modelViewer}
-          params={params}
-          unit={unit}
-        />
-      </CollapsiblePanelSection>
+      {modelId !== "desk-tabletop" ? (
+        <CollapsiblePanelSection
+          expanded={structureExpanded}
+          id={`${idPrefix}-structure`}
+          onToggle={onStructureToggle}
+          title="Structure"
+        >
+          <HoverStructuralAssessment
+            modelId={modelId}
+            modelViewer={modelViewer}
+            params={params}
+            unit={unit}
+          />
+        </CollapsiblePanelSection>
+      ) : null}
       <CollapsiblePanelSection
         expanded={auditExpanded}
         id={`${idPrefix}-audit`}
@@ -5405,6 +5477,7 @@ function WorkspaceActionsMenu({
               <button className="primary-action" onClick={onExport} type="button">
                 <Download aria-hidden="true" />
                 {model.viewer === "dining-table-v1" &&
+                model.id !== "desk-tabletop" &&
                 (model.id !== "whisperer" ||
                   getParam(params, "levelingFeetEnabled") >= 0.5)
                   ? "Export two-color STLs"
@@ -6029,7 +6102,8 @@ export default function App({
             model.viewer === "drill-bit-holder-v1" ||
             model.viewer === "router-mortise-jig-v1" ||
             model.viewer === "router-tenon-jig-v1" ||
-            model.viewer === "bandsaw-sled-v1"
+            model.viewer === "bandsaw-sled-v1" ||
+            model.id === "desk-tabletop"
               ? 4
               : CURVE_PARAM_KEYS.has(key)
                 ? 3
@@ -6090,6 +6164,18 @@ export default function App({
           for (const parameter of model.parameters) {
             const dependentLimits = getParameterLimits(model, next, parameter.key);
             next[parameter.key] = clamp(next[parameter.key], dependentLimits.min, dependentLimits.max);
+          }
+        }
+      }
+      if (model.id === "desk-tabletop") {
+        for (let pass = 0; pass < 2; pass += 1) {
+          for (const parameter of model.parameters) {
+            const dependentLimits = getParameterLimits(model, next, parameter.key);
+            next[parameter.key] = clamp(
+              next[parameter.key],
+              dependentLimits.min,
+              dependentLimits.max,
+            );
           }
         }
       }
@@ -6825,6 +6911,12 @@ export default function App({
                         onChange={(value) => updateParam("mockScale", value)}
                         value={getParam(params, "mockScale")}
                       />
+                      {model.id === "desk-tabletop" ? (
+                        <DeskSurfaceSystemControl
+                          onChange={(value) => updateParam("finishSystem", value)}
+                          value={getParam(params, "finishSystem")}
+                        />
+                      ) : null}
                       {model.id === "whisperer" ? (
                         <OriginalOverlayToggle
                           checked={getParam(params, "levelingFeetEnabled") >= 0.5}
@@ -6862,6 +6954,13 @@ export default function App({
                     />
                   ) : model.parameters
                     .filter((parameter) => {
+                      if (
+                        model.id === "desk-tabletop" &&
+                        params.finishSystem < 0.5 &&
+                        DESK_FLOORING_PARAM_KEYS.has(parameter.key)
+                      ) {
+                        return false;
+                      }
                       if (
                         model.viewer === "dining-table-v1" &&
                         Number.isFinite(params.legGrooveEnabled) &&

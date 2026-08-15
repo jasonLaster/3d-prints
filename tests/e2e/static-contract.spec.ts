@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(8);
+  expect(catalog.models).toHaveLength(9);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -224,6 +224,17 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
     ],
   };
   const modelSpecificCheckKeys: Record<string, string[]> = {
+    "desk-tabletop": [
+      "deskEnvelope",
+      "deskLayerBuild",
+      "deskEdgeBand",
+      "deskEdgeProfile",
+      "deskCornerRadius",
+      "deskStripLayout",
+      "deskCoreCoverage",
+      "deskMockEnvelope",
+      "deskMinimumFeature",
+    ],
     "dining-table": [
       "tableEnvelope",
       "tabletopProfile",

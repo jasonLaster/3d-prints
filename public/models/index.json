@@ -40,6 +40,11 @@
       "id": "bandsaw-sled",
       "name": "Adjustable Fence Bandsaw Sled",
       "configUrl": "/models/bandsaw-sled/model.json"
+    },
+    {
+      "id": "desk-tabletop",
+      "name": "White Oak Desk Top",
+      "configUrl": "/models/desk-tabletop/model.json"
     }
   ]
 }

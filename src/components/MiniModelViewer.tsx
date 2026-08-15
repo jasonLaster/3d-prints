@@ -63,7 +63,7 @@ function loadModelDefinition(configUrl: string) {
 
 function materialColor(modelKey: string, theme: ThemeMode) {
   if (modelKey === "router-mortise-jig") return "#eee5d2";
-  if (modelKey.includes("dining-table")) {
+  if (modelKey.includes("dining-table") || modelKey === "desk-tabletop") {
     return "#b9824f";
   }
   if (modelKey === "paper-towel-holder") {
@@ -103,8 +103,14 @@ function createPreviewObject(
   const params = getDefaultParams(definition);
   const mainMaterial = new THREE.MeshStandardMaterial({
     color: materialColor(definition.id, theme),
-    metalness: definition.id.includes("dining-table") ? 0 : 0.08,
-    roughness: definition.id.includes("dining-table") ? 0.72 : 0.64,
+    metalness:
+      definition.id.includes("dining-table") || definition.id === "desk-tabletop"
+        ? 0
+        : 0.08,
+    roughness:
+      definition.id.includes("dining-table") || definition.id === "desk-tabletop"
+        ? 0.72
+        : 0.64,
     side: THREE.DoubleSide,
   });
   const metalMaterial = new THREE.MeshStandardMaterial({

@@ -1,0 +1,79 @@
+{
+  "id": "desk-tabletop",
+  "name": "White Oak Desk Top",
+  "subtitle": "Layered oak surface with a solid profiled perimeter",
+  "description": "A parametric desk top built around a stable core, with either a continuous 1/8 in white-oak plywood veneer field or staggered unfinished white-oak flooring strips, plus a 1–2 in solid white-oak edge band that carries the corner radius, roundovers, and underside bevel.",
+  "viewer": "dining-table-v1",
+  "stl": {
+    "fileName": "desk-tabletop.stl",
+    "sourceName": "procedural-desk-tabletop-reference.stl",
+    "units": "mm",
+    "url": "/models/desk-tabletop/desk-tabletop.stl"
+  },
+  "export": {
+    "filePrefix": "desk-tabletop"
+  },
+  "geometry": {
+    "mainAxis": { "x": 0, "y": 0, "z": 0 },
+    "cornerSegments": 16,
+    "edgeProfileSegments": 8,
+    "channelCount": 0
+  },
+  "parameters": [
+    { "key": "mockScale", "label": "Model scale denominator", "default": 8, "limits": { "min": 4, "max": 20, "step": 1 } },
+    { "key": "finishSystem", "label": "White-oak surface system", "default": 0, "limits": { "min": 0, "max": 1, "step": 1 } },
+    { "key": "tableLength", "label": "Desk top length", "statusLabel": "Length", "default": 1828.8, "limits": { "min": 914.4, "max": 3048, "step": 25.4 } },
+    { "key": "tableWidth", "label": "Desk top depth", "statusLabel": "Depth", "default": 762, "limits": { "min": 508, "max": 1219.2, "step": 25.4 } },
+    { "key": "coreThickness", "label": "Stable core thickness", "statusLabel": "Core", "default": 25.4, "limits": { "min": 12.7, "max": 50.8, "step": 1.5875 } },
+    { "key": "surfaceThickness", "label": "White-oak surface thickness", "statusLabel": "Surface", "default": 3.175, "limits": { "min": 1.5875, "max": 19.05, "step": 1.5875 } },
+    { "key": "edgeBandWidth", "label": "Solid-oak edge band width", "statusLabel": "Band", "default": 38.1, "limits": { "min": 25.4, "max": 50.8, "step": 3.175 } },
+    { "key": "tabletopCornerRadius", "label": "Plan-view corner radius", "statusLabel": "Corner R", "default": 25.4, "limits": { "min": 0, "max": 50.8, "step": 3.175 } },
+    { "key": "topRoundoverRadius", "label": "Top edge roundover radius", "statusLabel": "Top R", "default": 6.35, "limits": { "min": 0, "max": 25.4, "step": 1.5875 } },
+    { "key": "bottomRoundoverRadius", "label": "Bottom edge roundover radius", "statusLabel": "Bottom R", "default": 3.175, "limits": { "min": 0, "max": 12.7, "step": 1.5875 } },
+    { "key": "undersideBevelInset", "label": "Underside bevel inset", "statusLabel": "Bevel inset", "default": 19.05, "limits": { "min": 0, "max": 38.1, "step": 3.175 } },
+    { "key": "undersideBevelDepth", "label": "Underside bevel height", "statusLabel": "Bevel H", "default": 15.875, "limits": { "min": 0, "max": 38.1, "step": 3.175 } },
+    { "key": "stripWidth", "label": "Flooring strip face width", "statusLabel": "Strip W", "default": 76.2, "limits": { "min": 38.1, "max": 152.4, "step": 3.175 } },
+    { "key": "stripLengthMin", "label": "Shortest flooring strip", "statusLabel": "Strip min", "default": 457.2, "limits": { "min": 304.8, "max": 1219.2, "step": 25.4 } },
+    { "key": "stripLengthMax", "label": "Longest flooring strip", "statusLabel": "Strip max", "default": 1219.2, "limits": { "min": 457.2, "max": 2438.4, "step": 25.4 } },
+    { "key": "seamGap", "label": "Visible strip seam reveal", "statusLabel": "Seam", "default": 1.5875, "limits": { "min": 0.4, "max": 3.175, "step": 0.396875 } }
+  ],
+  "audit": {
+    "toleranceMm": 0.5,
+    "dimensionTargets": [
+      "The default desk top is 72 in long by 30 in deep with a 1 in stable core and a 1/8 in white-oak surface layer.",
+      "The surface can switch between one continuous white-oak plywood veneer field and staggered unfinished white-oak flooring strips.",
+      "A 1 1/2 in solid white-oak perimeter band surrounds the surface field and remains editable from 1 to 2 in.",
+      "The default perimeter uses a 1 in plan-view corner radius, a 1/4 in top roundover, a 1/8 in bottom roundover, and a 3/4 in underside bevel inset rising 5/8 in.",
+      "The flooring layout defaults to nominal 3 in faces with deterministic variable lengths from 18 to 48 in."
+    ],
+    "invariants": [
+      "Keep overall length and depth independent from the model scale denominator.",
+      "Keep the stable core and selected white-oak surface field inside the solid perimeter band.",
+      "Keep the plan-view corner radius inside the solid band so the inset field never requires an unsupported curved corner patch.",
+      "Keep all routed roundovers and bevels inside solid edge-band stock with at least 1/4 in of uncut band remaining.",
+      "Keep the surface thickness independent so 1/8 in veneer plywood and thicker unfinished flooring stock can both be represented.",
+      "Keep flooring seams staggered and variable in length while preserving the exact inset-field envelope.",
+      "Treat the seam reveal as a modeling and layout aid; confirm actual tongue, groove, adhesive, movement, and substrate details from the selected flooring product.",
+      "Treat this as a fabrication model, not structural certification of the desk base, attachment method, or concentrated-load capacity."
+    ],
+    "checks": [
+      { "key": "deskEnvelope", "label": "Desk top envelope" },
+      { "key": "deskLayerBuild", "label": "Layered construction" },
+      { "key": "deskEdgeBand", "label": "Solid-oak edge band" },
+      { "key": "deskEdgeProfile", "label": "Routed edge profile" },
+      { "key": "deskCornerRadius", "label": "Corner radius support" },
+      { "key": "deskStripLayout", "label": "Surface field layout" },
+      { "key": "deskCoreCoverage", "label": "Core and field coverage" },
+      { "key": "deskMockEnvelope", "label": "Model envelope" },
+      { "key": "deskMinimumFeature", "label": "Smallest modeled feature" }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/desk-tabletop/audit.mjs",
+      "command": "npm run audit -- desk-tabletop",
+      "description": "Validates the layered build, 1–2 in solid band, edge-profile stock, flooring layout range, and reference STL."
+    }
+  ]
+}

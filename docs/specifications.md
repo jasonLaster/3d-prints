@@ -113,6 +113,15 @@ Adjustable Fence Bandsaw Sled:
 - Four individual support-free STLs export the left/right brackets and left/right lock knobs; wood parts remain a cut-and-drill plan.
 - See `docs/bandsaw-sled-audit-specifications.md` for the full fabrication, fastener, commissioning, and audit contract.
 
+## White Oak Desk Top
+
+- The desk top keeps full-size length and depth independent from its manipulation-model scale.
+- A stable core receives either a continuous white-oak plywood veneer field or staggered unfinished white-oak flooring strips with editable face width, minimum/maximum length, and visible seam reveal.
+- The white-oak surface thickness is independent from the core so the default 1/8 in veneer plywood can be replaced by thicker flooring stock without changing the outer plan dimensions.
+- A solid-white-oak perimeter band remains adjustable from 1 to 2 in and owns the plan corner radius, independent top and bottom roundovers, and underside bevel.
+- Live limits keep every routed treatment inside the solid band and preserve at least 1/4 in of uncut band width.
+- See `docs/desk-tabletop-audit-specifications.md` for the full layering, edge-profile, flooring-layout, and fabrication-boundary contract.
+
 Paper towel holder:
 
 - Holder height changes remap the middle body span between fixed bottom and top bands.

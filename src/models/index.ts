@@ -145,6 +145,13 @@ export {
   updateDiningTableGuide,
 } from "./diningTable";
 export {
+  createDeskTabletopGeometry,
+  createDeskTabletopSurfaceGeometries,
+  getDeskTabletopDimensions,
+  getDeskTabletopSpec,
+  isDeskTabletopParams,
+} from "./deskTabletop";
+export {
   assertHoverDiningTableSpec,
   createHoverDiningTableCutPartGeometry,
   createHoverDiningTableExplodedParts,
@@ -302,6 +309,17 @@ export function getStatusItems(
   params: ModelParams,
   unit: LengthUnit,
 ) {
+  if (model.id === "desk-tabletop") {
+    return [
+      getParam(params, "finishSystem") >= 0.5
+        ? "Oak flooring strips"
+        : "Oak plywood veneer",
+      `Length ${formatLength(getParam(params, "tableLength"), unit)}`,
+      `Depth ${formatLength(getParam(params, "tableWidth"), unit)}`,
+      `Thickness ${formatLength(getParam(params, "coreThickness") + getParam(params, "surfaceThickness"), unit)}`,
+      `Band ${formatLength(getParam(params, "edgeBandWidth"), unit)}`,
+    ];
+  }
   if (
     model.viewer === "dining-table-v1" ||
     model.viewer === "hover-dining-table-v1"

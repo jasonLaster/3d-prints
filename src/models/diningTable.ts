@@ -19,6 +19,14 @@ import type {
   ModelParams,
   NumberLimits,
 } from "./types";
+import {
+  createDeskTabletopGeometry,
+  getDeskTabletopAuditValue,
+  getDeskTabletopDimensions,
+  getDeskTabletopParameterLimits,
+  isDeskTabletopParams,
+  updateDeskTabletopGuide,
+} from "./deskTabletop";
 import type {
   HoverDiningTableStructuralAssessment,
   HoverDiningTableStructuralGrade,
@@ -487,6 +495,9 @@ export function createDiningTableWoodGeometry(
   params: ModelParams,
   model: DiningTableModelDefinition,
 ) {
+  if (isDeskTabletopParams(params)) {
+    return createDeskTabletopGeometry(params, model);
+  }
   if (model.id === "whisperer") {
     return createWhispererTableWoodGeometry(params);
   }
@@ -519,6 +530,9 @@ export function createDiningTableWoodGeometry(
 export function createDiningTableHardwareGeometries(
   params: ModelParams,
 ) {
+  if (isDeskTabletopParams(params)) {
+    return { plates: [], channels: [], feet: [] };
+  }
   if (isWhispererParams(params)) {
     return {
       plates: [],
@@ -641,6 +655,9 @@ export function createDiningTableHardwareGeometries(
 }
 
 export function getDiningTableDimensions(params: ModelParams): ModelDimensions {
+  if (isDeskTabletopParams(params)) {
+    return getDeskTabletopDimensions(params);
+  }
   const scale = getParam(params, "mockScale");
   return {
     length: getParam(params, "tableLength") / scale,
@@ -653,6 +670,10 @@ export function updateDiningTableGuide(
   mesh: THREE.Mesh,
   params: ModelParams,
 ) {
+  if (isDeskTabletopParams(params)) {
+    updateDeskTabletopGuide(mesh, params);
+    return;
+  }
   const dimensions = getDiningTableDimensions(params);
   mesh.geometry.dispose();
   mesh.geometry = new THREE.BoxGeometry(
@@ -1129,6 +1150,9 @@ export function getDiningTableParameterLimits(
   params: ModelParams,
   key: string,
 ): NumberLimits {
+  if (isDeskTabletopParams(params)) {
+    return getDeskTabletopParameterLimits(model, params, key);
+  }
   if (model.id === "whisperer") {
     return getWhispererTableParameterLimits(model, params, key);
   }
@@ -1273,6 +1297,9 @@ export function getDiningTableAuditValue(
   params: ModelParams,
   unit: LengthUnit,
 ): AuditItem {
+  if (isDeskTabletopParams(params)) {
+    return getDeskTabletopAuditValue(check, params, unit);
+  }
   if (isWhispererParams(params)) {
     return getWhispererTableAuditValue(check, params, unit);
   }
