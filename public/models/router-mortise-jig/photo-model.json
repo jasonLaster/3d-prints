@@ -1,0 +1,76 @@
+{
+  "id": "router-mortise-jig", "name": "Photo-Matched Handheld Router Mortise Jig",
+  "subtitle": "Adjustable two-rail mortising system with M5 heat-set inserts",
+  "description": "A printable interpretation of the photographed plywood jig: twin guide rails, crosswise adjustable stops, a narrow router opening, a positioning bridge, and a vertical centering fixture.",
+  "viewer": "router-mortise-jig-v1",
+  "stl": { "fileName": "router-mortise-jig-left-deck-rail.stl", "sourceName": "procedural-router-mortise-jig.stl", "units": "mm", "url": "/models/router-mortise-jig/router-mortise-jig-left-deck-rail.stl" },
+  "export": { "filePrefix": "router-mortise-jig" },
+  "geometry": {
+    "mainAxis": { "x": 0, "y": 0, "z": 0 }, "radialSegments": 40, "cornerSegments": 10, "slotArcSegments": 20, "markerArcSegments": 6,
+    "plateLength": 260, "plateWidth": 100, "plateCornerRadius": 3, "jawLength": 220, "jawThickness": 14, "jawCornerRadius": 2,
+    "boltStationX": 72, "boltSlotWidth": 6.6, "insertLeadIn": 0.4, "minimumInsertSideWall": 3.2, "minimumInsertFloor": 3,
+    "minimumBushingRadialClearance": 1, "minimumPlateWeb": 5, "minimumWorkpieceWidth": 20, "maximumWorkpieceWidth": 80, "maximumWorkpieceWiggle": 1.2,
+    "presetWorkpieceWidthsMm": [38, 50, 64, 76], "markerOffsetX": 8, "markerLength": 3.6, "markerWidth": 0.9, "workpiecePreviewLength": 235,
+    "routerBaseThickness": 7, "routerMotorDiameter": 65, "routerMotorHeight": 70, "bushingProjection": 5, "bitPreviewDepth": 28,
+    "deckRailLength": 260, "deckOverallWidth": 220, "railAdjustmentSlotLength": 34, "railBoltStationX": 78,
+    "stopLength": 210, "stopWidth": 70, "stopAdjustmentSlotLength": 60, "stopSlotStationY": 62,
+    "minimumInsertEngagement": 5, "minimumRailWeb": 5, "minimumRouterSupportOverlap": 26, "minimumClampLedge": 22,
+    "washerDiameter": 32, "washerThickness": 1.6, "knobDiameter": 28, "knobHeight": 13,
+    "screenLoadN": 150, "screenModulusMpa": 2400, "screenAllowableStressMpa": 28, "maximumScreenDeflection": 0.5, "minimumScreenSafetyFactor": 3,
+    "positioningBridgeLength": 70, "positioningBridgeWidth": 54, "positioningBridgeThickness": 8,
+    "centeringBaseLength": 260, "centeringBaseWidth": 180, "centeringBaseThickness": 12,
+    "centeringFenceLength": 180, "centeringFenceHeight": 34, "centeringFenceThickness": 16
+  },
+  "presets": [
+    { "label": "6 × 25 mm", "mortiseWidth": 6, "mortiseLength": 25, "routerBitDiameter": 6 }, { "label": "8 × 30 mm", "mortiseWidth": 8, "mortiseLength": 30, "routerBitDiameter": 6 },
+    { "label": "10 × 40 mm", "mortiseWidth": 10, "mortiseLength": 40, "routerBitDiameter": 8 }, { "label": "12 × 50 mm", "mortiseWidth": 12, "mortiseLength": 50, "routerBitDiameter": 10 }
+  ],
+  "parts": [
+    { "key": "left-deck-rail", "label": "Left deck rail", "quantity": 1, "fileName": "router-mortise-jig-left-deck-rail.stl", "url": "/models/router-mortise-jig/router-mortise-jig-left-deck-rail.stl" },
+    { "key": "right-deck-rail", "label": "Right deck rail", "quantity": 1, "fileName": "router-mortise-jig-right-deck-rail.stl", "url": "/models/router-mortise-jig/router-mortise-jig-right-deck-rail.stl" },
+    { "key": "front-stop", "label": "Front adjustable stop", "quantity": 1, "fileName": "router-mortise-jig-front-stop.stl", "url": "/models/router-mortise-jig/router-mortise-jig-front-stop.stl" },
+    { "key": "rear-stop", "label": "Rear adjustable stop", "quantity": 1, "fileName": "router-mortise-jig-rear-stop.stl", "url": "/models/router-mortise-jig/router-mortise-jig-rear-stop.stl" },
+    { "key": "left-fence", "label": "Left fence jaw", "quantity": 1, "fileName": "router-mortise-jig-left-fence.stl", "url": "/models/router-mortise-jig/router-mortise-jig-left-fence.stl" },
+    { "key": "right-fence", "label": "Right fence jaw", "quantity": 1, "fileName": "router-mortise-jig-right-fence.stl", "url": "/models/router-mortise-jig/router-mortise-jig-right-fence.stl" },
+    { "key": "positioning-bridge", "label": "Positioning bridge", "quantity": 1, "fileName": "router-mortise-jig-positioning-bridge.stl", "url": "/models/router-mortise-jig/router-mortise-jig-positioning-bridge.stl" },
+    { "key": "centering-base", "label": "Centering fixture base", "quantity": 1, "fileName": "router-mortise-jig-centering-base.stl", "url": "/models/router-mortise-jig/router-mortise-jig-centering-base.stl" },
+    { "key": "centering-left-fence", "label": "Centering left fence", "quantity": 1, "fileName": "router-mortise-jig-centering-left-fence.stl", "url": "/models/router-mortise-jig/router-mortise-jig-centering-left-fence.stl" },
+    { "key": "centering-right-fence", "label": "Centering right fence", "quantity": 1, "fileName": "router-mortise-jig-centering-right-fence.stl", "url": "/models/router-mortise-jig/router-mortise-jig-centering-right-fence.stl" }
+  ],
+  "parameters": [
+    { "key": "assemblyView", "label": "Assembly setup", "statusLabel": "Setup", "default": 0, "limits": { "min": 0, "max": 2, "step": 1 } },
+    { "key": "mortiseWidth", "label": "Mortise width", "statusLabel": "Mortise W", "default": 8, "limits": { "min": 4, "max": 20, "step": 0.5 } },
+    { "key": "mortiseLength", "label": "Mortise length", "statusLabel": "Mortise L", "default": 30, "limits": { "min": 20, "max": 80, "step": 1 } },
+    { "key": "routerBitDiameter", "label": "Router cutter diameter", "statusLabel": "Cutter Ø", "default": 6, "limits": { "min": 3, "max": 12, "step": 0.5 } },
+    { "key": "guideBushingDiameter", "label": "Guide bushing outside diameter", "statusLabel": "Bushing Ø", "default": 16, "limits": { "min": 10, "max": 24, "step": 0.5 } },
+    { "key": "templateWiggle", "label": "Template wiggle room (total)", "statusLabel": "Template wiggle", "default": 0.25, "limits": { "min": 0.1, "max": 0.8, "step": 0.05 } },
+    { "key": "workpieceWidth", "label": "Workpiece width", "statusLabel": "Stock", "default": 50, "limits": { "min": 20, "max": 80, "step": 1 } },
+    { "key": "stockThickness", "label": "Preview stock thickness", "statusLabel": "Stock T", "default": 30, "limits": { "min": 18, "max": 60, "step": 1 } },
+    { "key": "workpieceWiggle", "label": "Fence wiggle room (total)", "statusLabel": "Fence wiggle", "default": 0.5, "limits": { "min": 0.2, "max": 1.2, "step": 0.1 } },
+    { "key": "railGap", "label": "Center router opening", "statusLabel": "Rail gap", "default": 20, "limits": { "min": 19, "max": 44, "step": 1 } },
+    { "key": "plateThickness", "label": "Deck rail thickness", "statusLabel": "Rail T", "default": 10, "limits": { "min": 8, "max": 18, "step": 1 } },
+    { "key": "stopThickness", "label": "Cross-stop thickness", "statusLabel": "Stop T", "default": 8, "limits": { "min": 8, "max": 16, "step": 1 } },
+    { "key": "jawDepth", "label": "Fence jaw depth", "statusLabel": "Jaw D", "default": 30, "limits": { "min": 18, "max": 40, "step": 1 } },
+    { "key": "insertPocketDiameter", "label": "M5 heat-set insert pocket diameter", "statusLabel": "Insert Ø", "default": 7.2, "limits": { "min": 6.5, "max": 7.6, "step": 0.1 } },
+    { "key": "insertDepth", "label": "M5 heat-set insert pocket depth", "statusLabel": "Insert D", "default": 6, "limits": { "min": 4.5, "max": 8, "step": 0.1 } },
+    { "key": "railScrewLength", "label": "Rail and centering screw length", "statusLabel": "Rail screw", "default": 18, "limits": { "min": 16, "max": 24, "step": 1 } },
+    { "key": "stopScrewLength", "label": "Cross-stop screw length", "statusLabel": "Stop screw", "default": 16, "limits": { "min": 14, "max": 22, "step": 1 } },
+    { "key": "routerBaseDiameter", "label": "Router base stand-in diameter", "statusLabel": "Router base", "default": 100, "limits": { "min": 76, "max": 120, "step": 1 } }
+  ],
+  "audit": {
+    "toleranceMm": 0.2,
+    "dimensionTargets": ["Twin 260 mm deck rails and two 210 × 70 mm cross-stops match the photographed frame.", "Main, positioning, and centering setups share one mortise datum.", "Ten printable parts use twelve M5 heat-set inserts."],
+    "invariants": ["Derive travel from mortise, cutter, guide bushing, and wiggle room.", "Keep the router supported by both rails.", "Preserve insert walls and screw engagement.", "Screen the rail bridge at 150 N.", "Export every piece flat on Z=0.", "Test on scrap and use shallow passes."],
+    "checks": [
+      { "key": "mortiseTarget", "label": "Mortise target" }, { "key": "templateOpening", "label": "Calculated router travel" }, { "key": "photoArchitecture", "label": "Photo-matched architecture" },
+      { "key": "routerInterface", "label": "Router interface" }, { "key": "workpieceFit", "label": "Workpiece fit" }, { "key": "heatSetInserts", "label": "Heat-set inserts" },
+      { "key": "screwEngagement", "label": "Screw engagement" }, { "key": "adjustmentRange", "label": "Stock-width presets" }, { "key": "minimumRailWeb", "label": "Minimum rail web" },
+      { "key": "routerSupport", "label": "Router support overlap" }, { "key": "clampLedge", "label": "Clamp ledge" }, { "key": "strengthScreen", "label": "150 N strength screen" },
+      { "key": "printSet", "label": "Printable part set" }, { "key": "previewStandIn", "label": "Preview stand-ins" }, { "key": "assemblyClearance", "label": "Assembly clearance" }, { "key": "printOrientation", "label": "Print orientation" }
+    ]
+  },
+  "scripts": [
+    { "name": "audit", "path": "models/router-mortise-jig/photo-audit.mjs", "command": "npm run audit -- router-mortise-jig" },
+    { "name": "generate-source", "path": "models/router-mortise-jig/generate-source.mjs", "command": "node models/router-mortise-jig/generate-source.mjs" }
+  ]
+}

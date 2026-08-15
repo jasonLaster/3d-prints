@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 
 const root = path.resolve(import.meta.dirname, "../..");
-const configPath = path.join(root, "public/models/router-mortise-jig/model.json");
+const configPath = path.join(root, "public/models/router-mortise-jig/photo-model.json");
 const bundlePath = path.join(
   os.tmpdir(),
   `router-mortise-jig-${process.pid}-${Date.now()}.mjs`,
@@ -20,7 +20,7 @@ const params = Object.fromEntries(
 try {
   await build({
     bundle: true,
-    entryPoints: [path.join(root, "src/models/routerMortiseJig.ts")],
+    entryPoints: [path.join(root, "src/models/routerMortiseJigPhoto.ts")],
     format: "esm",
     outfile: bundlePath,
     platform: "node",
