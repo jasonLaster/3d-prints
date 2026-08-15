@@ -35,6 +35,11 @@
       "id": "router-tenon-jig",
       "name": "Handheld Router Tenon Jig",
       "configUrl": "/models/router-tenon-jig/model.json"
+    },
+    {
+      "id": "bandsaw-sled",
+      "name": "Adjustable Fence Bandsaw Sled",
+      "configUrl": "/models/bandsaw-sled/model.json"
     }
   ]
 }

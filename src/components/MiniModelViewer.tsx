@@ -10,6 +10,8 @@ import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import {
   applyHolderMorph,
   applyTrayMorph,
+  createBandsawSledGeometry,
+  createBandsawSledPreviewParts,
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
   createRouterMortiseJigGuideGeometry,
@@ -118,6 +120,8 @@ function createPreviewObject(
     opacity: 0.7,
     side: THREE.DoubleSide,
   });
+  const woodMaterial = new THREE.MeshStandardMaterial({ color: "#d2a66f", roughness: 0.8, metalness: 0, side: THREE.DoubleSide });
+  const brassMaterial = new THREE.MeshStandardMaterial({ color: "#b9892f", roughness: 0.36, metalness: 0.72, side: THREE.DoubleSide });
 
   if (definition.viewer === "weighted-paper-towel-holder-v1") {
     const normalized = normalizeSourceGeometry(
@@ -228,6 +232,19 @@ function createPreviewObject(
               : metalMaterial,
         ),
       );
+    });
+  } else if (definition.viewer === "bandsaw-sled-v1") {
+    sourceGeometry.dispose();
+    group.add(new THREE.Mesh(createBandsawSledGeometry(params, definition), mainMaterial));
+    createBandsawSledPreviewParts(params, definition).forEach((part) => {
+      const material = part.material === "wood"
+        ? woodMaterial
+        : part.material === "brass"
+          ? brassMaterial
+          : part.material === "printed" || part.material === "printed-accent"
+            ? mainMaterial
+            : metalMaterial;
+      group.add(new THREE.Mesh(part.geometry, material));
     });
   } else if (definition.viewer === "dining-table-v1") {
     sourceGeometry.dispose();

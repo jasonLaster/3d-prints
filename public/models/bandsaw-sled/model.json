@@ -1,0 +1,155 @@
+{
+  "id": "bandsaw-sled",
+  "name": "Adjustable Fence Bandsaw Sled",
+  "subtitle": "Wood sled and fence with printed locking brackets",
+  "description": "A parametric bandsaw sled with a plywood base, a sacrificial wood fence, two gusseted printed brackets, captive-bolt lock knobs, M5 heat-set inserts in the printed brackets, and M6 screw-in inserts in the wood base.",
+  "viewer": "bandsaw-sled-v1",
+  "stl": {
+    "fileName": "bandsaw-sled-left-bracket.stl",
+    "sourceName": "procedural-bandsaw-sled-left-bracket.stl",
+    "units": "mm",
+    "url": "/models/bandsaw-sled/bandsaw-sled-left-bracket.stl"
+  },
+  "export": {
+    "filePrefix": "bandsaw-sled"
+  },
+  "geometry": {
+    "mainAxis": { "x": 0, "y": 0, "z": 0 },
+    "radialSegments": 48,
+    "cornerSegments": 10,
+    "slotArcSegments": 24,
+    "baseCornerRadius": 5,
+    "fenceCornerRadius": 3,
+    "bracketBackThickness": 10,
+    "bracketFootThickness": 10,
+    "bracketGussetThickness": 5,
+    "bracketGussetDepth": 62,
+    "bracketGussetHeight": 65,
+    "bracketBoltLowerHeight": 28,
+    "bracketBoltUpperHeight": 65,
+    "baseInsertStationY": 109,
+    "lockSlotWidth": 7,
+    "lockWasherDiameter": 18,
+    "lockWasherThickness": 2,
+    "boardWasherDiameter": 14,
+    "boardWasherThickness": 1.5,
+    "boardBoltClearance": 5.5,
+    "insertLeadIn": 0.4,
+    "minimumInsertWall": 3,
+    "minimumInsertShoulder": 3,
+    "minimumWoodInsertFloor": 4,
+    "minimumSlotEndWeb": 12,
+    "minimumBracketSpacingMargin": 15,
+    "minimumFenceEdgeMargin": 12,
+    "maximumHorizontalBridge": 8,
+    "screenLateralLoadN": 100,
+    "screenModulusMpa": 2500,
+    "screenAllowableStressMpa": 20,
+    "maximumScreenDeflection": 0.3,
+    "minimumScreenSafetyFactor": 4,
+    "lockKnobDiameter": 36,
+    "lockKnobThickness": 12,
+    "lockKnobLobes": 6,
+    "lockBoltHeadAcrossFlats": 10,
+    "lockBoltHeadHeight": 4.2,
+    "runnerWidth": 18,
+    "runnerDepth": 280,
+    "runnerHeight": 8
+  },
+  "parts": [
+    {
+      "key": "left-bracket",
+      "label": "Left adjustable fence bracket",
+      "quantity": 1,
+      "fileName": "bandsaw-sled-left-bracket.stl",
+      "url": "/models/bandsaw-sled/bandsaw-sled-left-bracket.stl"
+    },
+    {
+      "key": "right-bracket",
+      "label": "Right adjustable fence bracket",
+      "quantity": 1,
+      "fileName": "bandsaw-sled-right-bracket.stl",
+      "url": "/models/bandsaw-sled/bandsaw-sled-right-bracket.stl"
+    },
+    {
+      "key": "left-lock-knob",
+      "label": "Left captive M6 lock knob",
+      "quantity": 1,
+      "fileName": "bandsaw-sled-left-lock-knob.stl",
+      "url": "/models/bandsaw-sled/bandsaw-sled-left-lock-knob.stl"
+    },
+    {
+      "key": "right-lock-knob",
+      "label": "Right captive M6 lock knob",
+      "quantity": 1,
+      "fileName": "bandsaw-sled-right-lock-knob.stl",
+      "url": "/models/bandsaw-sled/bandsaw-sled-right-lock-knob.stl"
+    }
+  ],
+  "parameters": [
+    { "key": "baseWidth", "label": "Wood base width", "statusLabel": "Base W", "default": 420, "limits": { "min": 320, "max": 600, "step": 5 } },
+    { "key": "baseDepth", "label": "Wood base depth", "statusLabel": "Base D", "default": 320, "limits": { "min": 240, "max": 450, "step": 5 } },
+    { "key": "baseThickness", "label": "Wood base thickness", "statusLabel": "Base T", "default": 18, "limits": { "min": 15, "max": 25, "step": 1 } },
+    { "key": "fenceWidth", "label": "Wood fence width", "statusLabel": "Fence W", "default": 380, "limits": { "min": 280, "max": 560, "step": 5 } },
+    { "key": "fenceHeight", "label": "Wood fence height", "statusLabel": "Fence H", "default": 100, "limits": { "min": 80, "max": 160, "step": 5 } },
+    { "key": "fenceThickness", "label": "Wood fence thickness", "statusLabel": "Fence T", "default": 18, "limits": { "min": 12, "max": 25, "step": 1 } },
+    { "key": "fencePosition", "label": "Fence setback from sled center", "statusLabel": "Setback", "default": 55, "limits": { "min": 25, "max": 85, "step": 1 } },
+    { "key": "bladeKerf", "label": "Bandsaw blade kerf", "statusLabel": "Kerf", "default": 1.5, "limits": { "min": 0.8, "max": 3, "step": 0.1 } },
+    { "key": "bracketSpacing", "label": "Printed bracket center spacing", "statusLabel": "Bracket C-C", "default": 280, "limits": { "min": 180, "max": 440, "step": 5 } },
+    { "key": "bracketWidth", "label": "Printed bracket width", "statusLabel": "Bracket W", "default": 58, "limits": { "min": 44, "max": 80, "step": 1 } },
+    { "key": "bracketDepth", "label": "Printed bracket foot depth", "statusLabel": "Bracket D", "default": 90, "limits": { "min": 70, "max": 120, "step": 1 } },
+    { "key": "lockSlotLength", "label": "Fence adjustment slot length", "statusLabel": "Slot L", "default": 52, "limits": { "min": 36, "max": 80, "step": 1 } },
+    { "key": "lockBoltDiameter", "label": "M6 lock-bolt clearance diameter", "statusLabel": "Lock bolt Ø", "default": 6.6, "limits": { "min": 6.2, "max": 7.2, "step": 0.1 } },
+    { "key": "lockBoltLength", "label": "M6 lock-bolt length", "statusLabel": "Lock bolt L", "default": 25, "limits": { "min": 20, "max": 30, "step": 1 } },
+    { "key": "baseInsertDiameter", "label": "M6 wood-insert pilot diameter", "statusLabel": "Wood insert Ø", "default": 10, "limits": { "min": 8.5, "max": 12, "step": 0.1 } },
+    { "key": "baseInsertDepth", "label": "M6 wood-insert depth", "statusLabel": "Wood insert D", "default": 13, "limits": { "min": 10, "max": 17, "step": 0.5 } },
+    { "key": "boardBoltDiameter", "label": "M5 fence-bolt diameter", "statusLabel": "Fence bolt Ø", "default": 5, "limits": { "min": 4.8, "max": 5.2, "step": 0.1 } },
+    { "key": "boardBoltLength", "label": "M5 fence-bolt length", "statusLabel": "Fence bolt L", "default": 25, "limits": { "min": 22, "max": 35, "step": 1 } },
+    { "key": "insertPocketDiameter", "label": "M5 heat-set insert pocket diameter", "statusLabel": "Heat-set Ø", "default": 7.2, "limits": { "min": 6.5, "max": 8, "step": 0.1 } },
+    { "key": "insertDepth", "label": "M5 heat-set insert depth", "statusLabel": "Heat-set D", "default": 6, "limits": { "min": 4.5, "max": 7, "step": 0.1 } }
+  ],
+  "audit": {
+    "toleranceMm": 0.2,
+    "dimensionTargets": [
+      "The default wood base is 420 × 320 × 18 mm with a centered 1.5 mm blade kerf.",
+      "The default sacrificial wood fence is 380 × 100 × 18 mm and moves continuously over the two 52 mm bracket slots.",
+      "Two 58 × 90 mm printed brackets hold the fence upright with triangular gussets.",
+      "Four M5 × 25 mm bolts fasten the wood fence into four heat-set inserts in the printed brackets.",
+      "Two captive M6 × 25 mm knob bolts lock into two 10 × 13 mm screw-in inserts in the wooden base."
+    ],
+    "invariants": [
+      "Keep the base, fence, and runner as wood fabrication parts; export only the brackets and lock knobs as STLs.",
+      "Use two widely spaced brackets so the fence cannot yaw around a single lock point.",
+      "Keep the fence position inside both continuous lock-slot ranges.",
+      "Preserve four M5 heat-set insert pockets, two screw-in M6 wood-insert holes, and their bolt engagement depths.",
+      "Keep at least 12 mm of printed plastic beyond every M6 slot end and at least 4 mm of wood beneath each base insert.",
+      "Keep the blade kerf centered through the base and sacrificial fence.",
+      "Treat the structural calculations as conservative screens, not certification; test squareness and locking on scrap before cutting workpieces."
+    ],
+    "checks": [
+      { "key": "materials", "label": "Material separation" },
+      { "key": "sledEnvelope", "label": "Wood sled envelope" },
+      { "key": "fenceTravel", "label": "Fence adjustment travel" },
+      { "key": "fenceSquareness", "label": "Fence anti-yaw support" },
+      { "key": "bracketStrength", "label": "Bracket strength screen" },
+      { "key": "bracketDeflection", "label": "Bracket deflection screen" },
+      { "key": "boardFasteners", "label": "Fence-board fasteners" },
+      { "key": "lockFasteners", "label": "Fence-lock fasteners" },
+      { "key": "threadedInserts", "label": "Threaded inserts" },
+      { "key": "slotWeb", "label": "Lock-slot end web" },
+      { "key": "bladePath", "label": "Blade path" },
+      { "key": "woodCutList", "label": "Wood cut list" },
+      { "key": "printSet", "label": "Printable part set" },
+      { "key": "previewLegend", "label": "Preview material legend" },
+      { "key": "printOrientation", "label": "Recommended print orientation" }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/bandsaw-sled/audit.mjs",
+      "command": "npm run audit -- bandsaw-sled",
+      "description": "Validates the wood cut plan, adjustment range, bracket strength screens, threaded inserts, fastener engagement, and all four printable STL files."
+    }
+  ]
+}

@@ -226,6 +226,50 @@ export type RouterTenonJigGeometry = {
   hoseBandHeight: number;
 };
 
+export type BandsawSledGeometry = {
+  mainAxis: { x: number; y: number; z: number };
+  radialSegments: number;
+  cornerSegments: number;
+  slotArcSegments: number;
+  baseCornerRadius: number;
+  fenceCornerRadius: number;
+  bracketBackThickness: number;
+  bracketFootThickness: number;
+  bracketGussetThickness: number;
+  bracketGussetDepth: number;
+  bracketGussetHeight: number;
+  bracketBoltLowerHeight: number;
+  bracketBoltUpperHeight: number;
+  baseInsertStationY: number;
+  lockSlotWidth: number;
+  lockWasherDiameter: number;
+  lockWasherThickness: number;
+  boardWasherDiameter: number;
+  boardWasherThickness: number;
+  boardBoltClearance: number;
+  insertLeadIn: number;
+  minimumInsertWall: number;
+  minimumInsertShoulder: number;
+  minimumWoodInsertFloor: number;
+  minimumSlotEndWeb: number;
+  minimumBracketSpacingMargin: number;
+  minimumFenceEdgeMargin: number;
+  maximumHorizontalBridge: number;
+  screenLateralLoadN: number;
+  screenModulusMpa: number;
+  screenAllowableStressMpa: number;
+  maximumScreenDeflection: number;
+  minimumScreenSafetyFactor: number;
+  lockKnobDiameter: number;
+  lockKnobThickness: number;
+  lockKnobLobes: number;
+  lockBoltHeadAcrossFlats: number;
+  lockBoltHeadHeight: number;
+  runnerWidth: number;
+  runnerDepth: number;
+  runnerHeight: number;
+};
+
 export type DiningTableGeometry = {
   mainAxis: { x: number; y: number; z: number };
   cornerSegments: number;
@@ -254,6 +298,7 @@ export type SupportedViewer =
   | "drill-bit-holder-v1"
   | "router-mortise-jig-v1"
   | "router-tenon-jig-v1"
+  | "bandsaw-sled-v1"
   | "dining-table-v1"
   | "hover-dining-table-v1";
 
@@ -356,6 +401,20 @@ export type RouterTenonJigModelDefinition = BaseModelDefinition & {
   parts: RouterTenonJigPartDefinition[];
 };
 
+export type BandsawSledPartDefinition = {
+  key: "left-bracket" | "right-bracket" | "left-lock-knob" | "right-lock-knob";
+  label: string;
+  quantity: number;
+  fileName: string;
+  url: string;
+};
+
+export type BandsawSledModelDefinition = BaseModelDefinition & {
+  viewer: "bandsaw-sled-v1";
+  geometry: BandsawSledGeometry;
+  parts: BandsawSledPartDefinition[];
+};
+
 export type DiningTableModelDefinition = BaseModelDefinition & {
   viewer: "dining-table-v1";
   geometry: DiningTableGeometry;
@@ -375,6 +434,7 @@ export type ModelDefinition =
   | DrillBitHolderModelDefinition
   | RouterMortiseJigModelDefinition
   | RouterTenonJigModelDefinition
+  | BandsawSledModelDefinition
   | DiningTableModelDefinition
   | HoverDiningTableModelDefinition;
 

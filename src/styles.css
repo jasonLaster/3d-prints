@@ -2778,6 +2778,19 @@ html.dark .panel-section:nth-child(even) {
   line-height: 1.5;
 }
 
+.bandsaw-material-legend { display: flex; flex-wrap: wrap; gap: 8px; left: 20px; position: absolute; top: 66px; z-index: 4; }
+.bandsaw-material-legend span { align-items: center; background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--border); border-radius: 999px; color: var(--text-secondary); display: inline-flex; font-size: 11px; font-weight: 700; gap: 6px; padding: 5px 9px; }
+.bandsaw-material-legend i { border: 1px solid color-mix(in srgb, #111 18%, transparent); border-radius: 50%; display: inline-block; height: 10px; width: 10px; }
+.bandsaw-material-legend .wood { background: #d2a66f; }
+.bandsaw-material-legend .printed { background: #d8dee9; }
+.bandsaw-material-legend .steel { background: #16191d; }
+.bandsaw-material-legend .brass { background: #b9892f; }
+
+@media (max-width: 720px) {
+  .bandsaw-material-legend { left: 10px; top: 102px; }
+  .bandsaw-material-legend span { font-size: 10px; padding: 4px 7px; }
+}
+
 .drill-bit-list-control label {
   display: block;
   margin-bottom: 7px;

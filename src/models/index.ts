@@ -36,6 +36,11 @@ import {
   getRouterTenonJigParameterLimits,
 } from "./routerTenonJig";
 import {
+  getBandsawSledAuditValue,
+  getBandsawSledDimensions,
+  getBandsawSledParameterLimits,
+} from "./bandsawSled";
+import {
   getDiningTableAuditValue,
   getDiningTableDimensions,
   getDiningTableParameterLimits,
@@ -118,6 +123,22 @@ export type {
   RouterTenonJigSpec,
 } from "./routerTenonJig";
 export {
+  createBandsawSledBaseGeometry,
+  createBandsawSledBracketGeometry,
+  createBandsawSledFenceGeometry,
+  createBandsawSledGeometry,
+  createBandsawSledLockKnobGeometry,
+  createBandsawSledPartGeometries,
+  createBandsawSledPreviewParts,
+  getBandsawSledSpec,
+  updateBandsawSledGuide,
+} from "./bandsawSled";
+export type {
+  BandsawSledPart,
+  BandsawSledPreviewPart,
+  BandsawSledSpec,
+} from "./bandsawSled";
+export {
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
   getDiningTableStructuralAssessment,
@@ -176,6 +197,9 @@ function getAuditValue(
   if (model.viewer === "router-tenon-jig-v1") {
     return getRouterTenonJigAuditValue(check, params, unit, model);
   }
+  if (model.viewer === "bandsaw-sled-v1") {
+    return getBandsawSledAuditValue(check, params, unit, model);
+  }
   if (model.viewer === "dining-table-v1") {
     return getDiningTableAuditValue(check, params, unit);
   }
@@ -220,6 +244,9 @@ export function getParameterLimits(
   if (model.viewer === "router-tenon-jig-v1") {
     return getRouterTenonJigParameterLimits(model, params, key);
   }
+  if (model.viewer === "bandsaw-sled-v1") {
+    return getBandsawSledParameterLimits(model, params, key);
+  }
   if (model.viewer === "dining-table-v1") {
     return getDiningTableParameterLimits(model, params, key);
   }
@@ -252,6 +279,9 @@ export function getModelDimensions(
   }
   if (model.viewer === "router-tenon-jig-v1") {
     return getRouterTenonJigDimensions(params, model);
+  }
+  if (model.viewer === "bandsaw-sled-v1") {
+    return getBandsawSledDimensions(params, model);
   }
   if (model.viewer === "dining-table-v1") {
     return getDiningTableDimensions(params);
@@ -319,6 +349,15 @@ export function getStatusItems(
       `Stock ${formatLength(getParam(params, "workpieceWidth"), unit)} × ${formatLength(getParam(params, "workpieceThickness"), unit)}`,
       `${getParam(params, "activeGuidePair") >= 0.5 ? "Thickness / edge" : "Width / cheek"} guide pair`,
       "M5 heat-set inserts × 8",
+    ];
+  }
+  if (model.viewer === "bandsaw-sled-v1") {
+    return [
+      `Wood base ${formatLength(getParam(params, "baseWidth"), unit)} × ${formatLength(getParam(params, "baseDepth"), unit)} × ${formatLength(getParam(params, "baseThickness"), unit)}`,
+      `Wood fence ${formatLength(getParam(params, "fenceWidth"), unit)} × ${formatLength(getParam(params, "fenceHeight"), unit)}`,
+      `Fence setback ${formatLength(getParam(params, "fencePosition"), unit)}`,
+      "Printed brackets × 2 · lock knobs × 2",
+      "M5 heat-set inserts × 4 · M6 wood inserts × 2",
     ];
   }
   return model.parameters.slice(0, 4).map((parameter) => {

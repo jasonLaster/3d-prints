@@ -103,6 +103,16 @@ Handheld Router Tenon Jig:
 - The bridge and four guides download as five individual support-free STL files.
 - See `docs/router-tenon-jig-audit-specifications.md` for the full geometry, hardware, use, and audit contract.
 
+Adjustable Fence Bandsaw Sled:
+
+- The base, vertical sacrificial fence, and underside runner are wood fabrication parts; only two gusseted brackets and two captive-bolt knobs are printed.
+- Two widely spaced slotted brackets move the wood fence fore/aft while preventing yaw around a single lock point.
+- Four M5 bolts pass through the wood fence into heat-set inserts in the printed bracket backs; two M6 knob bolts lock into screw-in inserts in the wood base.
+- The preview uses distinct wood, printed-plastic, steel, and brass materials and labels those materials directly in the viewer.
+- Runtime checks cover continuous fence travel, bracket spacing, slot webs, insert floors/shoulders, bolt engagement, blade-path alignment, and conservative bracket stress/deflection screens.
+- Four individual support-free STLs export the left/right brackets and left/right lock knobs; wood parts remain a cut-and-drill plan.
+- See `docs/bandsaw-sled-audit-specifications.md` for the full fabrication, fastener, commissioning, and audit contract.
+
 Paper towel holder:
 
 - Holder height changes remap the middle body span between fixed bottom and top bands.

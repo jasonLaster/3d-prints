@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(7);
+  expect(catalog.models).toHaveLength(8);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -168,6 +168,23 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "minimumBaseWeb",
       "printSet",
       "previewStandIn",
+      "printOrientation",
+    ],
+    "bandsaw-sled-v1": [
+      "materials",
+      "sledEnvelope",
+      "fenceTravel",
+      "fenceSquareness",
+      "bracketStrength",
+      "bracketDeflection",
+      "boardFasteners",
+      "lockFasteners",
+      "threadedInserts",
+      "slotWeb",
+      "bladePath",
+      "woodCutList",
+      "printSet",
+      "previewLegend",
       "printOrientation",
     ],
     "dining-table-v1": [
@@ -540,6 +557,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   const routerTenonJigDoc = readText(
     path.join(root, "docs/router-tenon-jig-audit-specifications.md"),
   );
+  const bandsawSledDoc = readText(
+    path.join(root, "docs/bandsaw-sled-audit-specifications.md"),
+  );
   const tubeJigDoc = readText(
     path.join(root, "docs/concentric-tube-jig-audit-specifications.md"),
   );
@@ -619,6 +639,16 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "does not prescribe a climb cut",
   ]) {
     expect(routerTenonJigDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "base and sacrificial vertical fence from sheet wood",
+    "two fixed M6 screw-in inserts in the wood base",
+    "four M5 × 25 mm bolts",
+    "100 N lateral comparison load",
+    "Four individual, current-parameter STL files",
+  ]) {
+    expect(bandsawSledDoc).toContain(phrase);
   }
 
   for (const phrase of [

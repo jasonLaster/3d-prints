@@ -71,6 +71,9 @@ import {
   applyHolderMorph,
   applyTrayMorph,
   buildAuditItems,
+  createBandsawSledGeometry,
+  createBandsawSledPartGeometries,
+  createBandsawSledPreviewParts,
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
   createRouterMortiseJigGuideGeometry,
@@ -112,6 +115,7 @@ import {
   updateDoorLockAdapterGuide,
   updateConcentricTubeJigGuide,
   updateDrillBitHolderGuide,
+  updateBandsawSledGuide,
   updateRouterMortiseJigGuide,
   updateRouterTenonJigGuide,
   updateDiningTableGuide,
@@ -311,6 +315,23 @@ const PARAM_QUERY_KEYS = [
   "baseThickness",
   "guidePlateThickness",
   "knobScrewLength",
+  "baseWidth",
+  "baseDepth",
+  "fenceWidth",
+  "fenceHeight",
+  "fenceThickness",
+  "fencePosition",
+  "bladeKerf",
+  "bracketSpacing",
+  "bracketWidth",
+  "bracketDepth",
+  "lockSlotLength",
+  "lockBoltDiameter",
+  "lockBoltLength",
+  "baseInsertDiameter",
+  "baseInsertDepth",
+  "boardBoltDiameter",
+  "boardBoltLength",
   "mockScale",
   "tableLength",
   "tableWidth",
@@ -806,12 +827,14 @@ function getParamsFromUrl(model: ModelDefinition) {
     model.viewer === "door-lock-adapter-v1" ||
     model.viewer === "drill-bit-holder-v1" ||
     model.viewer === "router-mortise-jig-v1" ||
-    model.viewer === "router-tenon-jig-v1"
+    model.viewer === "router-tenon-jig-v1" ||
+    model.viewer === "bandsaw-sled-v1"
   ) {
     const passes =
       model.viewer === "drill-bit-holder-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
-      model.viewer === "router-tenon-jig-v1"
+      model.viewer === "router-tenon-jig-v1" ||
+      model.viewer === "bandsaw-sled-v1"
         ? 2
         : 1;
     for (let pass = 0; pass < passes; pass += 1) {
@@ -1121,6 +1144,11 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
       value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
     return `${model.export.filePrefix}-${compact(getParam(params, "tenonThickness"))}x${compact(getParam(params, "tenonWidth"))}x${compact(getParam(params, "tenonLength"))}-cutter-${compact(getParam(params, "routerCutterDiameter"))}-bearing-${compact(getParam(params, "guideBearingDiameter"))}.stl`;
   }
+  if (model.viewer === "bandsaw-sled-v1") {
+    const compact = (value: number) =>
+      value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    return `${model.export.filePrefix}-base-${compact(getParam(params, "baseWidth"))}x${compact(getParam(params, "baseDepth"))}-fence-${compact(getParam(params, "fenceWidth"))}x${compact(getParam(params, "fenceHeight"))}-setback-${compact(getParam(params, "fencePosition"))}.stl`;
+  }
   const suffix = model.parameters
     .map(
       (parameter) => {
@@ -1229,6 +1257,8 @@ const HolderViewer = forwardRef<
   const routerPreviewMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const routerWorkpieceMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const routerBitMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const jigWoodMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const brassMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const mainBaseRef = useRef<Float32Array | null>(null);
   const animationRef = useRef<number | null>(null);
   const latestParamsRef = useRef(params);
@@ -1317,7 +1347,11 @@ const HolderViewer = forwardRef<
     } else if (preset === "yEdge") {
       camera.position.set(distance, 0, edgeViewZ);
     } else if (model.viewer !== "weighted-paper-towel-holder-v1") {
-      camera.position.set(distance * 0.7, -distance * 0.78, distance * 0.52);
+      camera.position.set(
+        distance * 0.7,
+        model.viewer === "bandsaw-sled-v1" ? distance * 0.78 : -distance * 0.78,
+        distance * 0.52,
+      );
     } else {
       camera.position.set(distance * 0.72, -distance, dimensions.height * 1.25);
     }
@@ -1373,6 +1407,8 @@ const HolderViewer = forwardRef<
     const routerPreviewMaterial = routerPreviewMaterialRef.current;
     const routerWorkpieceMaterial = routerWorkpieceMaterialRef.current;
     const routerBitMaterial = routerBitMaterialRef.current;
+    const jigWoodMaterial = jigWoodMaterialRef.current;
+    const brassMaterial = brassMaterialRef.current;
     const base = mainBaseRef.current;
     if (
       !mainMesh ||
@@ -1504,6 +1540,29 @@ const HolderViewer = forwardRef<
         latestParamsRef.current,
         model,
       );
+    } else if (model.viewer === "bandsaw-sled-v1") {
+      if (!routerMortisePreviewGroup || !jigWoodMaterial || !brassMaterial || !domeMaterial || !diningMetalMaterial) return;
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createBandsawSledGeometry(latestParamsRef.current, model);
+      routerMortisePreviewGroup.children.forEach((child) => {
+        if (child instanceof THREE.Mesh) child.geometry.dispose();
+      });
+      routerMortisePreviewGroup.clear();
+      for (const part of createBandsawSledPreviewParts(latestParamsRef.current, model)) {
+        const material = part.material === "wood"
+          ? jigWoodMaterial
+          : part.material === "printed"
+            ? holderMaterial
+            : part.material === "printed-accent"
+              ? domeMaterial
+              : part.material === "brass"
+                ? brassMaterial
+                : diningMetalMaterial;
+        const mesh = new THREE.Mesh(part.geometry, material);
+        mesh.name = `${model.id}-${part.key}`;
+        routerMortisePreviewGroup.add(mesh);
+      }
+      updateBandsawSledGuide(guideMesh, latestParamsRef.current, model);
     } else if (model.viewer === "dining-table-v1") {
       if (!diningHardwareGroup || !diningMetalMaterial) return;
       mainMesh.geometry.dispose();
@@ -2013,6 +2072,27 @@ const HolderViewer = forwardRef<
     downloadNext(0);
   }, [model]);
 
+  const exportBandsawSledStls = useCallback(() => {
+    if (model.viewer !== "bandsaw-sled-v1") return;
+    const baseName = getExportFileName(model, latestParamsRef.current).replace(/\.stl$/, "");
+    const files = createBandsawSledPartGeometries(latestParamsRef.current, model).map((part) => {
+      const mesh = new THREE.Mesh(createCleanExportGeometry(part.geometry));
+      mesh.name = `${model.id}-${part.key}`;
+      mesh.updateMatrixWorld(true);
+      const result = new STLExporter().parse(mesh, { binary: true });
+      part.geometry.dispose();
+      mesh.geometry.dispose();
+      return { blob: new Blob([result], { type: "model/stl" }), fileName: `${baseName}-${part.key}.stl` };
+    });
+    const downloadNext = (index: number) => {
+      const file = files[index];
+      if (!file) return;
+      downloadBlob(file.blob, file.fileName);
+      if (index + 1 < files.length) window.setTimeout(() => downloadNext(index + 1), 100);
+    };
+    downloadNext(0);
+  }, [model]);
+
   const exportStl = useCallback(() => {
     if (model.viewer === "router-mortise-jig-v1") {
       exportRouterMortiseJigStls();
@@ -2020,6 +2100,10 @@ const HolderViewer = forwardRef<
     }
     if (model.viewer === "router-tenon-jig-v1") {
       exportRouterTenonJigStls();
+      return;
+    }
+    if (model.viewer === "bandsaw-sled-v1") {
+      exportBandsawSledStls();
       return;
     }
     const blob = createStlBlob();
@@ -2049,6 +2133,7 @@ const HolderViewer = forwardRef<
   }, [
     createDiningTableHardwareStlBlob,
     createStlBlob,
+    exportBandsawSledStls,
     exportRouterMortiseJigStls,
     exportRouterTenonJigStls,
     model,
@@ -2300,7 +2385,8 @@ const HolderViewer = forwardRef<
       model.viewer === "concentric-tube-jig-v1" ||
       model.viewer === "drill-bit-holder-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
-      model.viewer === "router-tenon-jig-v1"
+      model.viewer === "router-tenon-jig-v1" ||
+      model.viewer === "bandsaw-sled-v1"
         ? 18
         : 80;
     controls.maxDistance = 1400;
@@ -2490,6 +2576,20 @@ const HolderViewer = forwardRef<
           side: THREE.DoubleSide,
         });
         routerWorkpieceMaterialRef.current = routerWorkpieceMaterial;
+        const jigWoodMaterial = new THREE.MeshStandardMaterial({
+          color: "#d2a66f",
+          roughness: 0.8,
+          metalness: 0,
+          side: THREE.DoubleSide,
+        });
+        jigWoodMaterialRef.current = jigWoodMaterial;
+        const brassMaterial = new THREE.MeshStandardMaterial({
+          color: "#b9892f",
+          roughness: 0.36,
+          metalness: 0.72,
+          side: THREE.DoubleSide,
+        });
+        brassMaterialRef.current = brassMaterial;
         const routerBitMaterial = new THREE.MeshStandardMaterial({
           color: "#d14f44",
           roughness: 0.38,
@@ -2521,6 +2621,8 @@ const HolderViewer = forwardRef<
               ? createRouterMortiseJigGuideGeometry(latestParamsRef.current, model)
             : model.viewer === "router-tenon-jig-v1"
               ? createRouterTenonJigBaseGeometry(latestParamsRef.current, model)
+            : model.viewer === "bandsaw-sled-v1"
+              ? createBandsawSledGeometry(latestParamsRef.current, model)
             : model.viewer === "dining-table-v1"
               ? createDiningTableWoodGeometry(latestParamsRef.current, model)
             : model.viewer === "hover-dining-table-v1"
@@ -2579,7 +2681,8 @@ const HolderViewer = forwardRef<
           assemblyPreviewGroupRef.current = assemblyPreviewGroup;
         } else if (
           model.viewer === "router-mortise-jig-v1" ||
-          model.viewer === "router-tenon-jig-v1"
+          model.viewer === "router-tenon-jig-v1" ||
+          model.viewer === "bandsaw-sled-v1"
         ) {
           const previewGroup = new THREE.Group();
           previewGroup.name = `${model.id}-preview-stand-ins`;
@@ -2763,6 +2866,14 @@ const HolderViewer = forwardRef<
           <p>
             {formatLength(hoverTemplateSummary.thickness, unit)} thick · {formatLength(hoverTemplateSummary.plateLength, unit)} usable plate · full-size STL export
           </p>
+        </aside>
+      ) : null}
+      {model.viewer === "bandsaw-sled-v1" ? (
+        <aside aria-label="Bandsaw sled material legend" className="bandsaw-material-legend">
+          <span><i className="wood" aria-hidden="true" />Wood cut parts</span>
+          <span><i className="printed" aria-hidden="true" />Printed STL parts</span>
+          <span><i className="steel" aria-hidden="true" />Steel bolts &amp; washers</span>
+          <span><i className="brass" aria-hidden="true" />Threaded inserts</span>
         </aside>
       ) : null}
       <div className="viewer-status" data-testid="viewer-status">
@@ -5275,6 +5386,8 @@ function WorkspaceActionsMenu({
                     ? "Export 3 individual STLs"
                   : model.viewer === "router-tenon-jig-v1"
                     ? "Export 5 individual STLs"
+                  : model.viewer === "bandsaw-sled-v1"
+                    ? "Export 4 printed-part STLs"
                   : "Export"}
               </button>
               {model.viewer === "simple-box-v1" ? (
@@ -5889,7 +6002,8 @@ export default function App({
             model.viewer === "concentric-tube-jig-v1" ||
             model.viewer === "drill-bit-holder-v1" ||
             model.viewer === "router-mortise-jig-v1" ||
-            model.viewer === "router-tenon-jig-v1"
+            model.viewer === "router-tenon-jig-v1" ||
+            model.viewer === "bandsaw-sled-v1"
               ? 4
               : CURVE_PARAM_KEYS.has(key)
                 ? 3
@@ -5942,6 +6056,14 @@ export default function App({
               dependentLimits.min,
               dependentLimits.max,
             );
+          }
+        }
+      }
+      if (model.viewer === "bandsaw-sled-v1") {
+        for (let pass = 0; pass < 2; pass += 1) {
+          for (const parameter of model.parameters) {
+            const dependentLimits = getParameterLimits(model, next, parameter.key);
+            next[parameter.key] = clamp(next[parameter.key], dependentLimits.min, dependentLimits.max);
           }
         }
       }
@@ -6834,6 +6956,26 @@ export default function App({
                       depth-stop band, hardware, and sample stock are preview-only.
                       Measure your actual sub-base and screw stack, clamp the
                       setup, and prove it with shallow passes on scrap.
+                    </p>
+                  </section>
+                ) : null}
+
+                {model.viewer === "bandsaw-sled-v1" ? (
+                  <section className="panel-section router-mortise-print-set">
+                    <h2>Wood, print set &amp; hardware</h2>
+                    <ul>
+                      <li>Wood: 1 plywood base, 1 sacrificial fence, 1 hardwood runner</li>
+                      <li>Print: 2 gusseted fence-bracket STLs</li>
+                      <li>Print: 2 captive M6 lock-knob STLs</li>
+                      <li>4 M5 heat-set inserts for the printed bracket backs</li>
+                      <li>4 M5 × 25 mm bolts + 14 mm washers through the wood fence</li>
+                      <li>2 M6 screw-in inserts in the wood base</li>
+                      <li>2 M6 × 25 mm bolts + 18 mm washers captured by the knobs</li>
+                    </ul>
+                    <p>
+                      Tan parts are wood cut/drill parts, light gray and black parts are printed,
+                      steel hardware is dark, and threaded inserts are brass. Square the fence,
+                      tighten both knobs, and cut the kerf only after the sled tracks correctly.
                     </p>
                   </section>
                 ) : null}
