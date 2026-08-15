@@ -29,7 +29,7 @@ import {
   getRouterMortiseJigAuditValue,
   getRouterMortiseJigDimensions,
   getRouterMortiseJigParameterLimits,
-} from "./routerMortiseJig";
+} from "./routerMortiseJigPhoto";
 import {
   getRouterTenonJigAuditValue,
   getRouterTenonJigDimensions,
@@ -102,12 +102,12 @@ export {
   createRouterMortiseJigPreviewParts,
   getRouterMortiseJigSpec,
   updateRouterMortiseJigGuide,
-} from "./routerMortiseJig";
+} from "./routerMortiseJigPhoto";
 export type {
   RouterMortiseJigPart,
   RouterMortiseJigPreviewPart,
   RouterMortiseJigSpec,
-} from "./routerMortiseJig";
+} from "./routerMortiseJigPhoto";
 export {
   createRouterTenonJigBaseGeometry,
   createRouterTenonJigCheekGuideGeometry,
@@ -339,7 +339,8 @@ export function getStatusItems(
       `Mortise ${formatLength(width, unit)} × ${formatLength(length, unit)}`,
       `Opening ${formatLength(openingWidth, unit)} × ${formatLength(openingLength, unit)}`,
       `Stock ${formatLength(getParam(params, "workpieceWidth"), unit)}`,
-      "M5 heat-set inserts × 4",
+      getParam(params, "assemblyView") >= 1.5 ? "Centering fixture" : getParam(params, "assemblyView") >= 0.5 ? "Positioning bridge" : "Main jig",
+      "M5 heat-set inserts × 12",
     ];
   }
   if (model.viewer === "router-tenon-jig-v1") {

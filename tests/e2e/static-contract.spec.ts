@@ -144,13 +144,19 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
     "router-mortise-jig-v1": [
       "mortiseTarget",
       "templateOpening",
+      "photoArchitecture",
       "routerInterface",
       "workpieceFit",
       "heatSetInserts",
+      "screwEngagement",
       "adjustmentRange",
-      "minimumPlateWeb",
+      "minimumRailWeb",
+      "routerSupport",
+      "clampLedge",
+      "strengthScreen",
       "printSet",
       "previewStandIn",
+      "assemblyClearance",
       "printOrientation",
     ],
     "router-tenon-jig-v1": [
@@ -621,7 +627,7 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "mortise + guide-bushing outside diameter − cutter diameter",
     "M5 heat-set insert pockets",
     "38, 50, 64, and 76 mm",
-    "three individual files",
+    "ten individual files",
     "preview-only stand-ins",
   ]) {
     expect(routerMortiseJigDoc).toContain(phrase);

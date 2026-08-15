@@ -365,7 +365,7 @@ export type RouterMortisePreset = {
 };
 
 export type RouterMortiseJigPartDefinition = {
-  key: "guide-plate" | "left-fence" | "right-fence";
+  key: "left-deck-rail" | "right-deck-rail" | "front-stop" | "rear-stop" | "left-fence" | "right-fence" | "positioning-bridge" | "centering-base" | "centering-left-fence" | "centering-right-fence";
   label: string;
   quantity: number;
   fileName: string;

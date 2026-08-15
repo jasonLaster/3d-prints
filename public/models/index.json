@@ -28,8 +28,8 @@
     },
     {
       "id": "router-mortise-jig",
-      "name": "Handheld Router Mortise Jig",
-      "configUrl": "/models/router-mortise-jig/model.json"
+      "name": "Photo-Matched Handheld Router Mortise Jig",
+      "configUrl": "/models/router-mortise-jig/photo-model.json"
     },
     {
       "id": "router-tenon-jig",

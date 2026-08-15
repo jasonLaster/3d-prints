@@ -303,6 +303,12 @@ const PARAM_QUERY_KEYS = [
   "jawDepth",
   "insertPocketDiameter",
   "insertDepth",
+  "assemblyView",
+  "railGap",
+  "plateThickness",
+  "stopThickness",
+  "railScrewLength",
+  "stopScrewLength",
   "routerBaseDiameter",
   "tenonThickness",
   "tenonWidth",
@@ -479,6 +485,7 @@ const CURVE_PARAM_KEYS = new Set([
   "frameInnerStileCurveTension",
 ]);
 const OPTION_PARAM_KEYS = new Set([
+  "assemblyView",
   "bitCount",
   "gridfinityCompatible",
   "legGrooveEnabled",
@@ -1460,7 +1467,9 @@ const HolderViewer = forwardRef<
         !routerPreviewMaterial ||
         !routerWorkpieceMaterial ||
         !routerBitMaterial ||
-        !diningMetalMaterial
+        !diningMetalMaterial ||
+        !jigWoodMaterial ||
+        !domeMaterial
       ) {
         return;
       }
@@ -1480,6 +1489,10 @@ const HolderViewer = forwardRef<
         const material =
           part.material === "printed"
             ? holderMaterial
+            : part.material === "printed-accent"
+              ? jigWoodMaterial
+            : part.material === "knob"
+              ? domeMaterial
             : part.material === "workpiece"
               ? routerWorkpieceMaterial
               : part.material === "router"
@@ -1917,14 +1930,11 @@ const HolderViewer = forwardRef<
         latestParamsRef.current,
         model,
       );
-      parts[0]?.geometry.dispose();
-      const spec = getRouterMortiseJigSpec(latestParamsRef.current, model);
-      parts.slice(1).forEach((part, index) => {
+      parts.forEach((part, index) => {
         const mesh = new THREE.Mesh(createCleanExportGeometry(part.geometry));
         mesh.name = `${model.id}-${part.key}`;
-        mesh.position.y =
-          (index === 0 ? -1 : 1) *
-          (spec.plateWidth / 2 + spec.jawThickness / 2 + 5);
+        mesh.position.x = (index % 5) * 285;
+        mesh.position.y = Math.floor(index / 5) * 245;
         part.geometry.dispose();
         exportRouterMortiseFences.push(mesh);
         group.add(mesh);
@@ -2522,7 +2532,9 @@ const HolderViewer = forwardRef<
           model.viewer === "hover-dining-table-v1";
         const mainMaterial = new THREE.MeshStandardMaterial({
           color:
-            isWoodFurniture
+            model.viewer === "router-mortise-jig-v1"
+              ? "#eee5d2"
+              : isWoodFurniture
               ? "#ffffff"
               : model.viewer !== "weighted-paper-towel-holder-v1"
                 ? "#d8dee9"
@@ -3248,6 +3260,20 @@ function RouterMortisePresetControl({
         Quick starting points. Confirm the cutter, guide bushing, and a scrap cut
         before routing the workpiece.
       </small>
+    </div>
+  );
+}
+
+function RouterMortiseAssemblyControl({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  const options = [{ value: 0, label: "Main jig" }, { value: 1, label: "Positioning" }, { value: 2, label: "Centering" }];
+  return (
+    <div className="router-mortise-assembly-control">
+      <div aria-label="Mortise jig assembly setup" className="segmented-control" role="group">
+        {options.map((option) => (
+          <button aria-pressed={Math.round(value) === option.value} className={Math.round(value) === option.value ? "active" : ""} key={option.value} onClick={() => onChange(option.value)} type="button">{option.label}</button>
+        ))}
+      </div>
+      <small>Inspect the photographed main frame, positioning bridge, and vertical centering fixture.</small>
     </div>
   );
 }
@@ -5383,7 +5409,7 @@ function WorkspaceActionsMenu({
                   getParam(params, "levelingFeetEnabled") >= 0.5)
                   ? "Export two-color STLs"
                   : model.viewer === "router-mortise-jig-v1"
-                    ? "Export 3 individual STLs"
+                    ? "Export 10 individual STLs"
                   : model.viewer === "router-tenon-jig-v1"
                     ? "Export 5 individual STLs"
                   : model.viewer === "bandsaw-sled-v1"
@@ -6775,6 +6801,7 @@ export default function App({
                         onSelect={applyRouterMortisePreset}
                         params={params}
                       />
+                      <RouterMortiseAssemblyControl onChange={(value) => updateParam("assemblyView", value)} value={getParam(params, "assemblyView")} />
                     </div>
                   ) : null}
                   {model.viewer === "router-tenon-jig-v1" ? (
@@ -6926,15 +6953,17 @@ export default function App({
                   <section className="panel-section router-mortise-print-set">
                     <h2>Print set &amp; hardware</h2>
                     <ul>
-                      <li>1 guide plate STL</li>
-                      <li>2 individual fence-jaw STLs</li>
-                      <li>4 M5 heat-set inserts</li>
-                      <li>4 M5 × 20 mm knob screws + 16 mm washers at the 12 mm default plate</li>
+                      <li>2 deck-rail STLs + 2 cross-stop STLs</li>
+                      <li>2 under-deck fence-jaw STLs</li>
+                      <li>1 positioning-bridge STL</li>
+                      <li>1 centering-base STL + 2 centering-fence STLs</li>
+                      <li>12 M5 heat-set inserts</li>
+                      <li>8 M5 × 18 mm rail/centering screws + 4 M5 × 16 mm stop screws with 32 mm washers</li>
                     </ul>
                     <p>
-                      Match screw length to any plate-thickness change. Router,
-                      bushing, cutter, and sample stock are preview-only. Test the
-                      setup on scrap and use shallow passes.
+                      Match screw length to thickness changes. Router, bushing,
+                      cutter, knobs, washers, screws, clamps, and sample stock are
+                      preview-only. Test all three setups on scrap and use shallow passes.
                     </p>
                   </section>
                 ) : null}

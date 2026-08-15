@@ -88,7 +88,7 @@ Handheld Router Mortise Jig:
 - Four common-mortise preset markers set 6 × 25, 8 × 30, 10 × 40, and 12 × 50 mm targets without hiding the underlying parameters.
 - Adjustment slots span 20–80 mm workpieces, with physical witness marks at 38, 50, 64, and 76 mm stock widths.
 - The router base, guide bushing, cutter, and sample stock are visible stand-ins in the assembled preview and are excluded from printable exports.
-- The guide plate and left/right jaws download as three individual support-free STL files.
+- The two deck rails, two cross-stops, two under-deck jaws, positioning bridge, centering base, and two centering fences download as ten individual support-free STL files.
 - See `docs/router-mortise-jig-audit-specifications.md` for the full geometry, hardware, use, and audit contract.
 
 Handheld Router Tenon Jig:

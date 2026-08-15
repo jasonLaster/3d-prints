@@ -59,7 +59,7 @@
   ],
   "audit": {
     "toleranceMm": 0.2,
-    "dimensionTargets": ["Twin 260 mm deck rails and two 210 × 70 mm cross-stops match the photographed frame.", "Main, positioning, and centering setups share one mortise datum.", "Ten printable parts use twelve M5 heat-set inserts."],
+    "dimensionTargets": ["Twin 260 mm deck rails form a 220 mm-wide main frame.", "Two 210 × 70 mm cross-stops reproduce the photographed adjustable end guides.", "Main, positioning, and centering setups share one mortise datum.", "Ten printable parts use twelve M5 heat-set inserts."],
     "invariants": ["Derive travel from mortise, cutter, guide bushing, and wiggle room.", "Keep the router supported by both rails.", "Preserve insert walls and screw engagement.", "Screen the rail bridge at 150 N.", "Export every piece flat on Z=0.", "Test on scrap and use shallow passes."],
     "checks": [
       { "key": "mortiseTarget", "label": "Mortise target" }, { "key": "templateOpening", "label": "Calculated router travel" }, { "key": "photoArchitecture", "label": "Photo-matched architecture" },
@@ -70,7 +70,7 @@
     ]
   },
   "scripts": [
-    { "name": "audit", "path": "models/router-mortise-jig/photo-audit.mjs", "command": "npm run audit -- router-mortise-jig" },
-    { "name": "generate-source", "path": "models/router-mortise-jig/generate-source.mjs", "command": "node models/router-mortise-jig/generate-source.mjs" }
+    { "name": "audit", "path": "models/router-mortise-jig/audit.mjs", "command": "npm run audit -- router-mortise-jig" },
+    { "name": "generate-source", "path": "models/router-mortise-jig/generate-source.mjs", "command": "npm run generate-source -- router-mortise-jig" }
   ]
 }

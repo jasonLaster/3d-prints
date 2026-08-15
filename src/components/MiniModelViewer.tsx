@@ -62,6 +62,7 @@ function loadModelDefinition(configUrl: string) {
 }
 
 function materialColor(modelKey: string, theme: ThemeMode) {
+  if (modelKey === "router-mortise-jig") return "#eee5d2";
   if (modelKey.includes("dining-table")) {
     return "#b9824f";
   }
@@ -209,7 +210,7 @@ function createPreviewObject(
       group.add(
         new THREE.Mesh(
           part.geometry,
-          part.material === "printed" ? mainMaterial : metalMaterial,
+          part.material === "printed" ? mainMaterial : part.material === "printed-accent" || part.material === "workpiece" ? workpieceMaterial : metalMaterial,
         ),
       );
     });
