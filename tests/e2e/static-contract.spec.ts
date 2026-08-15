@@ -181,6 +181,7 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "sledEnvelope",
       "fenceTravel",
       "fenceSquareness",
+      "bracketLength",
       "bracketStrength",
       "bracketDeflection",
       "boardFasteners",

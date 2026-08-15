@@ -236,7 +236,6 @@ export type BandsawSledGeometry = {
   bracketBackThickness: number;
   bracketFootThickness: number;
   bracketGussetThickness: number;
-  bracketGussetDepth: number;
   bracketGussetHeight: number;
   bracketBoltLowerHeight: number;
   bracketBoltUpperHeight: number;
@@ -254,6 +253,7 @@ export type BandsawSledGeometry = {
   minimumSlotEndWeb: number;
   minimumBracketSpacingMargin: number;
   minimumFenceEdgeMargin: number;
+  minimumBaseEdgeMargin: number;
   maximumHorizontalBridge: number;
   screenLateralLoadN: number;
   screenModulusMpa: number;

@@ -331,6 +331,7 @@ const PARAM_QUERY_KEYS = [
   "bracketSpacing",
   "bracketWidth",
   "bracketDepth",
+  "bracketGussetDepth",
   "lockSlotLength",
   "lockBoltDiameter",
   "lockBoltLength",
@@ -1154,7 +1155,7 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
   if (model.viewer === "bandsaw-sled-v1") {
     const compact = (value: number) =>
       value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
-    return `${model.export.filePrefix}-base-${compact(getParam(params, "baseWidth"))}x${compact(getParam(params, "baseDepth"))}-fence-${compact(getParam(params, "fenceWidth"))}x${compact(getParam(params, "fenceHeight"))}-setback-${compact(getParam(params, "fencePosition"))}.stl`;
+    return `${model.export.filePrefix}-base-${compact(getParam(params, "baseWidth"))}x${compact(getParam(params, "baseDepth"))}-fence-${compact(getParam(params, "fenceWidth"))}x${compact(getParam(params, "fenceHeight"))}-setback-${compact(getParam(params, "fencePosition"))}-bracket-${compact(getParam(params, "bracketDepth"))}-gusset-${compact(getParam(params, "bracketGussetDepth"))}.stl`;
   }
   const suffix = model.parameters
     .map(
@@ -7001,6 +7002,11 @@ export default function App({
                       <li>2 M6 screw-in inserts in the wood base</li>
                       <li>2 M6 × 25 mm bolts + 18 mm washers captured by the knobs</li>
                     </ul>
+                    <p>
+                      Bracket length reaches 8 in independently of the triangular gusset;
+                      a 4 in gusset is a practical low-filament starting point for the longest foot.
+                      The wood-base depth expands as needed to keep the nominal foot supported.
+                    </p>
                     <p>
                       Tan parts are wood cut/drill parts, light gray and black parts are printed,
                       steel hardware is dark, and threaded inserts are brass. Square the fence,

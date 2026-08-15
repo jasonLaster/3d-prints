@@ -39,6 +39,7 @@ export type BandsawSledSpec = {
   bladeKerf: number;
   bracketWidth: number;
   bracketDepth: number;
+  bracketGussetDepth: number;
   bracketSpacing: number;
   bracketBackThickness: number;
   bracketFootThickness: number;
@@ -50,6 +51,7 @@ export type BandsawSledSpec = {
   baseInsertDiameter: number;
   baseInsertDepth: number;
   baseInsertFloor: number;
+  baseInsertStationY: number;
   boardBoltDiameter: number;
   boardBoltLength: number;
   boardBoltEngagement: number;
@@ -59,6 +61,7 @@ export type BandsawSledSpec = {
   insertSideWall: number;
   slotEndWeb: number;
   fenceEdgeMargin: number;
+  baseSupportMargin: number;
   bracketDeflection: number;
   bracketStress: number;
   bracketSafetyFactor: number;
@@ -335,6 +338,7 @@ export function getBandsawSledSpec(
   const fencePosition = getParam(params, "fencePosition");
   const bracketWidth = getParam(params, "bracketWidth");
   const bracketDepth = getParam(params, "bracketDepth");
+  const bracketGussetDepth = getParam(params, "bracketGussetDepth");
   const bracketSpacing = getParam(params, "bracketSpacing");
   const lockSlotLength = getParam(params, "lockSlotLength");
   const lockBoltDiameter = getParam(params, "lockBoltDiameter");
@@ -346,8 +350,11 @@ export function getBandsawSledSpec(
   const insertPocketDiameter = getParam(params, "insertPocketDiameter");
   const insertDepth = getParam(params, "insertDepth");
   const slotTravel = (lockSlotLength - model.geometry.lockSlotWidth) / 2;
+  const defaultBracketDepth = getParameter(model, "bracketDepth").default;
+  const baseInsertStationY =
+    model.geometry.baseInsertStationY + (bracketDepth - defaultBracketDepth) / 2;
   const nominalFencePosition =
-    model.geometry.baseInsertStationY - fenceThickness / 2 - bracketDepth / 2;
+    baseInsertStationY - fenceThickness / 2 - bracketDepth / 2;
   const effectiveSpan = Math.max(
     10,
     fenceHeight - model.geometry.bracketGussetHeight,
@@ -375,6 +382,7 @@ export function getBandsawSledSpec(
     bladeKerf: getParam(params, "bladeKerf"),
     bracketWidth,
     bracketDepth,
+    bracketGussetDepth,
     bracketSpacing,
     bracketBackThickness: model.geometry.bracketBackThickness,
     bracketFootThickness: model.geometry.bracketFootThickness,
@@ -389,6 +397,7 @@ export function getBandsawSledSpec(
     baseInsertDiameter,
     baseInsertDepth,
     baseInsertFloor: baseThickness - baseInsertDepth,
+    baseInsertStationY,
     boardBoltDiameter,
     boardBoltLength,
     boardBoltEngagement:
@@ -399,6 +408,9 @@ export function getBandsawSledSpec(
     insertSideWall: (bracketWidth - insertPocketDiameter) / 2,
     slotEndWeb: (bracketDepth - lockSlotLength) / 2,
     fenceEdgeMargin: (fenceWidth - bracketSpacing - bracketWidth) / 2,
+    baseSupportMargin:
+      baseDepth / 2 -
+      (nominalFencePosition + fenceThickness / 2 + bracketDepth),
     bracketDeflection,
     bracketStress,
     bracketSafetyFactor:
@@ -466,7 +478,7 @@ export function createBandsawSledBracketGeometry(
     (x) =>
       createGussetGeometry(
         model.geometry.bracketGussetThickness,
-        model.geometry.bracketGussetDepth,
+        spec.bracketGussetDepth,
         model.geometry.bracketGussetHeight,
         x,
         spec.bracketBackThickness,
@@ -548,7 +560,7 @@ export function createBandsawSledBaseGeometry(
         spec.baseInsertDiameter / 2,
         model.geometry.radialSegments,
         sign * spec.bracketSpacing / 2,
-        model.geometry.baseInsertStationY,
+        spec.baseInsertStationY,
       ),
       depth: spec.baseInsertDepth,
     })),
@@ -688,7 +700,7 @@ export function createBandsawSledPreviewParts(
     const knob = createBandsawSledLockKnobGeometry(params, model);
     knob.translate(
       x,
-      model.geometry.baseInsertStationY,
+      spec.baseInsertStationY,
       spec.baseThickness + spec.bracketFootThickness + model.geometry.lockWasherThickness,
     );
     parts.push({
@@ -707,7 +719,7 @@ export function createBandsawSledPreviewParts(
     );
     lockWasher.translate(
       x,
-      model.geometry.baseInsertStationY,
+      spec.baseInsertStationY,
       spec.baseThickness + spec.bracketFootThickness + model.geometry.lockWasherThickness / 2,
     );
     parts.push({ key: `lock-washer-${sign}`, material: "metal", geometry: lockWasher });
@@ -722,7 +734,7 @@ export function createBandsawSledPreviewParts(
     );
     lockBolt.translate(
       x,
-      model.geometry.baseInsertStationY,
+      spec.baseInsertStationY,
       spec.baseThickness + spec.bracketFootThickness - spec.lockBoltLength / 2,
     );
     parts.push({ key: `lock-bolt-${sign}`, material: "metal", geometry: lockBolt });
@@ -737,7 +749,7 @@ export function createBandsawSledPreviewParts(
     );
     baseInsert.translate(
       x,
-      model.geometry.baseInsertStationY,
+      spec.baseInsertStationY,
       spec.baseThickness - spec.baseInsertDepth / 2,
     );
     parts.push({ key: `wood-insert-${sign}`, material: "brass", geometry: baseInsert });
@@ -833,7 +845,20 @@ export function getBandsawSledParameterLimits(
 ): NumberLimits {
   const limits = { ...getParameter(model, key).limits };
   const spec = getBandsawSledSpec(params, model);
-  if (key === "fencePosition") {
+  const nominalFencePosition =
+    (spec.fenceTravelMin + spec.fenceTravelMax) / 2;
+  if (key === "baseDepth") {
+    const requiredDepth =
+      2 *
+      (nominalFencePosition +
+        spec.fenceThickness / 2 +
+        spec.bracketDepth +
+        model.geometry.minimumBaseEdgeMargin);
+    limits.min = Math.max(
+      limits.min,
+      Math.ceil(requiredDepth / limits.step) * limits.step,
+    );
+  } else if (key === "fencePosition") {
     limits.min = Math.max(limits.min, spec.fenceTravelMin);
     limits.max = Math.min(limits.max, spec.fenceTravelMax);
   } else if (key === "fenceWidth") {
@@ -873,6 +898,7 @@ export function getBandsawSledParameterLimits(
     limits.min = Math.max(
       limits.min,
       spec.lockSlotLength + model.geometry.minimumSlotEndWeb * 2,
+      spec.bracketGussetDepth + model.geometry.bracketBackThickness,
     );
   } else if (key === "insertPocketDiameter") {
     limits.max = Math.min(
@@ -926,6 +952,14 @@ export function getBandsawSledAuditValue(
       return spec.bracketSpacing > spec.bracketWidth * 3
         ? pass(`2 brackets at ${formatLength(spec.bracketSpacing, unit)} centers prevent fence yaw`)
         : warn("Bracket spacing is too narrow to resist fence yaw");
+    case "bracketLength":
+      return spec.bracketDepth <= getParameter(model, "bracketDepth").limits.max + EPSILON &&
+        spec.bracketGussetDepth + model.geometry.bracketBackThickness <= spec.bracketDepth + EPSILON &&
+        spec.baseSupportMargin >= model.geometry.minimumBaseEdgeMargin - EPSILON
+        ? pass(
+            `${formatLength(spec.bracketDepth, unit)} bracket · ${formatLength(spec.bracketGussetDepth, unit)} gusset · ${formatLength(spec.baseSupportMargin, unit)} base margin`,
+          )
+        : warn("Bracket, gusset, or supporting base length is outside the safe envelope");
     case "bracketStrength":
       return spec.bracketSafetyFactor >= model.geometry.minimumScreenSafetyFactor
         ? pass(`${spec.bracketStress.toFixed(2)} MPa screen · ${spec.bracketSafetyFactor.toFixed(1)}× safety factor`)

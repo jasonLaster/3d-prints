@@ -66,7 +66,7 @@ assert(model.parts.length === 4, "four individual printable parts are registered
 for (const key of [
   "baseWidth", "baseDepth", "baseThickness", "fenceWidth", "fenceHeight",
   "fenceThickness", "fencePosition", "bladeKerf", "bracketSpacing",
-  "bracketWidth", "bracketDepth", "lockSlotLength", "lockBoltDiameter",
+  "bracketWidth", "bracketDepth", "bracketGussetDepth", "lockSlotLength", "lockBoltDiameter",
   "lockBoltLength", "baseInsertDiameter", "baseInsertDepth",
   "boardBoltDiameter", "boardBoltLength", "insertPocketDiameter", "insertDepth",
 ]) {
@@ -76,10 +76,12 @@ for (const key of [
 }
 
 const baseThickness = parameter("baseThickness").default;
+const baseDepth = parameter("baseDepth").default;
 const fenceWidth = parameter("fenceWidth").default;
 const fenceThickness = parameter("fenceThickness").default;
 const bracketWidth = parameter("bracketWidth").default;
 const bracketDepth = parameter("bracketDepth").default;
+const bracketGussetDepth = parameter("bracketGussetDepth").default;
 const bracketSpacing = parameter("bracketSpacing").default;
 const slotLength = parameter("lockSlotLength").default;
 const insertDepth = parameter("insertDepth").default;
@@ -92,11 +94,25 @@ const nominalFence = model.geometry.baseInsertStationY - fenceThickness / 2 - br
 assert(fenceWidth <= parameter("baseWidth").default - 20, "wood fence stays inside the wood base width");
 assert((fenceWidth - bracketSpacing - bracketWidth) / 2 >= model.geometry.minimumFenceEdgeMargin, "brackets preserve fence edge margins");
 assert((bracketDepth - slotLength) / 2 >= model.geometry.minimumSlotEndWeb, "M6 slots preserve end webs");
+assert(bracketGussetDepth + model.geometry.bracketBackThickness <= bracketDepth, "independent gusset stops inside the bracket foot");
 assert(model.geometry.bracketBackThickness - insertDepth >= model.geometry.minimumInsertShoulder, "M5 heat-set pockets preserve a shoulder");
 assert(baseThickness - woodInsertDepth >= model.geometry.minimumWoodInsertFloor, "M6 wood inserts preserve the base floor");
 assert(boardEngagement >= 4 && boardEngagement <= insertDepth + 0.5, "M5 board bolts engage the heat-set inserts without excessive projection");
 assert(lockEngagement >= 8 && lockEngagement <= woodInsertDepth + 0.5, "M6 lock bolts engage the wood inserts without excessive projection");
 assert(parameter("fencePosition").default >= nominalFence - slotTravel && parameter("fencePosition").default <= nominalFence + slotTravel, "default fence lies inside both adjustment slots");
+assert(
+  baseDepth / 2 - (nominalFence + fenceThickness / 2 + bracketDepth) >= model.geometry.minimumBaseEdgeMargin,
+  "default wood base supports the full bracket foot",
+);
+assert(Math.abs(parameter("bracketDepth").limits.max - 203.2) <= 1e-6, "bracket length reaches exactly 8 inches");
+assert(parameter("bracketGussetDepth").limits.min <= 101.6 && parameter("bracketGussetDepth").limits.max >= 101.6, "independent gusset range includes 4 inches");
+const longBracketDepth = parameter("bracketDepth").limits.max;
+const longInsertStation = model.geometry.baseInsertStationY + (longBracketDepth - bracketDepth) / 2;
+const longNominalFence = longInsertStation - fenceThickness / 2 - longBracketDepth / 2;
+assert(
+  parameter("baseDepth").limits.max / 2 - (longNominalFence + fenceThickness / 2 + longBracketDepth) >= model.geometry.minimumBaseEdgeMargin,
+  "maximum wood-base range fully supports an 8 inch bracket",
+);
 
 const effectiveSpan = parameter("fenceHeight").default - model.geometry.bracketGussetHeight;
 const force = model.geometry.screenLateralLoadN / 2;
@@ -120,7 +136,7 @@ for (const part of model.parts) {
     assert(Math.abs(info.size.x - bracketWidth) <= model.audit.toleranceMm, `${part.label} width matches`);
     assert(Math.abs(info.size.y - bracketDepth) <= model.audit.toleranceMm, `${part.label} foot depth matches`);
     assert(Math.abs(info.size.z - parameter("fenceHeight").default) <= model.audit.toleranceMm, `${part.label} back height matches`);
-    assert(info.triangles > 900, `${part.label} includes slot, gussets, and two stepped insert pockets`);
+    assert(info.triangles > 900, `${part.label} includes slot, independent-length gussets, and two stepped insert pockets`);
   } else {
     assert(Math.abs(info.size.x - model.geometry.lockKnobDiameter) <= model.audit.toleranceMm * 3, `${part.label} diameter matches`);
     assert(Math.abs(info.size.z - model.geometry.lockKnobThickness) <= model.audit.toleranceMm, `${part.label} thickness matches`);
