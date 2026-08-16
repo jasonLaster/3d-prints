@@ -35,6 +35,7 @@ test("builds the photo-matched ten-part system as printable manifold geometry", 
   expect(spec.jawSlotMargin).toBeGreaterThan(0); expect(spec.insertSideWall).toBeCloseTo(16.4, 5);
   expect(spec.presetMarkerY).toHaveLength(6); expect(spec.presetMarkerY).toEqual([31.25, 34.25, 37.25, 41.25, 44.75, 47.25]);
   expect(spec.insertFloor).toBe(4); expect(spec.insertEngagement).toBe(8); expect(spec.routerSupportOverlap).toBe(60);
+  expect(spec.railLength).toBe(250); expect(model.geometry.centeringBaseLength).toBe(250);
   expect(spec.screenDeflection).toBeLessThan(0.5); expect(spec.screenSafetyFactor).toBeGreaterThan(3);
   const parts = createRouterMortiseJigPartGeometries(params, model);
   expect(parts.map((part) => part.key)).toEqual(["left-deck-rail", "right-deck-rail", "front-stop", "rear-stop", "left-thickness-jaw", "right-thickness-jaw", "positioning-bridge", "centering-base", "centering-left-fence", "centering-right-fence"]);
@@ -74,6 +75,7 @@ test("renders, switches setups, preserves URL state, audits, and exports ten STL
   await expect(page.locator(".audit-row").filter({ hasText: "Calculated router travel" })).toContainText("18.3 mm × 40.3 mm");
   await expect(page.locator(".audit-row").filter({ hasText: "Heat-set inserts" })).toContainText("12 × M5");
   await expect(page.locator(".audit-row").filter({ hasText: "150 N strength screen" })).toContainText("stress margin");
+  await expect(page.locator(".audit-row").filter({ hasText: "P2S build-plate fit" })).toContainText("250.0 mm longest part");
   await expect(page.getByText("2 deck-rail STLs + 2 cross-stop STLs")).toBeVisible();
   await expect(page.getByText("2 under-deck L-shaped thickness-jaw STLs")).toBeVisible();
   const stockThickness = page.getByRole("textbox", { name: "Board thickness (lower jaw gap) in millimeters" }); await expect(stockThickness).toBeVisible(); await stockThickness.fill("45"); await stockThickness.press("Enter");

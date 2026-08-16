@@ -89,6 +89,7 @@ Handheld Router Mortise Jig:
 - Lower-jaw adjustment slots span 18–60 mm board thicknesses, with physical witness ticks at 18, 24, 30, 38, 45, and 50 mm.
 - The router base, guide bushing, cutter, and sample stock are visible stand-ins in the assembled preview and are excluded from printable exports.
 - The two deck rails, two cross-stops, two under-deck jaws, positioning bridge, centering base, and two centering fences download as ten individual support-free STL files.
+- Every mortise-jig STL is at most 250 mm long or wide, leaving 3 mm of nominal edge margin per side on the P2S 256 mm build plate.
 - See `docs/router-mortise-jig-audit-specifications.md` for the full geometry, hardware, use, and audit contract.
 
 Handheld Router Tenon Jig:

@@ -7,19 +7,20 @@
   "export": { "filePrefix": "router-mortise-jig" },
   "geometry": {
     "mainAxis": { "x": 0, "y": 0, "z": 0 }, "radialSegments": 40, "cornerSegments": 10, "slotArcSegments": 20, "markerArcSegments": 6,
-    "plateLength": 260, "plateWidth": 100, "plateCornerRadius": 3, "jawLength": 220, "jawThickness": 8, "jawCornerRadius": 2,
+    "plateLength": 250, "plateWidth": 100, "plateCornerRadius": 3, "jawLength": 220, "jawThickness": 8, "jawCornerRadius": 2,
     "boltStationX": 72, "boltSlotWidth": 6.6, "insertLeadIn": 0.4, "minimumInsertSideWall": 3.2, "minimumInsertFloor": 3,
     "minimumBushingRadialClearance": 1, "minimumPlateWeb": 5, "minimumWorkpieceWidth": 18, "maximumWorkpieceWidth": 60, "maximumWorkpieceWiggle": 1.2,
     "presetWorkpieceWidthsMm": [18, 24, 30, 38, 45, 50], "markerOffsetX": 8, "markerLength": 3.6, "markerWidth": 0.9, "workpiecePreviewLength": 235, "workpiecePreviewDepth": 64,
     "routerBaseThickness": 7, "routerMotorDiameter": 65, "routerMotorHeight": 70, "bushingProjection": 5, "bitPreviewDepth": 28,
-    "deckRailLength": 260, "deckOverallWidth": 220, "deckRailThickness": 10, "railAdjustmentSlotLength": 34, "railBoltStationX": 78,
+    "buildPlateWidth": 256, "minimumBuildPlateEdgeMargin": 3,
+    "deckRailLength": 250, "deckOverallWidth": 220, "deckRailThickness": 10, "railAdjustmentSlotLength": 34, "railBoltStationX": 78,
     "stopLength": 210, "stopWidth": 70, "crossStopThickness": 8, "stopAdjustmentSlotLength": 60, "stopSlotStationY": 78,
     "jawDepth": 30, "jawCheekThickness": 8, "jawFlangeWidth": 42, "jawFlangeThickness": 10, "jawInsertOffset": 22, "jawFusionOverlap": 0.2, "jawSlotStationY": 42,
     "minimumInsertEngagement": 5, "minimumRailWeb": 5, "minimumRouterSupportOverlap": 26, "minimumClampLedge": 22,
     "washerDiameter": 32, "washerThickness": 1.6, "knobDiameter": 28, "knobHeight": 13,
     "screenLoadN": 150, "screenModulusMpa": 2400, "screenAllowableStressMpa": 28, "maximumScreenDeflection": 0.5, "minimumScreenSafetyFactor": 3,
     "positioningBridgeLength": 70, "positioningBridgeWidth": 54, "positioningBridgeThickness": 8,
-    "centeringBaseLength": 260, "centeringBaseWidth": 180, "centeringBaseThickness": 12,
+    "centeringBaseLength": 250, "centeringBaseWidth": 180, "centeringBaseThickness": 12,
     "centeringFenceLength": 180, "centeringFenceHeight": 34, "centeringFenceThickness": 16
   },
   "presets": [
@@ -55,14 +56,14 @@
   ],
   "audit": {
     "toleranceMm": 0.2,
-    "dimensionTargets": ["Twin 260 mm deck rails move on top to create the calculated mortise-width opening.", "Two 210 × 70 × 8 mm cross-stops keep a fixed strip thickness while adjusting mortise length.", "Two 220 mm lower L-jaws independently close around the selected board thickness.", "Main, positioning, and centering setups share one mortise datum.", "Ten printable parts use twelve M5 heat-set inserts."],
-    "invariants": ["Derive top-rail spacing from mortise, cutter, guide bushing, and wiggle room.", "Keep stock-thickness adjustment in the underside L-jaws.", "Align lower-jaw screws with deck-rail slots.", "Keep the router supported by both rails.", "Preserve insert walls and screw engagement.", "Screen the rail bridge at 150 N.", "Export every piece on Z=0.", "Test on scrap and use shallow passes."],
+    "dimensionTargets": ["Twin 250 mm deck rails move on top to create the calculated mortise-width opening.", "The 250 × 180 mm centering base and every other STL fit within a 250 mm printable span.", "Two 210 × 70 × 8 mm cross-stops keep a fixed strip thickness while adjusting mortise length.", "Two 220 mm lower L-jaws independently close around the selected board thickness.", "Main, positioning, and centering setups share one mortise datum.", "Ten printable parts use twelve M5 heat-set inserts."],
+    "invariants": ["Keep every STL at or below 250 mm for 3 mm edge margin per side on a 256 mm P2S plate.", "Derive top-rail spacing from mortise, cutter, guide bushing, and wiggle room.", "Keep stock-thickness adjustment in the underside L-jaws.", "Align lower-jaw screws with deck-rail slots.", "Keep the router supported by both rails.", "Preserve insert walls and screw engagement.", "Screen the rail bridge at 150 N.", "Export every piece on Z=0.", "Test on scrap and use shallow passes."],
     "checks": [
       { "key": "mortiseTarget", "label": "Mortise target" }, { "key": "templateOpening", "label": "Calculated router travel" }, { "key": "photoArchitecture", "label": "Photo-matched architecture" },
       { "key": "routerInterface", "label": "Router interface" }, { "key": "workpieceFit", "label": "Workpiece fit" }, { "key": "heatSetInserts", "label": "Heat-set inserts" },
       { "key": "screwEngagement", "label": "Screw engagement" }, { "key": "adjustmentRange", "label": "Lower-jaw thickness range" }, { "key": "minimumRailWeb", "label": "Minimum rail web" },
       { "key": "routerSupport", "label": "Router support overlap" }, { "key": "clampLedge", "label": "Clamp ledge" }, { "key": "strengthScreen", "label": "150 N strength screen" },
-      { "key": "printSet", "label": "Printable part set" }, { "key": "previewStandIn", "label": "Preview stand-ins" }, { "key": "assemblyClearance", "label": "Assembly clearance" }, { "key": "printOrientation", "label": "Print orientation" }
+      { "key": "printSet", "label": "Printable part set" }, { "key": "buildPlateFit", "label": "P2S build-plate fit" }, { "key": "previewStandIn", "label": "Preview stand-ins" }, { "key": "assemblyClearance", "label": "Assembly clearance" }, { "key": "printOrientation", "label": "Print orientation" }
     ]
   },
   "scripts": [

@@ -10,9 +10,13 @@ Four UI presets cover 6 × 25, 8 × 30, 10 × 40, and 12 × 50 mm mortises. Six 
 
 ## Photo-matched assemblies
 
-- Main jig: two 260 mm deck rails whose spacing is the calculated router opening, two 210 × 70 × 8 mm fixed-thickness length stops, two 220 × 42 × 30 mm under-deck L-shaped thickness jaws, four stop knobs with 32 mm washers, four lower-jaw screws, a sample workpiece, and a 100 mm router-base stand-in.
+- Main jig: two 250 mm deck rails whose spacing is the calculated router opening, two 210 × 70 × 8 mm fixed-thickness length stops, two 220 × 42 × 30 mm under-deck L-shaped thickness jaws, four stop knobs with 32 mm washers, four lower-jaw screws, a sample workpiece, and a 100 mm router-base stand-in.
 - Positioning setup: the main frame plus a removable 70 × 54 × 8 mm slotted bridge.
-- Centering setup: a 260 × 180 × 12 mm base, two 180 × 16 × 34 mm upright guides, vertical sample stock, and adjustable knob/washer fasteners.
+- Centering setup: a 250 × 180 × 12 mm base, two 180 × 16 × 34 mm upright guides, vertical sample stock, and adjustable knob/washer fasteners.
+
+## P2S build-plate fit
+
+[Bambu Lab lists the P2S build volume as 256 × 256 × 256 mm](https://jp.store.bambulab.com/en/products/p2s). The longest printable dimensions are limited to 250 mm, leaving 3 mm of nominal edge margin per side when centered. The deck rails and centering base are 250 mm long; all other parts are 220 mm or shorter. Slicer-added brims, skirts, purge objects, and printer-specific exclusion zones still need to be checked in the actual P2S profile before printing.
 
 Twelve M5 heat-set insert pockets are represented across the printable set. The lower L-jaw pockets sit in 10 mm horizontal flanges, preserve at least 16.4 mm of lateral wall, and retain a 4 mm floor at the 6 mm default insert depth. The 18 mm rail screws preserve 8 mm of nominal engagement through the fixed 10 mm deck rails. Actual inserts, washers, and screws must be measured before printing.
 

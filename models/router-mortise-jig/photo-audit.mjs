@@ -56,11 +56,12 @@ assert(p("railScrewLength").default - model.geometry.deckRailThickness >= model.
 assert(deflection <= model.geometry.maximumScreenDeflection, `150 N screen deflection is ${deflection.toFixed(3)} mm`);
 assert(model.geometry.screenAllowableStressMpa / stress >= model.geometry.minimumScreenSafetyFactor, `150 N stress margin is ${(model.geometry.screenAllowableStressMpa / stress).toFixed(1)}×`);
 const expected = {
-  "left-deck-rail": [260, railWidth, model.geometry.deckRailThickness], "right-deck-rail": [260, railWidth, model.geometry.deckRailThickness],
+  "left-deck-rail": [250, railWidth, model.geometry.deckRailThickness], "right-deck-rail": [250, railWidth, model.geometry.deckRailThickness],
   "front-stop": [70, 210, model.geometry.crossStopThickness], "rear-stop": [70, 210, model.geometry.crossStopThickness],
   "left-thickness-jaw": [220, model.geometry.jawFlangeWidth, model.geometry.jawDepth], "right-thickness-jaw": [220, model.geometry.jawFlangeWidth, model.geometry.jawDepth],
-  "positioning-bridge": [70, 54, 8], "centering-base": [260, 180, 12], "centering-left-fence": [180, 16, 34], "centering-right-fence": [180, 16, 34]
+  "positioning-bridge": [70, 54, 8], "centering-base": [250, 180, 12], "centering-left-fence": [180, 16, 34], "centering-right-fence": [180, 16, 34]
 };
+assert(Math.max(...Object.values(expected).flatMap(([x, y]) => [x, y])) <= model.geometry.buildPlateWidth - model.geometry.minimumBuildPlateEdgeMargin * 2, "every STL fits a P2S plate with 3 mm edge margin per side");
 for (const part of model.parts) {
   const filePath = path.join(root, "public", part.url.replace(/^\/+/, "")); assert(fs.existsSync(filePath), `${part.label} STL exists`); if (!fs.existsSync(filePath)) continue;
   const info = inspect(filePath); assert(info.finite && info.degenerate === 0, `${part.label} has finite, nondegenerate triangles`); assert(info.nonManifold === 0, `${part.label} is watertight and manifold`); assert(Math.abs(info.min.z) <= model.audit.toleranceMm, `${part.label} rests on Z=0`);

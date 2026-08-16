@@ -155,6 +155,7 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "clampLedge",
       "strengthScreen",
       "printSet",
+      "buildPlateFit",
       "previewStandIn",
       "assemblyClearance",
       "printOrientation",
@@ -628,6 +629,7 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "mortise + guide-bushing outside diameter − cutter diameter",
     "M5 heat-set insert pockets",
     "18, 24, 30, 38, 45, and 50 mm",
+    "250 mm",
     "ten individual files",
     "preview-only stand-ins",
   ]) {

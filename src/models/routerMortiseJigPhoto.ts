@@ -6,6 +6,7 @@ import type { AuditCheckDefinition, AuditItem, LengthUnit, ModelDimensions, Mode
 
 type G = RouterMortiseJigModelDefinition["geometry"] & {
   deckRailLength: number; deckOverallWidth: number; railAdjustmentSlotLength: number; railBoltStationX: number;
+  buildPlateWidth: number; minimumBuildPlateEdgeMargin: number;
   stopLength: number; stopWidth: number; stopAdjustmentSlotLength: number; stopSlotStationY: number;
   deckRailThickness: number; crossStopThickness: number; jawDepth: number; jawCheekThickness: number;
   jawFlangeWidth: number; jawFlangeThickness: number; jawInsertOffset: number; jawFusionOverlap: number; jawSlotStationY: number;
@@ -278,7 +279,11 @@ export function getRouterMortiseJigAuditValue(check: AuditCheckDefinition, param
     routerSupport: spec.routerSupportOverlap >= photo.minimumRouterSupportOverlap ? pass(`${formatLength(spec.routerSupportOverlap, unit)} overlap per side`) : warn("Router overlap is too small"),
     clampLedge: spec.clampLedge >= photo.minimumClampLedge ? pass(formatLength(spec.clampLedge, unit)) : warn("Clamp ledge is too small"),
     strengthScreen: spec.screenDeflection <= photo.maximumScreenDeflection && spec.screenSafetyFactor >= photo.minimumScreenSafetyFactor ? pass(`${spec.screenDeflection.toFixed(3)} mm deflection · ${spec.screenSafetyFactor.toFixed(1)}× stress margin at ${photo.screenLoadN} N`) : warn("Increase rail section"),
-    printSet: pass("10 individual support-free STLs"), previewStandIn: pass("Router, stock, clamps, knobs, washers, and screws · preview only"),
+    printSet: pass("10 individual support-free STLs"),
+    buildPlateFit: Math.max(photo.deckRailLength, photo.centeringBaseLength) <= photo.buildPlateWidth - photo.minimumBuildPlateEdgeMargin * 2
+      ? pass(`${formatLength(Math.max(photo.deckRailLength, photo.centeringBaseLength), unit)} longest part · ${formatLength(photo.minimumBuildPlateEdgeMargin, unit)} edge margin per side on P2S`)
+      : warn("Longest part exceeds the P2S-safe printable span"),
+    previewStandIn: pass("Router, stock, clamps, knobs, washers, and screws · preview only"),
     assemblyClearance: pass("Top mortise-width rails and lower stock-thickness jaws adjust independently"), printOrientation: pass("All pieces export on Z=0 without generated support"),
   };
   return values[check.key] ?? warn("Unsupported audit check");
