@@ -359,7 +359,7 @@ export function getStatusItems(
       `Wood base ${formatLength(spec.baseWidth, unit)} × ${formatLength(spec.baseDepth, unit)} × ${formatLength(spec.baseThickness, unit)}`,
       `Wood fence ${formatLength(spec.fenceWidth, unit)} × ${formatLength(spec.fenceHeight, unit)}`,
       `Fence setback ${formatLength(spec.fencePosition, unit)}`,
-      `Bracket ${formatLength(spec.bracketDepth, unit)} · gusset ${formatLength(spec.bracketGussetDepth, unit)} (${(spec.bracketGussetLengthRatio * 100).toFixed(1).replace(/\.0$/, "")}%)`,
+      `Bracket ${formatLength(spec.bracketDepth, unit)} · slot ${formatLength(spec.lockSlotLength, unit)} · gusset ${formatLength(spec.bracketGussetDepth, unit)}`,
       "Printed brackets × 2 · lock knobs × 2",
       "M5 heat-set inserts × 4 · M6 wood inserts × 2",
     ];

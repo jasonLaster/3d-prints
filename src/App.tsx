@@ -332,7 +332,7 @@ const PARAM_QUERY_KEYS = [
   "bracketSpacing",
   "bracketWidth",
   "bracketDepth",
-  "lockSlotLength",
+  "bracketGussetDepth",
   "lockBoltDiameter",
   "lockBoltLength",
   "baseInsertDiameter",
@@ -7004,8 +7004,9 @@ export default function App({
                       <li>2 M6 × 25 mm bolts + 18 mm washers captured by the knobs</li>
                     </ul>
                     <p>
-                      The triangular gusset automatically stays at 87.5% of the bracket length,
-                      so the longest 8 in foot uses a full 7 in gusset for stronger corner support.
+                      The fence slot grows with the bracket while retaining 12 mm at each end,
+                      so the longest 8 in foot provides just over 7 in of slot length.
+                      The triangular gusset stays independently adjustable and defaults shorter to save filament.
                       The wood-base depth expands as needed to keep the nominal foot supported.
                     </p>
                     <p>

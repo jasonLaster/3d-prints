@@ -13,9 +13,9 @@ The default cut list is a 420 × 320 × 18 mm base, a 380 × 100 × 18 mm fence,
 
 ## Adjustment and squareness
 
-Each printed bracket has a 52 × 7 mm M6 slot. The bracket feet slide fore/aft over two fixed M6 screw-in inserts in the wood base. With the default 90 mm foot, the insert station centers the 55 mm fence setback and provides 45 mm of usable continuous travel. Changing bracket length moves the modeled insert station by half the length change, so the same nominal fence setback and slot travel are preserved.
+Each printed bracket has a 7 mm-wide M6 slot whose length is derived from the foot. The slot retains 12 mm of printed material at both ends, so the default 90 mm bracket has a 66 mm slot and 59 mm of usable continuous travel after subtracting the round 7 mm ends. The bracket feet slide fore/aft over two fixed M6 screw-in inserts in the wood base. Changing bracket length moves the modeled insert station by half the length change, preserving the same nominal fence setback while increasing the available slot travel. The fence-position control is dynamically limited to the physical slot, so the 8 in bracket exposes its full −31.1 to 141.1 mm modeled setback range while the default bracket remains at 25.5 to 84.5 mm.
 
-Bracket length is adjustable from 80 mm through 203.2 mm (8 in). The triangular gusset length is derived automatically at 87.5% of the bracket length, so an 8 in foot always has a 7 in gusset. The 80 mm minimum keeps that long gusset and the 10 mm back plate inside the foot. The wood-base depth grows with the bracket so the full foot retains at least 5 mm of support at the nominal fence position; the 8 in bracket therefore requires a base depth of at least 545 mm at the other defaults.
+Bracket length is adjustable through 203.2 mm (8 in). Because only the two fixed 12 mm end webs are reserved, the longest bracket has a 179.2 mm (7.06 in) slot—slightly more than the requested 7 in minimum. The wood-base depth grows with the bracket so the full foot retains at least 5 mm of support at the nominal fence position; the 8 in bracket therefore requires a base depth of at least 545 mm at the other defaults.
 
 Two brackets at 280 mm centers prevent the fence from rotating around one lock. Square the fence to the blade path with a machinist square, tighten both M6 knobs, and verify that neither foot can shift before cutting.
 
@@ -30,7 +30,7 @@ Measure the purchased inserts and print a pocket coupon before printing the brac
 
 ## Printed bracket and knob geometry
 
-Each default bracket combines a 58 × 90 × 10 mm slotted foot, a 10 mm rear plate as tall as the fence, and two triangular 5 mm gussets with a 78.75 mm horizontal run. The gusset run is always 87.5% of the bracket length: changing the one bracket-length control regenerates the foot and gussets together. At the 8 in maximum the gusset is exactly 177.8 mm (7 in). The complete adjustable range keeps the proportional gusset and 10 mm back plate inside the foot.
+Each default bracket combines a 58 × 90 × 10 mm slotted foot, a 10 mm rear plate as tall as the fence, and two triangular 5 mm gussets with an independent 62 mm horizontal run. Increasing bracket length does not waste filament by stretching those triangles. The gusset remains directly editable from 30 mm up to the available foot length; its dependent upper limit always leaves room for the 10 mm back plate.
 
 The bracket prints foot-down with the back upright. The 7.2 mm horizontal insert-pocket bridge remains below the configured 8 mm support-free screen.
 
@@ -43,7 +43,7 @@ The runtime audit checks:
 - both lock bolts remain inside their slot travel;
 - bracket spacing and fence edge margins preserve anti-yaw support;
 - at least 12 mm of plastic remains beyond every lock-slot end;
-- bracket length remains between 80 mm and 8 in, the gusset remains at 87.5% and inside the foot, and the selected wood base supports the full nominal foot;
+- bracket length remains at or below 8 in, the derived slot preserves both 12 mm end webs, the independent gusset remains inside the foot, and the selected wood base supports the full nominal foot;
 - M5 insert shoulders, M6 wood-insert floors, and both bolt engagements remain valid;
 - a 100 N lateral comparison load stays below 0.3 mm calculated bracket deflection and above a 4× stress safety-factor screen.
 
@@ -55,4 +55,4 @@ The preview keeps the kerf centered through the base and sacrificial fence. Do n
 
 ## Export contract
 
-Four individual, current-parameter STL files are generated: left bracket, right bracket, left lock knob, and right lock knob. Export names include both the selected bracket length and its derived gusset length so an 8 in / 7 in set cannot be confused with the defaults. Every file must contain finite nondegenerate triangles, be watertight/manifold under the repository topology check, and rest on Z=0 in its recommended print orientation.
+Four individual, current-parameter STL files are generated: left bracket, right bracket, left lock knob, and right lock knob. Export names include the selected bracket and independent gusset lengths; the derived slot is unambiguous from the bracket length and fixed 12 mm end webs. Every file must contain finite nondegenerate triangles, be watertight/manifold under the repository topology check, and rest on Z=0 in its recommended print orientation.

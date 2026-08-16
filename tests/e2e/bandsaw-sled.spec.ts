@@ -77,15 +77,16 @@ function inspectStl(input: Buffer) {
 test("builds the wood sled around four watertight printed parts", () => {
   const params = getDefaultParams(model);
   const spec = getBandsawSledSpec(params, model);
-  expect(spec.fenceTravelMin).toBeCloseTo(32.5, 5);
-  expect(spec.fenceTravelMax).toBeCloseTo(77.5, 5);
+  expect(spec.fenceTravelMin).toBeCloseTo(25.5, 5);
+  expect(spec.fenceTravelMax).toBeCloseTo(84.5, 5);
   expect(spec.boardBoltEngagement).toBeCloseTo(5.5, 5);
   expect(spec.lockEngagement).toBeCloseTo(13, 5);
   expect(spec.baseInsertFloor).toBeCloseTo(5, 5);
   expect(spec.baseInsertStationY).toBeCloseTo(109, 5);
   expect(spec.insertShoulder).toBeCloseTo(4, 5);
-  expect(spec.bracketGussetLengthRatio).toBeCloseTo(0.875, 5);
-  expect(spec.bracketGussetDepth).toBeCloseTo(78.75, 5);
+  expect(spec.lockSlotLength).toBeCloseTo(66, 5);
+  expect(spec.slotEndWeb).toBeCloseTo(12, 5);
+  expect(spec.bracketGussetDepth).toBeCloseTo(62, 5);
   expect(spec.baseSupportMargin).toBeCloseTo(6, 5);
   expect(spec.bracketDeflection).toBeLessThanOrEqual(
     model.geometry.maximumScreenDeflection,
@@ -138,30 +139,43 @@ test("builds the wood sled around four watertight printed parts", () => {
 test("couples fence travel, bracket spacing, slots, and insert floors", () => {
   const defaults = getDefaultParams(model);
   expect(getParameterLimits(model, defaults, "fencePosition")).toMatchObject({
-    min: 32.5,
-    max: 77.5,
+    min: 25.5,
+    max: 84.5,
   });
+  const longBracketFenceLimits = getParameterLimits(
+    model,
+    { ...defaults, bracketDepth: 203.2 },
+    "fencePosition",
+  );
+  expect(longBracketFenceLimits.min).toBeCloseTo(-31.1, 5);
+  expect(longBracketFenceLimits.max).toBeCloseTo(141.1, 5);
   expect(
     getParameterLimits(model, { ...defaults, fenceWidth: 330 }, "bracketSpacing").max,
   ).toBe(248);
-  expect(
-    getParameterLimits(model, { ...defaults, bracketDepth: 76 }, "lockSlotLength").max,
-  ).toBe(52);
   expect(getParameterLimits(model, defaults, "baseDepth").min).toBe(320);
   expect(
     getParameterLimits(model, defaults, "bracketDepth").max,
   ).toBeCloseTo(203.2, 5);
   expect(
     getParameterLimits(model, defaults, "bracketDepth").min,
-  ).toBeCloseTo(80, 5);
-  const minimumBracketSpec = getBandsawSledSpec(
-    { ...defaults, bracketDepth: 80 },
-    model,
-  );
-  expect(minimumBracketSpec.bracketGussetDepth).toBeCloseTo(70, 5);
+  ).toBeCloseTo(72, 5);
   expect(
-    minimumBracketSpec.bracketGussetDepth + model.geometry.bracketBackThickness,
-  ).toBeLessThanOrEqual(minimumBracketSpec.bracketDepth);
+    getParameterLimits(model, defaults, "bracketGussetDepth").max,
+  ).toBeCloseTo(80, 5);
+  expect(
+    getParameterLimits(
+      model,
+      { ...defaults, bracketGussetDepth: 101.6 },
+      "bracketDepth",
+    ).min,
+  ).toBeCloseTo(111.6, 5);
+  expect(
+    getParameterLimits(
+      model,
+      { ...defaults, bracketDepth: 203.2 },
+      "bracketGussetDepth",
+    ).max,
+  ).toBeCloseTo(193.2, 5);
   expect(
     getParameterLimits(
       model,
@@ -177,7 +191,7 @@ test("couples fence travel, bracket spacing, slots, and insert floors", () => {
   ).toBe(19);
 });
 
-test("keeps an 8 inch bracket manifold with its proportional 7 inch gusset", () => {
+test("keeps an 8 inch bracket manifold with a 7 inch slot and independent short gusset", () => {
   const params = {
     ...getDefaultParams(model),
     baseDepth: 545,
@@ -185,13 +199,16 @@ test("keeps an 8 inch bracket manifold with its proportional 7 inch gusset", () 
   };
   const spec = getBandsawSledSpec(params, model);
   expect(spec.bracketDepth).toBeCloseTo(203.2, 5);
-  expect(spec.bracketGussetDepth).toBeCloseTo(177.8, 5);
+  expect(spec.lockSlotLength).toBeCloseTo(179.2, 5);
+  expect(spec.lockSlotLength).toBeGreaterThanOrEqual(177.8);
+  expect(spec.slotEndWeb).toBeCloseTo(12, 5);
+  expect(spec.bracketGussetDepth).toBeCloseTo(62, 5);
   expect(spec.baseInsertStationY).toBeCloseTo(165.6, 5);
   expect(spec.baseSupportMargin).toBeGreaterThanOrEqual(
     model.geometry.minimumBaseEdgeMargin,
   );
-  expect(spec.fenceTravelMin).toBeCloseTo(32.5, 5);
-  expect(spec.fenceTravelMax).toBeCloseTo(77.5, 5);
+  expect(spec.fenceTravelMin).toBeCloseTo(-31.1, 5);
+  expect(spec.fenceTravelMax).toBeCloseTo(141.1, 5);
 
   const parts = createBandsawSledPartGeometries(params, model);
   for (const part of parts) {
@@ -222,28 +239,37 @@ test("renders material roles, moves the fence, audits hardware, and exports four
   await expect(page.getByTestId("viewer-status")).toContainText("Printed brackets × 2");
   await expect(page.getByText("Wood: 1 plywood base, 1 sacrificial fence, 1 hardwood runner")).toBeVisible();
   await expect(page.locator(".audit-row").filter({ hasText: "Threaded inserts" })).toContainText("4 M5 heat-set inserts");
-  await expect(page.locator(".audit-row").filter({ hasText: "Fence adjustment travel" })).toContainText("32.5 mm–77.5 mm");
+  await expect(page.locator(".audit-row").filter({ hasText: "Fence adjustment travel" })).toContainText("25.5 mm–84.5 mm");
   await expect(page.locator(".audit-row").filter({ hasText: "Bracket strength screen" })).toContainText("safety factor");
-  await expect(page.locator(".audit-row").filter({ hasText: "Bracket and gusset lengths" })).toContainText("base margin");
+  await expect(page.locator(".audit-row").filter({ hasText: "Bracket, slot, and gusset lengths" })).toContainText("base margin");
 
   const baseDepth = page.getByLabel("Wood base depth in millimeters");
   const bracketLength = page.getByLabel("Printed bracket length in millimeters");
+  const gussetLength = page.getByLabel("Triangular gusset length in millimeters");
   await bracketLength.fill("203.2");
   await expect(baseDepth).toHaveValue("545.0");
   await expect(bracketLength).toHaveValue("203.2");
-  await expect(page.getByLabel("Triangular gusset length in millimeters")).toHaveCount(0);
+  await expect(gussetLength).toHaveValue("62.0");
+  await expect(page.getByLabel("Fence adjustment slot length in millimeters")).toHaveCount(0);
   await expect.poll(() => new URL(page.url()).searchParams.get("bracketDepth")).toBe("203.2");
-  await expect.poll(() => new URL(page.url()).searchParams.has("bracketGussetDepth")).toBe(false);
-  const bracketAudit = page.locator(".audit-row").filter({ hasText: "Bracket and gusset lengths" });
+  await expect.poll(() => new URL(page.url()).searchParams.has("lockSlotLength")).toBe(false);
+  const bracketAudit = page.locator(".audit-row").filter({ hasText: "Bracket, slot, and gusset lengths" });
   await expect(bracketAudit).toContainText("203.2 mm bracket");
-  await expect(bracketAudit).toContainText("177.8 mm gusset (87.5%)");
-  await expect(page.getByTestId("viewer-status")).toContainText("gusset 177.8 mm (87.5%)");
+  await expect(bracketAudit).toContainText("179.2 mm slot");
+  await expect(bracketAudit).toContainText("62.0 mm gusset");
+  await expect(page.getByTestId("viewer-status")).toContainText("slot 179.2 mm · gusset 62.0 mm");
+  await gussetLength.fill("80");
+  await expect(gussetLength).toHaveValue("80.0");
+  await expect.poll(() => new URL(page.url()).searchParams.get("bracketGussetDepth")).toBe("80");
+  await expect(bracketAudit).toContainText("179.2 mm slot");
+  await expect(bracketAudit).toContainText("80.0 mm gusset");
 
   const fencePosition = page.getByLabel("Fence setback from sled center in millimeters");
-  await fencePosition.fill("70");
-  await expect.poll(() => new URL(page.url()).searchParams.get("fencePosition")).toBe("70");
+  await fencePosition.fill("140");
+  await expect.poll(() => new URL(page.url()).searchParams.get("fencePosition")).toBe("140");
   await page.reload();
-  await expect(fencePosition).toHaveValue("70.0");
+  await expect(fencePosition).toHaveValue("140.0");
+  await expect(gussetLength).toHaveValue("80.0");
   await expect(page.locator(".scene-panel canvas")).toBeVisible();
 
   const downloads: Array<import("@playwright/test").Download> = [];
@@ -252,7 +278,7 @@ test("renders material roles, moves the fence, audits hardware, and exports four
   await page.getByRole("button", { name: "Export 4 printed-part STLs" }).click();
   await expect.poll(() => downloads.length).toBe(4);
   expect(downloads.map((download) => download.suggestedFilename())).toEqual([
-    expect.stringMatching(/-bracket-203\.2-gusset-177\.8-left-bracket\.stl$/),
+    expect.stringMatching(/-bracket-203\.2-gusset-80-left-bracket\.stl$/),
     expect.stringContaining("-right-bracket.stl"),
     expect.stringContaining("-left-lock-knob.stl"),
     expect.stringContaining("-right-lock-knob.stl"),

@@ -39,7 +39,6 @@ export type BandsawSledSpec = {
   bladeKerf: number;
   bracketWidth: number;
   bracketDepth: number;
-  bracketGussetLengthRatio: number;
   bracketGussetDepth: number;
   bracketSpacing: number;
   bracketBackThickness: number;
@@ -339,10 +338,10 @@ export function getBandsawSledSpec(
   const fencePosition = getParam(params, "fencePosition");
   const bracketWidth = getParam(params, "bracketWidth");
   const bracketDepth = getParam(params, "bracketDepth");
-  const bracketGussetLengthRatio = model.geometry.bracketGussetLengthRatio;
-  const bracketGussetDepth = bracketDepth * bracketGussetLengthRatio;
+  const bracketGussetDepth = getParam(params, "bracketGussetDepth");
   const bracketSpacing = getParam(params, "bracketSpacing");
-  const lockSlotLength = getParam(params, "lockSlotLength");
+  const lockSlotLength =
+    bracketDepth - model.geometry.minimumSlotEndWeb * 2;
   const lockBoltDiameter = getParam(params, "lockBoltDiameter");
   const lockBoltLength = getParam(params, "lockBoltLength");
   const baseInsertDiameter = getParam(params, "baseInsertDiameter");
@@ -384,7 +383,6 @@ export function getBandsawSledSpec(
     bladeKerf: getParam(params, "bladeKerf"),
     bracketWidth,
     bracketDepth,
-    bracketGussetLengthRatio,
     bracketGussetDepth,
     bracketSpacing,
     bracketBackThickness: model.geometry.bracketBackThickness,
@@ -892,19 +890,15 @@ export function getBandsawSledParameterLimits(
       limits.min,
       spec.insertPocketDiameter + model.geometry.minimumInsertWall * 2,
     );
-  } else if (key === "lockSlotLength") {
-    limits.max = Math.min(
-      limits.max,
-      spec.bracketDepth - model.geometry.minimumSlotEndWeb * 2,
-    );
   } else if (key === "bracketDepth") {
-    const minimumForGusset =
-      model.geometry.bracketBackThickness /
-      (1 - model.geometry.bracketGussetLengthRatio);
     limits.min = Math.max(
       limits.min,
-      spec.lockSlotLength + model.geometry.minimumSlotEndWeb * 2,
-      Math.ceil(minimumForGusset / limits.step) * limits.step,
+      spec.bracketGussetDepth + model.geometry.bracketBackThickness,
+    );
+  } else if (key === "bracketGussetDepth") {
+    limits.max = Math.min(
+      limits.max,
+      spec.bracketDepth - model.geometry.bracketBackThickness,
     );
   } else if (key === "insertPocketDiameter") {
     limits.max = Math.min(
@@ -963,7 +957,7 @@ export function getBandsawSledAuditValue(
         spec.bracketGussetDepth + model.geometry.bracketBackThickness <= spec.bracketDepth + EPSILON &&
         spec.baseSupportMargin >= model.geometry.minimumBaseEdgeMargin - EPSILON
         ? pass(
-            `${formatLength(spec.bracketDepth, unit)} bracket · ${formatLength(spec.bracketGussetDepth, unit)} gusset (${(spec.bracketGussetLengthRatio * 100).toFixed(1).replace(/\.0$/, "")}%) · ${formatLength(spec.baseSupportMargin, unit)} base margin`,
+            `${formatLength(spec.bracketDepth, unit)} bracket · ${formatLength(spec.lockSlotLength, unit)} slot · ${formatLength(spec.bracketGussetDepth, unit)} gusset · ${formatLength(spec.baseSupportMargin, unit)} base margin`,
           )
         : warn("Bracket, gusset, or supporting base length is outside the safe envelope");
     case "bracketStrength":
