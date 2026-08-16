@@ -7004,8 +7004,8 @@ export default function App({
                       <li>2 M6 × 25 mm bolts + 18 mm washers captured by the knobs</li>
                     </ul>
                     <p>
-                      The triangular gusset automatically stays at 50% of the bracket length,
-                      so the longest 8 in foot uses a 4 in gusset without filling the unused tail.
+                      The triangular gusset automatically stays at 87.5% of the bracket length,
+                      so the longest 8 in foot uses a full 7 in gusset for stronger corner support.
                       The wood-base depth expands as needed to keep the nominal foot supported.
                     </p>
                     <p>

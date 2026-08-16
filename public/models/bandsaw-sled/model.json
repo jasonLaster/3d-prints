@@ -2,7 +2,7 @@
   "id": "bandsaw-sled",
   "name": "Adjustable Fence Bandsaw Sled",
   "subtitle": "Wood sled and fence with printed locking brackets",
-  "description": "A parametric bandsaw sled with a plywood base, a sacrificial wood fence, two printed brackets adjustable through 8 inches with half-length gussets, captive-bolt lock knobs, M5 heat-set inserts in the printed brackets, and M6 screw-in inserts in the wood base.",
+  "description": "A parametric bandsaw sled with a plywood base, a sacrificial wood fence, two printed brackets adjustable through 8 inches with proportional long gussets, captive-bolt lock knobs, M5 heat-set inserts in the printed brackets, and M6 screw-in inserts in the wood base.",
   "viewer": "bandsaw-sled-v1",
   "stl": {
     "fileName": "bandsaw-sled-left-bracket.stl",
@@ -24,7 +24,7 @@
     "bracketFootThickness": 10,
     "bracketGussetThickness": 5,
     "bracketGussetHeight": 65,
-    "bracketGussetLengthRatio": 0.5,
+    "bracketGussetLengthRatio": 0.875,
     "bracketBoltLowerHeight": 28,
     "bracketBoltUpperHeight": 65,
     "baseInsertStationY": 109,
@@ -98,7 +98,7 @@
     { "key": "bladeKerf", "label": "Bandsaw blade kerf", "statusLabel": "Kerf", "default": 1.5, "limits": { "min": 0.8, "max": 3, "step": 0.1 } },
     { "key": "bracketSpacing", "label": "Printed bracket center spacing", "statusLabel": "Bracket C-C", "default": 280, "limits": { "min": 180, "max": 440, "step": 5 } },
     { "key": "bracketWidth", "label": "Printed bracket width", "statusLabel": "Bracket W", "default": 58, "limits": { "min": 44, "max": 80, "step": 1 } },
-    { "key": "bracketDepth", "label": "Printed bracket length", "statusLabel": "Bracket L", "default": 90, "limits": { "min": 70, "max": 203.2, "step": 1 } },
+    { "key": "bracketDepth", "label": "Printed bracket length", "statusLabel": "Bracket L", "default": 90, "limits": { "min": 80, "max": 203.2, "step": 1 } },
     { "key": "lockSlotLength", "label": "Fence adjustment slot length", "statusLabel": "Slot L", "default": 52, "limits": { "min": 36, "max": 80, "step": 1 } },
     { "key": "lockBoltDiameter", "label": "M6 lock-bolt clearance diameter", "statusLabel": "Lock bolt Ø", "default": 6.6, "limits": { "min": 6.2, "max": 7.2, "step": 0.1 } },
     { "key": "lockBoltLength", "label": "M6 lock-bolt length", "statusLabel": "Lock bolt L", "default": 25, "limits": { "min": 20, "max": 30, "step": 1 } },
@@ -114,8 +114,8 @@
     "dimensionTargets": [
       "The default wood base is 420 × 320 × 18 mm with a centered 1.5 mm blade kerf.",
       "The default sacrificial wood fence is 380 × 100 × 18 mm and moves continuously over the two 52 mm bracket slots.",
-      "The printed bracket length adjusts through 203.2 mm (8 in), and the triangular gusset automatically remains 50% of that length.",
-      "The default 90 mm bracket uses a 45 mm gusset; an 8 in bracket automatically uses a 101.6 mm (4 in) gusset to conserve filament.",
+      "The printed bracket length adjusts through 203.2 mm (8 in), and the triangular gusset automatically remains 87.5% of that length.",
+      "The default 90 mm bracket uses a 78.75 mm gusset; an 8 in bracket automatically uses a 177.8 mm (7 in) gusset.",
       "Four M5 × 25 mm bolts fasten the wood fence into four heat-set inserts in the printed brackets.",
       "Two captive M6 × 25 mm knob bolts lock into two 10 × 13 mm screw-in inserts in the wooden base."
     ],
@@ -125,7 +125,7 @@
       "Keep the fence position inside both continuous lock-slot ranges.",
       "Preserve four M5 heat-set insert pockets, two screw-in M6 wood-insert holes, and their bolt engagement depths.",
       "Keep at least 12 mm of printed plastic beyond every M6 slot end and at least 4 mm of wood beneath each base insert.",
-      "Keep each gusset at 50% of its bracket foot and keep the full bracket foot supported by the selected wood-base depth at its nominal fence position.",
+      "Keep each gusset at 87.5% of its bracket foot and keep the full bracket foot supported by the selected wood-base depth at its nominal fence position.",
       "Keep the blade kerf centered through the base and sacrificial fence.",
       "Treat the structural calculations as conservative screens, not certification; test squareness and locking on scrap before cutting workpieces."
     ],

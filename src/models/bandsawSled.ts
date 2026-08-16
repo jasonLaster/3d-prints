@@ -898,10 +898,13 @@ export function getBandsawSledParameterLimits(
       spec.bracketDepth - model.geometry.minimumSlotEndWeb * 2,
     );
   } else if (key === "bracketDepth") {
+    const minimumForGusset =
+      model.geometry.bracketBackThickness /
+      (1 - model.geometry.bracketGussetLengthRatio);
     limits.min = Math.max(
       limits.min,
       spec.lockSlotLength + model.geometry.minimumSlotEndWeb * 2,
-      spec.bracketGussetDepth + model.geometry.bracketBackThickness,
+      Math.ceil(minimumForGusset / limits.step) * limits.step,
     );
   } else if (key === "insertPocketDiameter") {
     limits.max = Math.min(
@@ -960,7 +963,7 @@ export function getBandsawSledAuditValue(
         spec.bracketGussetDepth + model.geometry.bracketBackThickness <= spec.bracketDepth + EPSILON &&
         spec.baseSupportMargin >= model.geometry.minimumBaseEdgeMargin - EPSILON
         ? pass(
-            `${formatLength(spec.bracketDepth, unit)} bracket · ${formatLength(spec.bracketGussetDepth, unit)} gusset (${(spec.bracketGussetLengthRatio * 100).toFixed(0)}%) · ${formatLength(spec.baseSupportMargin, unit)} base margin`,
+            `${formatLength(spec.bracketDepth, unit)} bracket · ${formatLength(spec.bracketGussetDepth, unit)} gusset (${(spec.bracketGussetLengthRatio * 100).toFixed(1).replace(/\.0$/, "")}%) · ${formatLength(spec.baseSupportMargin, unit)} base margin`,
           )
         : warn("Bracket, gusset, or supporting base length is outside the safe envelope");
     case "bracketStrength":

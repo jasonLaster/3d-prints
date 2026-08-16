@@ -94,7 +94,7 @@ const nominalFence = model.geometry.baseInsertStationY - fenceThickness / 2 - br
 assert(fenceWidth <= parameter("baseWidth").default - 20, "wood fence stays inside the wood base width");
 assert((fenceWidth - bracketSpacing - bracketWidth) / 2 >= model.geometry.minimumFenceEdgeMargin, "brackets preserve fence edge margins");
 assert((bracketDepth - slotLength) / 2 >= model.geometry.minimumSlotEndWeb, "M6 slots preserve end webs");
-assert(model.geometry.bracketGussetLengthRatio === 0.5, "gusset length remains 50 percent of bracket length");
+assert(model.geometry.bracketGussetLengthRatio === 0.875, "gusset length remains 87.5 percent of bracket length");
 assert(bracketGussetDepth + model.geometry.bracketBackThickness <= bracketDepth, "proportional gusset stops inside the bracket foot");
 assert(model.geometry.bracketBackThickness - insertDepth >= model.geometry.minimumInsertShoulder, "M5 heat-set pockets preserve a shoulder");
 assert(baseThickness - woodInsertDepth >= model.geometry.minimumWoodInsertFloor, "M6 wood inserts preserve the base floor");
@@ -105,9 +105,15 @@ assert(
   baseDepth / 2 - (nominalFence + fenceThickness / 2 + bracketDepth) >= model.geometry.minimumBaseEdgeMargin,
   "default wood base supports the full bracket foot",
 );
+const minimumBracketDepth = parameter("bracketDepth").limits.min;
+assert(Math.abs(minimumBracketDepth - 80) <= 1e-6, "minimum bracket length is 80 mm");
+assert(
+  minimumBracketDepth * model.geometry.bracketGussetLengthRatio + model.geometry.bracketBackThickness <= minimumBracketDepth,
+  "minimum bracket contains its proportional gusset and back plate",
+);
 assert(Math.abs(parameter("bracketDepth").limits.max - 203.2) <= 1e-6, "bracket length reaches exactly 8 inches");
 const longBracketDepth = parameter("bracketDepth").limits.max;
-assert(Math.abs(longBracketDepth * model.geometry.bracketGussetLengthRatio - 101.6) <= 1e-6, "8 inch bracket derives an exact 4 inch gusset");
+assert(Math.abs(longBracketDepth * model.geometry.bracketGussetLengthRatio - 177.8) <= 1e-6, "8 inch bracket derives an exact 7 inch gusset");
 const longInsertStation = model.geometry.baseInsertStationY + (longBracketDepth - bracketDepth) / 2;
 const longNominalFence = longInsertStation - fenceThickness / 2 - longBracketDepth / 2;
 assert(

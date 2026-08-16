@@ -107,10 +107,10 @@ Adjustable Fence Bandsaw Sled:
 
 - The base, vertical sacrificial fence, and underside runner are wood fabrication parts; only two gusseted brackets and two captive-bolt knobs are printed.
 - Two widely spaced slotted brackets move the wood fence fore/aft while preventing yaw around a single lock point.
-- Printed bracket length adjusts through 8 in while the triangular gusset automatically stays at 50% of the selected length; the resulting 4 in gusset on an 8 in foot avoids filling the unused tail with plastic.
+- Printed bracket length adjusts from 80 mm through 8 in while the triangular gusset automatically stays at 87.5% of the selected length; the resulting 7 in gusset on an 8 in foot provides long corner support.
 - Four M5 bolts pass through the wood fence into heat-set inserts in the printed bracket backs; two M6 knob bolts lock into screw-in inserts in the wood base.
 - The preview uses distinct wood, printed-plastic, steel, and brass materials and labels those materials directly in the viewer.
-- Runtime checks cover continuous fence travel, the 50% bracket-to-gusset proportion, supporting base depth, bracket spacing, slot webs, insert floors/shoulders, bolt engagement, blade-path alignment, and conservative bracket stress/deflection screens.
+- Runtime checks cover continuous fence travel, the 87.5% bracket-to-gusset proportion, supporting base depth, bracket spacing, slot webs, insert floors/shoulders, bolt engagement, blade-path alignment, and conservative bracket stress/deflection screens.
 - Four individual support-free STLs export the left/right brackets and left/right lock knobs; wood parts remain a cut-and-drill plan.
 - See `docs/bandsaw-sled-audit-specifications.md` for the full fabrication, fastener, commissioning, and audit contract.
 
