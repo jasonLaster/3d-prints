@@ -1145,7 +1145,7 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
   if (model.viewer === "router-mortise-jig-v1") {
     const compact = (value: number) =>
       value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
-    return `${model.export.filePrefix}-${compact(getParam(params, "mortiseWidth"))}x${compact(getParam(params, "mortiseLength"))}-bit-${compact(getParam(params, "routerBitDiameter"))}-bushing-${compact(getParam(params, "guideBushingDiameter"))}-stock-${compact(getParam(params, "workpieceWidth"))}.stl`;
+    return `${model.export.filePrefix}-${compact(getParam(params, "mortiseWidth"))}x${compact(getParam(params, "mortiseLength"))}-bit-${compact(getParam(params, "routerBitDiameter"))}-bushing-${compact(getParam(params, "guideBushingDiameter"))}-stock-${compact(getParam(params, "stockThickness"))}.stl`;
   }
   if (model.viewer === "router-tenon-jig-v1") {
     const compact = (value: number) =>
@@ -6956,14 +6956,15 @@ export default function App({
                     <h2>Print set &amp; hardware</h2>
                     <ul>
                       <li>2 deck-rail STLs + 2 cross-stop STLs</li>
-                      <li>2 under-deck fence-jaw STLs</li>
+                      <li>2 under-deck L-shaped thickness-jaw STLs</li>
                       <li>1 positioning-bridge STL</li>
                       <li>1 centering-base STL + 2 centering-fence STLs</li>
                       <li>12 M5 heat-set inserts</li>
                       <li>8 M5 × 18 mm rail/centering screws + 4 M5 × 16 mm stop screws with 32 mm washers</li>
                     </ul>
                     <p>
-                      Match screw length to thickness changes. Router, bushing,
+                      The top rails set mortise width; the lower L-jaws set board thickness.
+                      Match screw length to insert engagement. Router, bushing,
                       cutter, knobs, washers, screws, clamps, and sample stock are
                       preview-only. Test all three setups on scrap and use shallow passes.
                     </p>

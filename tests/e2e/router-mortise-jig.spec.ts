@@ -31,11 +31,13 @@ function inspectStl(input: Buffer) {
 test("builds the photo-matched ten-part system as printable manifold geometry", () => {
   const params = getDefaultParams(model); const spec = getRouterMortiseJigSpec(params, model);
   expect(spec.openingWidth).toBeCloseTo(18.25, 5); expect(spec.openingLength).toBeCloseTo(40.25, 5);
-  expect(spec.railGap).toBeGreaterThanOrEqual(spec.openingWidth); expect(spec.insertSideWall).toBeCloseTo(3.4, 5);
-  expect(spec.insertFloor).toBe(24); expect(spec.insertEngagement).toBe(8); expect(spec.routerSupportOverlap).toBe(60);
+  expect(spec.railGap).toBeCloseTo(spec.openingWidth, 5); expect(spec.jawInnerGap).toBeCloseTo(30.5, 5);
+  expect(spec.jawSlotMargin).toBeGreaterThan(0); expect(spec.insertSideWall).toBeCloseTo(16.4, 5);
+  expect(spec.presetMarkerY).toHaveLength(6); expect(spec.presetMarkerY).toEqual([31.25, 34.25, 37.25, 41.25, 44.75, 47.25]);
+  expect(spec.insertFloor).toBe(4); expect(spec.insertEngagement).toBe(8); expect(spec.routerSupportOverlap).toBe(60);
   expect(spec.screenDeflection).toBeLessThan(0.5); expect(spec.screenSafetyFactor).toBeGreaterThan(3);
   const parts = createRouterMortiseJigPartGeometries(params, model);
-  expect(parts.map((part) => part.key)).toEqual(["left-deck-rail", "right-deck-rail", "front-stop", "rear-stop", "left-fence", "right-fence", "positioning-bridge", "centering-base", "centering-left-fence", "centering-right-fence"]);
+  expect(parts.map((part) => part.key)).toEqual(["left-deck-rail", "right-deck-rail", "front-stop", "rear-stop", "left-thickness-jaw", "right-thickness-jaw", "positioning-bridge", "centering-base", "centering-left-fence", "centering-right-fence"]);
   parts.forEach((part) => { const topology = analyzeGeometry(part.geometry); expect(topology.finite).toBe(true); expect(topology.degenerateTriangles).toBe(0); expect(topology.nonManifoldEdges).toBe(0); expect(topology.bounds.min.z).toBeCloseTo(0, 5); part.geometry.dispose(); });
 });
 
@@ -45,11 +47,19 @@ test("keeps presets, coupled limits, and all three assemblies safe", () => {
     const params = { ...defaults, mortiseWidth: preset.mortiseWidth, mortiseLength: preset.mortiseLength, routerBitDiameter: preset.routerBitDiameter };
     const spec = getRouterMortiseJigSpec(params, model);
     expect(spec.openingWidth).toBeCloseTo(preset.mortiseWidth + defaults.guideBushingDiameter - preset.routerBitDiameter + defaults.templateWiggle, 5);
+    expect(spec.railGap).toBeCloseTo(spec.openingWidth, 5);
   }
   expect(getParameterLimits(model, { ...defaults, mortiseWidth: 6 }, "routerBitDiameter").max).toBe(6);
   expect(getParameterLimits(model, { ...defaults, routerBitDiameter: 10 }, "guideBushingDiameter").min).toBe(12);
-  expect(getParameterLimits(model, defaults, "railGap").min).toBeGreaterThanOrEqual(18.25);
-  const main = createRouterMortiseJigPreviewParts(defaults, model); expect(main.some((part) => part.key === "router-base")).toBe(true); expect(main.filter((part) => part.material === "knob")).toHaveLength(4); main.forEach((part) => part.geometry.dispose());
+  expect(getParameterLimits(model, defaults, "insertDepth").max).toBe(7);
+  for (const stockThickness of [18, 30, 45, 60]) expect(getRouterMortiseJigSpec({ ...defaults, stockThickness }, model).jawSlotMargin).toBeGreaterThanOrEqual(0);
+  const main = createRouterMortiseJigPreviewParts(defaults, model); expect(main.some((part) => part.key === "router-base")).toBe(true); expect(main.filter((part) => part.material === "knob")).toHaveLength(4);
+  const workpiece = main.find((part) => part.key === "workpiece")!; const leftJaw = main.find((part) => part.key === "left-thickness-jaw")!; const rightJaw = main.find((part) => part.key === "right-thickness-jaw")!;
+  workpiece.geometry.computeBoundingBox(); leftJaw.geometry.computeBoundingBox(); rightJaw.geometry.computeBoundingBox();
+  expect(workpiece.geometry.boundingBox!.min.y - leftJaw.geometry.boundingBox!.max.y).toBeCloseTo(defaults.workpieceWiggle / 2, 5);
+  expect(rightJaw.geometry.boundingBox!.min.y - workpiece.geometry.boundingBox!.max.y).toBeCloseTo(defaults.workpieceWiggle / 2, 5);
+  expect(leftJaw.geometry.boundingBox!.max.z).toBeCloseTo(0, 5); expect(rightJaw.geometry.boundingBox!.max.z).toBeCloseTo(0, 5);
+  main.forEach((part) => part.geometry.dispose());
   const positioning = createRouterMortiseJigPreviewParts({ ...defaults, assemblyView: 1 }, model); expect(positioning.some((part) => part.key === "positioning-bridge")).toBe(true); expect(positioning.some((part) => part.key === "router-base")).toBe(false); positioning.forEach((part) => part.geometry.dispose());
   const centering = createRouterMortiseJigPreviewParts({ ...defaults, assemblyView: 2 }, model); expect(centering.some((part) => part.key === "vertical-workpiece")).toBe(true); expect(centering.filter((part) => part.key.includes("centering-")).length).toBeGreaterThanOrEqual(2); centering.forEach((part) => part.geometry.dispose());
 });
@@ -65,6 +75,9 @@ test("renders, switches setups, preserves URL state, audits, and exports ten STL
   await expect(page.locator(".audit-row").filter({ hasText: "Heat-set inserts" })).toContainText("12 × M5");
   await expect(page.locator(".audit-row").filter({ hasText: "150 N strength screen" })).toContainText("stress margin");
   await expect(page.getByText("2 deck-rail STLs + 2 cross-stop STLs")).toBeVisible();
+  await expect(page.getByText("2 under-deck L-shaped thickness-jaw STLs")).toBeVisible();
+  const stockThickness = page.getByRole("textbox", { name: "Board thickness (lower jaw gap) in millimeters" }); await expect(stockThickness).toBeVisible(); await stockThickness.fill("45"); await stockThickness.press("Enter");
+  await expect.poll(() => new URL(page.url()).searchParams.get("stockThickness")).toBe("45"); await expect(page.getByTestId("viewer-status")).toContainText("Lower jaws 45.0 mm board");
   const positioning = page.getByRole("button", { name: "Positioning", exact: true }); await positioning.click(); await expect(positioning).toHaveAttribute("aria-pressed", "true"); await expect(page.getByTestId("viewer-status")).toContainText("Positioning bridge");
   const centering = page.getByRole("button", { name: "Centering", exact: true }); await centering.click(); await expect(centering).toHaveAttribute("aria-pressed", "true"); await expect(page.getByTestId("viewer-status")).toContainText("Centering fixture");
   await expect.poll(() => new URL(page.url()).searchParams.get("assemblyView")).toBe("2"); await page.reload(); await expect(centering).toHaveAttribute("aria-pressed", "true");

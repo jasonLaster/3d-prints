@@ -627,7 +627,7 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   for (const phrase of [
     "mortise + guide-bushing outside diameter − cutter diameter",
     "M5 heat-set insert pockets",
-    "38, 50, 64, and 76 mm",
+    "18, 24, 30, 38, 45, and 50 mm",
     "ten individual files",
     "preview-only stand-ins",
   ]) {

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { formatLength } from "../units";
 import { getParam, getParameter } from "./shared";
 import type { AuditCheckDefinition, AuditItem, LengthUnit, ModelDimensions, ModelParams, NumberLimits, RouterMortiseJigModelDefinition } from "./types";
@@ -6,22 +7,28 @@ import type { AuditCheckDefinition, AuditItem, LengthUnit, ModelDimensions, Mode
 type G = RouterMortiseJigModelDefinition["geometry"] & {
   deckRailLength: number; deckOverallWidth: number; railAdjustmentSlotLength: number; railBoltStationX: number;
   stopLength: number; stopWidth: number; stopAdjustmentSlotLength: number; stopSlotStationY: number;
+  deckRailThickness: number; crossStopThickness: number; jawDepth: number; jawCheekThickness: number;
+  jawFlangeWidth: number; jawFlangeThickness: number; jawInsertOffset: number; jawFusionOverlap: number; jawSlotStationY: number;
+  presetWorkpieceWidthsMm: number[]; markerOffsetX: number; markerLength: number; markerWidth: number;
   minimumInsertEngagement: number; minimumRailWeb: number; minimumRouterSupportOverlap: number; minimumClampLedge: number;
   washerDiameter: number; washerThickness: number; knobDiameter: number; knobHeight: number;
   screenLoadN: number; screenModulusMpa: number; screenAllowableStressMpa: number; maximumScreenDeflection: number; minimumScreenSafetyFactor: number;
   positioningBridgeLength: number; positioningBridgeWidth: number; positioningBridgeThickness: number;
   centeringBaseLength: number; centeringBaseWidth: number; centeringBaseThickness: number;
   centeringFenceLength: number; centeringFenceHeight: number; centeringFenceThickness: number;
+  workpiecePreviewDepth: number;
 };
 const g = (model: RouterMortiseJigModelDefinition) => model.geometry as G;
 
 export type RouterMortiseJigSpec = {
   assemblyView: number; openingLength: number; openingWidth: number; railLength: number; railWidth: number; railThickness: number;
-  railGap: number; overallWidth: number; stopThickness: number; jawLength: number; jawThickness: number; jawDepth: number; jawCenterY: number;
-  workpieceWidth: number; stockThickness: number; workpieceWiggle: number; insertPocketDiameter: number; insertDepth: number;
+  railGap: number; overallWidth: number; stopThickness: number; jawLength: number; jawThickness: number; jawDepth: number;
+  jawFlangeWidth: number; jawFlangeThickness: number; jawInnerGap: number; jawFastenerY: number; jawSlotMargin: number;
+  stockThickness: number; workpiecePreviewDepth: number; workpieceWiggle: number; insertPocketDiameter: number; insertDepth: number;
   insertFloor: number; insertSideWall: number; insertEngagement: number; routerBitDiameter: number; guideBushingDiameter: number;
   routerBaseDiameter: number; templateWiggle: number; minimumRailWeb: number; routerSupportOverlap: number; clampLedge: number;
   screenDeflection: number; screenSafetyFactor: number;
+  presetMarkerY: number[];
 };
 export type RouterMortiseJigPart = { key: RouterMortiseJigModelDefinition["parts"][number]["key"]; label: string; quantity: number; geometry: THREE.BufferGeometry };
 export type RouterMortiseJigPreviewPart = { key: string; material: "printed" | "printed-accent" | "workpiece" | "router" | "metal" | "bit" | "knob"; geometry: THREE.BufferGeometry };
@@ -89,24 +96,32 @@ export function getRouterMortiseJigSpec(params: ModelParams, model: RouterMortis
   const wiggle = getParam(params, "templateWiggle");
   const openingLength = getParam(params, "mortiseLength") + bushing - bit + wiggle;
   const openingWidth = getParam(params, "mortiseWidth") + bushing - bit + wiggle;
-  const railGap = getParam(params, "railGap");
+  const railGap = openingWidth;
   const railWidth = (photo.deckOverallWidth - railGap) / 2;
-  const railThickness = getParam(params, "plateThickness");
-  const workpieceWidth = getParam(params, "workpieceWidth");
+  const railThickness = photo.deckRailThickness;
+  const stockThickness = getParam(params, "stockThickness");
   const workpieceWiggle = getParam(params, "workpieceWiggle");
   const insertDiameter = getParam(params, "insertPocketDiameter");
   const insertDepth = getParam(params, "insertDepth");
-  const jawDepth = getParam(params, "jawDepth");
-  const span = railGap + openingWidth;
+  const jawDepth = photo.jawDepth;
+  const jawInnerGap = stockThickness + workpieceWiggle;
+  const jawFastenerY = jawInnerGap / 2 + photo.jawInsertOffset;
+  const railCenter = railGap / 2 + railWidth / 2;
+  const jawSlotCenterY = railCenter + (photo.jawSlotStationY - railCenter);
+  const jawSlotMargin = photo.railAdjustmentSlotLength / 2 - Math.abs(jawFastenerY - jawSlotCenterY) - photo.boltSlotWidth / 2;
+  const span = openingWidth;
   const sectionWidth = Math.max(1, railWidth - photo.boltSlotWidth * 2);
   const inertia = sectionWidth * Math.pow(railThickness, 3) / 12;
   const stress = photo.screenLoadN * span * railThickness / (8 * inertia);
+  const presetMarkerY = photo.presetWorkpieceWidthsMm.map((thickness) => thickness / 2 + workpieceWiggle / 2 + photo.jawInsertOffset);
   return {
     assemblyView: getParam(params, "assemblyView"), openingLength, openingWidth, railLength: photo.deckRailLength, railWidth, railThickness,
-    railGap, overallWidth: photo.deckOverallWidth, stopThickness: getParam(params, "stopThickness"), jawLength: photo.jawLength,
-    jawThickness: photo.jawThickness, jawDepth, jawCenterY: workpieceWidth / 2 + workpieceWiggle / 2 + photo.jawThickness / 2,
-    workpieceWidth, stockThickness: getParam(params, "stockThickness"), workpieceWiggle, insertPocketDiameter: insertDiameter, insertDepth,
-    insertFloor: jawDepth - insertDepth, insertSideWall: (photo.jawThickness - insertDiameter) / 2,
+    railGap, overallWidth: photo.deckOverallWidth, stopThickness: photo.crossStopThickness, jawLength: photo.jawLength,
+    jawThickness: photo.jawCheekThickness, jawDepth, jawFlangeWidth: photo.jawFlangeWidth, jawFlangeThickness: photo.jawFlangeThickness,
+    jawInnerGap, jawFastenerY, jawSlotMargin, stockThickness, workpiecePreviewDepth: photo.workpiecePreviewDepth, workpieceWiggle,
+    insertPocketDiameter: insertDiameter, insertDepth,
+    insertFloor: photo.jawFlangeThickness - insertDepth,
+    insertSideWall: Math.min(photo.jawInsertOffset - insertDiameter / 2, photo.jawFlangeWidth - photo.jawInsertOffset - insertDiameter / 2),
     insertEngagement: getParam(params, "railScrewLength") - railThickness, routerBitDiameter: bit, guideBushingDiameter: bushing,
     routerBaseDiameter: getParam(params, "routerBaseDiameter"), templateWiggle: wiggle,
     minimumRailWeb: Math.min(railWidth / 2 - photo.boltSlotWidth / 2, (photo.stopWidth - photo.stopAdjustmentSlotLength) / 2),
@@ -114,21 +129,57 @@ export function getRouterMortiseJigSpec(params: ModelParams, model: RouterMortis
     clampLedge: (photo.deckRailLength - photo.stopWidth * 2 - openingLength) / 2,
     screenDeflection: photo.screenLoadN * Math.pow(span, 3) / (48 * photo.screenModulusMpa * inertia),
     screenSafetyFactor: photo.screenAllowableStressMpa / Math.max(stress, 1e-6),
+    presetMarkerY,
   };
 }
 
 export function createRouterMortiseJigDeckRailGeometry(params: ModelParams, model: RouterMortiseJigModelDefinition) {
   const spec = getRouterMortiseJigSpec(params, model); const photo = g(model);
-  const holes = [-1, 1].flatMap((x) => [-1, 1].map((y) => ringCapsule(photo.railAdjustmentSlotLength, photo.boltSlotWidth, "y", x * photo.railBoltStationX, y * spec.railWidth * 0.18)));
+  const railCenter = spec.railGap / 2 + spec.railWidth / 2;
+  const holes = [-1, 1].flatMap((x) => [
+    ringCapsule(photo.railAdjustmentSlotLength, photo.boltSlotWidth, "y", x * photo.railBoltStationX, photo.jawSlotStationY - railCenter),
+    ringCapsule(photo.railAdjustmentSlotLength, photo.boltSlotWidth, "y", x * photo.railBoltStationX, photo.stopSlotStationY - railCenter),
+  ]);
+  for (const y of spec.presetMarkerY) {
+    for (const x of [-1, 1]) {
+      holes.push(ringCapsule(photo.markerLength, photo.markerWidth, "x", x * (photo.railBoltStationX - photo.markerOffsetX), y - railCenter));
+    }
+  }
   return plate(photo.deckRailLength, spec.railWidth, spec.railThickness, holes);
 }
 export function createRouterMortiseJigStopGeometry(params: ModelParams, model: RouterMortiseJigModelDefinition) {
   const photo = g(model);
-  return plate(photo.stopWidth, photo.stopLength, getParam(params, "stopThickness"), [-1, 1].map((y) => ringCapsule(photo.stopAdjustmentSlotLength, photo.boltSlotWidth, "x", 0, y * photo.stopSlotStationY)));
+  return plate(photo.stopWidth, photo.stopLength, photo.crossStopThickness, [-1, 1].map((y) => ringCapsule(photo.stopAdjustmentSlotLength, photo.boltSlotWidth, "x", 0, y * photo.stopSlotStationY)));
 }
-export function createRouterMortiseJigFenceGeometry(params: ModelParams, model: RouterMortiseJigModelDefinition) {
+export function createRouterMortiseJigThicknessJawGeometry(params: ModelParams, model: RouterMortiseJigModelDefinition, side: "left" | "right" = "right") {
   const photo = g(model); const spec = getRouterMortiseJigSpec(params, model);
-  return plate(photo.jawLength, photo.jawThickness, spec.jawDepth, [-1, 1].map((x) => ringCircle(spec.insertPocketDiameter, x * photo.boltStationX, 0)));
+  const overlap = photo.jawFusionOverlap;
+  const flangeLength = photo.jawLength - overlap * 2;
+  const flangeWidth = photo.jawFlangeWidth - overlap;
+  const floor = plate(flangeLength, flangeWidth, spec.insertFloor + overlap);
+  floor.translate(0, overlap + flangeWidth / 2, 0);
+  const pocketLayer = plate(
+    flangeLength,
+    flangeWidth,
+    spec.insertDepth + overlap,
+    [-1, 1].map((x) => ringCircle(spec.insertPocketDiameter, x * photo.boltStationX, photo.jawInsertOffset - overlap - flangeWidth / 2)),
+  );
+  pocketLayer.translate(0, overlap + flangeWidth / 2, spec.insertFloor - overlap);
+  const cheekWidth = photo.jawCheekThickness + overlap;
+  const cheek = box(photo.jawLength, cheekWidth, spec.jawDepth, 0, cheekWidth / 2, 0);
+  const mergeable = [floor, pocketLayer, cheek].map((part) => {
+    const source = part.index ? part.toNonIndexed() : part.clone();
+    source.deleteAttribute("normal");
+    source.deleteAttribute("uv");
+    return source;
+  });
+  const geometry = mergeGeometries(mergeable, false);
+  mergeable.forEach((part) => part.dispose());
+  floor.dispose(); pocketLayer.dispose(); cheek.dispose();
+  if (!geometry) throw new Error("Unable to build the lower L-shaped thickness jaw");
+  if (side === "left") geometry.rotateZ(Math.PI);
+  geometry.computeBoundingBox(); geometry.computeVertexNormals();
+  return geometry;
 }
 export function createRouterMortiseJigPositioningBridgeGeometry(params: ModelParams, model: RouterMortiseJigModelDefinition) {
   const photo = g(model); const spec = getRouterMortiseJigSpec(params, model);
@@ -154,7 +205,8 @@ export function createRouterMortiseJigPartGeometries(params: ModelParams, model:
   return [
     ["left-deck-rail", "Left deck rail", createRouterMortiseJigDeckRailGeometry], ["right-deck-rail", "Right deck rail", createRouterMortiseJigDeckRailGeometry],
     ["front-stop", "Front adjustable stop", createRouterMortiseJigStopGeometry], ["rear-stop", "Rear adjustable stop", createRouterMortiseJigStopGeometry],
-    ["left-fence", "Left fence jaw", createRouterMortiseJigFenceGeometry], ["right-fence", "Right fence jaw", createRouterMortiseJigFenceGeometry],
+    ["left-thickness-jaw", "Left lower L-shaped thickness jaw", (p: ModelParams, m: RouterMortiseJigModelDefinition) => createRouterMortiseJigThicknessJawGeometry(p, m, "left")],
+    ["right-thickness-jaw", "Right lower L-shaped thickness jaw", (p: ModelParams, m: RouterMortiseJigModelDefinition) => createRouterMortiseJigThicknessJawGeometry(p, m, "right")],
     ["positioning-bridge", "Positioning bridge", createRouterMortiseJigPositioningBridgeGeometry], ["centering-base", "Centering fixture base", createRouterMortiseJigCenteringBaseGeometry],
     ["centering-left-fence", "Centering left fence", createRouterMortiseJigCenteringFenceGeometry], ["centering-right-fence", "Centering right fence", createRouterMortiseJigCenteringFenceGeometry],
   ].map(([key, label, creator]) => ({ key: key as RouterMortiseJigPart["key"], label: label as string, quantity: 1, geometry: (creator as typeof createRouterMortiseJigDeckRailGeometry)(params, model) }));
@@ -168,20 +220,24 @@ export function createRouterMortiseJigPreviewParts(params: ModelParams, model: R
     if (knob) parts.push({ key: `knob-${x}-${y}`, material: "knob", geometry: cylinder(photo.knobDiameter, photo.knobHeight, x, y, z + photo.washerThickness, 10) });
   };
   if (spec.assemblyView >= 1.5) {
-    const z = photo.centeringBaseThickness; const fenceY = spec.workpieceWidth / 2 + photo.centeringFenceThickness / 2 + spec.workpieceWiggle / 2;
+    const z = photo.centeringBaseThickness; const fenceY = spec.stockThickness / 2 + photo.centeringFenceThickness / 2 + spec.workpieceWiggle / 2;
     for (const sign of [-1, 1]) { const fence = createRouterMortiseJigCenteringFenceGeometry(params, model); fence.translate(0, sign * fenceY, z); parts.push({ key: sign < 0 ? "centering-left-fence" : "centering-right-fence", material: "printed", geometry: fence }); for (const x of [-58, 58]) hardware(x, sign * 48, z + photo.centeringFenceHeight, true); }
-    parts.push({ key: "vertical-workpiece", material: "workpiece", geometry: box(96, spec.workpieceWidth, 150, 0, 0, z) });
+    parts.push({ key: "vertical-workpiece", material: "workpiece", geometry: box(96, spec.stockThickness, 150, 0, 0, z) });
     parts.push({ key: "clamp-pad", material: "metal", geometry: box(36, 34, 8, 0, -fenceY - 24, z + 42) });
     return parts;
   }
   const railCenter = spec.railGap / 2 + spec.railWidth / 2;
-  const leftRail = createRouterMortiseJigDeckRailGeometry(params, model); leftRail.translate(0, -railCenter, 0); parts.push({ key: "left-deck-rail", material: "printed", geometry: leftRail });
+  const leftRail = createRouterMortiseJigDeckRailGeometry(params, model); leftRail.rotateZ(Math.PI); leftRail.translate(0, -railCenter, 0); parts.push({ key: "left-deck-rail", material: "printed", geometry: leftRail });
   const stopX = spec.railLength / 2 - photo.stopWidth / 2 - 5;
   for (const sign of [-1, 1]) { const stop = createRouterMortiseJigStopGeometry(params, model); stop.translate(sign * stopX, 0, spec.railThickness); parts.push({ key: sign < 0 ? "front-stop" : "rear-stop", material: "printed-accent", geometry: stop }); for (const y of [-photo.stopSlotStationY, photo.stopSlotStationY]) hardware(sign * stopX, y, spec.railThickness + spec.stopThickness, true); }
-  for (const ys of [-1, 1]) for (const x of [-photo.railBoltStationX, photo.railBoltStationX]) hardware(x, ys * (railCenter + spec.railWidth * 0.18), spec.railThickness, false);
-  const leftFence = createRouterMortiseJigFenceGeometry(params, model); leftFence.translate(0, -spec.jawCenterY, -spec.jawDepth); parts.push({ key: "left-fence", material: "printed", geometry: leftFence });
-  const rightFence = createRouterMortiseJigFenceGeometry(params, model); rightFence.translate(0, spec.jawCenterY, -spec.jawDepth); parts.push({ key: "right-fence", material: "printed", geometry: rightFence });
-  parts.push({ key: "workpiece", material: "workpiece", geometry: box(photo.workpiecePreviewLength, spec.workpieceWidth, spec.stockThickness, 0, 0, -spec.stockThickness) });
+  for (const sign of [-1, 1]) for (const x of [-photo.railBoltStationX, photo.railBoltStationX]) {
+    const y = sign * spec.jawFastenerY;
+    parts.push({ key: `rail-washer-${x}-${y}`, material: "metal", geometry: cylinder(photo.washerDiameter, photo.washerThickness, x, y, spec.railThickness, photo.radialSegments) });
+    parts.push({ key: `rail-screw-${x}-${y}`, material: "metal", geometry: cylinder(5, spec.railThickness + spec.insertDepth, x, y, -spec.insertDepth, photo.radialSegments) });
+  }
+  const leftJaw = createRouterMortiseJigThicknessJawGeometry(params, model, "left"); leftJaw.rotateY(Math.PI); leftJaw.translate(0, -spec.jawInnerGap / 2, 0); parts.push({ key: "left-thickness-jaw", material: "printed", geometry: leftJaw });
+  const rightJaw = createRouterMortiseJigThicknessJawGeometry(params, model, "right"); rightJaw.rotateY(Math.PI); rightJaw.translate(0, spec.jawInnerGap / 2, 0); parts.push({ key: "right-thickness-jaw", material: "printed", geometry: rightJaw });
+  parts.push({ key: "workpiece", material: "workpiece", geometry: box(photo.workpiecePreviewLength, spec.stockThickness, spec.workpiecePreviewDepth, 0, 0, -spec.workpiecePreviewDepth) });
   parts.push({ key: "clamp-left", material: "metal", geometry: box(40, 24, 8, -62, -spec.overallWidth / 2 - 6, spec.railThickness) });
   parts.push({ key: "clamp-right", material: "metal", geometry: box(40, 24, 8, 62, spec.overallWidth / 2 + 6, spec.railThickness) });
   if (spec.assemblyView >= 0.5) { const bridge = createRouterMortiseJigPositioningBridgeGeometry(params, model); bridge.translate(0, 0, spec.railThickness + spec.stopThickness + 0.5); parts.push({ key: "positioning-bridge", material: "printed-accent", geometry: bridge }); return parts; }
@@ -195,7 +251,7 @@ export function createRouterMortiseJigPreviewParts(params: ModelParams, model: R
 
 export function getRouterMortiseJigDimensions(params: ModelParams, model: RouterMortiseJigModelDefinition): ModelDimensions {
   const spec = getRouterMortiseJigSpec(params, model); const photo = g(model);
-  return spec.assemblyView >= 1.5 ? { length: photo.centeringBaseLength, width: photo.centeringBaseWidth, height: 162 } : { length: spec.railLength, width: Math.max(spec.overallWidth, photo.stopLength), height: spec.railThickness + spec.stopThickness + (spec.assemblyView < 0.5 ? photo.routerBaseThickness + photo.routerMotorHeight : photo.positioningBridgeThickness) };
+  return spec.assemblyView >= 1.5 ? { length: photo.centeringBaseLength, width: photo.centeringBaseWidth, height: 162 } : { length: spec.railLength, width: Math.max(spec.overallWidth, photo.stopLength), height: spec.jawDepth + spec.railThickness + spec.stopThickness + (spec.assemblyView < 0.5 ? photo.routerBaseThickness + photo.routerMotorHeight : photo.positioningBridgeThickness) };
 }
 export function updateRouterMortiseJigGuide(mesh: THREE.Mesh, params: ModelParams, model: RouterMortiseJigModelDefinition) { const dimensions = getRouterMortiseJigDimensions(params, model); mesh.geometry.dispose(); mesh.geometry = new THREE.BoxGeometry(dimensions.length, dimensions.width, dimensions.height); mesh.position.z = dimensions.height / 2; }
 export function getRouterMortiseJigParameterLimits(model: RouterMortiseJigModelDefinition, params: ModelParams, key: string): NumberLimits {
@@ -203,10 +259,8 @@ export function getRouterMortiseJigParameterLimits(model: RouterMortiseJigModelD
   if (key === "mortiseWidth") limits.min = Math.max(limits.min, getParam(params, "routerBitDiameter"));
   if (key === "routerBitDiameter") limits.max = Math.min(limits.max, getParam(params, "mortiseWidth"), getParam(params, "guideBushingDiameter") - photo.minimumBushingRadialClearance * 2);
   if (key === "guideBushingDiameter") limits.min = Math.max(limits.min, getParam(params, "routerBitDiameter") + photo.minimumBushingRadialClearance * 2);
-  if (key === "insertPocketDiameter") limits.max = Math.min(limits.max, photo.jawThickness - photo.minimumInsertSideWall * 2);
-  if (key === "insertDepth") limits.max = Math.min(limits.max, getParam(params, "jawDepth") - photo.minimumInsertFloor);
-  if (key === "jawDepth") limits.min = Math.max(limits.min, getParam(params, "insertDepth") + photo.minimumInsertFloor);
-  if (key === "railGap") limits.min = Math.max(limits.min, getParam(params, "mortiseWidth") + getParam(params, "guideBushingDiameter") - getParam(params, "routerBitDiameter") + getParam(params, "templateWiggle"));
+  if (key === "insertPocketDiameter") limits.max = Math.min(limits.max, Math.min(photo.jawInsertOffset, photo.jawFlangeWidth - photo.jawInsertOffset) * 2 - photo.minimumInsertSideWall * 2);
+  if (key === "insertDepth") limits.max = Math.min(limits.max, photo.jawFlangeThickness - photo.minimumInsertFloor);
   limits.max = Math.max(limits.min, limits.max); return limits;
 }
 export function getRouterMortiseJigAuditValue(check: AuditCheckDefinition, params: ModelParams, unit: LengthUnit, model: RouterMortiseJigModelDefinition): AuditItem {
@@ -214,18 +268,18 @@ export function getRouterMortiseJigAuditValue(check: AuditCheckDefinition, param
   const values: Record<string, AuditItem> = {
     mortiseTarget: pass(`${formatLength(getParam(params, "mortiseWidth"), unit)} × ${formatLength(getParam(params, "mortiseLength"), unit)} target`),
     templateOpening: pass(`${formatLength(spec.openingWidth, unit)} × ${formatLength(spec.openingLength, unit)} · includes ${formatLength(spec.templateWiggle, unit)} total wiggle room`),
-    photoArchitecture: pass("2 deck rails · 2 cross-stops · center opening · positioning + centering fixtures"),
+    photoArchitecture: pass("2 width-adjusting top rails · 2 fixed-thickness length stops · 2 independent lower L-jaws"),
     routerInterface: pass(`${formatLength(spec.routerBitDiameter, unit)} cutter · ${formatLength(spec.guideBushingDiameter, unit)} guide bushing · ${formatLength(spec.routerBaseDiameter, unit)} base`),
-    workpieceFit: pass(`${formatLength(spec.workpieceWidth, unit)} stock · ${formatLength(spec.workpieceWiggle, unit)} total wiggle room`),
+    workpieceFit: spec.jawSlotMargin >= 0 ? pass(`${formatLength(spec.stockThickness, unit)} stock · ${formatLength(spec.jawInnerGap, unit)} lower jaw gap · ${formatLength(spec.workpieceWiggle, unit)} total wiggle room`) : warn("Lower jaw screw falls outside the deck-rail slot"),
     heatSetInserts: spec.insertSideWall >= photo.minimumInsertSideWall && spec.insertFloor >= photo.minimumInsertFloor ? pass(`12 × M5 · ${formatLength(spec.insertPocketDiameter, unit)} Ø × ${formatLength(spec.insertDepth, unit)} deep pockets`) : warn("Increase insert wall or floor"),
     screwEngagement: spec.insertEngagement >= photo.minimumInsertEngagement ? pass(`${formatLength(spec.insertEngagement, unit)} minimum engagement`) : warn("Rail screws are too short"),
-    adjustmentRange: pass(`${formatLength(photo.minimumWorkpieceWidth, unit)}–${formatLength(photo.maximumWorkpieceWidth, unit)} · ${photo.presetWorkpieceWidthsMm.join(" / ")} mm markers`),
+    adjustmentRange: pass(`${formatLength(photo.minimumWorkpieceWidth, unit)}–${formatLength(photo.maximumWorkpieceWidth, unit)} lower-jaw range · ${photo.presetWorkpieceWidthsMm.join(" / ")} mm markers`),
     minimumRailWeb: spec.minimumRailWeb >= photo.minimumRailWeb ? pass(formatLength(spec.minimumRailWeb, unit)) : warn(formatLength(spec.minimumRailWeb, unit)),
     routerSupport: spec.routerSupportOverlap >= photo.minimumRouterSupportOverlap ? pass(`${formatLength(spec.routerSupportOverlap, unit)} overlap per side`) : warn("Router overlap is too small"),
     clampLedge: spec.clampLedge >= photo.minimumClampLedge ? pass(formatLength(spec.clampLedge, unit)) : warn("Clamp ledge is too small"),
     strengthScreen: spec.screenDeflection <= photo.maximumScreenDeflection && spec.screenSafetyFactor >= photo.minimumScreenSafetyFactor ? pass(`${spec.screenDeflection.toFixed(3)} mm deflection · ${spec.screenSafetyFactor.toFixed(1)}× stress margin at ${photo.screenLoadN} N`) : warn("Increase rail section"),
     printSet: pass("10 individual support-free STLs"), previewStandIn: pass("Router, stock, clamps, knobs, washers, and screws · preview only"),
-    assemblyClearance: pass("Three interference-checked setups · main / positioning / centering"), printOrientation: pass("All pieces export flat on Z=0"),
+    assemblyClearance: pass("Top mortise-width rails and lower stock-thickness jaws adjust independently"), printOrientation: pass("All pieces export on Z=0 without generated support"),
   };
   return values[check.key] ?? warn("Unsupported audit check");
 }

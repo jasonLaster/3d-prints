@@ -97,7 +97,7 @@ export {
   updateDrillBitHolderGuide,
 } from "./drillBitHolder";
 export {
-  createRouterMortiseJigFenceGeometry,
+  createRouterMortiseJigThicknessJawGeometry,
   createRouterMortiseJigGuideGeometry,
   createRouterMortiseJigPartGeometries,
   createRouterMortiseJigPreviewParts,
@@ -339,7 +339,7 @@ export function getStatusItems(
     return [
       `Mortise ${formatLength(width, unit)} × ${formatLength(length, unit)}`,
       `Opening ${formatLength(openingWidth, unit)} × ${formatLength(openingLength, unit)}`,
-      `Stock ${formatLength(getParam(params, "workpieceWidth"), unit)}`,
+      `Lower jaws ${formatLength(getParam(params, "stockThickness"), unit)} board + ${formatLength(getParam(params, "workpieceWiggle"), unit)} wiggle`,
       getParam(params, "assemblyView") >= 1.5 ? "Centering fixture" : getParam(params, "assemblyView") >= 0.5 ? "Positioning bridge" : "Main jig",
       "M5 heat-set inserts × 12",
     ];

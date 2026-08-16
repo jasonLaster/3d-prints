@@ -28,23 +28,37 @@ assert(model.parts.length === 10, "ten individual printable parts are registered
 for (const parameter of model.parameters) assert(parameter.default >= parameter.limits.min && parameter.default <= parameter.limits.max, `${parameter.key} default is inside limits`);
 const openingW = p("mortiseWidth").default + p("guideBushingDiameter").default - p("routerBitDiameter").default + p("templateWiggle").default;
 const openingL = p("mortiseLength").default + p("guideBushingDiameter").default - p("routerBitDiameter").default + p("templateWiggle").default;
-const railWidth = (model.geometry.deckOverallWidth - p("railGap").default) / 2;
+const railWidth = (model.geometry.deckOverallWidth - openingW) / 2;
 const support = (model.geometry.deckOverallWidth - p("routerBaseDiameter").default) / 2;
-const sectionWidth = railWidth - model.geometry.boltSlotWidth * 2; const span = p("railGap").default + openingW;
-const inertia = sectionWidth * p("plateThickness").default ** 3 / 12;
+const sectionWidth = railWidth - model.geometry.boltSlotWidth * 2; const span = openingW;
+const inertia = sectionWidth * model.geometry.deckRailThickness ** 3 / 12;
 const deflection = model.geometry.screenLoadN * span ** 3 / (48 * model.geometry.screenModulusMpa * inertia);
-const stress = model.geometry.screenLoadN * span * p("plateThickness").default / (8 * inertia);
+const stress = model.geometry.screenLoadN * span * model.geometry.deckRailThickness / (8 * inertia);
+const jawInnerGap = p("stockThickness").default + p("workpieceWiggle").default;
+const jawFastenerY = jawInnerGap / 2 + model.geometry.jawInsertOffset;
+const jawSlotMargin = model.geometry.railAdjustmentSlotLength / 2 - Math.abs(jawFastenerY - model.geometry.jawSlotStationY) - model.geometry.boltSlotWidth / 2;
+const minJawFastenerY = p("stockThickness").limits.min / 2 + p("workpieceWiggle").limits.min / 2 + model.geometry.jawInsertOffset;
+const maxJawFastenerY = p("stockThickness").limits.max / 2 + p("workpieceWiggle").limits.max / 2 + model.geometry.jawInsertOffset;
+const minJawSlotMargin = Math.min(
+  model.geometry.railAdjustmentSlotLength / 2 - Math.abs(minJawFastenerY - model.geometry.jawSlotStationY) - model.geometry.boltSlotWidth / 2,
+  model.geometry.railAdjustmentSlotLength / 2 - Math.abs(maxJawFastenerY - model.geometry.jawSlotStationY) - model.geometry.boltSlotWidth / 2,
+);
+const presetMarkerPositions = model.geometry.presetWorkpieceWidthsMm.map((thickness) => thickness / 2 + p("workpieceWiggle").default / 2 + model.geometry.jawInsertOffset);
 assert(openingW === 18.25 && openingL === 40.25, "default router travel is 18.25 × 40.25 mm");
-assert(p("railGap").default >= openingW, "center opening clears calculated router travel");
+assert(openingW > 0 && railWidth > 0, "top deck rails create the calculated mortise-width opening");
+assert(jawInnerGap === 30.5, "lower L-jaws create a 30.5 mm gap for 30 mm stock");
+assert(jawSlotMargin >= 0 && minJawSlotMargin >= 0, "lower-jaw screws remain inside deck-rail slots across the stock-thickness range");
+assert(presetMarkerPositions.length === 6 && presetMarkerPositions.every((position) => Math.abs(position - model.geometry.jawSlotStationY) + model.geometry.markerWidth / 2 <= model.geometry.railAdjustmentSlotLength / 2), "six lower-jaw thickness witness ticks align with the adjustment slots");
 assert(support >= model.geometry.minimumRouterSupportOverlap, "router base remains supported by both rails");
-assert((model.geometry.jawThickness - p("insertPocketDiameter").default) / 2 >= model.geometry.minimumInsertSideWall, "M5 insert pockets preserve side walls");
-assert(p("railScrewLength").default - p("plateThickness").default >= model.geometry.minimumInsertEngagement, "rail screws preserve insert engagement");
+assert(Math.min(model.geometry.jawInsertOffset, model.geometry.jawFlangeWidth - model.geometry.jawInsertOffset) - p("insertPocketDiameter").default / 2 >= model.geometry.minimumInsertSideWall, "M5 insert pockets preserve L-jaw flange side walls");
+assert(model.geometry.jawFlangeThickness - p("insertDepth").default >= model.geometry.minimumInsertFloor, "M5 insert pockets preserve a closed L-jaw flange floor");
+assert(p("railScrewLength").default - model.geometry.deckRailThickness >= model.geometry.minimumInsertEngagement, "rail screws preserve insert engagement");
 assert(deflection <= model.geometry.maximumScreenDeflection, `150 N screen deflection is ${deflection.toFixed(3)} mm`);
 assert(model.geometry.screenAllowableStressMpa / stress >= model.geometry.minimumScreenSafetyFactor, `150 N stress margin is ${(model.geometry.screenAllowableStressMpa / stress).toFixed(1)}×`);
 const expected = {
-  "left-deck-rail": [260, railWidth, p("plateThickness").default], "right-deck-rail": [260, railWidth, p("plateThickness").default],
-  "front-stop": [70, 210, p("stopThickness").default], "rear-stop": [70, 210, p("stopThickness").default],
-  "left-fence": [220, 14, p("jawDepth").default], "right-fence": [220, 14, p("jawDepth").default],
+  "left-deck-rail": [260, railWidth, model.geometry.deckRailThickness], "right-deck-rail": [260, railWidth, model.geometry.deckRailThickness],
+  "front-stop": [70, 210, model.geometry.crossStopThickness], "rear-stop": [70, 210, model.geometry.crossStopThickness],
+  "left-thickness-jaw": [220, model.geometry.jawFlangeWidth, model.geometry.jawDepth], "right-thickness-jaw": [220, model.geometry.jawFlangeWidth, model.geometry.jawDepth],
   "positioning-bridge": [70, 54, 8], "centering-base": [260, 180, 12], "centering-left-fence": [180, 16, 34], "centering-right-fence": [180, 16, 34]
 };
 for (const part of model.parts) {

@@ -83,10 +83,10 @@ Drill Bit Holder:
 
 Handheld Router Mortise Jig:
 
-- The printable set is one 220 × 120 mm guide plate plus two identical adjustable fence jaws; each jaw contains two blind M5 heat-set insert pockets.
+- The printable set uses two top deck rails, two fixed-thickness cross-stops, two independent under-deck L-shaped thickness jaws, a positioning bridge, and a three-part centering fixture; the twelve M5 heat-set insert pockets include two in each lower-jaw flange.
 - The guide opening derives from `mortise + guide-bushing diameter − cutter diameter + total template wiggle room` on both axes.
 - Four common-mortise preset markers set 6 × 25, 8 × 30, 10 × 40, and 12 × 50 mm targets without hiding the underlying parameters.
-- Adjustment slots span 20–80 mm workpieces, with physical witness marks at 38, 50, 64, and 76 mm stock widths.
+- Lower-jaw adjustment slots span 18–60 mm board thicknesses, with physical witness ticks at 18, 24, 30, 38, 45, and 50 mm.
 - The router base, guide bushing, cutter, and sample stock are visible stand-ins in the assembled preview and are excluded from printable exports.
 - The two deck rails, two cross-stops, two under-deck jaws, positioning bridge, centering base, and two centering fences download as ten individual support-free STL files.
 - See `docs/router-mortise-jig-audit-specifications.md` for the full geometry, hardware, use, and audit contract.
@@ -207,7 +207,7 @@ X-Hover Dining Table:
 - The generated STL snapshot used by Save/Fork follows the same geometry as Export.
 - Simple Box provides a separate lid export whose registration skirt uses the same wall-derived clearance contract as stacking.
 - X-Hover provides a routing-template STL-set export. Every file is flat, full-size, normalized to its own print origin, inside the selected square plate envelope, and uniquely names its template family and part index.
-- Handheld Router Mortise Jig export downloads three current-parameter STL files: guide plate, left fence jaw, and right fence jaw. Preview-only router and stock geometry is never exported.
+- Handheld Router Mortise Jig export downloads ten current-parameter STL files: two deck rails, two cross-stops, two lower L-shaped thickness jaws, a positioning bridge, and three centering-fixture pieces. Preview-only router, stock, clamps, knobs, washers, and screws are never exported.
 - Handheld Router Tenon Jig export downloads five current-parameter STL files: base bridge, left/right cheek guides, and front/rear edge guides. Preview-only router, bit, depth stop, hardware, and stock geometry is never exported.
 
 ## Accessibility And Responsiveness
