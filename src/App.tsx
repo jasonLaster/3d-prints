@@ -104,6 +104,7 @@ import {
   createTrayStackingLipGeometry,
   getDefaultParams,
   getGridfinityUnitCount,
+  getBandsawSledSpec,
   getModelDimensions,
   getParam,
   getParameterLimits,
@@ -331,7 +332,6 @@ const PARAM_QUERY_KEYS = [
   "bracketSpacing",
   "bracketWidth",
   "bracketDepth",
-  "bracketGussetDepth",
   "lockSlotLength",
   "lockBoltDiameter",
   "lockBoltLength",
@@ -1155,7 +1155,8 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
   if (model.viewer === "bandsaw-sled-v1") {
     const compact = (value: number) =>
       value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
-    return `${model.export.filePrefix}-base-${compact(getParam(params, "baseWidth"))}x${compact(getParam(params, "baseDepth"))}-fence-${compact(getParam(params, "fenceWidth"))}x${compact(getParam(params, "fenceHeight"))}-setback-${compact(getParam(params, "fencePosition"))}-bracket-${compact(getParam(params, "bracketDepth"))}-gusset-${compact(getParam(params, "bracketGussetDepth"))}.stl`;
+    const spec = getBandsawSledSpec(params, model);
+    return `${model.export.filePrefix}-base-${compact(spec.baseWidth)}x${compact(spec.baseDepth)}-fence-${compact(spec.fenceWidth)}x${compact(spec.fenceHeight)}-setback-${compact(spec.fencePosition)}-bracket-${compact(spec.bracketDepth)}-gusset-${compact(spec.bracketGussetDepth)}.stl`;
   }
   const suffix = model.parameters
     .map(
@@ -7003,8 +7004,8 @@ export default function App({
                       <li>2 M6 × 25 mm bolts + 18 mm washers captured by the knobs</li>
                     </ul>
                     <p>
-                      Bracket length reaches 8 in independently of the triangular gusset;
-                      a 4 in gusset is a practical low-filament starting point for the longest foot.
+                      The triangular gusset automatically stays at 50% of the bracket length,
+                      so the longest 8 in foot uses a 4 in gusset without filling the unused tail.
                       The wood-base depth expands as needed to keep the nominal foot supported.
                     </p>
                     <p>

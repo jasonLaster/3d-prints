@@ -84,7 +84,8 @@ test("builds the wood sled around four watertight printed parts", () => {
   expect(spec.baseInsertFloor).toBeCloseTo(5, 5);
   expect(spec.baseInsertStationY).toBeCloseTo(109, 5);
   expect(spec.insertShoulder).toBeCloseTo(4, 5);
-  expect(spec.bracketGussetDepth).toBeCloseTo(62, 5);
+  expect(spec.bracketGussetLengthRatio).toBeCloseTo(0.5, 5);
+  expect(spec.bracketGussetDepth).toBeCloseTo(45, 5);
   expect(spec.baseSupportMargin).toBeCloseTo(6, 5);
   expect(spec.bracketDeflection).toBeLessThanOrEqual(
     model.geometry.maximumScreenDeflection,
@@ -150,18 +151,13 @@ test("couples fence travel, bracket spacing, slots, and insert floors", () => {
   expect(
     getParameterLimits(model, defaults, "bracketDepth").max,
   ).toBeCloseTo(203.2, 5);
-  expect(getParameterLimits(model, defaults, "bracketGussetDepth").max).toBeCloseTo(193.2, 5);
+  expect(
+    getParameterLimits(model, defaults, "bracketDepth").min,
+  ).toBeCloseTo(76, 5);
   expect(
     getParameterLimits(
       model,
-      { ...defaults, bracketGussetDepth: 101.6 },
-      "bracketDepth",
-    ).min,
-  ).toBeCloseTo(111.6, 5);
-  expect(
-    getParameterLimits(
-      model,
-      { ...defaults, bracketDepth: 203.2, bracketGussetDepth: 101.6 },
+      { ...defaults, bracketDepth: 203.2 },
       "baseDepth",
     ).min,
   ).toBe(545);
@@ -173,12 +169,11 @@ test("couples fence travel, bracket spacing, slots, and insert floors", () => {
   ).toBe(19);
 });
 
-test("keeps an 8 inch bracket manifold with an independent 4 inch gusset", () => {
+test("keeps an 8 inch bracket manifold with its proportional 4 inch gusset", () => {
   const params = {
     ...getDefaultParams(model),
     baseDepth: 545,
     bracketDepth: 203.2,
-    bracketGussetDepth: 101.6,
   };
   const spec = getBandsawSledSpec(params, model);
   expect(spec.bracketDepth).toBeCloseTo(203.2, 5);
@@ -225,15 +220,16 @@ test("renders material roles, moves the fence, audits hardware, and exports four
 
   const baseDepth = page.getByLabel("Wood base depth in millimeters");
   const bracketLength = page.getByLabel("Printed bracket length in millimeters");
-  const gussetLength = page.getByLabel("Triangular gusset length in millimeters");
   await bracketLength.fill("203.2");
-  await gussetLength.fill("101.6");
   await expect(baseDepth).toHaveValue("545.0");
   await expect(bracketLength).toHaveValue("203.2");
-  await expect(gussetLength).toHaveValue("101.6");
+  await expect(page.getByLabel("Triangular gusset length in millimeters")).toHaveCount(0);
   await expect.poll(() => new URL(page.url()).searchParams.get("bracketDepth")).toBe("203.2");
-  await expect.poll(() => new URL(page.url()).searchParams.get("bracketGussetDepth")).toBe("101.6");
-  await expect(page.locator(".audit-row").filter({ hasText: "Bracket and gusset lengths" })).toContainText("203.2 mm bracket");
+  await expect.poll(() => new URL(page.url()).searchParams.has("bracketGussetDepth")).toBe(false);
+  const bracketAudit = page.locator(".audit-row").filter({ hasText: "Bracket and gusset lengths" });
+  await expect(bracketAudit).toContainText("203.2 mm bracket");
+  await expect(bracketAudit).toContainText("101.6 mm gusset (50%)");
+  await expect(page.getByTestId("viewer-status")).toContainText("gusset 101.6 mm (50%)");
 
   const fencePosition = page.getByLabel("Fence setback from sled center in millimeters");
   await fencePosition.fill("70");

@@ -237,6 +237,7 @@ export type BandsawSledGeometry = {
   bracketFootThickness: number;
   bracketGussetThickness: number;
   bracketGussetHeight: number;
+  bracketGussetLengthRatio: number;
   bracketBoltLowerHeight: number;
   bracketBoltUpperHeight: number;
   baseInsertStationY: number;

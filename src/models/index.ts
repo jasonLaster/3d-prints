@@ -39,6 +39,7 @@ import {
   getBandsawSledAuditValue,
   getBandsawSledDimensions,
   getBandsawSledParameterLimits,
+  getBandsawSledSpec,
 } from "./bandsawSled";
 import {
   getDiningTableAuditValue,
@@ -353,11 +354,12 @@ export function getStatusItems(
     ];
   }
   if (model.viewer === "bandsaw-sled-v1") {
+    const spec = getBandsawSledSpec(params, model);
     return [
-      `Wood base ${formatLength(getParam(params, "baseWidth"), unit)} × ${formatLength(getParam(params, "baseDepth"), unit)} × ${formatLength(getParam(params, "baseThickness"), unit)}`,
-      `Wood fence ${formatLength(getParam(params, "fenceWidth"), unit)} × ${formatLength(getParam(params, "fenceHeight"), unit)}`,
-      `Fence setback ${formatLength(getParam(params, "fencePosition"), unit)}`,
-      `Bracket ${formatLength(getParam(params, "bracketDepth"), unit)} · gusset ${formatLength(getParam(params, "bracketGussetDepth"), unit)}`,
+      `Wood base ${formatLength(spec.baseWidth, unit)} × ${formatLength(spec.baseDepth, unit)} × ${formatLength(spec.baseThickness, unit)}`,
+      `Wood fence ${formatLength(spec.fenceWidth, unit)} × ${formatLength(spec.fenceHeight, unit)}`,
+      `Fence setback ${formatLength(spec.fencePosition, unit)}`,
+      `Bracket ${formatLength(spec.bracketDepth, unit)} · gusset ${formatLength(spec.bracketGussetDepth, unit)} (${(spec.bracketGussetLengthRatio * 100).toFixed(0)}%)`,
       "Printed brackets × 2 · lock knobs × 2",
       "M5 heat-set inserts × 4 · M6 wood inserts × 2",
     ];

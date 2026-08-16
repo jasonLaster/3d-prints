@@ -39,6 +39,7 @@ export type BandsawSledSpec = {
   bladeKerf: number;
   bracketWidth: number;
   bracketDepth: number;
+  bracketGussetLengthRatio: number;
   bracketGussetDepth: number;
   bracketSpacing: number;
   bracketBackThickness: number;
@@ -338,7 +339,8 @@ export function getBandsawSledSpec(
   const fencePosition = getParam(params, "fencePosition");
   const bracketWidth = getParam(params, "bracketWidth");
   const bracketDepth = getParam(params, "bracketDepth");
-  const bracketGussetDepth = getParam(params, "bracketGussetDepth");
+  const bracketGussetLengthRatio = model.geometry.bracketGussetLengthRatio;
+  const bracketGussetDepth = bracketDepth * bracketGussetLengthRatio;
   const bracketSpacing = getParam(params, "bracketSpacing");
   const lockSlotLength = getParam(params, "lockSlotLength");
   const lockBoltDiameter = getParam(params, "lockBoltDiameter");
@@ -382,6 +384,7 @@ export function getBandsawSledSpec(
     bladeKerf: getParam(params, "bladeKerf"),
     bracketWidth,
     bracketDepth,
+    bracketGussetLengthRatio,
     bracketGussetDepth,
     bracketSpacing,
     bracketBackThickness: model.geometry.bracketBackThickness,
@@ -957,7 +960,7 @@ export function getBandsawSledAuditValue(
         spec.bracketGussetDepth + model.geometry.bracketBackThickness <= spec.bracketDepth + EPSILON &&
         spec.baseSupportMargin >= model.geometry.minimumBaseEdgeMargin - EPSILON
         ? pass(
-            `${formatLength(spec.bracketDepth, unit)} bracket · ${formatLength(spec.bracketGussetDepth, unit)} gusset · ${formatLength(spec.baseSupportMargin, unit)} base margin`,
+            `${formatLength(spec.bracketDepth, unit)} bracket · ${formatLength(spec.bracketGussetDepth, unit)} gusset (${(spec.bracketGussetLengthRatio * 100).toFixed(0)}%) · ${formatLength(spec.baseSupportMargin, unit)} base margin`,
           )
         : warn("Bracket, gusset, or supporting base length is outside the safe envelope");
     case "bracketStrength":
