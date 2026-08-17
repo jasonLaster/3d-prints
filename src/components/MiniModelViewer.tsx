@@ -13,6 +13,8 @@ import {
   createBandsawSledGeometry,
   createBandsawSledPreviewParts,
   createCompactWallBracketGeometry,
+  createPipeWallMountGeometry,
+  createPipeWallMountPipePreviews,
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
   createRouterMortiseJigGuideGeometry,
@@ -191,6 +193,17 @@ function createPreviewObject(
         mainMaterial,
       ),
     );
+  } else if (definition.viewer === "pipe-wall-mount-v1") {
+    sourceGeometry.dispose();
+    group.add(
+      new THREE.Mesh(
+        createPipeWallMountGeometry(params, definition),
+        mainMaterial,
+      ),
+    );
+    createPipeWallMountPipePreviews(params, definition).forEach((geometry) => {
+      group.add(new THREE.Mesh(geometry, workpieceMaterial));
+    });
   } else if (definition.viewer === "concentric-tube-jig-v1") {
     sourceGeometry.dispose();
     group.add(

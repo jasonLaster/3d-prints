@@ -34,6 +34,13 @@ Current models:
   - Retained source: `models/compact-wall-bracket/reference/obj_4_Corpo_04_(2).stl`
   - Audit script: `models/compact-wall-bracket/audit.mjs`
   - Source generator: `models/compact-wall-bracket/generate-source.mjs`
+- `pipe-wall-mount`
+  - Reference STL: `public/models/pipe-wall-mount/Strong_Universal_Wall_Hook_VCD.stl`
+  - Generated default STL: `public/models/pipe-wall-mount/variable-pipe-wall-mount-default.stl`
+  - Config: `public/models/pipe-wall-mount/model.json`
+  - Retained source: `models/pipe-wall-mount/reference/Strong_Universal_Wall_Hook_VCD.stl`
+  - Audit script: `models/pipe-wall-mount/audit.mjs`
+  - Source generator: `models/pipe-wall-mount/generate-source.mjs`
 - `drill-bit-holder`
   - STL: `public/models/drill-bit-holder/drill-bit-holder.stl`
   - Config: `public/models/drill-bit-holder/model.json`
@@ -86,6 +93,7 @@ npm run audit -- japandi-tray
 npm run audit -- simple-box
 npm run audit -- door-lock-adapter
 npm run audit -- compact-wall-bracket
+npm run audit -- pipe-wall-mount
 npm run audit -- drill-bit-holder
 npm run audit -- router-mortise-jig
 npm run audit -- router-tenon-jig

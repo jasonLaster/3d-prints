@@ -124,6 +124,22 @@ export type CompactWallBracketGeometry = {
   sourceHasBoltBores: false;
 };
 
+export type PipeWallMountGeometry = {
+  mainAxis: { x: number; y: number; z: number };
+  defaultPipeDiametersMm: number[];
+  minimumPipeDiameter: number;
+  maximumPipeDiameter: number;
+  maximumPipeCount: number;
+  radialSegments: number;
+  minimumTopBottomMargin: number;
+  minimumHookBridge: number;
+  minimumHoleEdgeWeb: number;
+  pipePreviewOverhang: number;
+  sourceProjection: number;
+  sourceHeight: number;
+  sourceWidth: number;
+};
+
 export type ConcentricTubeJigGeometry = {
   mainAxis: { x: number; y: number; z: number };
   radialSegments: number;
@@ -306,6 +322,7 @@ export type SupportedViewer =
   | "simple-box-v1"
   | "door-lock-adapter-v1"
   | "compact-wall-bracket-v1"
+  | "pipe-wall-mount-v1"
   | "concentric-tube-jig-v1"
   | "drill-bit-holder-v1"
   | "router-mortise-jig-v1"
@@ -363,6 +380,15 @@ export type CompactWallBracketModelDefinition = BaseModelDefinition & {
   viewer: "compact-wall-bracket-v1";
   geometry: CompactWallBracketGeometry;
   twoUpStl: {
+    fileName: string;
+    url: string;
+  };
+};
+
+export type PipeWallMountModelDefinition = BaseModelDefinition & {
+  viewer: "pipe-wall-mount-v1";
+  geometry: PipeWallMountGeometry;
+  defaultStl: {
     fileName: string;
     url: string;
   };
@@ -452,6 +478,7 @@ export type ModelDefinition =
   | SimpleBoxModelDefinition
   | DoorLockAdapterModelDefinition
   | CompactWallBracketModelDefinition
+  | PipeWallMountModelDefinition
   | ConcentricTubeJigModelDefinition
   | DrillBitHolderModelDefinition
   | RouterMortiseJigModelDefinition

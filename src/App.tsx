@@ -76,6 +76,8 @@ import {
   createBandsawSledPreviewParts,
   createCompactWallBracketGeometry,
   createCompactWallBracketTwoUpGeometries,
+  createPipeWallMountGeometry,
+  createPipeWallMountPipePreviews,
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
   createRouterMortiseJigGuideGeometry,
@@ -108,6 +110,8 @@ import {
   getGridfinityUnitCount,
   getBandsawSledSpec,
   getCompactWallBracketSpec,
+  getPipeDiameters,
+  getPipeWallMountSpec,
   getModelDimensions,
   getParam,
   getParameterLimits,
@@ -115,9 +119,14 @@ import {
   getRouterTenonJigSpec,
   getStatusItems,
   isDrillBitDiameterKey,
+  isPipeDiameterKey,
+  orientPipeWallMountForPrint,
+  orientPipeWallMountReferenceGeometry,
+  PIPE_DIAMETER_PARAMETER_KEYS,
   snapGridfinityDimension,
   updateDoorLockAdapterGuide,
   updateCompactWallBracketGuide,
+  updatePipeWallMountGuide,
   updateConcentricTubeJigGuide,
   updateDrillBitHolderGuide,
   updateBandsawSledGuide,
@@ -298,6 +307,19 @@ const PARAM_QUERY_KEYS = [
   "cornerRadius",
   "edgeBevel",
   ...DRILL_BIT_PARAMETER_KEYS,
+  "pipes",
+  "pipeCount",
+  ...PIPE_DIAMETER_PARAMETER_KEYS,
+  "pipeWiggle",
+  "hookReach",
+  "hookThickness",
+  "hookWidth",
+  "pipeGap",
+  "bracketHeight",
+  "backplateThickness",
+  "drillColumnOffset",
+  "mountingHoleDiameter",
+  "drillEdgeOffset",
   "mortiseWidth",
   "mortiseLength",
   "routerBitDiameter",
@@ -468,6 +490,7 @@ const PARAM_QUERY_KEYS = [
 const ANGLE_PARAM_KEYS = new Set(["rotation", "cutoutRotation"]);
 const SCALAR_PARAM_KEYS = new Set([
   "bitCount",
+  "pipeCount",
   "dividerCount",
   "gridfinityCompatible",
   "legGrooveEnabled",
@@ -493,6 +516,7 @@ const CURVE_PARAM_KEYS = new Set([
 const OPTION_PARAM_KEYS = new Set([
   "assemblyView",
   "bitCount",
+  "pipeCount",
   "gridfinityCompatible",
   "legGrooveEnabled",
   "endFrameStyle",
@@ -821,6 +845,31 @@ function getParamsFromUrl(model: ModelDefinition) {
     }
   }
 
+  if (model.viewer === "pipe-wall-mount-v1") {
+    const rawPipes = searchParams.get("pipes");
+    if (rawPipes !== null) {
+      const parsedPipes = rawPipes
+        .split(",")
+        .map((value) => parseLengthInput(value.trim(), unit));
+      const validPipes = parsedPipes.filter(
+        (value): value is number =>
+          value !== null &&
+          value >= model.geometry.minimumPipeDiameter &&
+          value <= model.geometry.maximumPipeDiameter,
+      );
+      if (
+        validPipes.length === parsedPipes.length &&
+        validPipes.length >= 1 &&
+        validPipes.length <= model.geometry.maximumPipeCount
+      ) {
+        params.pipeCount = validPipes.length;
+        validPipes.forEach((value, index) => {
+          params[`pipeDiameter${index + 1}`] = Number(value.toFixed(4));
+        });
+      }
+    }
+  }
+
   if (
     model.viewer === "simple-box-v1" &&
     params.gridfinityCompatible >= 0.5
@@ -839,6 +888,7 @@ function getParamsFromUrl(model: ModelDefinition) {
   if (
     model.viewer === "door-lock-adapter-v1" ||
     model.viewer === "compact-wall-bracket-v1" ||
+    model.viewer === "pipe-wall-mount-v1" ||
     model.viewer === "drill-bit-holder-v1" ||
     model.viewer === "router-mortise-jig-v1" ||
     model.viewer === "router-tenon-jig-v1" ||
@@ -847,6 +897,7 @@ function getParamsFromUrl(model: ModelDefinition) {
     const passes =
       model.viewer === "drill-bit-holder-v1" ||
       model.viewer === "compact-wall-bracket-v1" ||
+      model.viewer === "pipe-wall-mount-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
       model.viewer === "router-tenon-jig-v1" ||
       model.viewer === "bandsaw-sled-v1"
@@ -914,6 +965,10 @@ function writeParamsToUrl(
       !(
         modelId === "drill-bit-holder" &&
         (key === "bitCount" || isDrillBitDiameterKey(key))
+      ) &&
+      !(
+        modelId === "pipe-wall-mount" &&
+        (key === "pipeCount" || isPipeDiameterKey(key))
       )
     ) {
       url.searchParams.set(key, serializeUrlParam(key, value, unit));
@@ -924,6 +979,12 @@ function writeParamsToUrl(
       .map((value) => serializeUrlParam("bits", value, unit))
       .join(",");
     url.searchParams.set("bits", bits);
+  }
+  if (modelId === "pipe-wall-mount") {
+    const pipes = getPipeDiameters(params)
+      .map((value) => serializeUrlParam("pipes", value, unit))
+      .join(",");
+    url.searchParams.set("pipes", pipes);
   }
 }
 
@@ -1171,6 +1232,13 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
     const spec = getCompactWallBracketSpec(params, model);
     return `${model.export.filePrefix}-${compact(spec.span)}x${compact(spec.rise)}x${compact(spec.depth)}.stl`;
   }
+  if (model.viewer === "pipe-wall-mount-v1") {
+    const compact = (value: number) =>
+      value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    const spec = getPipeWallMountSpec(params, model);
+    const pipes = spec.pipeDiameters.map(compact).join("_");
+    return `${model.export.filePrefix}-pipes-${pipes}-wiggle-${compact(spec.pipeWiggle)}-reach-${compact(spec.hookReach)}-height-${compact(spec.bracketHeight)}.stl`;
+  }
   const suffix = model.parameters
     .map(
       (parameter) => {
@@ -1341,7 +1409,8 @@ const HolderViewer = forwardRef<
     const target = new THREE.Vector3(
       0,
       0,
-      model.viewer === "compact-wall-bracket-v1"
+      model.viewer === "compact-wall-bracket-v1" ||
+      model.viewer === "pipe-wall-mount-v1"
         ? dimensions.height * 0.5
         : model.viewer !== "weighted-paper-towel-holder-v1"
         ? dimensions.height * 0.25
@@ -1371,7 +1440,10 @@ const HolderViewer = forwardRef<
     } else if (preset === "yEdge") {
       camera.position.set(distance, 0, edgeViewZ);
     } else if (model.viewer !== "weighted-paper-towel-holder-v1") {
-      if (model.viewer === "compact-wall-bracket-v1") {
+      if (
+        model.viewer === "compact-wall-bracket-v1" ||
+        model.viewer === "pipe-wall-mount-v1"
+      ) {
         camera.position.set(
           distance * 1.05,
           -distance * 1.1,
@@ -1481,6 +1553,32 @@ const HolderViewer = forwardRef<
         model,
       );
       updateCompactWallBracketGuide(guideMesh, latestParamsRef.current);
+    } else if (model.viewer === "pipe-wall-mount-v1") {
+      if (!routerMortisePreviewGroup || !routerPreviewMaterial) {
+        return;
+      }
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createPipeWallMountGeometry(
+        latestParamsRef.current,
+        model,
+      );
+      routerMortisePreviewGroup.children.forEach((child) => {
+        if (child instanceof THREE.Mesh) child.geometry.dispose();
+      });
+      routerMortisePreviewGroup.clear();
+      createPipeWallMountPipePreviews(
+        latestParamsRef.current,
+        model,
+      ).forEach((geometry, index) => {
+        const pipe = new THREE.Mesh(geometry, routerPreviewMaterial);
+        pipe.name = `${model.id}-pipe-preview-${index + 1}`;
+        routerMortisePreviewGroup.add(pipe);
+      });
+      updatePipeWallMountGuide(
+        guideMesh,
+        latestParamsRef.current,
+        model,
+      );
     } else if (model.viewer === "concentric-tube-jig-v1") {
       mainMesh.geometry.dispose();
       mainMesh.geometry = createConcentricTubeJigGeometry(
@@ -1909,6 +2007,12 @@ const HolderViewer = forwardRef<
       orientDiningTableForSupportFreePrint(
         holder,
         getModelDimensions(model, latestParamsRef.current).height,
+      );
+    } else if (model.viewer === "pipe-wall-mount-v1") {
+      orientPipeWallMountForPrint(
+        holder,
+        latestParamsRef.current,
+        model,
       );
     }
     group.add(holder);
@@ -2454,6 +2558,7 @@ const HolderViewer = forwardRef<
     controls.minDistance =
       model.viewer === "door-lock-adapter-v1" ||
       model.viewer === "compact-wall-bracket-v1" ||
+      model.viewer === "pipe-wall-mount-v1" ||
       model.viewer === "concentric-tube-jig-v1" ||
       model.viewer === "drill-bit-holder-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
@@ -2581,6 +2686,9 @@ const HolderViewer = forwardRef<
           mainGeometry,
           model.geometry.mainAxis,
         );
+        if (model.viewer === "pipe-wall-mount-v1") {
+          orientPipeWallMountReferenceGeometry(normalizedMain.geometry);
+        }
         mainBaseRef.current = normalizedMain.basePositions;
 
         const woodTexture =
@@ -2689,6 +2797,8 @@ const HolderViewer = forwardRef<
           ? createDoorLockAdapterGeometry(latestParamsRef.current, model)
           : model.viewer === "compact-wall-bracket-v1"
             ? createCompactWallBracketGeometry(latestParamsRef.current, model)
+          : model.viewer === "pipe-wall-mount-v1"
+            ? createPipeWallMountGeometry(latestParamsRef.current, model)
           : model.viewer === "concentric-tube-jig-v1"
             ? createConcentricTubeJigGeometry(latestParamsRef.current, model)
             : model.viewer === "drill-bit-holder-v1"
@@ -2758,6 +2868,7 @@ const HolderViewer = forwardRef<
         } else if (
           model.viewer === "router-mortise-jig-v1" ||
           model.viewer === "router-tenon-jig-v1" ||
+          model.viewer === "pipe-wall-mount-v1" ||
           model.viewer === "bandsaw-sled-v1"
         ) {
           const previewGroup = new THREE.Group();
@@ -2825,6 +2936,7 @@ const HolderViewer = forwardRef<
         if (
           model.viewer === "door-lock-adapter-v1" ||
           model.viewer === "compact-wall-bracket-v1" ||
+          model.viewer === "pipe-wall-mount-v1" ||
           model.viewer === "concentric-tube-jig-v1" ||
           model.viewer === "drill-bit-holder-v1" ||
           model.viewer === "router-mortise-jig-v1" ||
@@ -3275,6 +3387,95 @@ function DrillBitSizesControl({
         Comma-separated, left to right. Add an entry for a hole; delete one to
         remove it. The largest entry sets the box width. Press Enter or leave
         the field to apply.
+      </small>
+      {error ? <p role="alert">{error}</p> : null}
+    </div>
+  );
+}
+
+function PipeSizesControl({
+  maximumPipeCount,
+  maximumPipeDiameter,
+  minimumPipeDiameter,
+  onChange,
+  pipeDiameters,
+  unit,
+}: {
+  maximumPipeCount: number;
+  maximumPipeDiameter: number;
+  minimumPipeDiameter: number;
+  onChange: (values: number[]) => void;
+  pipeDiameters: number[];
+  unit: LengthUnit;
+}) {
+  const formatValues = () =>
+    pipeDiameters.map((value) => formatLengthInput(value, unit)).join(", ");
+  const [draft, setDraft] = useState(formatValues);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setDraft(formatValues());
+    setError("");
+  }, [pipeDiameters, unit]);
+
+  const apply = () => {
+    const entries = draft
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    if (entries.length === 0) {
+      setError("Enter at least one pipe diameter.");
+      return;
+    }
+    if (entries.length > maximumPipeCount) {
+      setError(`Use no more than ${maximumPipeCount} pipe diameters.`);
+      return;
+    }
+    const values = entries.map((entry) => parseLengthInput(entry, unit));
+    if (values.some((value) => value === null)) {
+      setError("Separate valid pipe diameters with commas.");
+      return;
+    }
+    const parsed = values as number[];
+    if (
+      parsed.some(
+        (value) =>
+          value < minimumPipeDiameter || value > maximumPipeDiameter,
+      )
+    ) {
+      setError(
+        `Each pipe must be between ${formatLength(minimumPipeDiameter, unit)} and ${formatLength(maximumPipeDiameter, unit)}.`,
+      );
+      return;
+    }
+    setError("");
+    onChange(parsed.map((value) => Number(value.toFixed(4))));
+  };
+
+  return (
+    <div className="drill-bit-list-control pipe-size-list-control">
+      <label htmlFor="pipe-wall-mount-sizes">
+        Pipe outside diameters ({UNIT_OPTIONS[unit].label})
+      </label>
+      <input
+        aria-describedby="pipe-wall-mount-sizes-help"
+        aria-invalid={error ? "true" : "false"}
+        id="pipe-wall-mount-sizes"
+        onBlur={apply}
+        onChange={(event) => setDraft(event.currentTarget.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            apply();
+          }
+        }}
+        spellCheck={false}
+        type="text"
+        value={draft}
+      />
+      <small id="pipe-wall-mount-sizes-help">
+        Comma-separated, bottom hook to top hook. Add an entry for a hook;
+        delete one to remove it. Press Enter or leave the field to apply.
       </small>
       {error ? <p role="alert">{error}</p> : null}
     </div>
@@ -3926,6 +4127,70 @@ function CompactWallBracketParameterControls({
                   parameter.key === "edgeChamfer" ||
                   parameter.key === "plateEdgeMargin" ||
                   parameter.key === "pairGap"
+                }
+                unit={unit}
+                valueMm={params[parameter.key]}
+              />
+            ))}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+const PIPE_WALL_MOUNT_PARAMETER_GROUPS = [
+  "Hook shape",
+  "Backplate & drilling",
+] as const;
+
+function PipeWallMountParameterControls({
+  model,
+  onChange,
+  onPipeChange,
+  onUnitChange,
+  params,
+  unit,
+}: {
+  model: Extract<ModelDefinition, { viewer: "pipe-wall-mount-v1" }>;
+  onChange: (key: string, value: number) => void;
+  onPipeChange: (values: number[]) => void;
+  onUnitChange: (unit: LengthUnit) => void;
+  params: ModelParams;
+  unit: LengthUnit;
+}) {
+  return (
+    <div className="parameter-groups pipe-wall-mount-parameter-groups">
+      <section className="nested-parameter-section">
+        <div className="divider-controls-heading">
+          <h3>Pipe set</h3>
+        </div>
+        <PipeSizesControl
+          maximumPipeCount={model.geometry.maximumPipeCount}
+          maximumPipeDiameter={model.geometry.maximumPipeDiameter}
+          minimumPipeDiameter={model.geometry.minimumPipeDiameter}
+          onChange={onPipeChange}
+          pipeDiameters={getPipeDiameters(params, model)}
+          unit={unit}
+        />
+      </section>
+      {PIPE_WALL_MOUNT_PARAMETER_GROUPS.map((group) => (
+        <section className="nested-parameter-section" key={group}>
+          <div className="divider-controls-heading">
+            <h3>{group}</h3>
+          </div>
+          {model.parameters
+            .filter((parameter) => parameter.group === group)
+            .map((parameter) => (
+              <NumberControl
+                key={parameter.key}
+                label={parameter.label}
+                limits={getParameterLimits(model, params, parameter.key)}
+                onChange={(value) => onChange(parameter.key, value)}
+                onUnitChange={onUnitChange}
+                preferFineStep={
+                  parameter.key === "pipeWiggle" ||
+                  parameter.key === "hookThickness" ||
+                  parameter.key === "mountingHoleDiameter"
                 }
                 unit={unit}
                 valueMm={params[parameter.key]}
@@ -5514,6 +5779,8 @@ function WorkspaceActionsMenu({
                       ? "Original inlay"
                       : model.viewer === "compact-wall-bracket-v1"
                         ? "Default compact STL"
+                      : model.viewer === "pipe-wall-mount-v1"
+                        ? "Reference single hook"
                       : "Original STL"
                   }
                   onChange={onShowOriginalChange}
@@ -5535,6 +5802,8 @@ function WorkspaceActionsMenu({
                     ? "Export 4 printed-part STLs"
                   : model.viewer === "compact-wall-bracket-v1"
                     ? "Export single STL"
+                  : model.viewer === "pipe-wall-mount-v1"
+                    ? "Export wall mount STL"
                   : "Export"}
               </button>
               {model.viewer === "compact-wall-bracket-v1" ? (
@@ -6160,6 +6429,7 @@ export default function App({
             model.viewer === "router-mortise-jig-v1" ||
             model.viewer === "router-tenon-jig-v1" ||
             model.viewer === "compact-wall-bracket-v1" ||
+            model.viewer === "pipe-wall-mount-v1" ||
             model.viewer === "bandsaw-sled-v1"
               ? 4
               : CURVE_PARAM_KEYS.has(key)
@@ -6225,6 +6495,22 @@ export default function App({
         }
       }
       if (model.viewer === "compact-wall-bracket-v1") {
+        for (let pass = 0; pass < 2; pass += 1) {
+          for (const parameter of model.parameters) {
+            const dependentLimits = getParameterLimits(
+              model,
+              next,
+              parameter.key,
+            );
+            next[parameter.key] = clamp(
+              next[parameter.key],
+              dependentLimits.min,
+              dependentLimits.max,
+            );
+          }
+        }
+      }
+      if (model.viewer === "pipe-wall-mount-v1") {
         for (let pass = 0; pass < 2; pass += 1) {
           for (const parameter of model.parameters) {
             const dependentLimits = getParameterLimits(
@@ -6420,6 +6706,31 @@ export default function App({
       for (const key of ["cornerRadius", "edgeBevel"] as const) {
         const limits = getParameterLimits(model, next, key);
         next[key] = clamp(next[key], limits.min, limits.max);
+      }
+      return next;
+    });
+  };
+
+  const updatePipeSizes = (values: number[]) => {
+    if (model?.viewer !== "pipe-wall-mount-v1") return;
+    setParams((current) => {
+      if (!current) return current;
+      const next: ModelParams = { ...current, pipeCount: values.length };
+      for (const key of Object.keys(next)) {
+        if (isPipeDiameterKey(key)) delete next[key];
+      }
+      values.forEach((value, index) => {
+        next[`pipeDiameter${index + 1}`] = value;
+      });
+      for (let pass = 0; pass < 2; pass += 1) {
+        for (const parameter of model.parameters) {
+          const limits = getParameterLimits(model, next, parameter.key);
+          next[parameter.key] = clamp(
+            next[parameter.key],
+            limits.min,
+            limits.max,
+          );
+        }
       }
       return next;
     });
@@ -7008,6 +7319,15 @@ export default function App({
                       params={params}
                       unit={unit}
                     />
+                  ) : model.viewer === "pipe-wall-mount-v1" ? (
+                    <PipeWallMountParameterControls
+                      model={model}
+                      onChange={updateParam}
+                      onPipeChange={updatePipeSizes}
+                      onUnitChange={setUnit}
+                      params={params}
+                      unit={unit}
+                    />
                   ) : model.viewer === "hover-dining-table-v1" ? (
                     <HoverDiningTableParameterControls
                       model={model}
@@ -7188,6 +7508,25 @@ export default function App({
                       attachment, fasteners, or load capacity. Confirm the final
                       two-copy layout in your slicer, then proof-load the installed
                       pair gradually.
+                    </p>
+                  </section>
+                ) : null}
+
+                {model.viewer === "pipe-wall-mount-v1" ? (
+                  <section className="panel-section router-mortise-print-set">
+                    <h2>Print &amp; mounting plan</h2>
+                    <ul>
+                      <li>One continuous wall-mount STL; preview pipes are excluded</li>
+                      <li>Print on either broad side for continuous hook layers</li>
+                      <li>Four through-bores at the reported drill centers</li>
+                      <li>Blue cylinders show the configured outside diameters</li>
+                    </ul>
+                    <p>
+                      Wiggle room is total diametral clearance. The mounting-hole
+                      diameter and locations are geometric starting points, not an
+                      anchor prescription. Match fasteners and anchors to the real
+                      wall, pipe weight, material, and loading; then proof-load the
+                      installed mount gradually before relying on it.
                     </p>
                   </section>
                 ) : null}

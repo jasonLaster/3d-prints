@@ -27,6 +27,11 @@
       "configUrl": "/models/compact-wall-bracket/model.json"
     },
     {
+      "id": "pipe-wall-mount",
+      "name": "Variable Pipe Wall Mount",
+      "configUrl": "/models/pipe-wall-mount/model.json"
+    },
+    {
       "id": "drill-bit-holder",
       "name": "Drill Bit Holder",
       "configUrl": "/models/drill-bit-holder/model.json"

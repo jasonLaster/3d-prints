@@ -22,6 +22,12 @@ import {
   getCompactWallBracketSpec,
 } from "./compactWallBracket";
 import {
+  getPipeWallMountAuditValue,
+  getPipeWallMountDimensions,
+  getPipeWallMountParameterLimits,
+  getPipeWallMountSpec,
+} from "./pipeWallMount";
+import {
   getConcentricTubeJigAuditValue,
   getConcentricTubeJigDimensions,
   getConcentricTubeJigParameterLimits,
@@ -97,6 +103,22 @@ export {
   updateCompactWallBracketGuide,
 } from "./compactWallBracket";
 export type { CompactWallBracketSpec } from "./compactWallBracket";
+export {
+  createPipeWallMountGeometry,
+  createPipeWallMountPipePreviews,
+  getPipeDiameters,
+  getPipeWallMountSpec,
+  isPipeDiameterKey,
+  orientPipeWallMountForPrint,
+  orientPipeWallMountReferenceGeometry,
+  PIPE_DIAMETER_PARAMETER_KEYS,
+  updatePipeWallMountGuide,
+} from "./pipeWallMount";
+export type {
+  PipeWallMountDrillLocation,
+  PipeWallMountHook,
+  PipeWallMountSpec,
+} from "./pipeWallMount";
 export {
   createConcentricTubeJigGeometry,
   updateConcentricTubeJigGuide,
@@ -202,6 +224,9 @@ function getAuditValue(
   if (model.viewer === "compact-wall-bracket-v1") {
     return getCompactWallBracketAuditValue(check, params, unit, model);
   }
+  if (model.viewer === "pipe-wall-mount-v1") {
+    return getPipeWallMountAuditValue(check, params, unit, model);
+  }
   if (model.viewer === "concentric-tube-jig-v1") {
     return getConcentricTubeJigAuditValue(check, params, unit, model);
   }
@@ -252,6 +277,9 @@ export function getParameterLimits(
   if (model.viewer === "compact-wall-bracket-v1") {
     return getCompactWallBracketParameterLimits(model, params, key);
   }
+  if (model.viewer === "pipe-wall-mount-v1") {
+    return getPipeWallMountParameterLimits(model, params, key);
+  }
   if (model.viewer === "concentric-tube-jig-v1") {
     return getConcentricTubeJigParameterLimits(model, params, key);
   }
@@ -290,6 +318,9 @@ export function getModelDimensions(
   }
   if (model.viewer === "compact-wall-bracket-v1") {
     return getCompactWallBracketDimensions(params);
+  }
+  if (model.viewer === "pipe-wall-mount-v1") {
+    return getPipeWallMountDimensions(params, model);
   }
   if (model.viewer === "concentric-tube-jig-v1") {
     return getConcentricTubeJigDimensions(params, model);
@@ -395,6 +426,15 @@ export function getStatusItems(
       spec.twoUpFits
         ? "Two-up plate fit passes"
         : "Two-up plate fit needs adjustment",
+    ];
+  }
+  if (model.viewer === "pipe-wall-mount-v1") {
+    const spec = getPipeWallMountSpec(params, model);
+    return [
+      `${spec.pipeDiameters.length} pipe hooks · ${spec.pipeDiameters.map((diameter) => formatLength(diameter, unit)).join(" · ")}`,
+      `Wiggle room ${formatLength(spec.pipeWiggle, unit)} total · ${formatLength(spec.pipeWiggle / 2, unit)} per side`,
+      `Mount ${formatLength(spec.backplateWidth, unit)} W × ${formatLength(spec.hookReach, unit)} reach × ${formatLength(spec.bracketHeight, unit)} H`,
+      `4 drill centers · Ø${formatLength(spec.mountingHoleDiameter, unit)}`,
     ];
   }
   return model.parameters.slice(0, 4).map((parameter) => {

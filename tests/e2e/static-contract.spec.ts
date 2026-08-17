@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(9);
+  expect(catalog.models).toHaveLength(10);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -128,6 +128,16 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "boltInterface",
       "twoUpFootprint",
       "plateMargin",
+    ],
+    "pipe-wall-mount-v1": [
+      "pipeSet",
+      "cradleFit",
+      "mountEnvelope",
+      "hookSections",
+      "verticalPacking",
+      "hookReach",
+      "drillPattern",
+      "sourceReference",
     ],
     "concentric-tube-jig-v1": [
       "tubeRange",
@@ -356,6 +366,19 @@ test("model-specific parameter dependencies are declared auditable", () => {
       minimumWallThickness: number;
     };
   };
+  const pipeWallMount = readJson(
+    path.join(root, "public/models/pipe-wall-mount/model.json"),
+  ) as ModelJson & {
+    geometry: {
+      defaultPipeDiametersMm: number[];
+      minimumPipeDiameter: number;
+      maximumPipeDiameter: number;
+      maximumPipeCount: number;
+      minimumTopBottomMargin: number;
+      minimumHookBridge: number;
+      minimumHoleEdgeWeb: number;
+    };
+  };
 
   const holderParams = Object.fromEntries(
     holder.parameters.map((parameter) => [parameter.key, parameter]),
@@ -494,6 +517,35 @@ test("model-specific parameter dependencies are declared auditable", () => {
   expect(drillBitHolder.audit.invariants.join(" ")).toContain(
     "flat base on the build plate",
   );
+
+  const pipeParams = Object.fromEntries(
+    pipeWallMount.parameters.map((parameter) => [parameter.key, parameter]),
+  );
+  expect(pipeWallMount.geometry.defaultPipeDiametersMm).toEqual([
+    25.4,
+    25.4,
+    25.4,
+  ]);
+  expect(pipeParams.pipeCount.default).toBe(3);
+  expect(pipeParams.pipeWiggle.label).toContain("wiggle room");
+  expect(pipeParams.pipeWiggle.default).toBe(1.5);
+  expect(pipeParams.hookReach.default).toBe(75);
+  expect(pipeParams.bracketHeight.default).toBe(190);
+  expect(pipeParams.mountingHoleDiameter.default).toBe(5.5);
+  expect(pipeParams.drillColumnOffset.default).toBe(6.5);
+  expect(pipeParams.drillEdgeOffset.default).toBe(16);
+  expect(pipeWallMount.geometry.maximumPipeCount).toBe(8);
+  expect(
+    Array.from({ length: 8 }, (_, index) =>
+      pipeParams[`pipeDiameter${index + 1}`].default,
+    ),
+  ).toEqual(Array(8).fill(25.4));
+  expect(pipeWallMount.audit.invariants.join(" ")).toContain(
+    "total diametral clearance",
+  );
+  expect(pipeWallMount.audit.invariants.join(" ")).toContain(
+    "four drill bores",
+  );
 });
 
 test("request coverage document tracks the app behaviors under Playwright", () => {
@@ -513,6 +565,7 @@ test("request coverage document tracks the app behaviors under Playwright", () =
     "per-model JSON for parameters, audit, and scripts",
     "Japandi tray supports width, length, height, floor thickness, rib relief, and rotation",
     "Drill Bit Holder defaults to the seven requested fractional sizes",
+    "Variable pipe wall mount creates one fitted hook per entered pipe",
     "Handheld Router Mortise Jig derives its opening from the mortise, cutter, and guide bushing",
     "Handheld Router Tenon Jig derives external guide openings from the tenon, cutter, and bearing",
     "Dark theme is available",
@@ -565,6 +618,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   );
   const compactWallBracketDoc = readText(
     path.join(root, "docs/compact-wall-bracket-audit-specifications.md"),
+  );
+  const pipeWallMountDoc = readText(
+    path.join(root, "docs/pipe-wall-mount-audit-specifications.md"),
   );
   const drillBitHolderDoc = readText(
     path.join(root, "docs/drill-bit-holder-audit-specifications.md"),
@@ -634,6 +690,19 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "verify the final plate in the actual slicer profile",
   ]) {
     expect(compactWallBracketDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "75 mm projection × 83.8903 mm height × 20 mm width",
+    "64 degenerate triangles and two edges with four incident triangles",
+    "three 25.4 mm (1 in) pipes",
+    "total diametral wiggle room",
+    "X = −6.5 mm and +6.5 mm",
+    "13 mm column spacing and 158 mm row spacing",
+    "one analytic, connected shell",
+    "190 × 75 × 28 mm",
+  ]) {
+    expect(pipeWallMountDoc).toContain(phrase);
   }
 
   for (const phrase of [

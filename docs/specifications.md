@@ -82,6 +82,17 @@ Compact Wall Bracket:
 - The fit and strength checks are geometric screens, not load certification; the actual slicer profile, material, layer bonding, attachment, fasteners, and installed proof load govern use.
 - See `docs/compact-wall-bracket-audit-specifications.md` for source custody, selective-scaling, print-layout, and audit details.
 
+Variable Pipe Wall Mount:
+
+- A comma-delimited outside-diameter field creates one vertically stacked J-hook per pipe. The default `1, 1, 1 in` set produces three fitted hooks; up to eight mixed diameters remain ordered from bottom to top.
+- Pipe wiggle room is total diametral clearance and is reported both in total and per side. Each cradle diameter derives independently from its pipe plus that shared clearance.
+- Hook reach, hook wall thickness, pipe contact width, clear hook gap, overall bracket height, and backplate thickness remain editable. Dependent limits raise the minimum reach and height as the active pipe set grows.
+- Four wall-normal through-bores derive from the editable drill diameter, two-column offset, overall height, and top/bottom edge offset. Runtime audit text reports the resulting column and row spacing.
+- Translucent pipe cylinders show the configured outside diameters and are excluded from export. The mount exports as one connected, manifold shell oriented broad-side-down at Z = 0.
+- The supplied single-hook reference is retained byte-for-byte. Its measured 75 × 83.8903 × 20 mm envelope informs the default 75 mm reach and 20+ mm contact character, while its 64 degenerate triangles and two non-manifold edges are recorded rather than copied into generated exports.
+- Geometry checks do not rate load capacity. Material, print settings, layer direction, creep, wall construction, anchors, fasteners, pipe weight, impacts, and installed proof loading govern use.
+- See `docs/pipe-wall-mount-audit-specifications.md` for source custody, packing, drilling, preview, export, and verification details.
+
 Drill Bit Holder:
 
 - A comma-delimited bit-size field adds, removes, and resizes blind-hole positions; it defaults to the ordered set 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch.

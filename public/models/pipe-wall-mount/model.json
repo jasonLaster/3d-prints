@@ -1,0 +1,221 @@
+{
+  "id": "pipe-wall-mount",
+  "name": "Variable Pipe Wall Mount",
+  "subtitle": "One fitted hook per pipe, on one drill-ready backplate",
+  "description": "A configurable wall mount that stacks individually sized J-hooks on a continuous four-hole backplate. Enter one diameter per pipe, then tune fit, reach, contact width, spacing, overall height, and the mounting-hole pattern before exporting a single printable STL.",
+  "viewer": "pipe-wall-mount-v1",
+  "stl": {
+    "fileName": "Strong_Universal_Wall_Hook_VCD.stl",
+    "sourceName": "Strong_Universal_Wall_Hook_VCD.stl",
+    "units": "mm",
+    "url": "/models/pipe-wall-mount/Strong_Universal_Wall_Hook_VCD.stl"
+  },
+  "defaultStl": {
+    "fileName": "variable-pipe-wall-mount-default.stl",
+    "url": "/models/pipe-wall-mount/variable-pipe-wall-mount-default.stl"
+  },
+  "export": {
+    "filePrefix": "pipe-wall-mount"
+  },
+  "geometry": {
+    "mainAxis": {
+      "x": -14.7978077,
+      "y": -38.7781563,
+      "z": 10
+    },
+    "defaultPipeDiametersMm": [25.4, 25.4, 25.4],
+    "minimumPipeDiameter": 12.7,
+    "maximumPipeDiameter": 76.2,
+    "maximumPipeCount": 8,
+    "radialSegments": 40,
+    "minimumTopBottomMargin": 18,
+    "minimumHookBridge": 4,
+    "minimumHoleEdgeWeb": 4,
+    "pipePreviewOverhang": 12,
+    "sourceProjection": 75,
+    "sourceHeight": 83.8903,
+    "sourceWidth": 20
+  },
+  "parameters": [
+    {
+      "key": "pipeCount",
+      "label": "Pipe count",
+      "group": "Pipe set",
+      "statusLabel": "Pipes",
+      "default": 3,
+      "limits": { "min": 1, "max": 8, "step": 1 }
+    },
+    {
+      "key": "pipeDiameter1",
+      "label": "Pipe 1 diameter",
+      "group": "Pipe set",
+      "default": 25.4,
+      "limits": { "min": 12.7, "max": 76.2, "step": 0.1 }
+    },
+    {
+      "key": "pipeDiameter2",
+      "label": "Pipe 2 diameter",
+      "group": "Pipe set",
+      "default": 25.4,
+      "limits": { "min": 12.7, "max": 76.2, "step": 0.1 }
+    },
+    {
+      "key": "pipeDiameter3",
+      "label": "Pipe 3 diameter",
+      "group": "Pipe set",
+      "default": 25.4,
+      "limits": { "min": 12.7, "max": 76.2, "step": 0.1 }
+    },
+    {
+      "key": "pipeDiameter4",
+      "label": "Pipe 4 diameter",
+      "group": "Pipe set",
+      "default": 25.4,
+      "limits": { "min": 12.7, "max": 76.2, "step": 0.1 }
+    },
+    {
+      "key": "pipeDiameter5",
+      "label": "Pipe 5 diameter",
+      "group": "Pipe set",
+      "default": 25.4,
+      "limits": { "min": 12.7, "max": 76.2, "step": 0.1 }
+    },
+    {
+      "key": "pipeDiameter6",
+      "label": "Pipe 6 diameter",
+      "group": "Pipe set",
+      "default": 25.4,
+      "limits": { "min": 12.7, "max": 76.2, "step": 0.1 }
+    },
+    {
+      "key": "pipeDiameter7",
+      "label": "Pipe 7 diameter",
+      "group": "Pipe set",
+      "default": 25.4,
+      "limits": { "min": 12.7, "max": 76.2, "step": 0.1 }
+    },
+    {
+      "key": "pipeDiameter8",
+      "label": "Pipe 8 diameter",
+      "group": "Pipe set",
+      "default": 25.4,
+      "limits": { "min": 12.7, "max": 76.2, "step": 0.1 }
+    },
+    {
+      "key": "pipeWiggle",
+      "label": "Pipe wiggle room",
+      "group": "Hook shape",
+      "statusLabel": "Wiggle",
+      "default": 1.5,
+      "limits": { "min": 0.4, "max": 6, "step": 0.1 }
+    },
+    {
+      "key": "hookReach",
+      "label": "Hook reach from wall",
+      "group": "Hook shape",
+      "statusLabel": "Reach",
+      "default": 75,
+      "limits": { "min": 40, "max": 180, "step": 0.5 }
+    },
+    {
+      "key": "hookThickness",
+      "label": "Hook wall thickness",
+      "group": "Hook shape",
+      "statusLabel": "Hook wall",
+      "default": 6.4,
+      "limits": { "min": 4.8, "max": 14, "step": 0.1 }
+    },
+    {
+      "key": "hookWidth",
+      "label": "Pipe contact width",
+      "group": "Hook shape",
+      "statusLabel": "Contact",
+      "default": 28,
+      "limits": { "min": 20, "max": 50, "step": 0.5 }
+    },
+    {
+      "key": "pipeGap",
+      "label": "Clear gap between hooks",
+      "group": "Hook shape",
+      "statusLabel": "Gap",
+      "default": 12,
+      "limits": { "min": 6, "max": 50, "step": 0.5 }
+    },
+    {
+      "key": "bracketHeight",
+      "label": "Overall bracket height",
+      "group": "Backplate & drilling",
+      "statusLabel": "Height",
+      "default": 190,
+      "limits": { "min": 80, "max": 500, "step": 1 }
+    },
+    {
+      "key": "backplateThickness",
+      "label": "Backplate thickness",
+      "group": "Backplate & drilling",
+      "statusLabel": "Backplate",
+      "default": 8,
+      "limits": { "min": 5, "max": 16, "step": 0.5 }
+    },
+    {
+      "key": "drillColumnOffset",
+      "label": "Drill column offset",
+      "group": "Backplate & drilling",
+      "statusLabel": "Drill columns",
+      "default": 6.5,
+      "limits": { "min": 4, "max": 18, "step": 0.5 }
+    },
+    {
+      "key": "mountingHoleDiameter",
+      "label": "Mounting drill diameter",
+      "group": "Backplate & drilling",
+      "statusLabel": "Drill",
+      "default": 5.5,
+      "limits": { "min": 3.5, "max": 10, "step": 0.1 }
+    },
+    {
+      "key": "drillEdgeOffset",
+      "label": "Top / bottom drill offset",
+      "group": "Backplate & drilling",
+      "statusLabel": "Drill offset",
+      "default": 16,
+      "limits": { "min": 10, "max": 60, "step": 0.5 }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.12,
+    "dimensionTargets": [
+      "The default pipe set is three 25.4 mm (1 in) outside diameters with 1.5 mm total wiggle room.",
+      "The default mount is 28 mm wide, 75 mm deep, and 190 mm high with three stacked J-hooks.",
+      "The four default mounting bores are 5.5 mm diameter in two columns and two rows.",
+      "The supplied single-hook source measures 75 mm projection by 83.8903 mm height by 20 mm width."
+    ],
+    "invariants": [
+      "Generate exactly one cradle for each active pipe diameter and carry the same ordered diameter list through URL state, preview pipes, audit text, and STL naming.",
+      "Treat pipe wiggle room as total diametral clearance and report the per-side value explicitly.",
+      "Increase the minimum overall height as pipe count, pipe diameter, hook thickness, or clear hook gap increases.",
+      "Keep the four drill bores inside the continuous contact-width backplate and derive their centers from the editable column offset, overall height, and edge offset.",
+      "Export only the continuous wall mount; translucent pipes are fit previews and must never enter the STL.",
+      "Retain the supplied reference byte-for-byte and record its 64 degenerate triangles and two non-manifold edges; do not copy those source defects into generated exports.",
+      "The geometry and checks are a fabrication aid, not a load rating. Verify material, print orientation, wall construction, anchors, fasteners, pipe weight, and real loading before use."
+    ],
+    "checks": [
+      { "key": "pipeSet", "label": "Pipe set" },
+      { "key": "cradleFit", "label": "Cradle fit" },
+      { "key": "mountEnvelope", "label": "Mount envelope" },
+      { "key": "hookSections", "label": "Hook sections" },
+      { "key": "verticalPacking", "label": "Vertical packing" },
+      { "key": "hookReach", "label": "Hook reach" },
+      { "key": "drillPattern", "label": "Drill pattern" },
+      { "key": "sourceReference", "label": "Source reference" }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/pipe-wall-mount/audit.mjs",
+      "command": "npm run audit -- pipe-wall-mount",
+      "description": "Verifies source custody, parameter coupling, generated geometry, mounting bores, pipe-preview parity, STL bytes, bounds, and topology."
+    }
+  ]
+}
