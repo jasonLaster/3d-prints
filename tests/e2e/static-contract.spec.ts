@@ -124,6 +124,7 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
     "compact-wall-bracket-v1": [
       "compactEnvelope",
       "sourceScale",
+      "depthProfile",
       "memberSections",
       "boltInterface",
       "twoUpFootprint",
@@ -627,11 +628,15 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   for (const phrase of [
     "190.9188 × 25.6 × 99.9285 mm",
     "contains no bolt bores",
-    "115 × 60.2 × 25.6 mm",
-    "structural sections are not scaled",
-    "235 × 60.2 × 25.6 mm",
-    "two disconnected, individually manifold shells",
-    "verify the final plate in the actual slicer profile",
+    "four major depth planes",
+    "8.96 mm recessed center depth",
+    "200 mm wide and 104.6817 mm tall",
+    "19.05 mm deep",
+    "12.7 mm deep",
+    "rotated 180 degrees",
+    "232.37 × 232.37 × 19.05 mm",
+    "two disconnected manifold shells",
+    "slicer-specific spacing",
   ]) {
     expect(compactWallBracketDoc).toContain(phrase);
   }

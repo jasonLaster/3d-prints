@@ -115,10 +115,10 @@ export type DoorLockAdapterGeometry = {
 
 export type CompactWallBracketGeometry = {
   mainAxis: { x: number; y: number; z: number };
-  bevelSegments: number;
   sourceSpan: number;
   sourceRise: number;
   sourceDepth: number;
+  sourceCoreDepth: number;
   sourceBaseThickness: number;
   sourceDiagonalThickness: number;
   sourceHasBoltBores: false;

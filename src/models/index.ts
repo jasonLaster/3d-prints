@@ -289,7 +289,7 @@ export function getModelDimensions(
     return getDoorLockAdapterDimensions(params);
   }
   if (model.viewer === "compact-wall-bracket-v1") {
-    return getCompactWallBracketDimensions(params);
+    return getCompactWallBracketDimensions(params, model);
   }
   if (model.viewer === "concentric-tube-jig-v1") {
     return getConcentricTubeJigDimensions(params, model);
@@ -389,9 +389,9 @@ export function getStatusItems(
   if (model.viewer === "compact-wall-bracket-v1") {
     const spec = getCompactWallBracketSpec(params, model);
     return [
-      `Bracket ${formatLength(spec.span, unit)} × ${formatLength(spec.rise, unit)} × ${formatLength(spec.depth, unit)}`,
-      `Base ${formatLength(spec.baseThickness, unit)} · diagonal/web ${formatLength(spec.diagonalThickness, unit)}`,
-      `Two-up ${formatLength(spec.twoUpWidth, unit)} × ${formatLength(spec.twoUpDepth, unit)}`,
+      `Bracket ${formatLength(spec.span, unit)} × ${formatLength(spec.rise, unit)} · body ${formatLength(spec.bodyDepth, unit)}`,
+      `Diagonal/center depth ${formatLength(spec.braceDepth, unit)} · planar rails ${formatLength(spec.baseThickness, unit)}/${formatLength(spec.diagonalThickness, unit)}`,
+      `Two-up ${formatLength(spec.twoUpWidth, unit)} × ${formatLength(spec.twoUpDepth, unit)} @ ${spec.pairAngleDegrees.toFixed(1)}°`,
       spec.twoUpFits
         ? "Two-up plate fit passes"
         : "Two-up plate fit needs adjustment",

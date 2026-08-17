@@ -27,16 +27,21 @@ const assert = (condition, message) => {
   if (!condition) failed = true;
 };
 
-function analyzeStl(filePath) {
+function parseStl(filePath) {
   const buffer = fs.readFileSync(filePath);
   const arrayBuffer = buffer.buffer.slice(
     buffer.byteOffset,
     buffer.byteOffset + buffer.byteLength,
   );
-  const geometry = new STLLoader().parse(arrayBuffer);
+  return new STLLoader().parse(arrayBuffer);
+}
+
+function analyzeStl(filePath) {
+  const geometry = parseStl(filePath);
   const position = geometry.getAttribute("position");
   const edges = new Map();
   const vertexTriangles = new Map();
+  const zLevels = new Set();
   const key = (vector) =>
     `${vector.x.toFixed(4)},${vector.y.toFixed(4)},${vector.z.toFixed(4)}`;
   const a = new THREE.Vector3();
@@ -65,6 +70,9 @@ function analyzeStl(filePath) {
     a.fromBufferAttribute(position, index);
     b.fromBufferAttribute(position, index + 1);
     c.fromBufferAttribute(position, index + 2);
+    zLevels.add(Number(a.z.toFixed(3)));
+    zLevels.add(Number(b.z.toFixed(3)));
+    zLevels.add(Number(c.z.toFixed(3)));
     if (ab.subVectors(b, a).cross(ac.subVectors(c, a)).lengthSq() <= 1e-10) {
       degenerateTriangles += 1;
     }
@@ -102,7 +110,109 @@ function analyzeStl(filePath) {
     nonManifoldEdges,
     size,
     triangles,
+    zLevels: [...zLevels].sort((left, right) => left - right),
   };
+}
+
+function measureSourceDepthPlanes(filePath) {
+  const geometry = parseStl(filePath);
+  const position = geometry.getAttribute("position");
+  const planes = new Map();
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  for (let index = 0; index < position.count; index += 3) {
+    a.fromBufferAttribute(position, index);
+    b.fromBufferAttribute(position, index + 1);
+    c.fromBufferAttribute(position, index + 2);
+    if (Math.max(a.y, b.y, c.y) - Math.min(a.y, b.y, c.y) > 1e-5) continue;
+    const y = Number(a.y.toFixed(4));
+    const area = new THREE.Triangle(a, b, c).getArea();
+    planes.set(y, (planes.get(y) ?? 0) + area);
+  }
+  geometry.dispose();
+  const major = [...planes.entries()]
+    .filter(([, area]) => area > 1000)
+    .map(([y]) => y)
+    .sort((left, right) => left - right);
+  return {
+    major,
+    coreDepth: major.length === 4 ? major[2] - major[1] : Number.NaN,
+    outerDepth: major.length === 4 ? major[3] - major[0] : Number.NaN,
+  };
+}
+
+function rotatePoint(point, angle) {
+  const cosine = Math.cos(angle);
+  const sine = Math.sin(angle);
+  return {
+    x: point.x * cosine - point.y * sine,
+    y: point.x * sine + point.y * cosine,
+  };
+}
+
+function pairBounds(span, rise, baseThickness, gap, angle) {
+  const corner = Math.min(4.5, baseThickness * 0.45, (span / 2) * 0.08);
+  const diagonalRise = rise - corner;
+  const gapFactor = diagonalRise / Math.hypot(diagonalRise, span / 2);
+  const separation = gap / gapFactor;
+  const centerOffset =
+    ((span / 2) * (rise / diagonalRise) + separation) / 2;
+  const upright = [
+    { x: -span / 2, y: -rise / 2 + corner },
+    { x: -span / 2 + corner, y: -rise / 2 },
+    { x: span / 2 - corner, y: -rise / 2 },
+    { x: span / 2, y: -rise / 2 + corner },
+    { x: 0, y: rise / 2 },
+  ];
+  const points = [
+    ...upright.map((point) =>
+      rotatePoint({ x: point.x - centerOffset, y: point.y }, angle),
+    ),
+    ...upright.map((point) => {
+      const opposed = rotatePoint(point, Math.PI);
+      return rotatePoint(
+        { x: opposed.x + centerOffset, y: opposed.y },
+        angle,
+      );
+    }),
+  ];
+  const xs = points.map(({ x }) => x);
+  const ys = points.map(({ y }) => y);
+  const width = Math.max(...xs) - Math.min(...xs);
+  const depth = Math.max(...ys) - Math.min(...ys);
+  return { depth, score: Math.max(width, depth), width };
+}
+
+function optimalPairLayout(span, rise, baseThickness, gap) {
+  const samples = 720;
+  const step = Math.PI / 2 / samples;
+  let bestAngle = 0;
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (let index = 0; index <= samples; index += 1) {
+    const angle = index * step;
+    const score = pairBounds(span, rise, baseThickness, gap, angle).score;
+    if (score < bestScore) {
+      bestAngle = angle;
+      bestScore = score;
+    }
+  }
+  let low = Math.max(0, bestAngle - step);
+  let high = Math.min(Math.PI / 2, bestAngle + step);
+  for (let index = 0; index < 36; index += 1) {
+    const left = low + (high - low) / 3;
+    const right = high - (high - low) / 3;
+    if (
+      pairBounds(span, rise, baseThickness, gap, left).score <
+      pairBounds(span, rise, baseThickness, gap, right).score
+    ) {
+      high = right;
+    } else {
+      low = left;
+    }
+  }
+  const angle = (low + high) / 2;
+  return { angle, ...pairBounds(span, rise, baseThickness, gap, angle) };
 }
 
 console.log(`Auditing ${model.name}`);
@@ -127,12 +237,11 @@ assert(
 
 for (const key of [
   "span",
-  "rise",
-  "depth",
+  "bodyDepth",
+  "braceDepth",
   "baseThickness",
   "diagonalThickness",
   "centerWebThickness",
-  "edgeChamfer",
   "plateSize",
   "plateEdgeMargin",
   "pairGap",
@@ -144,39 +253,56 @@ for (const key of [
     `${key} default is inside its declared limits`,
   );
 }
+assert(!parameter("rise"), "rise is derived rather than independently editable");
+assert(!parameter("depth"), "uniform depth control has been removed");
 
 assert(nearlyEqual(model.geometry.sourceSpan, 190.9188), "source span is measured");
 assert(nearlyEqual(model.geometry.sourceRise, 99.9285), "source rise is measured");
-assert(nearlyEqual(model.geometry.sourceDepth, 25.6), "source depth is measured");
+assert(nearlyEqual(model.geometry.sourceDepth, 25.6), "source outer depth is measured");
+assert(nearlyEqual(model.geometry.sourceCoreDepth, 8.96), "source recessed core depth is measured");
 assert(model.geometry.sourceHasBoltBores === false, "source body records no bolt bores");
+
+const sourceDepthPlanes = measureSourceDepthPlanes(sourcePath);
+assert(sourceDepthPlanes.major.length === 4, "source exposes four major depth planes");
+assert(nearlyEqual(sourceDepthPlanes.outerDepth, model.geometry.sourceDepth), "source face planes reproduce outer depth");
+assert(nearlyEqual(sourceDepthPlanes.coreDepth, model.geometry.sourceCoreDepth), "source face planes reproduce recessed core depth");
+
 assert(
-  parameter("depth").default >= model.geometry.sourceDepth,
-  "default depth is not reduced",
+  parameter("bodyDepth").default >= parameter("braceDepth").default,
+  "base body is at least as deep as diagonal and center braces",
+);
+assert(
+  parameter("braceDepth").default >= model.geometry.sourceCoreDepth,
+  "diagonal and center depth preserves the measured recessed core",
 );
 assert(
   parameter("baseThickness").default >= model.geometry.sourceBaseThickness,
-  "default base rail is not reduced",
+  "default base rail thickness is not reduced",
 );
 assert(
-  parameter("diagonalThickness").default >=
-    model.geometry.sourceDiagonalThickness,
-  "default diagonal rail is not reduced",
+  parameter("diagonalThickness").default >= model.geometry.sourceDiagonalThickness,
+  "default diagonal rail thickness is not reduced",
 );
 assert(
-  parameter("centerWebThickness").default >=
-    model.geometry.sourceDiagonalThickness,
-  "default center web is at least the source diagonal thickness",
+  parameter("centerWebThickness").default >= model.geometry.sourceDiagonalThickness,
+  "default center web thickness is not reduced",
 );
 
-const expectedPairWidth =
-  parameter("span").default * 2 + parameter("pairGap").default;
+const span = parameter("span").default;
+const rise = span / (model.geometry.sourceSpan / model.geometry.sourceRise);
+const expectedLayout = optimalPairLayout(
+  span,
+  rise,
+  parameter("baseThickness").default,
+  parameter("pairGap").default,
+);
 const usablePlate =
   parameter("plateSize").default - parameter("plateEdgeMargin").default * 2;
-assert(expectedPairWidth <= usablePlate, "default pair fits plate width inside margins");
-assert(
-  parameter("rise").default <= usablePlate,
-  "default pair fits plate depth inside margins",
-);
+assert(nearlyEqual(span / rise, model.geometry.sourceSpan / model.geometry.sourceRise, 1e-6), "default span and rise preserve the source ratio");
+assert(expectedLayout.angle > THREE.MathUtils.degToRad(20), "two-up pair is rotated off both plate axes");
+assert(expectedLayout.width < span * 2, "opposed nesting avoids a straight two-span row");
+assert(expectedLayout.width <= usablePlate, "default pair fits plate width inside margins");
+assert(expectedLayout.depth <= usablePlate, "default pair fits plate depth inside margins");
 
 const source = analyzeStl(sourcePath);
 assert(source.finite, "source STL contains only finite coordinates");
@@ -191,19 +317,21 @@ assert(single.finite, "single STL contains only finite coordinates");
 assert(single.degenerateTriangles === 0, "single STL has no degenerate triangles");
 assert(single.nonManifoldEdges === 0, "single STL is manifold");
 assert(single.components === 1, "single STL has one connected shell");
-assert(nearlyEqual(single.size.x, parameter("span").default), "single STL span matches default");
-assert(nearlyEqual(single.size.y, parameter("rise").default), "single STL rise matches default");
-assert(nearlyEqual(single.size.z, parameter("depth").default), "single STL depth matches default");
-assert(nearlyEqual(single.min.z, 0), "single STL broad face rests on Z=0");
+assert(nearlyEqual(single.size.x, span), "single STL span matches default");
+assert(nearlyEqual(single.size.y, rise), "single STL rise matches derived proportion");
+assert(nearlyEqual(single.size.z, parameter("bodyDepth").default), "single STL height matches base-body depth");
+assert(single.zLevels.includes(Number(parameter("braceDepth").default.toFixed(3))), "single STL contains the diagonal and center depth step");
+assert(nearlyEqual(single.min.z, 0), "single STL full lower face rests on Z=0");
 
 const pair = analyzeStl(pairPath);
 assert(pair.finite, "two-up STL contains only finite coordinates");
 assert(pair.degenerateTriangles === 0, "two-up STL has no degenerate triangles");
 assert(pair.nonManifoldEdges === 0, "two-up STL keeps every edge manifold");
 assert(pair.components === 2, "two-up STL contains two disconnected bracket shells");
-assert(nearlyEqual(pair.size.x, expectedPairWidth), "two-up STL width includes the requested gap");
-assert(nearlyEqual(pair.size.y, parameter("rise").default), "two-up STL depth matches the bracket rise");
-assert(nearlyEqual(pair.size.z, parameter("depth").default), "two-up STL height preserves body depth");
+assert(nearlyEqual(pair.size.x, expectedLayout.width), "two-up STL width matches optimized rotated layout");
+assert(nearlyEqual(pair.size.y, expectedLayout.depth), "two-up STL depth matches optimized rotated layout");
+assert(nearlyEqual(pair.size.z, parameter("bodyDepth").default), "two-up STL height matches base-body depth");
+assert(pair.zLevels.includes(Number(parameter("braceDepth").default.toFixed(3))), "two-up STL preserves both depth levels");
 assert(nearlyEqual(pair.min.z, 0), "two-up STL rests on Z=0");
 assert(pair.size.x <= usablePlate + model.audit.toleranceMm, "two-up STL fits usable plate width");
 assert(pair.size.y <= usablePlate + model.audit.toleranceMm, "two-up STL fits usable plate depth");

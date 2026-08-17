@@ -94,20 +94,26 @@ function inspectStl(input: Buffer) {
   return result;
 }
 
-test("keeps measured structural sections while shrinking only the outer envelope", () => {
+test("locks the source proportion and separates base-body from diagonal-center depth", () => {
   const params = getDefaultParams(model);
   const spec = getCompactWallBracketSpec(params, model);
-  expect(spec.span).toBe(115);
-  expect(spec.rise).toBe(60.2);
-  expect(spec.depth).toBe(25.6);
+  expect(spec.span).toBe(200);
+  expect(spec.rise).toBeCloseTo(104.6817, 3);
+  expect(spec.span / spec.rise).toBeCloseTo(
+    model.geometry.sourceSpan / model.geometry.sourceRise,
+    6,
+  );
+  expect(spec.bodyDepth).toBe(19.05);
+  expect(spec.braceDepth).toBe(12.7);
   expect(spec.baseThickness).toBe(10);
   expect(spec.diagonalThickness).toBe(6.4);
   expect(spec.centerWebThickness).toBe(6.4);
-  expect(spec.scaleFactor).toBeCloseTo(0.60235, 4);
-  expect(spec.twoUpWidth).toBe(235);
-  expect(spec.twoUpDepth).toBe(60.2);
+  expect(spec.scaleFactor).toBeCloseTo(1.04757, 4);
+  expect(spec.pairAngleDegrees).toBeCloseTo(27.4508, 3);
+  expect(spec.twoUpWidth).toBeCloseTo(232.3696, 3);
+  expect(spec.twoUpDepth).toBeCloseTo(232.3696, 3);
   expect(spec.twoUpFits).toBe(true);
-  expect(spec.sparePlateWidth).toBe(5);
+  expect(spec.sparePlateWidth).toBeCloseTo(7.6304, 3);
 
   const geometry = createCompactWallBracketGeometry(params, model);
   const topology = analyzeGeometry(geometry);
@@ -115,25 +121,27 @@ test("keeps measured structural sections while shrinking only the outer envelope
   expect(topology.degenerateTriangles).toBe(0);
   expect(topology.nonManifoldEdges).toBe(0);
   expect(topology.components).toBe(1);
-  expect(topology.bounds.max.x - topology.bounds.min.x).toBeCloseTo(115, 3);
-  expect(topology.bounds.max.y - topology.bounds.min.y).toBeCloseTo(60.2, 3);
-  expect(topology.bounds.max.z - topology.bounds.min.z).toBeCloseTo(25.6, 3);
+  expect(topology.bounds.max.x - topology.bounds.min.x).toBeCloseTo(200, 3);
+  expect(topology.bounds.max.y - topology.bounds.min.y).toBeCloseTo(104.6817, 3);
+  expect(topology.bounds.max.z - topology.bounds.min.z).toBeCloseTo(19.05, 3);
   expect(topology.bounds.min.z).toBeCloseTo(0, 5);
   geometry.dispose();
 });
 
-test("couples bracket span and pair gap to the editable two-up plate", () => {
+test("couples optimized pair geometry and both depth levels to editable limits", () => {
   const params = getDefaultParams(model);
-  expect(getParameterLimits(model, params, "depth").min).toBe(25.6);
+  expect(getParameterLimits(model, params, "bodyDepth").min).toBe(12.7);
+  expect(getParameterLimits(model, params, "braceDepth").min).toBe(8.96);
+  expect(getParameterLimits(model, params, "braceDepth").max).toBe(19.05);
   expect(getParameterLimits(model, params, "baseThickness").min).toBe(10);
   expect(getParameterLimits(model, params, "diagonalThickness").min).toBe(6.4);
   expect(getParameterLimits(model, params, "centerWebThickness").min).toBe(6.4);
-  expect(getParameterLimits(model, params, "span").max).toBe(117.5);
-  expect(getParameterLimits(model, params, "pairGap").max).toBe(10);
-  expect(getParameterLimits(model, params, "plateSize").min).toBe(245);
+  expect(getParameterLimits(model, params, "span").max).toBeCloseTo(206.7987, 3);
+  expect(getParameterLimits(model, params, "pairGap").max).toBeCloseTo(13.0428, 3);
+  expect(getParameterLimits(model, params, "plateSize").min).toBe(243);
   expect(
     getParameterLimits(model, { ...params, plateSize: 220 }, "span").max,
-  ).toBe(102.5);
+  ).toBeCloseTo(180.0658, 3);
 });
 
 test("ships audited single and two-up STL bytes", () => {
@@ -149,7 +157,9 @@ test("ships audited single and two-up STL bytes", () => {
   expect(single.degenerateTriangles).toBe(0);
   expect(single.nonManifoldEdges).toBe(0);
   expect(single.components).toBe(1);
-  expect(single.bounds.max.x - single.bounds.min.x).toBeCloseTo(115, 3);
+  expect(single.bounds.max.x - single.bounds.min.x).toBeCloseTo(200, 3);
+  expect(single.bounds.max.y - single.bounds.min.y).toBeCloseTo(104.6817, 3);
+  expect(single.bounds.max.z - single.bounds.min.z).toBeCloseTo(19.05, 3);
 
   const pair = inspectStl(
     fs.readFileSync(
@@ -163,8 +173,9 @@ test("ships audited single and two-up STL bytes", () => {
   expect(pair.degenerateTriangles).toBe(0);
   expect(pair.nonManifoldEdges).toBe(0);
   expect(pair.components).toBe(2);
-  expect(pair.bounds.max.x - pair.bounds.min.x).toBeCloseTo(235, 3);
-  expect(pair.bounds.max.y - pair.bounds.min.y).toBeCloseTo(60.2, 3);
+  expect(pair.bounds.max.x - pair.bounds.min.x).toBeCloseTo(232.3696, 3);
+  expect(pair.bounds.max.y - pair.bounds.min.y).toBeCloseTo(232.3696, 3);
+  expect(pair.bounds.max.z - pair.bounds.min.z).toBeCloseTo(19.05, 3);
   expect(pair.bounds.min.z).toBeCloseTo(0, 5);
 
   const generatedPair = createCompactWallBracketTwoUpGeometries(
@@ -194,13 +205,12 @@ test("renders grouped controls and exports current single and two-up meshes", as
   await expect(page.getByRole("heading", { name: "Strength sections" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Two-up layout" })).toBeVisible();
   for (const [label, value] of [
-    ["Outer span in millimeters", "115.0"],
-    ["Outer rise in millimeters", "60.2"],
-    ["Body depth in millimeters", "25.6"],
+    ["Outer span in millimeters", "200.0"],
+    ["Base body depth in millimeters", "19.1"],
+    ["Diagonal + center depth in millimeters", "12.7"],
     ["Base rail thickness in millimeters", "10.0"],
     ["Diagonal rail thickness in millimeters", "6.4"],
     ["Center web thickness in millimeters", "6.4"],
-    ["Edge chamfer in millimeters", "1.2"],
     ["Square build plate size in millimeters", "250.0"],
     ["Plate edge margin in millimeters", "5.0"],
     ["Gap between brackets in millimeters", "5.0"],
@@ -209,7 +219,7 @@ test("renders grouped controls and exports current single and two-up meshes", as
   }
   await expect(page.getByText("Source mesh has no bolt bores")).toBeVisible();
   await expect(page.locator(".audit-row").filter({ hasText: "Two-up footprint" })).toContainText(
-    "235.0 mm × 60.2 mm",
+    "232.4 mm × 232.4 mm at 27.5°",
   );
   const canvas = page.locator(".scene-panel canvas");
   await expect(canvas).toBeVisible();
@@ -288,11 +298,11 @@ test("renders grouped controls and exports current single and two-up meshes", as
   );
 
   const span = page.getByLabel("Outer span in millimeters");
-  await span.fill("110");
+  await span.fill("190");
   await span.blur();
-  await expect(page).toHaveURL(/span=110/);
+  await expect(page).toHaveURL(/span=190/);
   await expect(page.locator(".audit-row").filter({ hasText: "Two-up footprint" })).toContainText(
-    "225.0 mm × 60.2 mm",
+    "221.1 mm × 221.1 mm at 27.5°",
   );
 
   await page.getByRole("button", { name: "Workspace actions" }).click();
@@ -301,14 +311,14 @@ test("renders grouped controls and exports current single and two-up meshes", as
     page.getByRole("button", { name: "Export single STL" }).click(),
   ]);
   expect(singleDownload.suggestedFilename()).toBe(
-    "compact-wall-bracket-110x60.2x25.6.stl",
+    "compact-wall-bracket-190x99.4-body-19.1-brace-12.7.stl",
   );
   const singlePath = await singleDownload.path();
   const singleTopology = inspectStl(fs.readFileSync(singlePath!));
   expect(singleTopology.components).toBe(1);
   expect(singleTopology.nonManifoldEdges).toBe(0);
   expect(singleTopology.bounds.max.x - singleTopology.bounds.min.x).toBeCloseTo(
-    110,
+    190,
     3,
   );
 
@@ -317,14 +327,18 @@ test("renders grouped controls and exports current single and two-up meshes", as
     page.getByRole("button", { name: "Export two-up STL" }).click(),
   ]);
   expect(pairDownload.suggestedFilename()).toBe(
-    "compact-wall-bracket-110x60.2x25.6-two-up.stl",
+    "compact-wall-bracket-190x99.4-body-19.1-brace-12.7-two-up.stl",
   );
   const pairPath = await pairDownload.path();
   const pairTopology = inspectStl(fs.readFileSync(pairPath!));
   expect(pairTopology.components).toBe(2);
   expect(pairTopology.nonManifoldEdges).toBe(0);
   expect(pairTopology.bounds.max.x - pairTopology.bounds.min.x).toBeCloseTo(
-    225,
+    221.1473,
+    3,
+  );
+  expect(pairTopology.bounds.max.y - pairTopology.bounds.min.y).toBeCloseTo(
+    221.1473,
     3,
   );
   expect(errors).toEqual([]);
@@ -340,6 +354,7 @@ test("keeps the compact bracket workspace usable on a narrow screen", async ({
   ).toBeVisible();
   await expect(page.locator(".scene-panel canvas")).toBeVisible();
   await expect(page.getByLabel("Outer span in millimeters")).toBeVisible();
+  await expect(page.getByLabel("Diagonal + center depth in millimeters")).toBeVisible();
   await expect(page.getByLabel("Gap between brackets in millimeters")).toBeVisible();
   await expect(page.getByText("Source mesh has no bolt bores")).toBeVisible();
   const overflow = await page.evaluate(

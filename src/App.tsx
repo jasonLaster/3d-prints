@@ -324,7 +324,17 @@ const PARAM_QUERY_KEYS = [
   "tenonAllowance",
   "workpieceThickness",
   "activeGuidePair",
+  "span",
+  "rise",
+  "depth",
+  "bodyDepth",
+  "braceDepth",
   "baseThickness",
+  "diagonalThickness",
+  "centerWebThickness",
+  "edgeChamfer",
+  "plateEdgeMargin",
+  "pairGap",
   "guidePlateThickness",
   "knobScrewLength",
   "baseWidth",
@@ -1169,7 +1179,7 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
     const compact = (value: number) =>
       value.toFixed(1).replace(/\.0$/, "");
     const spec = getCompactWallBracketSpec(params, model);
-    return `${model.export.filePrefix}-${compact(spec.span)}x${compact(spec.rise)}x${compact(spec.depth)}.stl`;
+    return `${model.export.filePrefix}-${compact(spec.span)}x${compact(spec.rise)}-body-${compact(spec.bodyDepth)}-brace-${compact(spec.braceDepth)}.stl`;
   }
   const suffix = model.parameters
     .map(
@@ -1480,7 +1490,7 @@ const HolderViewer = forwardRef<
         latestParamsRef.current,
         model,
       );
-      updateCompactWallBracketGuide(guideMesh, latestParamsRef.current);
+      updateCompactWallBracketGuide(guideMesh, latestParamsRef.current, model);
     } else if (model.viewer === "concentric-tube-jig-v1") {
       mainMesh.geometry.dispose();
       mainMesh.geometry = createConcentricTubeJigGeometry(
@@ -3923,7 +3933,8 @@ function CompactWallBracketParameterControls({
                 onChange={(value) => onChange(parameter.key, value)}
                 onUnitChange={onUnitChange}
                 preferFineStep={
-                  parameter.key === "edgeChamfer" ||
+                  parameter.key === "bodyDepth" ||
+                  parameter.key === "braceDepth" ||
                   parameter.key === "plateEdgeMargin" ||
                   parameter.key === "pairGap"
                 }
@@ -7176,15 +7187,19 @@ export default function App({
                     <h2>Two-up print</h2>
                     <ul>
                       <li>Single-bracket STL for individual placement</li>
-                      <li>Two-up STL with the configured gap already applied</li>
-                      <li>Broad chamfered faces rest on the build plate at Z = 0</li>
-                      <li>25.6 mm depth, 10 mm base, and 6.4 mm diagonal/web minimums</li>
+                      <li>Two-up STL uses opposed brackets and a derived diagonal plate angle</li>
+                      <li>The full lower face rests on the build plate at Z = 0 without a recessed underside</li>
+                      <li>19.05 mm base-body depth and 12.7 mm diagonal/center depth by default</li>
                     </ul>
                     <p>
                       The supplied source body has no bolt bores or countersinks,
                       so the remake does not invent or resize a bolt interface.
-                      The shorter span improves the geometric lever arm, but this
-                      model does not certify material, layer bonding, wall
+                      The source measures 25.6 mm at its deep outer regions and
+                      8.96 mm through its recessed center. This remake makes the
+                      user-directed diagonal and center depth equal, keeps the
+                      source span-to-rise proportion, and uses the plate diagonal
+                      instead of forcing both copies onto one axis. This model does
+                      not certify material, layer bonding, wall
                       attachment, fasteners, or load capacity. Confirm the final
                       two-copy layout in your slicer, then proof-load the installed
                       pair gradually.

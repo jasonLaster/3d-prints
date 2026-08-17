@@ -1,8 +1,8 @@
 {
   "id": "compact-wall-bracket",
   "name": "Compact Wall Bracket",
-  "subtitle": "Two-up, strength-preserving parametric remake",
-  "description": "A compact reconstruction of the supplied triangular wall-bracket body. The outer span and rise are reduced for a two-copy plate layout while the measured source depth and structural rail thicknesses remain at full size.",
+  "subtitle": "Proportional, stepped-depth, diagonally packed pair",
+  "description": "A parametric reconstruction of the supplied triangular wall-bracket body. Span and rise stay locked to the measured source proportion, the base body and diagonal/center braces have separate depths, and the two-up export opposes and rotates the pair to use the square plate efficiently.",
   "viewer": "compact-wall-bracket-v1",
   "stl": {
     "fileName": "compact-wall-bracket-single.stl",
@@ -23,10 +23,10 @@
       "y": 0,
       "z": 0
     },
-    "bevelSegments": 2,
     "sourceSpan": 190.9188,
     "sourceRise": 99.9285,
     "sourceDepth": 25.6,
+    "sourceCoreDepth": 8.96,
     "sourceBaseThickness": 10,
     "sourceDiagonalThickness": 6.4,
     "sourceHasBoltBores": false
@@ -37,35 +37,35 @@
       "label": "Outer span",
       "group": "Bracket envelope",
       "statusLabel": "Span",
-      "default": 115,
+      "default": 200,
       "limits": {
-        "min": 90,
-        "max": 180,
+        "min": 150,
+        "max": 215,
         "step": 0.1
       }
     },
     {
-      "key": "rise",
-      "label": "Outer rise",
-      "group": "Bracket envelope",
-      "statusLabel": "Rise",
-      "default": 60.2,
-      "limits": {
-        "min": 50,
-        "max": 120,
-        "step": 0.1
-      }
-    },
-    {
-      "key": "depth",
-      "label": "Body depth",
+      "key": "bodyDepth",
+      "label": "Base body depth",
       "group": "Strength sections",
-      "statusLabel": "Depth",
-      "default": 25.6,
+      "statusLabel": "Body depth",
+      "default": 19.05,
       "limits": {
-        "min": 25.6,
-        "max": 40,
-        "step": 0.1
+        "min": 12.7,
+        "max": 25.6,
+        "step": 0.05
+      }
+    },
+    {
+      "key": "braceDepth",
+      "label": "Diagonal + center depth",
+      "group": "Strength sections",
+      "statusLabel": "Brace depth",
+      "default": 12.7,
+      "limits": {
+        "min": 8.96,
+        "max": 25.6,
+        "step": 0.01
       }
     },
     {
@@ -105,25 +105,13 @@
       }
     },
     {
-      "key": "edgeChamfer",
-      "label": "Edge chamfer",
-      "group": "Strength sections",
-      "statusLabel": "Chamfer",
-      "default": 1.2,
-      "limits": {
-        "min": 0,
-        "max": 2,
-        "step": 0.1
-      }
-    },
-    {
       "key": "plateSize",
       "label": "Square build plate size",
       "group": "Two-up layout",
       "statusLabel": "Plate",
       "default": 250,
       "limits": {
-        "min": 180,
+        "min": 220,
         "max": 350,
         "step": 1
       }
@@ -156,30 +144,35 @@
   "audit": {
     "toleranceMm": 0.1,
     "dimensionTargets": [
-      "The supplied source mesh measures 190.9188 mm span by 99.9285 mm rise by 25.6 mm depth.",
-      "The compact default measures 115 mm span by 60.2 mm rise by 25.6 mm depth.",
-      "The source 10 mm base rail and 6.4 mm diagonal rail thicknesses are minimums, not scaled dimensions.",
-      "Two default copies plus the 5 mm gap occupy 235 mm by 60.2 mm and fit inside a 250 mm square plate with 5 mm requested edge margins."
+      "The supplied source mesh measures 190.9188 mm span by 99.9285 mm rise by 25.6 mm maximum depth, with a measured 8.96 mm recessed center depth.",
+      "The default remake measures 200 mm span by 104.6817 mm derived rise, preserving the source 1.91055:1 proportion.",
+      "The user-directed depth profile uses a 19.05 mm base body and a common 12.7 mm depth for the diagonal rails and center web, all flush to the build plate on one face.",
+      "Two default copies are opposed, separated by 5 mm normal to their adjacent diagonal edges, and rotated approximately 27.5 degrees for a roughly 232.4 mm square footprint."
     ],
     "invariants": [
-      "Reduce only the bracket span and rise; never reduce the source body depth, base rail, diagonal rail, or center web minimums.",
-      "Keep the outer triangle, two open cells, center web, and broad-face-down support-free print orientation.",
+      "Derive rise from span using the measured source aspect ratio; do not expose independent dimensions that can distort the original proportion.",
+      "Keep base-body depth independent from the shared diagonal-and-center depth, and keep every member flush to the same Z = 0 print face.",
+      "Preserve at least the measured 10 mm base rail, 6.4 mm diagonal rail, 6.4 mm center web, and 8.96 mm recessed-core depth.",
       "The supplied source body contains no bolt bores or countersinks, so do not invent or rescale a bolt interface.",
-      "Keep the two-up export as two disconnected, individually manifold bracket shells separated by the requested gap.",
-      "Treat the plate fit as a geometric envelope check; verify brim, purge objects, exclusion zones, material, layer direction, fasteners, and real loading in the slicer and physical setup."
+      "Keep the two-up export as two disconnected, individually manifold bracket shells; oppose the second bracket and derive the global rotation that minimizes the square plate envelope.",
+      "Treat plate fit as a conservative outer-triangle envelope check; verify brim, purge objects, exclusion zones, material, layer direction, fasteners, and real loading in the slicer and physical setup."
     ],
     "checks": [
       {
         "key": "compactEnvelope",
-        "label": "Compact envelope"
+        "label": "Proportional envelope"
       },
       {
         "key": "sourceScale",
-        "label": "Selective scaling"
+        "label": "Source proportion"
+      },
+      {
+        "key": "depthProfile",
+        "label": "Stepped depth profile"
       },
       {
         "key": "memberSections",
-        "label": "Preserved structural sections"
+        "label": "Preserved planar sections"
       },
       {
         "key": "boltInterface",
@@ -187,7 +180,7 @@
       },
       {
         "key": "twoUpFootprint",
-        "label": "Two-up footprint"
+        "label": "Rotated two-up footprint"
       },
       {
         "key": "plateMargin",
@@ -200,7 +193,7 @@
       "name": "audit",
       "path": "models/compact-wall-bracket/audit.mjs",
       "command": "npm run audit -- compact-wall-bracket",
-      "description": "Verifies the measured source contract, preserved section minimums, single and two-up STL topology, Z placement, and plate fit."
+      "description": "Verifies source depth evidence, locked proportions, stepped-depth topology, opposed rotated packing, Z placement, and plate fit."
     }
   ]
 }

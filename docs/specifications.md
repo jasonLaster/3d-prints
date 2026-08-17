@@ -76,11 +76,13 @@ The app must never solve parameter changes by uniformly scaling all axes.
 Compact Wall Bracket:
 
 - The retained source body measures 190.9188 × 25.6 × 99.9285 mm and contains no bolt bores or countersinks.
-- The default remake reduces only the outer span and rise to 115 × 60.2 mm while retaining the full 25.6 mm body depth, 10 mm base rail, and 6.4 mm diagonal/web minimums.
-- Plate size, edge margin, and pair gap remain editable. The default two-up layout is 235 × 60.2 mm on a 250 mm square usable plate with 5 mm requested edge margins.
-- Single and two-up STLs print broad-face-down at Z = 0. The two-up file contains two separate manifold bracket shells.
+- The source has a measured 25.6 mm maximum depth and 8.96 mm recessed center depth; the remake must not flatten those observations into a uniform-depth claim.
+- The default remake uses a 200 mm outer span and derives its 104.6817 mm rise from the measured source ratio. Rise is not independently editable.
+- Base-body depth defaults to 19.05 mm. Diagonal rails and the center web share a separate 12.7 mm depth, while the 10 mm base and 6.4 mm diagonal/web planar minimums remain intact.
+- Plate size, edge margin, and pair gap remain editable. The default two-up layout opposes the brackets, preserves a 5 mm normal gap, and rotates the pair approximately 27.5 degrees for a 232.37 mm square footprint on a 250 mm plate.
+- Single and two-up STLs share a support-free Z = 0 lower face. The two-up file contains two separate manifold bracket shells.
 - The fit and strength checks are geometric screens, not load certification; the actual slicer profile, material, layer bonding, attachment, fasteners, and installed proof load govern use.
-- See `docs/compact-wall-bracket-audit-specifications.md` for source custody, selective-scaling, print-layout, and audit details.
+- See `docs/compact-wall-bracket-audit-specifications.md` for source custody, stepped depths, proportional sizing, rotated print layout, and audit details.
 
 Drill Bit Holder:
 
