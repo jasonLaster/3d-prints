@@ -28,6 +28,12 @@ Current models:
   - Config: `public/models/door-lock-adapter/model.json`
   - Audit script: `models/door-lock-adapter/audit.mjs`
   - Source generator: `models/door-lock-adapter/generate-source.mjs`
+- `compact-wall-bracket`
+  - STLs: `public/models/compact-wall-bracket/compact-wall-bracket-*.stl`
+  - Config: `public/models/compact-wall-bracket/model.json`
+  - Retained source: `models/compact-wall-bracket/reference/obj_4_Corpo_04_(2).stl`
+  - Audit script: `models/compact-wall-bracket/audit.mjs`
+  - Source generator: `models/compact-wall-bracket/generate-source.mjs`
 - `drill-bit-holder`
   - STL: `public/models/drill-bit-holder/drill-bit-holder.stl`
   - Config: `public/models/drill-bit-holder/model.json`
@@ -79,6 +85,7 @@ npm run audit
 npm run audit -- japandi-tray
 npm run audit -- simple-box
 npm run audit -- door-lock-adapter
+npm run audit -- compact-wall-bracket
 npm run audit -- drill-bit-holder
 npm run audit -- router-mortise-jig
 npm run audit -- router-tenon-jig

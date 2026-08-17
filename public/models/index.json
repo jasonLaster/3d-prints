@@ -22,6 +22,11 @@
       "configUrl": "/models/door-lock-adapter/model.json"
     },
     {
+      "id": "compact-wall-bracket",
+      "name": "Compact Wall Bracket",
+      "configUrl": "/models/compact-wall-bracket/model.json"
+    },
+    {
       "id": "drill-bit-holder",
       "name": "Drill Bit Holder",
       "configUrl": "/models/drill-bit-holder/model.json"

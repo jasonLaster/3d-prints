@@ -74,6 +74,8 @@ import {
   createBandsawSledGeometry,
   createBandsawSledPartGeometries,
   createBandsawSledPreviewParts,
+  createCompactWallBracketGeometry,
+  createCompactWallBracketTwoUpGeometries,
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
   createRouterMortiseJigGuideGeometry,
@@ -105,6 +107,7 @@ import {
   getDefaultParams,
   getGridfinityUnitCount,
   getBandsawSledSpec,
+  getCompactWallBracketSpec,
   getModelDimensions,
   getParam,
   getParameterLimits,
@@ -114,6 +117,7 @@ import {
   isDrillBitDiameterKey,
   snapGridfinityDimension,
   updateDoorLockAdapterGuide,
+  updateCompactWallBracketGuide,
   updateConcentricTubeJigGuide,
   updateDrillBitHolderGuide,
   updateBandsawSledGuide,
@@ -169,6 +173,7 @@ const DRILL_BIT_PARAMETER_KEY_SET = new Set<string>(
 type ViewerHandle = {
   captureBrochureViews: () => Promise<string[]>;
   exportStl: () => void;
+  exportTwoUpStl: () => void;
   exportLidStl: () => void;
   exportBoxAndLidStl: () => void;
   exportHoverTemplateStls: () => void;
@@ -833,6 +838,7 @@ function getParamsFromUrl(model: ModelDefinition) {
 
   if (
     model.viewer === "door-lock-adapter-v1" ||
+    model.viewer === "compact-wall-bracket-v1" ||
     model.viewer === "drill-bit-holder-v1" ||
     model.viewer === "router-mortise-jig-v1" ||
     model.viewer === "router-tenon-jig-v1" ||
@@ -840,6 +846,7 @@ function getParamsFromUrl(model: ModelDefinition) {
   ) {
     const passes =
       model.viewer === "drill-bit-holder-v1" ||
+      model.viewer === "compact-wall-bracket-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
       model.viewer === "router-tenon-jig-v1" ||
       model.viewer === "bandsaw-sled-v1"
@@ -1158,6 +1165,12 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
     const spec = getBandsawSledSpec(params, model);
     return `${model.export.filePrefix}-base-${compact(spec.baseWidth)}x${compact(spec.baseDepth)}-fence-${compact(spec.fenceWidth)}x${compact(spec.fenceHeight)}-setback-${compact(spec.fencePosition)}-bracket-${compact(spec.bracketDepth)}-gusset-${compact(spec.bracketGussetDepth)}.stl`;
   }
+  if (model.viewer === "compact-wall-bracket-v1") {
+    const compact = (value: number) =>
+      value.toFixed(1).replace(/\.0$/, "");
+    const spec = getCompactWallBracketSpec(params, model);
+    return `${model.export.filePrefix}-${compact(spec.span)}x${compact(spec.rise)}x${compact(spec.depth)}.stl`;
+  }
   const suffix = model.parameters
     .map(
       (parameter) => {
@@ -1328,7 +1341,9 @@ const HolderViewer = forwardRef<
     const target = new THREE.Vector3(
       0,
       0,
-      model.viewer !== "weighted-paper-towel-holder-v1"
+      model.viewer === "compact-wall-bracket-v1"
+        ? dimensions.height * 0.5
+        : model.viewer !== "weighted-paper-towel-holder-v1"
         ? dimensions.height * 0.25
         : dimensions.height * 0.42,
     );
@@ -1356,11 +1371,21 @@ const HolderViewer = forwardRef<
     } else if (preset === "yEdge") {
       camera.position.set(distance, 0, edgeViewZ);
     } else if (model.viewer !== "weighted-paper-towel-holder-v1") {
-      camera.position.set(
-        distance * 0.7,
-        model.viewer === "bandsaw-sled-v1" ? distance * 0.78 : -distance * 0.78,
-        distance * 0.52,
-      );
+      if (model.viewer === "compact-wall-bracket-v1") {
+        camera.position.set(
+          distance * 1.05,
+          -distance * 1.1,
+          distance * 1.25,
+        );
+      } else {
+        camera.position.set(
+          distance * 0.7,
+          model.viewer === "bandsaw-sled-v1"
+            ? distance * 0.78
+            : -distance * 0.78,
+          distance * 0.52,
+        );
+      }
     } else {
       camera.position.set(distance * 0.72, -distance, dimensions.height * 1.25);
     }
@@ -1449,6 +1474,13 @@ const HolderViewer = forwardRef<
         model,
       );
       updateDoorLockAdapterGuide(guideMesh, latestParamsRef.current);
+    } else if (model.viewer === "compact-wall-bracket-v1") {
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createCompactWallBracketGeometry(
+        latestParamsRef.current,
+        model,
+      );
+      updateCompactWallBracketGuide(guideMesh, latestParamsRef.current);
     } else if (model.viewer === "concentric-tube-jig-v1") {
       mainMesh.geometry.dispose();
       mainMesh.geometry = createConcentricTubeJigGeometry(
@@ -2020,6 +2052,32 @@ const HolderViewer = forwardRef<
     return new Blob([result], { type: "model/stl" });
   }, [model]);
 
+  const exportTwoUpStl = useCallback(() => {
+    if (model.viewer !== "compact-wall-bracket-v1") return;
+    const sources = createCompactWallBracketTwoUpGeometries(
+      latestParamsRef.current,
+      model,
+    );
+    const group = new THREE.Group();
+    const meshes = sources.map((geometry, index) => {
+      const mesh = new THREE.Mesh(createCleanExportGeometry(geometry));
+      mesh.name = `${model.id}-${index === 0 ? "left" : "right"}`;
+      group.add(mesh);
+      return mesh;
+    });
+    group.updateMatrixWorld(true);
+    const result = new STLExporter().parse(group, { binary: true });
+    downloadBlob(
+      new Blob([result], { type: "model/stl" }),
+      getExportFileName(model, latestParamsRef.current).replace(
+        /\.stl$/,
+        "-two-up.stl",
+      ),
+    );
+    sources.forEach((geometry) => geometry.dispose());
+    meshes.forEach((mesh) => mesh.geometry.dispose());
+  }, [model]);
+
   const exportRouterMortiseJigStls = useCallback(() => {
     if (model.viewer !== "router-mortise-jig-v1") return;
     const baseName = getExportFileName(model, latestParamsRef.current).replace(
@@ -2319,6 +2377,7 @@ const HolderViewer = forwardRef<
     () => ({
       captureBrochureViews,
       exportStl,
+      exportTwoUpStl,
       exportLidStl,
       exportBoxAndLidStl,
       exportHoverTemplateStls,
@@ -2326,7 +2385,7 @@ const HolderViewer = forwardRef<
       resetCamera,
       setView: setCameraView,
     }),
-    [captureBrochureViews, createStlBlob, exportBoxAndLidStl, exportHoverTemplateStls, exportLidStl, exportStl, resetCamera, setCameraView],
+    [captureBrochureViews, createStlBlob, exportBoxAndLidStl, exportHoverTemplateStls, exportLidStl, exportStl, exportTwoUpStl, resetCamera, setCameraView],
   );
 
   useEffect(() => {
@@ -2394,6 +2453,7 @@ const HolderViewer = forwardRef<
         : THREE.TOUCH.ROTATE;
     controls.minDistance =
       model.viewer === "door-lock-adapter-v1" ||
+      model.viewer === "compact-wall-bracket-v1" ||
       model.viewer === "concentric-tube-jig-v1" ||
       model.viewer === "drill-bit-holder-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
@@ -2627,6 +2687,8 @@ const HolderViewer = forwardRef<
 
         const displayedGeometry = model.viewer === "door-lock-adapter-v1"
           ? createDoorLockAdapterGeometry(latestParamsRef.current, model)
+          : model.viewer === "compact-wall-bracket-v1"
+            ? createCompactWallBracketGeometry(latestParamsRef.current, model)
           : model.viewer === "concentric-tube-jig-v1"
             ? createConcentricTubeJigGeometry(latestParamsRef.current, model)
             : model.viewer === "drill-bit-holder-v1"
@@ -2762,6 +2824,7 @@ const HolderViewer = forwardRef<
 
         if (
           model.viewer === "door-lock-adapter-v1" ||
+          model.viewer === "compact-wall-bracket-v1" ||
           model.viewer === "concentric-tube-jig-v1" ||
           model.viewer === "drill-bit-holder-v1" ||
           model.viewer === "router-mortise-jig-v1" ||
@@ -3820,6 +3883,56 @@ function HoverDiningTableParameterControls({
           </section>
         );
       })}
+    </div>
+  );
+}
+
+const COMPACT_WALL_BRACKET_PARAMETER_GROUPS = [
+  "Bracket envelope",
+  "Strength sections",
+  "Two-up layout",
+] as const;
+
+function CompactWallBracketParameterControls({
+  model,
+  params,
+  unit,
+  onChange,
+  onUnitChange,
+}: {
+  model: Extract<ModelDefinition, { viewer: "compact-wall-bracket-v1" }>;
+  params: ModelParams;
+  unit: LengthUnit;
+  onChange: (key: string, value: number) => void;
+  onUnitChange: (unit: LengthUnit) => void;
+}) {
+  return (
+    <div className="parameter-groups compact-wall-bracket-parameter-groups">
+      {COMPACT_WALL_BRACKET_PARAMETER_GROUPS.map((group) => (
+        <section className="nested-parameter-section" key={group}>
+          <div className="divider-controls-heading">
+            <h3>{group}</h3>
+          </div>
+          {model.parameters
+            .filter((parameter) => parameter.group === group)
+            .map((parameter) => (
+              <NumberControl
+                key={parameter.key}
+                label={parameter.label}
+                limits={getParameterLimits(model, params, parameter.key)}
+                onChange={(value) => onChange(parameter.key, value)}
+                onUnitChange={onUnitChange}
+                preferFineStep={
+                  parameter.key === "edgeChamfer" ||
+                  parameter.key === "plateEdgeMargin" ||
+                  parameter.key === "pairGap"
+                }
+                unit={unit}
+                valueMm={params[parameter.key]}
+              />
+            ))}
+        </section>
+      ))}
     </div>
   );
 }
@@ -5290,6 +5403,7 @@ function WorkspaceActionsMenu({
   unit,
   onCreateStlBlob,
   onExport,
+  onExportTwoUp,
   onExportLid,
   onExportBoxAndLid,
   onExportHoverTemplates,
@@ -5309,6 +5423,7 @@ function WorkspaceActionsMenu({
   unit: LengthUnit;
   onCreateStlBlob: () => Blob | null;
   onExport: () => void;
+  onExportTwoUp: () => void;
   onExportLid: () => void;
   onExportBoxAndLid: () => void;
   onExportHoverTemplates: () => void;
@@ -5397,6 +5512,8 @@ function WorkspaceActionsMenu({
                   label={
                     model.viewer === "weighted-paper-towel-holder-v1"
                       ? "Original inlay"
+                      : model.viewer === "compact-wall-bracket-v1"
+                        ? "Default compact STL"
                       : "Original STL"
                   }
                   onChange={onShowOriginalChange}
@@ -5416,8 +5533,16 @@ function WorkspaceActionsMenu({
                     ? "Export 5 individual STLs"
                   : model.viewer === "bandsaw-sled-v1"
                     ? "Export 4 printed-part STLs"
+                  : model.viewer === "compact-wall-bracket-v1"
+                    ? "Export single STL"
                   : "Export"}
               </button>
+              {model.viewer === "compact-wall-bracket-v1" ? (
+                <button onClick={onExportTwoUp} type="button">
+                  <Download aria-hidden="true" />
+                  Export two-up STL
+                </button>
+              ) : null}
               {model.viewer === "simple-box-v1" ? (
                 <>
                   <button onClick={onExportLid} type="button">
@@ -5457,6 +5582,7 @@ function WorkspaceHeader({
   unit,
   onCreateStlBlob,
   onExport,
+  onExportTwoUp,
   onExportLid,
   onExportBoxAndLid,
   onExportHoverTemplates,
@@ -5479,6 +5605,7 @@ function WorkspaceHeader({
   unit: LengthUnit;
   onCreateStlBlob: () => Blob | null;
   onExport: () => void;
+  onExportTwoUp: () => void;
   onExportLid: () => void;
   onExportBoxAndLid: () => void;
   onExportHoverTemplates: () => void;
@@ -5516,6 +5643,7 @@ function WorkspaceHeader({
           model={model}
           onCreateStlBlob={onCreateStlBlob}
           onExport={onExport}
+          onExportTwoUp={onExportTwoUp}
           onExportLid={onExportLid}
           onExportBoxAndLid={onExportBoxAndLid}
           onExportHoverTemplates={onExportHoverTemplates}
@@ -6031,6 +6159,7 @@ export default function App({
             model.viewer === "drill-bit-holder-v1" ||
             model.viewer === "router-mortise-jig-v1" ||
             model.viewer === "router-tenon-jig-v1" ||
+            model.viewer === "compact-wall-bracket-v1" ||
             model.viewer === "bandsaw-sled-v1"
               ? 4
               : CURVE_PARAM_KEYS.has(key)
@@ -6092,6 +6221,22 @@ export default function App({
           for (const parameter of model.parameters) {
             const dependentLimits = getParameterLimits(model, next, parameter.key);
             next[parameter.key] = clamp(next[parameter.key], dependentLimits.min, dependentLimits.max);
+          }
+        }
+      }
+      if (model.viewer === "compact-wall-bracket-v1") {
+        for (let pass = 0; pass < 2; pass += 1) {
+          for (const parameter of model.parameters) {
+            const dependentLimits = getParameterLimits(
+              model,
+              next,
+              parameter.key,
+            );
+            next[parameter.key] = clamp(
+              next[parameter.key],
+              dependentLimits.min,
+              dependentLimits.max,
+            );
           }
         }
       }
@@ -6540,6 +6685,7 @@ export default function App({
         model={model}
         onCreateStlBlob={() => viewerRef.current?.getStlBlob() ?? null}
         onExport={() => viewerRef.current?.exportStl()}
+        onExportTwoUp={() => viewerRef.current?.exportTwoUpStl()}
         onExportLid={() => viewerRef.current?.exportLidStl()}
         onExportBoxAndLid={() => viewerRef.current?.exportBoxAndLidStl()}
         onExportHoverTemplates={() =>
@@ -6854,7 +7000,15 @@ export default function App({
                       ) : null}
                     </>
                   ) : null}
-                  {model.viewer === "hover-dining-table-v1" ? (
+                  {model.viewer === "compact-wall-bracket-v1" ? (
+                    <CompactWallBracketParameterControls
+                      model={model}
+                      onChange={updateParam}
+                      onUnitChange={setUnit}
+                      params={params}
+                      unit={unit}
+                    />
+                  ) : model.viewer === "hover-dining-table-v1" ? (
                     <HoverDiningTableParameterControls
                       model={model}
                       onChange={updateParam}
@@ -7013,6 +7167,27 @@ export default function App({
                       Tan parts are wood cut/drill parts, light gray and black parts are printed,
                       steel hardware is dark, and threaded inserts are brass. Square the fence,
                       tighten both knobs, and cut the kerf only after the sled tracks correctly.
+                    </p>
+                  </section>
+                ) : null}
+
+                {model.viewer === "compact-wall-bracket-v1" ? (
+                  <section className="panel-section router-mortise-print-set">
+                    <h2>Two-up print</h2>
+                    <ul>
+                      <li>Single-bracket STL for individual placement</li>
+                      <li>Two-up STL with the configured gap already applied</li>
+                      <li>Broad chamfered faces rest on the build plate at Z = 0</li>
+                      <li>25.6 mm depth, 10 mm base, and 6.4 mm diagonal/web minimums</li>
+                    </ul>
+                    <p>
+                      The supplied source body has no bolt bores or countersinks,
+                      so the remake does not invent or resize a bolt interface.
+                      The shorter span improves the geometric lever arm, but this
+                      model does not certify material, layer bonding, wall
+                      attachment, fasteners, or load capacity. Confirm the final
+                      two-copy layout in your slicer, then proof-load the installed
+                      pair gradually.
                     </p>
                   </section>
                 ) : null}

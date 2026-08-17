@@ -16,6 +16,12 @@ import {
   getDoorLockAdapterParameterLimits,
 } from "./doorLockAdapter";
 import {
+  getCompactWallBracketAuditValue,
+  getCompactWallBracketDimensions,
+  getCompactWallBracketParameterLimits,
+  getCompactWallBracketSpec,
+} from "./compactWallBracket";
+import {
   getConcentricTubeJigAuditValue,
   getConcentricTubeJigDimensions,
   getConcentricTubeJigParameterLimits,
@@ -84,6 +90,13 @@ export {
   createDoorLockAdapterGeometry,
   updateDoorLockAdapterGuide,
 } from "./doorLockAdapter";
+export {
+  createCompactWallBracketGeometry,
+  createCompactWallBracketTwoUpGeometries,
+  getCompactWallBracketSpec,
+  updateCompactWallBracketGuide,
+} from "./compactWallBracket";
+export type { CompactWallBracketSpec } from "./compactWallBracket";
 export {
   createConcentricTubeJigGeometry,
   updateConcentricTubeJigGuide,
@@ -186,6 +199,9 @@ function getAuditValue(
   if (model.viewer === "door-lock-adapter-v1") {
     return getDoorLockAdapterAuditValue(check, params, unit, model);
   }
+  if (model.viewer === "compact-wall-bracket-v1") {
+    return getCompactWallBracketAuditValue(check, params, unit, model);
+  }
   if (model.viewer === "concentric-tube-jig-v1") {
     return getConcentricTubeJigAuditValue(check, params, unit, model);
   }
@@ -233,6 +249,9 @@ export function getParameterLimits(
   if (model.viewer === "door-lock-adapter-v1") {
     return getDoorLockAdapterParameterLimits(model, params, key);
   }
+  if (model.viewer === "compact-wall-bracket-v1") {
+    return getCompactWallBracketParameterLimits(model, params, key);
+  }
   if (model.viewer === "concentric-tube-jig-v1") {
     return getConcentricTubeJigParameterLimits(model, params, key);
   }
@@ -268,6 +287,9 @@ export function getModelDimensions(
 ): ModelDimensions {
   if (model.viewer === "door-lock-adapter-v1") {
     return getDoorLockAdapterDimensions(params);
+  }
+  if (model.viewer === "compact-wall-bracket-v1") {
+    return getCompactWallBracketDimensions(params);
   }
   if (model.viewer === "concentric-tube-jig-v1") {
     return getConcentricTubeJigDimensions(params, model);
@@ -362,6 +384,17 @@ export function getStatusItems(
       `Bracket ${formatLength(spec.bracketDepth, unit)} · slot ${formatLength(spec.lockSlotLength, unit)} · gusset ${formatLength(spec.bracketGussetDepth, unit)}`,
       "Printed brackets × 2 · lock knobs × 2",
       "M5 heat-set inserts × 4 · M6 wood inserts × 2",
+    ];
+  }
+  if (model.viewer === "compact-wall-bracket-v1") {
+    const spec = getCompactWallBracketSpec(params, model);
+    return [
+      `Bracket ${formatLength(spec.span, unit)} × ${formatLength(spec.rise, unit)} × ${formatLength(spec.depth, unit)}`,
+      `Base ${formatLength(spec.baseThickness, unit)} · diagonal/web ${formatLength(spec.diagonalThickness, unit)}`,
+      `Two-up ${formatLength(spec.twoUpWidth, unit)} × ${formatLength(spec.twoUpDepth, unit)}`,
+      spec.twoUpFits
+        ? "Two-up plate fit passes"
+        : "Two-up plate fit needs adjustment",
     ];
   }
   return model.parameters.slice(0, 4).map((parameter) => {

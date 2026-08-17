@@ -113,6 +113,17 @@ export type DoorLockAdapterGeometry = {
   minimumWallThickness: number;
 };
 
+export type CompactWallBracketGeometry = {
+  mainAxis: { x: number; y: number; z: number };
+  bevelSegments: number;
+  sourceSpan: number;
+  sourceRise: number;
+  sourceDepth: number;
+  sourceBaseThickness: number;
+  sourceDiagonalThickness: number;
+  sourceHasBoltBores: false;
+};
+
 export type ConcentricTubeJigGeometry = {
   mainAxis: { x: number; y: number; z: number };
   radialSegments: number;
@@ -294,6 +305,7 @@ export type SupportedViewer =
   | "japandi-tray-v1"
   | "simple-box-v1"
   | "door-lock-adapter-v1"
+  | "compact-wall-bracket-v1"
   | "concentric-tube-jig-v1"
   | "drill-bit-holder-v1"
   | "router-mortise-jig-v1"
@@ -345,6 +357,15 @@ export type SimpleBoxModelDefinition = BaseModelDefinition & {
 export type DoorLockAdapterModelDefinition = BaseModelDefinition & {
   viewer: "door-lock-adapter-v1";
   geometry: DoorLockAdapterGeometry;
+};
+
+export type CompactWallBracketModelDefinition = BaseModelDefinition & {
+  viewer: "compact-wall-bracket-v1";
+  geometry: CompactWallBracketGeometry;
+  twoUpStl: {
+    fileName: string;
+    url: string;
+  };
 };
 
 export type ConcentricTubeJigModelDefinition = BaseModelDefinition & {
@@ -430,6 +451,7 @@ export type ModelDefinition =
   | TrayModelDefinition
   | SimpleBoxModelDefinition
   | DoorLockAdapterModelDefinition
+  | CompactWallBracketModelDefinition
   | ConcentricTubeJigModelDefinition
   | DrillBitHolderModelDefinition
   | RouterMortiseJigModelDefinition

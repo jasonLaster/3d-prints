@@ -1,0 +1,206 @@
+{
+  "id": "compact-wall-bracket",
+  "name": "Compact Wall Bracket",
+  "subtitle": "Two-up, strength-preserving parametric remake",
+  "description": "A compact reconstruction of the supplied triangular wall-bracket body. The outer span and rise are reduced for a two-copy plate layout while the measured source depth and structural rail thicknesses remain at full size.",
+  "viewer": "compact-wall-bracket-v1",
+  "stl": {
+    "fileName": "compact-wall-bracket-single.stl",
+    "sourceName": "obj_4_Corpo_04_(2).stl",
+    "units": "mm",
+    "url": "/models/compact-wall-bracket/compact-wall-bracket-single.stl"
+  },
+  "twoUpStl": {
+    "fileName": "compact-wall-bracket-two-up.stl",
+    "url": "/models/compact-wall-bracket/compact-wall-bracket-two-up.stl"
+  },
+  "export": {
+    "filePrefix": "compact-wall-bracket"
+  },
+  "geometry": {
+    "mainAxis": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "bevelSegments": 2,
+    "sourceSpan": 190.9188,
+    "sourceRise": 99.9285,
+    "sourceDepth": 25.6,
+    "sourceBaseThickness": 10,
+    "sourceDiagonalThickness": 6.4,
+    "sourceHasBoltBores": false
+  },
+  "parameters": [
+    {
+      "key": "span",
+      "label": "Outer span",
+      "group": "Bracket envelope",
+      "statusLabel": "Span",
+      "default": 115,
+      "limits": {
+        "min": 90,
+        "max": 180,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "rise",
+      "label": "Outer rise",
+      "group": "Bracket envelope",
+      "statusLabel": "Rise",
+      "default": 60.2,
+      "limits": {
+        "min": 50,
+        "max": 120,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "depth",
+      "label": "Body depth",
+      "group": "Strength sections",
+      "statusLabel": "Depth",
+      "default": 25.6,
+      "limits": {
+        "min": 25.6,
+        "max": 40,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "baseThickness",
+      "label": "Base rail thickness",
+      "group": "Strength sections",
+      "statusLabel": "Base",
+      "default": 10,
+      "limits": {
+        "min": 10,
+        "max": 18,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "diagonalThickness",
+      "label": "Diagonal rail thickness",
+      "group": "Strength sections",
+      "statusLabel": "Diagonal",
+      "default": 6.4,
+      "limits": {
+        "min": 6.4,
+        "max": 14,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "centerWebThickness",
+      "label": "Center web thickness",
+      "group": "Strength sections",
+      "statusLabel": "Web",
+      "default": 6.4,
+      "limits": {
+        "min": 6.4,
+        "max": 14,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "edgeChamfer",
+      "label": "Edge chamfer",
+      "group": "Strength sections",
+      "statusLabel": "Chamfer",
+      "default": 1.2,
+      "limits": {
+        "min": 0,
+        "max": 2,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "plateSize",
+      "label": "Square build plate size",
+      "group": "Two-up layout",
+      "statusLabel": "Plate",
+      "default": 250,
+      "limits": {
+        "min": 180,
+        "max": 350,
+        "step": 1
+      }
+    },
+    {
+      "key": "plateEdgeMargin",
+      "label": "Plate edge margin",
+      "group": "Two-up layout",
+      "statusLabel": "Edge margin",
+      "default": 5,
+      "limits": {
+        "min": 3,
+        "max": 15,
+        "step": 0.5
+      }
+    },
+    {
+      "key": "pairGap",
+      "label": "Gap between brackets",
+      "group": "Two-up layout",
+      "statusLabel": "Pair gap",
+      "default": 5,
+      "limits": {
+        "min": 3,
+        "max": 20,
+        "step": 0.5
+      }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.1,
+    "dimensionTargets": [
+      "The supplied source mesh measures 190.9188 mm span by 99.9285 mm rise by 25.6 mm depth.",
+      "The compact default measures 115 mm span by 60.2 mm rise by 25.6 mm depth.",
+      "The source 10 mm base rail and 6.4 mm diagonal rail thicknesses are minimums, not scaled dimensions.",
+      "Two default copies plus the 5 mm gap occupy 235 mm by 60.2 mm and fit inside a 250 mm square plate with 5 mm requested edge margins."
+    ],
+    "invariants": [
+      "Reduce only the bracket span and rise; never reduce the source body depth, base rail, diagonal rail, or center web minimums.",
+      "Keep the outer triangle, two open cells, center web, and broad-face-down support-free print orientation.",
+      "The supplied source body contains no bolt bores or countersinks, so do not invent or rescale a bolt interface.",
+      "Keep the two-up export as two disconnected, individually manifold bracket shells separated by the requested gap.",
+      "Treat the plate fit as a geometric envelope check; verify brim, purge objects, exclusion zones, material, layer direction, fasteners, and real loading in the slicer and physical setup."
+    ],
+    "checks": [
+      {
+        "key": "compactEnvelope",
+        "label": "Compact envelope"
+      },
+      {
+        "key": "sourceScale",
+        "label": "Selective scaling"
+      },
+      {
+        "key": "memberSections",
+        "label": "Preserved structural sections"
+      },
+      {
+        "key": "boltInterface",
+        "label": "Bolt interface"
+      },
+      {
+        "key": "twoUpFootprint",
+        "label": "Two-up footprint"
+      },
+      {
+        "key": "plateMargin",
+        "label": "Plate margin"
+      }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/compact-wall-bracket/audit.mjs",
+      "command": "npm run audit -- compact-wall-bracket",
+      "description": "Verifies the measured source contract, preserved section minimums, single and two-up STL topology, Z placement, and plate fit."
+    }
+  ]
+}

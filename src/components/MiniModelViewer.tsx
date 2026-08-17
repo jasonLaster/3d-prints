@@ -12,6 +12,7 @@ import {
   applyTrayMorph,
   createBandsawSledGeometry,
   createBandsawSledPreviewParts,
+  createCompactWallBracketGeometry,
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
   createRouterMortiseJigGuideGeometry,
@@ -179,6 +180,14 @@ function createPreviewObject(
     group.add(
       new THREE.Mesh(
         createDoorLockAdapterGeometry(params, definition),
+        mainMaterial,
+      ),
+    );
+  } else if (definition.viewer === "compact-wall-bracket-v1") {
+    sourceGeometry.dispose();
+    group.add(
+      new THREE.Mesh(
+        createCompactWallBracketGeometry(params, definition),
         mainMaterial,
       ),
     );

@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(8);
+  expect(catalog.models).toHaveLength(9);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -120,6 +120,14 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "adapterCutout",
       "adapterWallThickness",
       "adapterCentering",
+    ],
+    "compact-wall-bracket-v1": [
+      "compactEnvelope",
+      "sourceScale",
+      "memberSections",
+      "boltInterface",
+      "twoUpFootprint",
+      "plateMargin",
     ],
     "concentric-tube-jig-v1": [
       "tubeRange",
@@ -555,6 +563,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   const adapterDoc = readText(
     path.join(root, "docs/door-lock-adapter-audit-specifications.md"),
   );
+  const compactWallBracketDoc = readText(
+    path.join(root, "docs/compact-wall-bracket-audit-specifications.md"),
+  );
   const drillBitHolderDoc = readText(
     path.join(root, "docs/drill-bit-holder-audit-specifications.md"),
   );
@@ -611,6 +622,18 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "Every mesh edge belongs to exactly two triangles",
   ]) {
     expect(adapterDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "190.9188 × 25.6 × 99.9285 mm",
+    "contains no bolt bores",
+    "115 × 60.2 × 25.6 mm",
+    "structural sections are not scaled",
+    "235 × 60.2 × 25.6 mm",
+    "two disconnected, individually manifold shells",
+    "verify the final plate in the actual slicer profile",
+  ]) {
+    expect(compactWallBracketDoc).toContain(phrase);
   }
 
   for (const phrase of [

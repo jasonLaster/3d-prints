@@ -73,6 +73,15 @@ Each catalog model has a `public/models/<model-id>/model.json` file with:
 
 The app must never solve parameter changes by uniformly scaling all axes.
 
+Compact Wall Bracket:
+
+- The retained source body measures 190.9188 × 25.6 × 99.9285 mm and contains no bolt bores or countersinks.
+- The default remake reduces only the outer span and rise to 115 × 60.2 mm while retaining the full 25.6 mm body depth, 10 mm base rail, and 6.4 mm diagonal/web minimums.
+- Plate size, edge margin, and pair gap remain editable. The default two-up layout is 235 × 60.2 mm on a 250 mm square usable plate with 5 mm requested edge margins.
+- Single and two-up STLs print broad-face-down at Z = 0. The two-up file contains two separate manifold bracket shells.
+- The fit and strength checks are geometric screens, not load certification; the actual slicer profile, material, layer bonding, attachment, fasteners, and installed proof load govern use.
+- See `docs/compact-wall-bracket-audit-specifications.md` for source custody, selective-scaling, print-layout, and audit details.
+
 Drill Bit Holder:
 
 - A comma-delimited bit-size field adds, removes, and resizes blind-hole positions; it defaults to the ordered set 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, and 1/2 inch.
