@@ -121,7 +121,11 @@ export type CompactWallBracketGeometry = {
   sourceCoreDepth: number;
   sourceBaseThickness: number;
   sourceDiagonalThickness: number;
-  sourceHasBoltBores: false;
+  sourceMountingHoleDiameter: number;
+  sourceMountingHoleCount: number;
+  sourceMountingHoleApexInset: number;
+  sourceMountingHoleRowSpacing: number;
+  sourceMountingHoleDepthEdgeInset: number;
 };
 
 export type ConcentricTubeJigGeometry = {

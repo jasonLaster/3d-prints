@@ -40,6 +40,7 @@ function analyzeStl(filePath) {
   const geometry = parseStl(filePath);
   const position = geometry.getAttribute("position");
   const edges = new Map();
+  const directedEdges = new Map();
   const vertexTriangles = new Map();
   const zLevels = new Set();
   const key = (vector) =>
@@ -83,6 +84,11 @@ function analyzeStl(filePath) {
     ]) {
       const edge = [key(start), key(end)].sort().join("|");
       edges.set(edge, (edges.get(edge) ?? 0) + 1);
+      const startKey = key(start);
+      const endKey = key(end);
+      const directions = directedEdges.get(edge) ?? [];
+      directions.push(startKey < endKey ? 1 : -1);
+      directedEdges.set(edge, directions);
     }
     for (const vertex of [a, b, c]) {
       const vertexKey = key(vertex);
@@ -100,6 +106,10 @@ function analyzeStl(filePath) {
   const nonManifoldEdges = [...edges.values()].filter(
     (count) => count !== 2,
   ).length;
+  const windingMismatches = [...directedEdges.values()].filter(
+    (directions) =>
+      directions.length !== 2 || directions[0] === directions[1],
+  ).length;
   const components = new Set(parent.map((_, index) => find(index))).size;
   geometry.dispose();
   return {
@@ -110,6 +120,7 @@ function analyzeStl(filePath) {
     nonManifoldEdges,
     size,
     triangles,
+    windingMismatches,
     zLevels: [...zLevels].sort((left, right) => left - right),
   };
 }
@@ -140,6 +151,151 @@ function measureSourceDepthPlanes(filePath) {
     coreDepth: major.length === 4 ? major[2] - major[1] : Number.NaN,
     outerDepth: major.length === 4 ? major[3] - major[0] : Number.NaN,
   };
+}
+
+function connectedProjectedCircles(points, connectionDistance = 0.35) {
+  const seen = new Set();
+  const components = [];
+  for (let index = 0; index < points.length; index += 1) {
+    if (seen.has(index)) continue;
+    const queue = [index];
+    const component = [];
+    seen.add(index);
+    while (queue.length) {
+      const current = queue.pop();
+      component.push(points[current]);
+      for (let candidate = 0; candidate < points.length; candidate += 1) {
+        if (seen.has(candidate)) continue;
+        if (
+          Math.hypot(
+            points[current].u - points[candidate].u,
+            points[current].depth - points[candidate].depth,
+          ) < connectionDistance
+        ) {
+          seen.add(candidate);
+          queue.push(candidate);
+        }
+      }
+    }
+    if (component.length >= 100) components.push(component);
+  }
+  return components.map((component) => {
+    const us = component.map(({ u }) => u);
+    const depths = component.map(({ depth }) => depth);
+    const minU = Math.min(...us);
+    const maxU = Math.max(...us);
+    const minDepth = Math.min(...depths);
+    const maxDepth = Math.max(...depths);
+    return {
+      centerU: (minU + maxU) / 2,
+      centerDepth: (minDepth + maxDepth) / 2,
+      diameter: ((maxU - minU) + (maxDepth - minDepth)) / 2,
+    };
+  });
+}
+
+function measureSourceMountingHoles(filePath) {
+  const geometry = parseStl(filePath);
+  const position = geometry.getAttribute("position");
+  geometry.computeBoundingBox();
+  const rootHalf = Math.SQRT1_2;
+  const sides = [
+    {
+      u: (x, z) => (x - z) * rootHalf,
+      axis: (x, z) => (x + z) * rootHalf,
+    },
+    {
+      u: (x, z) => (x + z) * rootHalf,
+      axis: (x, z) => (-x + z) * rootHalf,
+    },
+  ];
+  const circles = [];
+  const longitudinalSpacings = [];
+  const apexInsets = [];
+  const sourceApexX = (geometry.boundingBox.min.x + geometry.boundingBox.max.x) / 2;
+  const sourceApexZ = geometry.boundingBox.max.z;
+  for (const side of sides) {
+    const projected = new Map();
+    for (let index = 0; index < position.count; index += 1) {
+      const x = position.getX(index);
+      const y = position.getY(index);
+      const z = position.getZ(index);
+      const u = side.u(x, z);
+      const axis = side.axis(x, z);
+      const key = `${u.toFixed(3)},${y.toFixed(3)}`;
+      const entry = projected.get(key) ?? {
+        u,
+        depth: y,
+        axisLevels: new Set(),
+      };
+      entry.axisLevels.add(axis.toFixed(3));
+      projected.set(key, entry);
+    }
+    const sideCircles = connectedProjectedCircles(
+      [...projected.values()].filter(({ axisLevels }) => axisLevels.size === 2),
+    );
+    circles.push(...sideCircles);
+    const sideCenters = [...new Set(sideCircles.map(({ centerU }) => centerU.toFixed(3)))]
+      .map(Number)
+      .sort((left, right) => left - right);
+    if (sideCenters.length === 2) {
+      longitudinalSpacings.push(sideCenters[1] - sideCenters[0]);
+      const apexU = side.u(sourceApexX, sourceApexZ);
+      apexInsets.push(Math.min(...sideCenters.map((center) => Math.abs(center - apexU))));
+    }
+  }
+  const depthMin = geometry.boundingBox.min.y;
+  const depthMax = geometry.boundingBox.max.y;
+  geometry.dispose();
+  return {
+    circles,
+    diameter: circles.reduce((sum, circle) => sum + circle.diameter, 0) / circles.length,
+    depthEdgeInset: Math.min(
+      ...circles.map(({ centerDepth }) =>
+        Math.min(centerDepth - depthMin, depthMax - centerDepth),
+      ),
+    ),
+    longitudinalSpacing:
+      longitudinalSpacings.reduce((sum, spacing) => sum + spacing, 0) /
+      longitudinalSpacings.length,
+    apexInset:
+      apexInsets.reduce((sum, inset) => sum + inset, 0) / apexInsets.length,
+  };
+}
+
+function measureGeneratedMountingHoles(
+  filePath,
+  span,
+  rise,
+  baseThickness,
+  expectedCenters,
+  expectedRadius,
+) {
+  const geometry = parseStl(filePath);
+  const position = geometry.getAttribute("position");
+  const apex = new THREE.Vector2(0, rise / 2);
+  const outerCorner = Math.min(4.5, baseThickness * 0.45, (span / 2) * 0.08);
+  let matched = 0;
+  for (const side of [-1, 1]) {
+    const base = new THREE.Vector2(side * span / 2, -rise / 2 + outerCorner);
+    const tangent = base.clone().sub(apex).normalize();
+    const projected = new Map();
+    for (let index = 0; index < position.count; index += 1) {
+      const point = new THREE.Vector2(position.getX(index), position.getY(index));
+      const u = point.clone().sub(apex).dot(tangent);
+      const depth = position.getZ(index);
+      const key = `${u.toFixed(4)},${depth.toFixed(4)}`;
+      projected.set(key, { u, depth });
+    }
+    for (const center of expectedCenters) {
+      const ringPoints = [...projected.values()].filter(({ u, depth }) =>
+        Math.abs(Math.hypot(u - center.x, depth - center.y) - expectedRadius) < 0.01,
+      );
+      if (ringPoints.length >= 28) matched += 1;
+    }
+  }
+  geometry.dispose();
+  return matched;
 }
 
 function rotatePoint(point, angle) {
@@ -242,6 +398,10 @@ for (const key of [
   "baseThickness",
   "diagonalThickness",
   "centerWebThickness",
+  "mountingHoleDiameter",
+  "mountingHoleApexInset",
+  "mountingHoleRowSpacing",
+  "mountingHoleEdgeInset",
   "plateSize",
   "plateEdgeMargin",
   "pairGap",
@@ -260,7 +420,12 @@ assert(nearlyEqual(model.geometry.sourceSpan, 190.9188), "source span is measure
 assert(nearlyEqual(model.geometry.sourceRise, 99.9285), "source rise is measured");
 assert(nearlyEqual(model.geometry.sourceDepth, 25.6), "source outer depth is measured");
 assert(nearlyEqual(model.geometry.sourceCoreDepth, 8.96), "source recessed core depth is measured");
-assert(model.geometry.sourceHasBoltBores === false, "source body records no bolt bores");
+const sourceMountingHoles = measureSourceMountingHoles(sourcePath);
+assert(sourceMountingHoles.circles.length === model.geometry.sourceMountingHoleCount, "source exposes eight diagonal through-holes");
+assert(nearlyEqual(sourceMountingHoles.diameter, model.geometry.sourceMountingHoleDiameter, 0.02), "source mounting-hole diameter is measured");
+assert(nearlyEqual(sourceMountingHoles.apexInset, model.geometry.sourceMountingHoleApexInset, 0.1), "source first mounting-hole row is 32 mm from the apex");
+assert(nearlyEqual(sourceMountingHoles.longitudinalSpacing, model.geometry.sourceMountingHoleRowSpacing, 0.02), "source mounting-hole row spacing is measured");
+assert(nearlyEqual(sourceMountingHoles.depthEdgeInset, model.geometry.sourceMountingHoleDepthEdgeInset, 0.02), "source mounting-hole depth-edge inset is measured");
 
 const sourceDepthPlanes = measureSourceDepthPlanes(sourcePath);
 assert(sourceDepthPlanes.major.length === 4, "source exposes four major depth planes");
@@ -286,6 +451,38 @@ assert(
 assert(
   parameter("centerWebThickness").default >= model.geometry.sourceDiagonalThickness,
   "default center web thickness is not reduced",
+);
+assert(
+  nearlyEqual(
+    parameter("mountingHoleDiameter").default,
+    model.geometry.sourceMountingHoleDiameter,
+  ),
+  "default mounting-hole diameter preserves the source",
+);
+assert(
+  nearlyEqual(
+    parameter("mountingHoleApexInset").default,
+    model.geometry.sourceMountingHoleApexInset,
+  ),
+  "default first hole row preserves the source apex inset",
+);
+assert(
+  nearlyEqual(
+    parameter("mountingHoleRowSpacing").default,
+    model.geometry.sourceMountingHoleRowSpacing,
+  ),
+  "default along-rail hole spacing preserves the source",
+);
+assert(
+  parameter("mountingHoleEdgeInset").default -
+    parameter("mountingHoleDiameter").default / 2 >= 1,
+  "default holes preserve at least 1 mm at both depth edges",
+);
+assert(
+  parameter("braceDepth").default -
+    parameter("mountingHoleEdgeInset").default * 2 -
+    parameter("mountingHoleDiameter").default >= 2,
+  "default depth rows preserve at least a 2 mm web",
 );
 
 const span = parameter("span").default;
@@ -316,18 +513,39 @@ const single = analyzeStl(singlePath);
 assert(single.finite, "single STL contains only finite coordinates");
 assert(single.degenerateTriangles === 0, "single STL has no degenerate triangles");
 assert(single.nonManifoldEdges === 0, "single STL is manifold");
+assert(single.windingMismatches === 0, "single STL has consistent outward winding");
 assert(single.components === 1, "single STL has one connected shell");
 assert(nearlyEqual(single.size.x, span), "single STL span matches default");
 assert(nearlyEqual(single.size.y, rise), "single STL rise matches derived proportion");
 assert(nearlyEqual(single.size.z, parameter("bodyDepth").default), "single STL height matches base-body depth");
 assert(single.zLevels.includes(Number(parameter("braceDepth").default.toFixed(3))), "single STL contains the diagonal and center depth step");
+const expectedHoleCenters = [
+  parameter("mountingHoleApexInset").default,
+  parameter("mountingHoleApexInset").default + parameter("mountingHoleRowSpacing").default,
+].flatMap((alongRail) => [
+  new THREE.Vector2(alongRail, parameter("mountingHoleEdgeInset").default),
+  new THREE.Vector2(alongRail, parameter("braceDepth").default - parameter("mountingHoleEdgeInset").default),
+]);
+assert(
+  measureGeneratedMountingHoles(
+    singlePath,
+    span,
+    rise,
+    parameter("baseThickness").default,
+    expectedHoleCenters,
+    parameter("mountingHoleDiameter").default / 2,
+  ) === 8,
+  "single STL contains all eight parameterized through-holes",
+);
 assert(nearlyEqual(single.min.z, 0), "single STL full lower face rests on Z=0");
 
 const pair = analyzeStl(pairPath);
 assert(pair.finite, "two-up STL contains only finite coordinates");
 assert(pair.degenerateTriangles === 0, "two-up STL has no degenerate triangles");
 assert(pair.nonManifoldEdges === 0, "two-up STL keeps every edge manifold");
+assert(pair.windingMismatches === 0, "two-up STL has consistent outward winding");
 assert(pair.components === 2, "two-up STL contains two disconnected bracket shells");
+assert(pair.triangles === single.triangles * 2, "two-up STL preserves both complete eight-hole meshes");
 assert(nearlyEqual(pair.size.x, expectedLayout.width), "two-up STL width matches optimized rotated layout");
 assert(nearlyEqual(pair.size.y, expectedLayout.depth), "two-up STL depth matches optimized rotated layout");
 assert(nearlyEqual(pair.size.z, parameter("bodyDepth").default), "two-up STL height matches base-body depth");

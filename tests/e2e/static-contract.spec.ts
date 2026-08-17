@@ -627,7 +627,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
 
   for (const phrase of [
     "190.9188 × 25.6 × 99.9285 mm",
-    "contains no bolt bores",
+    "eight 4 mm through-holes",
+    "32 mm from apex",
+    "64 mm farther",
     "four major depth planes",
     "8.96 mm recessed center depth",
     "200 mm wide and 104.6817 mm tall",

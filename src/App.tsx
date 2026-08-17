@@ -332,6 +332,10 @@ const PARAM_QUERY_KEYS = [
   "baseThickness",
   "diagonalThickness",
   "centerWebThickness",
+  "mountingHoleDiameter",
+  "mountingHoleApexInset",
+  "mountingHoleRowSpacing",
+  "mountingHoleEdgeInset",
   "edgeChamfer",
   "plateEdgeMargin",
   "pairGap",
@@ -1179,7 +1183,7 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
     const compact = (value: number) =>
       value.toFixed(1).replace(/\.0$/, "");
     const spec = getCompactWallBracketSpec(params, model);
-    return `${model.export.filePrefix}-${compact(spec.span)}x${compact(spec.rise)}-body-${compact(spec.bodyDepth)}-brace-${compact(spec.braceDepth)}.stl`;
+    return `${model.export.filePrefix}-${compact(spec.span)}x${compact(spec.rise)}-body-${compact(spec.bodyDepth)}-brace-${compact(spec.braceDepth)}-holes-${compact(spec.mountingHoleDiameter)}.stl`;
   }
   const suffix = model.parameters
     .map(
@@ -3900,6 +3904,7 @@ function HoverDiningTableParameterControls({
 const COMPACT_WALL_BRACKET_PARAMETER_GROUPS = [
   "Bracket envelope",
   "Strength sections",
+  "Drill-hole pattern",
   "Two-up layout",
 ] as const;
 
@@ -3935,6 +3940,8 @@ function CompactWallBracketParameterControls({
                 preferFineStep={
                   parameter.key === "bodyDepth" ||
                   parameter.key === "braceDepth" ||
+                  parameter.key === "mountingHoleDiameter" ||
+                  parameter.key === "mountingHoleEdgeInset" ||
                   parameter.key === "plateEdgeMargin" ||
                   parameter.key === "pairGap"
                 }
@@ -7190,10 +7197,13 @@ export default function App({
                       <li>Two-up STL uses opposed brackets and a derived diagonal plate angle</li>
                       <li>The full lower face rests on the build plate at Z = 0 without a recessed underside</li>
                       <li>19.05 mm base-body depth and 12.7 mm diagonal/center depth by default</li>
+                      <li>Eight editable 4 mm through-holes preserve the source two-by-two pattern on each diagonal</li>
                     </ul>
                     <p>
-                      The supplied source body has no bolt bores or countersinks,
-                      so the remake does not invent or resize a bolt interface.
+                      The supplied source has eight 4 mm through-holes arranged
+                      in a two-by-two pattern on each diagonal rail. Their diameter,
+                      first-row position, row spacing, and depth-edge inset are
+                      independently editable rather than scaled with the bracket.
                       The source measures 25.6 mm at its deep outer regions and
                       8.96 mm through its recessed center. This remake makes the
                       user-directed diagonal and center depth equal, keeps the

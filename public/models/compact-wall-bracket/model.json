@@ -1,8 +1,8 @@
 {
   "id": "compact-wall-bracket",
   "name": "Compact Wall Bracket",
-  "subtitle": "Proportional, stepped-depth, diagonally packed pair",
-  "description": "A parametric reconstruction of the supplied triangular wall-bracket body. Span and rise stay locked to the measured source proportion, the base body and diagonal/center braces have separate depths, and the two-up export opposes and rotates the pair to use the square plate efficiently.",
+  "subtitle": "Proportional, drilled, stepped-depth pair",
+  "description": "A parametric reconstruction of the supplied triangular wall-bracket body. Span and rise stay locked to the measured source proportion, eight diagonal through-holes remain editable, the base body and diagonal/center braces have separate depths, and the two-up export opposes and rotates the pair to use the square plate efficiently.",
   "viewer": "compact-wall-bracket-v1",
   "stl": {
     "fileName": "compact-wall-bracket-single.stl",
@@ -29,7 +29,11 @@
     "sourceCoreDepth": 8.96,
     "sourceBaseThickness": 10,
     "sourceDiagonalThickness": 6.4,
-    "sourceHasBoltBores": false
+    "sourceMountingHoleDiameter": 4,
+    "sourceMountingHoleCount": 8,
+    "sourceMountingHoleApexInset": 32,
+    "sourceMountingHoleRowSpacing": 64,
+    "sourceMountingHoleDepthEdgeInset": 4.16
   },
   "parameters": [
     {
@@ -105,6 +109,54 @@
       }
     },
     {
+      "key": "mountingHoleDiameter",
+      "label": "Drill-hole diameter",
+      "group": "Drill-hole pattern",
+      "statusLabel": "Hole diameter",
+      "default": 4,
+      "limits": {
+        "min": 3,
+        "max": 6,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "mountingHoleApexInset",
+      "label": "First row from apex",
+      "group": "Drill-hole pattern",
+      "statusLabel": "Apex inset",
+      "default": 32,
+      "limits": {
+        "min": 20,
+        "max": 50,
+        "step": 0.5
+      }
+    },
+    {
+      "key": "mountingHoleRowSpacing",
+      "label": "Along-rail row spacing",
+      "group": "Drill-hole pattern",
+      "statusLabel": "Row spacing",
+      "default": 64,
+      "limits": {
+        "min": 40,
+        "max": 80,
+        "step": 0.5
+      }
+    },
+    {
+      "key": "mountingHoleEdgeInset",
+      "label": "Depth-edge hole inset",
+      "group": "Drill-hole pattern",
+      "statusLabel": "Edge inset",
+      "default": 3.1,
+      "limits": {
+        "min": 2.5,
+        "max": 10,
+        "step": 0.1
+      }
+    },
+    {
       "key": "plateSize",
       "label": "Square build plate size",
       "group": "Two-up layout",
@@ -147,13 +199,15 @@
       "The supplied source mesh measures 190.9188 mm span by 99.9285 mm rise by 25.6 mm maximum depth, with a measured 8.96 mm recessed center depth.",
       "The default remake measures 200 mm span by 104.6817 mm derived rise, preserving the source 1.91055:1 proportion.",
       "The user-directed depth profile uses a 19.05 mm base body and a common 12.7 mm depth for the diagonal rails and center web, all flush to the build plate on one face.",
+      "The source has eight 4 mm through-holes: a two-by-two pattern on each diagonal, with rows 32 mm from the apex and 64 mm apart; the remake keeps diameter, row placement, and depth-edge inset editable.",
       "Two default copies are opposed, separated by 5 mm normal to their adjacent diagonal edges, and rotated approximately 27.5 degrees for a roughly 232.4 mm square footprint."
     ],
     "invariants": [
       "Derive rise from span using the measured source aspect ratio; do not expose independent dimensions that can distort the original proportion.",
       "Keep base-body depth independent from the shared diagonal-and-center depth, and keep every member flush to the same Z = 0 print face.",
       "Preserve at least the measured 10 mm base rail, 6.4 mm diagonal rail, 6.4 mm center web, and 8.96 mm recessed-core depth.",
-      "The supplied source body contains no bolt bores or countersinks, so do not invent or rescale a bolt interface.",
+      "Preserve all eight source-observed diagonal through-holes and keep their 4 mm diameter independent from outer span scaling.",
+      "Keep at least 1 mm of depth-edge wall, 2 mm between the paired depth rows, and 10 mm beyond the end rows at every accepted parameter state.",
       "Keep the two-up export as two disconnected, individually manifold bracket shells; oppose the second bracket and derive the global rotation that minimizes the square plate envelope.",
       "Treat plate fit as a conservative outer-triangle envelope check; verify brim, purge objects, exclusion zones, material, layer direction, fasteners, and real loading in the slicer and physical setup."
     ],
@@ -176,7 +230,7 @@
       },
       {
         "key": "boltInterface",
-        "label": "Bolt interface"
+        "label": "Drill-hole pattern"
       },
       {
         "key": "twoUpFootprint",
@@ -193,7 +247,7 @@
       "name": "audit",
       "path": "models/compact-wall-bracket/audit.mjs",
       "command": "npm run audit -- compact-wall-bracket",
-      "description": "Verifies source depth evidence, locked proportions, stepped-depth topology, opposed rotated packing, Z placement, and plate fit."
+      "description": "Verifies source depth and hole evidence, locked proportions, eight real parameterized bores, stepped-depth topology, opposed rotated packing, Z placement, and plate fit."
     }
   ]
 }

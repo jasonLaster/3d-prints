@@ -13,6 +13,9 @@ import type {
 
 const EPSILON = 1e-6;
 const LAYOUT_SAMPLES = 720;
+const MIN_HOLE_EDGE_WALL = 1;
+const MIN_HOLE_ROW_WEB = 2;
+const MIN_HOLE_END_WALL = 10;
 
 export type CompactWallBracketSpec = {
   span: number;
@@ -23,6 +26,10 @@ export type CompactWallBracketSpec = {
   baseThickness: number;
   diagonalThickness: number;
   centerWebThickness: number;
+  mountingHoleDiameter: number;
+  mountingHoleApexInset: number;
+  mountingHoleRowSpacing: number;
+  mountingHoleEdgeInset: number;
   pairGap: number;
   plateSize: number;
   plateEdgeMargin: number;
@@ -213,6 +220,10 @@ export function getCompactWallBracketSpec(
   const baseThickness = getParam(params, "baseThickness");
   const diagonalThickness = getParam(params, "diagonalThickness");
   const centerWebThickness = getParam(params, "centerWebThickness");
+  const mountingHoleDiameter = getParam(params, "mountingHoleDiameter");
+  const mountingHoleApexInset = getParam(params, "mountingHoleApexInset");
+  const mountingHoleRowSpacing = getParam(params, "mountingHoleRowSpacing");
+  const mountingHoleEdgeInset = getParam(params, "mountingHoleEdgeInset");
   const pairGap = getParam(params, "pairGap");
   const plateSize = getParam(params, "plateSize");
   const plateEdgeMargin = getParam(params, "plateEdgeMargin");
@@ -232,6 +243,10 @@ export function getCompactWallBracketSpec(
     baseThickness,
     diagonalThickness,
     centerWebThickness,
+    mountingHoleDiameter,
+    mountingHoleApexInset,
+    mountingHoleRowSpacing,
+    mountingHoleEdgeInset,
     pairGap,
     plateSize,
     plateEdgeMargin,
@@ -410,6 +425,201 @@ function addQuad(
   );
 }
 
+function addMappedTriangle(
+  positions: number[],
+  points: [THREE.Vector2, THREE.Vector2, THREE.Vector2],
+  mapPoint: (point: THREE.Vector2) => THREE.Vector3,
+  reverse = false,
+) {
+  const ordered = reverse ? [points[2], points[1], points[0]] : points;
+  ordered.forEach((point) => positions.push(...mapPoint(point).toArray()));
+}
+
+function addDrilledDiagonalFaces(
+  positions: number[],
+  spec: CompactWallBracketSpec,
+  side: -1 | 1,
+  outerEdge: EdgeUse,
+  innerEdge: EdgeUse,
+) {
+  const apex = new THREE.Vector2(0, spec.rise);
+  const outerCorner = getOuterCorner(spec.span, spec.baseThickness);
+  const base = new THREE.Vector2(side * spec.span / 2, outerCorner);
+  const tangent = base.clone().sub(apex).normalize();
+  const projectU = (point: THREE.Vector2) =>
+    point.clone().sub(apex).dot(tangent);
+  const holeCenters = [
+    spec.mountingHoleApexInset,
+    spec.mountingHoleApexInset + spec.mountingHoleRowSpacing,
+  ].flatMap((alongRail) => [
+    new THREE.Vector2(alongRail, spec.mountingHoleEdgeInset),
+    new THREE.Vector2(alongRail, spec.braceDepth - spec.mountingHoleEdgeInset),
+  ]);
+  const radius = spec.mountingHoleDiameter / 2;
+  const segments = 32;
+  const circle = (center: THREE.Vector2) =>
+    Array.from({ length: segments }, (_, index) => {
+      const angle = index / segments * Math.PI * 2;
+      return new THREE.Vector2(
+        center.x + Math.cos(angle) * radius,
+        center.y + Math.sin(angle) * radius,
+      );
+    });
+
+  const addFace = (edge: EdgeUse, reverse: boolean) => {
+    const edgeStartU = projectU(edge.start);
+    const low = Math.min(edgeStartU, projectU(edge.end));
+    const high = Math.max(edgeStartU, projectU(edge.end));
+    const contour = ring(
+      [
+        new THREE.Vector2(low, 0),
+        new THREE.Vector2(high, 0),
+        new THREE.Vector2(high, spec.braceDepth),
+        new THREE.Vector2(low, spec.braceDepth),
+      ],
+      false,
+    );
+    const holes = holeCenters.map((center) => ring(circle(center), true));
+    const vertices = [...contour, ...holes.flat()];
+    const faces = THREE.ShapeUtils.triangulateShape(contour, holes);
+    const mapPoint = (point: THREE.Vector2) => {
+      const planar = edge.start
+        .clone()
+        .addScaledVector(tangent, point.x - edgeStartU);
+      return new THREE.Vector3(planar.x, planar.y, point.y);
+    };
+    faces.forEach((face) =>
+      addMappedTriangle(
+        positions,
+        face.map((index) => vertices[index]) as [
+          THREE.Vector2,
+          THREE.Vector2,
+          THREE.Vector2,
+        ],
+        mapPoint,
+        reverse,
+      ),
+    );
+  };
+
+  addFace(outerEdge, side < 0);
+  addFace(innerEdge, side > 0);
+
+  const outerStartU = projectU(outerEdge.start);
+  const innerStartU = projectU(innerEdge.start);
+  const mapOnEdge = (
+    edge: EdgeUse,
+    edgeStartU: number,
+    point: THREE.Vector2,
+  ) => {
+    const planar = edge.start
+      .clone()
+      .addScaledVector(tangent, point.x - edgeStartU);
+    return new THREE.Vector3(planar.x, planar.y, point.y);
+  };
+  for (const center of holeCenters) {
+    const points = circle(center);
+    for (let index = 0; index < points.length; index += 1) {
+      const current = points[index];
+      const next = points[(index + 1) % points.length];
+      const outerCurrent = mapOnEdge(outerEdge, outerStartU, current);
+      const outerNext = mapOnEdge(outerEdge, outerStartU, next);
+      const innerCurrent = mapOnEdge(innerEdge, innerStartU, current);
+      const innerNext = mapOnEdge(innerEdge, innerStartU, next);
+      const quad = side > 0
+        ? [outerCurrent, innerCurrent, innerNext, outerNext]
+        : [outerCurrent, outerNext, innerNext, innerCurrent];
+      positions.push(
+        ...quad[0].toArray(), ...quad[1].toArray(), ...quad[2].toArray(),
+        ...quad[0].toArray(), ...quad[2].toArray(), ...quad[3].toArray(),
+      );
+    }
+  }
+}
+
+function orientClosedTriangles(positions: number[]) {
+  const triangleCount = positions.length / 9;
+  const vertexKey = (triangle: number, corner: number) => {
+    const offset = triangle * 9 + corner * 3;
+    return positions
+      .slice(offset, offset + 3)
+      .map((value) => value.toFixed(6))
+      .join(",");
+  };
+  const edgeUses = new Map<string, { triangle: number; direction: number }[]>();
+  for (let triangle = 0; triangle < triangleCount; triangle += 1) {
+    const keys = [0, 1, 2].map((corner) => vertexKey(triangle, corner));
+    for (const [start, end] of [
+      [keys[0], keys[1]],
+      [keys[1], keys[2]],
+      [keys[2], keys[0]],
+    ]) {
+      const key = start < end ? `${start}|${end}` : `${end}|${start}`;
+      const uses = edgeUses.get(key) ?? [];
+      uses.push({ triangle, direction: start < end ? 1 : -1 });
+      edgeUses.set(key, uses);
+    }
+  }
+  const adjacent = Array.from({ length: triangleCount }, () => [] as {
+    triangle: number;
+    sameDirection: boolean;
+  }[]);
+  for (const uses of edgeUses.values()) {
+    if (uses.length !== 2) continue;
+    adjacent[uses[0].triangle].push({
+      triangle: uses[1].triangle,
+      sameDirection: uses[0].direction === uses[1].direction,
+    });
+    adjacent[uses[1].triangle].push({
+      triangle: uses[0].triangle,
+      sameDirection: uses[0].direction === uses[1].direction,
+    });
+  }
+  const flips = new Array<boolean | undefined>(triangleCount);
+  const components: number[][] = [];
+  for (let start = 0; start < triangleCount; start += 1) {
+    if (flips[start] !== undefined) continue;
+    flips[start] = false;
+    const queue = [start];
+    const component: number[] = [];
+    while (queue.length) {
+      const triangle = queue.pop()!;
+      component.push(triangle);
+      for (const neighbor of adjacent[triangle]) {
+        const expected = Boolean(flips[triangle]) !== neighbor.sameDirection;
+        if (flips[neighbor.triangle] === undefined) {
+          flips[neighbor.triangle] = expected;
+          queue.push(neighbor.triangle);
+        }
+      }
+    }
+    components.push(component);
+  }
+  const swapTriangle = (triangle: number) => {
+    const offset = triangle * 9;
+    for (let axis = 0; axis < 3; axis += 1) {
+      [positions[offset + 3 + axis], positions[offset + 6 + axis]] = [
+        positions[offset + 6 + axis],
+        positions[offset + 3 + axis],
+      ];
+    }
+  };
+  flips.forEach((flip, triangle) => {
+    if (flip) swapTriangle(triangle);
+  });
+  for (const component of components) {
+    let signedVolume = 0;
+    for (const triangle of component) {
+      const offset = triangle * 9;
+      const a = new THREE.Vector3(...positions.slice(offset, offset + 3));
+      const b = new THREE.Vector3(...positions.slice(offset + 3, offset + 6));
+      const c = new THREE.Vector3(...positions.slice(offset + 6, offset + 9));
+      signedVolume += a.dot(b.cross(c)) / 6;
+    }
+    if (signedVolume < 0) component.forEach(swapTriangle);
+  }
+}
+
 function createSteppedFrameGeometry(spec: CompactWallBracketSpec) {
   const triangles = triangulateSection(spec);
   const positions: number[] = [];
@@ -432,8 +642,37 @@ function createSteppedFrameGeometry(spec: CompactWallBracketSpec) {
     }
   }
 
+  const diagonalBoundaryUses = [...edges.values()]
+    .filter((uses) => {
+      if (uses.length !== 1 || uses[0].depth !== spec.braceDepth) return false;
+      const delta = uses[0].end.clone().sub(uses[0].start);
+      return Math.abs(delta.x) > spec.span * 0.2 &&
+        Math.abs(delta.y) > spec.rise * 0.2;
+    })
+    .map((uses) => uses[0]);
+  const drilledEdges = new Set(diagonalBoundaryUses);
+  for (const side of [-1, 1] as const) {
+    const sideEdges = diagonalBoundaryUses
+      .filter((use) => (use.start.x + use.end.x) / 2 * side > 0)
+      .sort((left, right) => {
+        const leftMid = Math.abs((left.start.x + left.end.x) / 2);
+        const rightMid = Math.abs((right.start.x + right.end.x) / 2);
+        return rightMid - leftMid;
+      });
+    if (sideEdges.length === 2) {
+      addDrilledDiagonalFaces(
+        positions,
+        spec,
+        side,
+        sideEdges[0],
+        sideEdges[1],
+      );
+    }
+  }
+
   for (const uses of edges.values()) {
     if (uses.length === 1) {
+      if (drilledEdges.has(uses[0])) continue;
       if (uses[0].depth > spec.braceDepth + EPSILON) {
         addQuad(
           positions,
@@ -466,6 +705,8 @@ function createSteppedFrameGeometry(spec: CompactWallBracketSpec) {
     }
   }
 
+  orientClosedTriangles(positions);
+
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     "position",
@@ -482,7 +723,8 @@ export function createCompactWallBracketGeometry(
   params: ModelParams,
   model: CompactWallBracketModelDefinition,
 ) {
-  return createSteppedFrameGeometry(getCompactWallBracketSpec(params, model));
+  const spec = getCompactWallBracketSpec(params, model);
+  return createSteppedFrameGeometry(spec);
 }
 
 export function createCompactWallBracketTwoUpGeometries(
@@ -575,7 +817,23 @@ export function getCompactWallBracketParameterLimits(
   const baseThickness = getParam(params, "baseThickness");
   const diagonalThickness = getParam(params, "diagonalThickness");
   const centerWebThickness = getParam(params, "centerWebThickness");
+  const mountingHoleDiameter = getParam(params, "mountingHoleDiameter");
+  const mountingHoleApexInset = getParam(params, "mountingHoleApexInset");
+  const mountingHoleRowSpacing = getParam(params, "mountingHoleRowSpacing");
+  const mountingHoleEdgeInset = getParam(params, "mountingHoleEdgeInset");
   const rise = span / (model.geometry.sourceSpan / model.geometry.sourceRise);
+  const limitSpec = getCompactWallBracketSpec(params, model);
+  const { leftHole: leftSectionHole } = getSectionRings(limitSpec);
+  const limitApex = new THREE.Vector2(0, rise);
+  const limitTangent = new THREE.Vector2(
+    -span / 2,
+    getOuterCorner(span, baseThickness) - rise,
+  ).normalize();
+  const innerDiagonalUs = [leftSectionHole[0], leftSectionHole[1]].map(
+    (point) => point.clone().sub(limitApex).dot(limitTangent),
+  );
+  const innerDiagonalMinU = Math.min(...innerDiagonalUs);
+  const innerDiagonalMaxU = Math.max(...innerDiagonalUs);
   const usablePlateSpan = plateSize - plateEdgeMargin * 2;
   const layout = getOptimalPairLayout(span, rise, baseThickness, pairGap);
 
@@ -593,7 +851,11 @@ export function getCompactWallBracketParameterLimits(
   } else if (key === "bodyDepth") {
     limits.min = Math.max(limits.min, braceDepth);
   } else if (key === "braceDepth") {
-    limits.min = Math.max(limits.min, model.geometry.sourceCoreDepth);
+    limits.min = Math.max(
+      limits.min,
+      model.geometry.sourceCoreDepth,
+      mountingHoleEdgeInset * 2 + mountingHoleDiameter + MIN_HOLE_ROW_WEB,
+    );
     limits.max = Math.min(limits.max, bodyDepth);
   } else if (key === "baseThickness") {
     limits.min = Math.max(limits.min, model.geometry.sourceBaseThickness);
@@ -610,6 +872,39 @@ export function getCompactWallBracketParameterLimits(
       model.geometry.sourceDiagonalThickness,
     );
     limits.max = Math.min(limits.max, span / 5);
+  } else if (key === "mountingHoleDiameter") {
+    limits.max = Math.min(
+      limits.max,
+      (mountingHoleEdgeInset - MIN_HOLE_EDGE_WALL) * 2,
+      braceDepth - mountingHoleEdgeInset * 2 - MIN_HOLE_ROW_WEB,
+    );
+  } else if (key === "mountingHoleApexInset") {
+    limits.min = Math.max(
+      limits.min,
+      innerDiagonalMinU + mountingHoleDiameter / 2 + MIN_HOLE_END_WALL,
+    );
+    limits.max = Math.min(
+      limits.max,
+      innerDiagonalMaxU - mountingHoleRowSpacing - mountingHoleDiameter / 2 - MIN_HOLE_END_WALL,
+    );
+  } else if (key === "mountingHoleRowSpacing") {
+    limits.min = Math.max(
+      limits.min,
+      mountingHoleDiameter + MIN_HOLE_ROW_WEB,
+    );
+    limits.max = Math.min(
+      limits.max,
+      innerDiagonalMaxU - mountingHoleApexInset - mountingHoleDiameter / 2 - MIN_HOLE_END_WALL,
+    );
+  } else if (key === "mountingHoleEdgeInset") {
+    limits.min = Math.max(
+      limits.min,
+      mountingHoleDiameter / 2 + MIN_HOLE_EDGE_WALL,
+    );
+    limits.max = Math.min(
+      limits.max,
+      (braceDepth - mountingHoleDiameter - MIN_HOLE_ROW_WEB) / 2,
+    );
   } else if (key === "pairGap") {
     limits.max = Math.min(
       limits.max,
@@ -679,10 +974,19 @@ export function getCompactWallBracketAuditValue(
     };
   }
   if (check.key === "boltInterface") {
+    const edgeWall = spec.mountingHoleEdgeInset - spec.mountingHoleDiameter / 2;
+    const rowWeb =
+      spec.braceDepth -
+      spec.mountingHoleEdgeInset * 2 -
+      spec.mountingHoleDiameter;
     return {
       label: check.label,
-      value: "Source mesh has no bolt bores; none were resized or invented",
-      status: "pass",
+      value: `8 × ${formatLength(spec.mountingHoleDiameter, unit)} through-holes · ${formatLength(spec.mountingHoleApexInset, unit)} first row · ${formatLength(spec.mountingHoleRowSpacing, unit)} spacing`,
+      status:
+        edgeWall + EPSILON >= MIN_HOLE_EDGE_WALL &&
+        rowWeb + EPSILON >= MIN_HOLE_ROW_WEB
+          ? "pass"
+          : "warn",
     };
   }
   if (check.key === "twoUpFootprint") {

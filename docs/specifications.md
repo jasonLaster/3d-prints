@@ -75,10 +75,11 @@ The app must never solve parameter changes by uniformly scaling all axes.
 
 Compact Wall Bracket:
 
-- The retained source body measures 190.9188 × 25.6 × 99.9285 mm and contains no bolt bores or countersinks.
+- The retained source body measures 190.9188 × 25.6 × 99.9285 mm and contains eight measured 4 mm through-holes in two-by-two patterns through the diagonal rails.
 - The source has a measured 25.6 mm maximum depth and 8.96 mm recessed center depth; the remake must not flatten those observations into a uniform-depth claim.
 - The default remake uses a 200 mm outer span and derives its 104.6817 mm rise from the measured source ratio. Rise is not independently editable.
 - Base-body depth defaults to 19.05 mm. Diagonal rails and the center web share a separate 12.7 mm depth, while the 10 mm base and 6.4 mm diagonal/web planar minimums remain intact.
+- Drill-hole diameter, first-row apex inset, along-rail spacing, and symmetric depth-edge inset are editable. Defaults preserve the source 4 mm diameter, 32 mm apex inset, and 64 mm row spacing while retaining minimum edge walls and inter-row web in the shallower remake.
 - Plate size, edge margin, and pair gap remain editable. The default two-up layout opposes the brackets, preserves a 5 mm normal gap, and rotates the pair approximately 27.5 degrees for a 232.37 mm square footprint on a 250 mm plate.
 - Single and two-up STLs share a support-free Z = 0 lower face. The two-up file contains two separate manifold bracket shells.
 - The fit and strength checks are geometric screens, not load certification; the actual slicer profile, material, layer bonding, attachment, fasteners, and installed proof load govern use.

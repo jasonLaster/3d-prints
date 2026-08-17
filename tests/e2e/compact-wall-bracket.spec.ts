@@ -94,6 +94,46 @@ function inspectStl(input: Buffer) {
   return result;
 }
 
+function countMountingHoleRings(
+  geometry: THREE.BufferGeometry,
+  spec: ReturnType<typeof getCompactWallBracketSpec>,
+) {
+  const position = geometry.getAttribute("position");
+  const apex = new THREE.Vector2(0, spec.rise / 2);
+  const outerCorner = Math.min(4.5, spec.baseThickness * 0.45, (spec.span / 2) * 0.08);
+  const centers = [
+    spec.mountingHoleApexInset,
+    spec.mountingHoleApexInset + spec.mountingHoleRowSpacing,
+  ].flatMap((alongRail) => [
+    new THREE.Vector2(alongRail, spec.mountingHoleEdgeInset),
+    new THREE.Vector2(alongRail, spec.braceDepth - spec.mountingHoleEdgeInset),
+  ]);
+  let rings = 0;
+  for (const side of [-1, 1]) {
+    const base = new THREE.Vector2(
+      side * spec.span / 2,
+      -spec.rise / 2 + outerCorner,
+    );
+    const tangent = base.clone().sub(apex).normalize();
+    const projected = new Map<string, THREE.Vector2>();
+    for (let index = 0; index < position.count; index += 1) {
+      const planar = new THREE.Vector2(position.getX(index), position.getY(index));
+      const point = new THREE.Vector2(
+        planar.clone().sub(apex).dot(tangent),
+        position.getZ(index),
+      );
+      projected.set(`${point.x.toFixed(4)},${point.y.toFixed(4)}`, point);
+    }
+    for (const center of centers) {
+      const points = [...projected.values()].filter((point) =>
+        Math.abs(point.distanceTo(center) - spec.mountingHoleDiameter / 2) < 0.01,
+      );
+      if (points.length >= 28) rings += 1;
+    }
+  }
+  return rings;
+}
+
 test("locks the source proportion and separates base-body from diagonal-center depth", () => {
   const params = getDefaultParams(model);
   const spec = getCompactWallBracketSpec(params, model);
@@ -108,6 +148,10 @@ test("locks the source proportion and separates base-body from diagonal-center d
   expect(spec.baseThickness).toBe(10);
   expect(spec.diagonalThickness).toBe(6.4);
   expect(spec.centerWebThickness).toBe(6.4);
+  expect(spec.mountingHoleDiameter).toBe(4);
+  expect(spec.mountingHoleApexInset).toBe(32);
+  expect(spec.mountingHoleRowSpacing).toBe(64);
+  expect(spec.mountingHoleEdgeInset).toBe(3.1);
   expect(spec.scaleFactor).toBeCloseTo(1.04757, 4);
   expect(spec.pairAngleDegrees).toBeCloseTo(27.4508, 3);
   expect(spec.twoUpWidth).toBeCloseTo(232.3696, 3);
@@ -125,23 +169,68 @@ test("locks the source proportion and separates base-body from diagonal-center d
   expect(topology.bounds.max.y - topology.bounds.min.y).toBeCloseTo(104.6817, 3);
   expect(topology.bounds.max.z - topology.bounds.min.z).toBeCloseTo(19.05, 3);
   expect(topology.bounds.min.z).toBeCloseTo(0, 5);
+  expect(countMountingHoleRings(geometry, spec)).toBe(8);
   geometry.dispose();
 });
 
 test("couples optimized pair geometry and both depth levels to editable limits", () => {
   const params = getDefaultParams(model);
   expect(getParameterLimits(model, params, "bodyDepth").min).toBe(12.7);
-  expect(getParameterLimits(model, params, "braceDepth").min).toBe(8.96);
+  expect(getParameterLimits(model, params, "braceDepth").min).toBeCloseTo(12.2, 5);
   expect(getParameterLimits(model, params, "braceDepth").max).toBe(19.05);
   expect(getParameterLimits(model, params, "baseThickness").min).toBe(10);
   expect(getParameterLimits(model, params, "diagonalThickness").min).toBe(6.4);
   expect(getParameterLimits(model, params, "centerWebThickness").min).toBe(6.4);
+  expect(getParameterLimits(model, params, "mountingHoleDiameter").max).toBeCloseTo(4.2, 5);
+  expect(getParameterLimits(model, params, "mountingHoleApexInset").min).toBeCloseTo(27.4708, 3);
+  expect(getParameterLimits(model, params, "mountingHoleApexInset").max).toBeCloseTo(47.1516, 3);
+  expect(getParameterLimits(model, params, "mountingHoleRowSpacing").max).toBeCloseTo(79.1516, 3);
+  expect(getParameterLimits(model, params, "mountingHoleEdgeInset").min).toBe(3);
+  expect(getParameterLimits(model, params, "mountingHoleEdgeInset").max).toBeCloseTo(3.35, 5);
   expect(getParameterLimits(model, params, "span").max).toBeCloseTo(206.7987, 3);
   expect(getParameterLimits(model, params, "pairGap").max).toBeCloseTo(13.0428, 3);
   expect(getParameterLimits(model, params, "plateSize").min).toBe(243);
   expect(
     getParameterLimits(model, { ...params, plateSize: 220 }, "span").max,
   ).toBeCloseTo(180.0658, 3);
+
+  for (const adjusted of [
+    {
+      ...params,
+      mountingHoleDiameter: 3,
+      mountingHoleEdgeInset: 2.5,
+      mountingHoleApexInset: 29,
+      mountingHoleRowSpacing: 40,
+    },
+    {
+      ...params,
+      mountingHoleDiameter: 4.2,
+      mountingHoleEdgeInset: 3.1,
+      mountingHoleApexInset: 46.5,
+      mountingHoleRowSpacing: 64,
+    },
+    {
+      ...params,
+      mountingHoleDiameter: 3,
+      mountingHoleEdgeInset: 2.5,
+      mountingHoleApexInset: 29,
+      mountingHoleRowSpacing: 80,
+    },
+  ]) {
+    const adjustedSpec = getCompactWallBracketSpec(adjusted, model);
+    const adjustedGeometry = createCompactWallBracketGeometry(adjusted, model);
+    expect(countMountingHoleRings(adjustedGeometry, adjustedSpec)).toBe(8);
+    expect(
+      analyzeGeometry(adjustedGeometry).nonManifoldEdges,
+      `hole state ${JSON.stringify({
+        diameter: adjusted.mountingHoleDiameter,
+        edgeInset: adjusted.mountingHoleEdgeInset,
+        apexInset: adjusted.mountingHoleApexInset,
+        rowSpacing: adjusted.mountingHoleRowSpacing,
+      })}`,
+    ).toBe(0);
+    adjustedGeometry.dispose();
+  }
 });
 
 test("ships audited single and two-up STL bytes", () => {
@@ -203,6 +292,7 @@ test("renders grouped controls and exports current single and two-up meshes", as
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Bracket envelope" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Strength sections" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Drill-hole pattern" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Two-up layout" })).toBeVisible();
   for (const [label, value] of [
     ["Outer span in millimeters", "200.0"],
@@ -211,13 +301,17 @@ test("renders grouped controls and exports current single and two-up meshes", as
     ["Base rail thickness in millimeters", "10.0"],
     ["Diagonal rail thickness in millimeters", "6.4"],
     ["Center web thickness in millimeters", "6.4"],
+    ["Drill-hole diameter in millimeters", "4.0"],
+    ["First row from apex in millimeters", "32.0"],
+    ["Along-rail row spacing in millimeters", "64.0"],
+    ["Depth-edge hole inset in millimeters", "3.1"],
     ["Square build plate size in millimeters", "250.0"],
     ["Plate edge margin in millimeters", "5.0"],
     ["Gap between brackets in millimeters", "5.0"],
   ]) {
     await expect(page.getByLabel(label)).toHaveValue(value);
   }
-  await expect(page.getByText("Source mesh has no bolt bores")).toBeVisible();
+  await expect(page.getByText("8 × 4.0 mm through-holes")).toBeVisible();
   await expect(page.locator(".audit-row").filter({ hasText: "Two-up footprint" })).toContainText(
     "232.4 mm × 232.4 mm at 27.5°",
   );
@@ -304,6 +398,11 @@ test("renders grouped controls and exports current single and two-up meshes", as
   await expect(page.locator(".audit-row").filter({ hasText: "Two-up footprint" })).toContainText(
     "221.1 mm × 221.1 mm at 27.5°",
   );
+  const holeDiameter = page.getByLabel("Drill-hole diameter in millimeters");
+  await holeDiameter.fill("3.5");
+  await holeDiameter.blur();
+  await expect(page).toHaveURL(/mountingHoleDiameter=3.5/);
+  await expect(page.getByText("8 × 3.5 mm through-holes")).toBeVisible();
 
   await page.getByRole("button", { name: "Workspace actions" }).click();
   const [singleDownload] = await Promise.all([
@@ -311,7 +410,7 @@ test("renders grouped controls and exports current single and two-up meshes", as
     page.getByRole("button", { name: "Export single STL" }).click(),
   ]);
   expect(singleDownload.suggestedFilename()).toBe(
-    "compact-wall-bracket-190x99.4-body-19.1-brace-12.7.stl",
+    "compact-wall-bracket-190x99.4-body-19.1-brace-12.7-holes-3.5.stl",
   );
   const singlePath = await singleDownload.path();
   const singleTopology = inspectStl(fs.readFileSync(singlePath!));
@@ -327,7 +426,7 @@ test("renders grouped controls and exports current single and two-up meshes", as
     page.getByRole("button", { name: "Export two-up STL" }).click(),
   ]);
   expect(pairDownload.suggestedFilename()).toBe(
-    "compact-wall-bracket-190x99.4-body-19.1-brace-12.7-two-up.stl",
+    "compact-wall-bracket-190x99.4-body-19.1-brace-12.7-holes-3.5-two-up.stl",
   );
   const pairPath = await pairDownload.path();
   const pairTopology = inspectStl(fs.readFileSync(pairPath!));
@@ -355,8 +454,9 @@ test("keeps the compact bracket workspace usable on a narrow screen", async ({
   await expect(page.locator(".scene-panel canvas")).toBeVisible();
   await expect(page.getByLabel("Outer span in millimeters")).toBeVisible();
   await expect(page.getByLabel("Diagonal + center depth in millimeters")).toBeVisible();
+  await expect(page.getByLabel("Drill-hole diameter in millimeters")).toBeVisible();
   await expect(page.getByLabel("Gap between brackets in millimeters")).toBeVisible();
-  await expect(page.getByText("Source mesh has no bolt bores")).toBeVisible();
+  await expect(page.getByText("8 × 4.0 mm through-holes")).toBeVisible();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );

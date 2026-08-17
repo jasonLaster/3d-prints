@@ -391,6 +391,7 @@ export function getStatusItems(
     return [
       `Bracket ${formatLength(spec.span, unit)} × ${formatLength(spec.rise, unit)} · body ${formatLength(spec.bodyDepth, unit)}`,
       `Diagonal/center depth ${formatLength(spec.braceDepth, unit)} · planar rails ${formatLength(spec.baseThickness, unit)}/${formatLength(spec.diagonalThickness, unit)}`,
+      `Drill holes 8 × ${formatLength(spec.mountingHoleDiameter, unit)} · rows ${formatLength(spec.mountingHoleRowSpacing, unit)} apart`,
       `Two-up ${formatLength(spec.twoUpWidth, unit)} × ${formatLength(spec.twoUpDepth, unit)} @ ${spec.pairAngleDegrees.toFixed(1)}°`,
       spec.twoUpFits
         ? "Two-up plate fit passes"
