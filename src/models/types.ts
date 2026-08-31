@@ -143,6 +143,17 @@ export type DrillBitHolderGeometry = {
   minimumWallThickness: number;
 };
 
+export type MetricNutKnobGeometry = {
+  mainAxis: { x: number; y: number; z: number };
+  radialSegments: number;
+  segmentsPerLobe: number;
+  roundoverSegments: number;
+  minimumWallThickness: number;
+  minimumRoofThickness: number;
+  sourceSha256: string;
+  sourceDimensionsMm: { x: number; y: number; z: number };
+};
+
 export type RouterMortiseJigGeometry = {
   mainAxis: { x: number; y: number; z: number };
   radialSegments: number;
@@ -308,6 +319,7 @@ export type SupportedViewer =
   | "compact-wall-bracket-v1"
   | "concentric-tube-jig-v1"
   | "drill-bit-holder-v1"
+  | "metric-nut-knob-v1"
   | "router-mortise-jig-v1"
   | "router-tenon-jig-v1"
   | "bandsaw-sled-v1"
@@ -376,6 +388,11 @@ export type ConcentricTubeJigModelDefinition = BaseModelDefinition & {
 export type DrillBitHolderModelDefinition = BaseModelDefinition & {
   viewer: "drill-bit-holder-v1";
   geometry: DrillBitHolderGeometry;
+};
+
+export type MetricNutKnobModelDefinition = BaseModelDefinition & {
+  viewer: "metric-nut-knob-v1";
+  geometry: MetricNutKnobGeometry;
 };
 
 export type RouterMortisePreset = {
@@ -454,6 +471,7 @@ export type ModelDefinition =
   | CompactWallBracketModelDefinition
   | ConcentricTubeJigModelDefinition
   | DrillBitHolderModelDefinition
+  | MetricNutKnobModelDefinition
   | RouterMortiseJigModelDefinition
   | RouterTenonJigModelDefinition
   | BandsawSledModelDefinition

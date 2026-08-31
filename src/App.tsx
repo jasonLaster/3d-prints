@@ -78,6 +78,7 @@ import {
   createCompactWallBracketTwoUpGeometries,
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
+  createMetricNutKnobGeometry,
   createRouterMortiseJigGuideGeometry,
   createRouterMortiseJigPartGeometries,
   createRouterMortiseJigPreviewParts,
@@ -120,6 +121,7 @@ import {
   updateCompactWallBracketGuide,
   updateConcentricTubeJigGuide,
   updateDrillBitHolderGuide,
+  updateMetricNutKnobGuide,
   updateBandsawSledGuide,
   updateRouterMortiseJigGuide,
   updateRouterTenonJigGuide,
@@ -298,6 +300,21 @@ const PARAM_QUERY_KEYS = [
   "cornerRadius",
   "edgeBevel",
   ...DRILL_BIT_PARAMETER_KEYS,
+  "knobDiameter",
+  "handleHeight",
+  "lobeCount",
+  "lobeDepth",
+  "lobeRadius",
+  "handleRoundover",
+  "guardBaseDiameter",
+  "guardTopDiameter",
+  "guardHeight",
+  "boltDiameter",
+  "boltClearance",
+  "nutAcrossFlats",
+  "nutClearance",
+  "nutPocketDepth",
+  "nutLeadIn",
   "mortiseWidth",
   "mortiseLength",
   "routerBitDiameter",
@@ -468,6 +485,7 @@ const PARAM_QUERY_KEYS = [
 const ANGLE_PARAM_KEYS = new Set(["rotation", "cutoutRotation"]);
 const SCALAR_PARAM_KEYS = new Set([
   "bitCount",
+  "lobeCount",
   "dividerCount",
   "gridfinityCompatible",
   "legGrooveEnabled",
@@ -840,12 +858,14 @@ function getParamsFromUrl(model: ModelDefinition) {
     model.viewer === "door-lock-adapter-v1" ||
     model.viewer === "compact-wall-bracket-v1" ||
     model.viewer === "drill-bit-holder-v1" ||
+    model.viewer === "metric-nut-knob-v1" ||
     model.viewer === "router-mortise-jig-v1" ||
     model.viewer === "router-tenon-jig-v1" ||
     model.viewer === "bandsaw-sled-v1"
   ) {
     const passes =
       model.viewer === "drill-bit-holder-v1" ||
+      model.viewer === "metric-nut-knob-v1" ||
       model.viewer === "compact-wall-bracket-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
       model.viewer === "router-tenon-jig-v1" ||
@@ -1148,6 +1168,11 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
       value.toFixed(1).replace(/0+$/, "").replace(/\.$/, "");
     const bits = getDrillBitDiameters(params, model).map(compact).join("_");
     return `${model.export.filePrefix}-bits-${bits}-clearance-${compactSetting(getParam(params, "bitClearance"))}-gap-${compactSetting(getParam(params, "bitSpacing"))}-margin-${compactSetting(getParam(params, "edgeMargin"))}-height-${compactSetting(getParam(params, "holderHeight"))}-depth-${compactSetting(getParam(params, "holeDepth"))}-radius-${compactSetting(getParam(params, "cornerRadius"))}-bevel-${compactSetting(getParam(params, "edgeBevel"))}.stl`;
+  }
+  if (model.viewer === "metric-nut-knob-v1") {
+    const compact = (value: number) =>
+      value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    return `${model.export.filePrefix}-bolt-${compact(getParam(params, "boltDiameter"))}-nut-af-${compact(getParam(params, "nutAcrossFlats"))}-handle-${compact(getParam(params, "knobDiameter"))}x${compact(getParam(params, "handleHeight"))}-guard-${compact(getParam(params, "guardBaseDiameter"))}x${compact(getParam(params, "guardTopDiameter"))}x${compact(getParam(params, "guardHeight"))}.stl`;
   }
   if (model.viewer === "router-mortise-jig-v1") {
     const compact = (value: number) =>
@@ -1495,6 +1520,13 @@ const HolderViewer = forwardRef<
         model,
       );
       updateDrillBitHolderGuide(guideMesh, latestParamsRef.current, model);
+    } else if (model.viewer === "metric-nut-knob-v1") {
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createMetricNutKnobGeometry(
+        latestParamsRef.current,
+        model,
+      );
+      updateMetricNutKnobGuide(guideMesh, latestParamsRef.current, model);
     } else if (model.viewer === "router-mortise-jig-v1") {
       if (
         !routerMortisePreviewGroup ||
@@ -2456,6 +2488,7 @@ const HolderViewer = forwardRef<
       model.viewer === "compact-wall-bracket-v1" ||
       model.viewer === "concentric-tube-jig-v1" ||
       model.viewer === "drill-bit-holder-v1" ||
+      model.viewer === "metric-nut-knob-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
       model.viewer === "router-tenon-jig-v1" ||
       model.viewer === "bandsaw-sled-v1"
@@ -2693,6 +2726,8 @@ const HolderViewer = forwardRef<
             ? createConcentricTubeJigGeometry(latestParamsRef.current, model)
             : model.viewer === "drill-bit-holder-v1"
               ? createDrillBitHolderGeometry(latestParamsRef.current, model)
+            : model.viewer === "metric-nut-knob-v1"
+              ? createMetricNutKnobGeometry(latestParamsRef.current, model)
             : model.viewer === "router-mortise-jig-v1"
               ? createRouterMortiseJigGuideGeometry(latestParamsRef.current, model)
             : model.viewer === "router-tenon-jig-v1"
@@ -2827,6 +2862,7 @@ const HolderViewer = forwardRef<
           model.viewer === "compact-wall-bracket-v1" ||
           model.viewer === "concentric-tube-jig-v1" ||
           model.viewer === "drill-bit-holder-v1" ||
+          model.viewer === "metric-nut-knob-v1" ||
           model.viewer === "router-mortise-jig-v1" ||
           model.viewer === "router-tenon-jig-v1" ||
           model.viewer === "dining-table-v1" ||
@@ -3508,6 +3544,55 @@ function BezierCurveControl({
   );
 }
 
+function ScalarControl({
+  label,
+  limits,
+  onChange,
+  value,
+  integer = false,
+}: {
+  label: string;
+  limits: NumberLimits;
+  onChange: (value: number) => void;
+  value: number;
+  integer?: boolean;
+}) {
+  const id = label.toLowerCase().replace(/\s+/g, "-");
+  const update = (raw: string) => {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return;
+    const next = clamp(parsed, limits.min, limits.max);
+    onChange(integer ? Math.round(next) : next);
+  };
+  return (
+    <div className="number-control">
+      <label htmlFor={id}>{label}</label>
+      <div className="number-row angle-number-row">
+        <input
+          id={id}
+          max={limits.max}
+          min={limits.min}
+          onChange={(event) => update(event.currentTarget.value)}
+          step={limits.step}
+          type="range"
+          value={value}
+        />
+        <input
+          aria-label={label}
+          inputMode={integer ? "numeric" : "decimal"}
+          max={limits.max}
+          min={limits.min}
+          onChange={(event) => update(event.currentTarget.value)}
+          step={limits.step}
+          type="number"
+          value={integer ? Math.round(value) : value}
+        />
+        <span aria-hidden="true">—</span>
+      </div>
+    </div>
+  );
+}
+
 function HoverSupportLayoutControl({
   model,
   params,
@@ -3931,6 +4016,66 @@ function CompactWallBracketParameterControls({
                 valueMm={params[parameter.key]}
               />
             ))}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+const METRIC_NUT_KNOB_PARAMETER_GROUPS = [
+  "Handle",
+  "Spacer / guard",
+  "Fastener fit",
+] as const;
+
+function MetricNutKnobParameterControls({
+  model,
+  params,
+  unit,
+  onChange,
+  onUnitChange,
+}: {
+  model: Extract<ModelDefinition, { viewer: "metric-nut-knob-v1" }>;
+  params: ModelParams;
+  unit: LengthUnit;
+  onChange: (key: string, value: number) => void;
+  onUnitChange: (unit: LengthUnit) => void;
+}) {
+  return (
+    <div className="parameter-groups metric-nut-knob-parameter-groups">
+      {METRIC_NUT_KNOB_PARAMETER_GROUPS.map((group) => (
+        <section className="nested-parameter-section" key={group}>
+          <div className="divider-controls-heading">
+            <h3>{group}</h3>
+          </div>
+          {model.parameters
+            .filter((parameter) => parameter.group === group)
+            .map((parameter) =>
+              parameter.key === "lobeCount" ? (
+                <ScalarControl
+                  integer={parameter.key === "lobeCount"}
+                  key={parameter.key}
+                  label={parameter.label}
+                  limits={getParameterLimits(model, params, parameter.key)}
+                  onChange={(value) => onChange(parameter.key, value)}
+                  value={params[parameter.key]}
+                />
+              ) : (
+                <NumberControl
+                  key={parameter.key}
+                  label={parameter.label}
+                  limits={getParameterLimits(model, params, parameter.key)}
+                  onChange={(value) => onChange(parameter.key, value)}
+                  onUnitChange={onUnitChange}
+                  preferFineStep={
+                    parameter.key.includes("Clearance") ||
+                    parameter.key === "nutLeadIn"
+                  }
+                  unit={unit}
+                  valueMm={params[parameter.key]}
+                />
+              ),
+            )}
         </section>
       ))}
     </div>
@@ -6157,6 +6302,7 @@ export default function App({
           nextValue.toFixed(
             model.viewer === "concentric-tube-jig-v1" ||
             model.viewer === "drill-bit-holder-v1" ||
+            model.viewer === "metric-nut-knob-v1" ||
             model.viewer === "router-mortise-jig-v1" ||
             model.viewer === "router-tenon-jig-v1" ||
             model.viewer === "compact-wall-bracket-v1" ||
@@ -6169,6 +6315,22 @@ export default function App({
         ),
       };
       if (model.viewer === "drill-bit-holder-v1") {
+        for (let pass = 0; pass < 2; pass += 1) {
+          for (const parameter of model.parameters) {
+            const dependentLimits = getParameterLimits(
+              model,
+              next,
+              parameter.key,
+            );
+            next[parameter.key] = clamp(
+              next[parameter.key],
+              dependentLimits.min,
+              dependentLimits.max,
+            );
+          }
+        }
+      }
+      if (model.viewer === "metric-nut-knob-v1") {
         for (let pass = 0; pass < 2; pass += 1) {
           for (const parameter of model.parameters) {
             const dependentLimits = getParameterLimits(
@@ -6553,6 +6715,18 @@ export default function App({
                 model.geometry.maximumBitDiameter,
               );
             }
+          }
+        }
+      }
+      if (model.viewer === "metric-nut-knob-v1") {
+        for (let pass = 0; pass < 2; pass += 1) {
+          for (const parameter of model.parameters) {
+            const limits = getParameterLimits(model, nextParams, parameter.key);
+            nextParams[parameter.key] = clamp(
+              nextParams[parameter.key],
+              limits.min,
+              limits.max,
+            );
           }
         }
       }
@@ -7000,7 +7174,15 @@ export default function App({
                       ) : null}
                     </>
                   ) : null}
-                  {model.viewer === "compact-wall-bracket-v1" ? (
+                  {model.viewer === "metric-nut-knob-v1" ? (
+                    <MetricNutKnobParameterControls
+                      model={model}
+                      onChange={updateParam}
+                      onUnitChange={setUnit}
+                      params={params}
+                      unit={unit}
+                    />
+                  ) : model.viewer === "compact-wall-bracket-v1" ? (
                     <CompactWallBracketParameterControls
                       model={model}
                       onChange={updateParam}
@@ -7102,6 +7284,25 @@ export default function App({
                       onChange={updateDrillBitSizes}
                       unit={unit}
                     />
+                  </section>
+                ) : null}
+
+                {model.viewer === "metric-nut-knob-v1" ? (
+                  <section className="panel-section router-mortise-print-set">
+                    <h2>Fit &amp; print notes</h2>
+                    <ul>
+                      <li>Print with the broad handle face and nut opening on the build plate</li>
+                      <li>Bolt bore = nominal bolt diameter + diametral clearance</li>
+                      <li>Nut pocket = measured across-flats size + across-flats clearance</li>
+                      <li>Base/top guard diameters may differ to create a tapered spacer</li>
+                    </ul>
+                    <p>
+                      Metric nut thickness varies by standard and style. Measure
+                      the actual nut and test a short fit coupon or one knob
+                      before committing to a production batch. The geometry
+                      audit checks printable topology and minimum material, not
+                      torque capacity or pull-out strength.
+                    </p>
                   </section>
                 ) : null}
 

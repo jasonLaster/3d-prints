@@ -73,6 +73,15 @@ Each catalog model has a `public/models/<model-id>/model.json` file with:
 
 The app must never solve parameter changes by uniformly scaling all axes.
 
+Parametric Metric Nut Knob:
+
+- Retain the supplied M8 STL byte-for-byte as source evidence while generating a clean procedural replacement; record rather than reproduce the source mesh's four-edge topology defect.
+- Keep nominal bolt diameter, bolt clearance, nut across-flats size, nut clearance, and nut-pocket depth independent.
+- Keep handle tip diameter, handle height, lobe count, scallop depth, circular grip-bulb radius, and edge round-over independent.
+- Keep spacer / guard base diameter, top diameter, and height independent so the guard may be straight or tapered.
+- Preserve one closed shell, a continuous bolt bore, a downward-opening captive-nut pocket, minimum radial walls, minimum pocket roof, and a flat Z = 0 print face.
+- See `docs/metric-nut-knob-audit-specifications.md` for source evidence, inferred defaults, equations, proof views, and the physical-fit boundary.
+
 Compact Wall Bracket:
 
 - The retained source body measures 190.9188 × 25.6 × 99.9285 mm and contains no bolt bores or countersinks.

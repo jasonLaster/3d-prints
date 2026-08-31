@@ -39,6 +39,12 @@ Current models:
   - Config: `public/models/drill-bit-holder/model.json`
   - Audit script: `models/drill-bit-holder/audit.mjs`
   - Source generator: `models/drill-bit-holder/generate-source.mjs`
+- `metric-nut-knob`
+  - STL: `public/models/metric-nut-knob/metric-nut-knob.stl`
+  - Config: `public/models/metric-nut-knob/model.json`
+  - Retained source: `models/metric-nut-knob/reference/M8.stl`
+  - Audit script: `models/metric-nut-knob/audit.mjs`
+  - Source generator: `models/metric-nut-knob/generate-source.mjs`
 - `router-mortise-jig`
   - STLs: `public/models/router-mortise-jig/router-mortise-jig-*.stl`
   - Config: `public/models/router-mortise-jig/model.json`
@@ -87,6 +93,7 @@ npm run audit -- simple-box
 npm run audit -- door-lock-adapter
 npm run audit -- compact-wall-bracket
 npm run audit -- drill-bit-holder
+npm run audit -- metric-nut-knob
 npm run audit -- router-mortise-jig
 npm run audit -- router-tenon-jig
 npm run test:e2e

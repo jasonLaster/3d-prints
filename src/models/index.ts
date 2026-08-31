@@ -32,6 +32,11 @@ import {
   getDrillBitHolderParameterLimits,
 } from "./drillBitHolder";
 import {
+  getMetricNutKnobAuditValue,
+  getMetricNutKnobDimensions,
+  getMetricNutKnobParameterLimits,
+} from "./metricNutKnob";
+import {
   getRouterMortiseJigAuditValue,
   getRouterMortiseJigDimensions,
   getRouterMortiseJigParameterLimits,
@@ -109,6 +114,12 @@ export {
   isDrillBitDiameterKey,
   updateDrillBitHolderGuide,
 } from "./drillBitHolder";
+export {
+  createMetricNutKnobGeometry,
+  getMetricNutKnobSpec,
+  updateMetricNutKnobGuide,
+} from "./metricNutKnob";
+export type { MetricNutKnobSpec } from "./metricNutKnob";
 export {
   createRouterMortiseJigFenceGeometry,
   createRouterMortiseJigGuideGeometry,
@@ -208,6 +219,9 @@ function getAuditValue(
   if (model.viewer === "drill-bit-holder-v1") {
     return getDrillBitHolderAuditValue(check, params, unit, model);
   }
+  if (model.viewer === "metric-nut-knob-v1") {
+    return getMetricNutKnobAuditValue(check, params, unit, model);
+  }
   if (model.viewer === "router-mortise-jig-v1") {
     return getRouterMortiseJigAuditValue(check, params, unit, model);
   }
@@ -258,6 +272,9 @@ export function getParameterLimits(
   if (model.viewer === "drill-bit-holder-v1") {
     return getDrillBitHolderParameterLimits(model, params, key);
   }
+  if (model.viewer === "metric-nut-knob-v1") {
+    return getMetricNutKnobParameterLimits(model, params, key);
+  }
   if (model.viewer === "router-mortise-jig-v1") {
     return getRouterMortiseJigParameterLimits(model, params, key);
   }
@@ -296,6 +313,9 @@ export function getModelDimensions(
   }
   if (model.viewer === "drill-bit-holder-v1") {
     return getDrillBitHolderDimensions(params, model);
+  }
+  if (model.viewer === "metric-nut-knob-v1") {
+    return getMetricNutKnobDimensions(params, model);
   }
   if (model.viewer === "router-mortise-jig-v1") {
     return getRouterMortiseJigDimensions(params, model);
@@ -338,6 +358,15 @@ export function getStatusItems(
   }
   if (model.viewer === "drill-bit-holder-v1") {
     return ["bitClearance", "bitSpacing", "holderHeight", "holeDepth"].map(
+      (key) => {
+        const parameter = getParameter(model, key);
+        const label = parameter.statusLabel ?? parameter.label;
+        return `${label} ${formatLength(getParam(params, key), unit)}`;
+      },
+    );
+  }
+  if (model.viewer === "metric-nut-knob-v1") {
+    return ["knobDiameter", "handleHeight", "guardHeight", "boltDiameter"].map(
       (key) => {
         const parameter = getParameter(model, key);
         const label = parameter.statusLabel ?? parameter.label;

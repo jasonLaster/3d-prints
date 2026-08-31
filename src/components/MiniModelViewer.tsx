@@ -15,6 +15,7 @@ import {
   createCompactWallBracketGeometry,
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
+  createMetricNutKnobGeometry,
   createRouterMortiseJigGuideGeometry,
   createRouterMortiseJigPreviewParts,
   createRouterTenonJigBaseGeometry,
@@ -204,6 +205,14 @@ function createPreviewObject(
     group.add(
       new THREE.Mesh(
         createDrillBitHolderGeometry(params, definition),
+        mainMaterial,
+      ),
+    );
+  } else if (definition.viewer === "metric-nut-knob-v1") {
+    sourceGeometry.dispose();
+    group.add(
+      new THREE.Mesh(
+        createMetricNutKnobGeometry(params, definition),
         mainMaterial,
       ),
     );

@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(9);
+  expect(catalog.models).toHaveLength(10);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -148,6 +148,14 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "roundedCorners",
       "bevels",
       "minimumWalls",
+    ],
+    "metric-nut-knob-v1": [
+      "fastenerFit",
+      "handleEnvelope",
+      "guardEnvelope",
+      "pocketRoof",
+      "minimumWalls",
+      "printOrientation",
     ],
     "router-mortise-jig-v1": [
       "mortiseTarget",
@@ -356,6 +364,16 @@ test("model-specific parameter dependencies are declared auditable", () => {
       minimumWallThickness: number;
     };
   };
+  const metricNutKnob = readJson(
+    path.join(root, "public/models/metric-nut-knob/model.json"),
+  ) as ModelJson & {
+    geometry: {
+      minimumRoofThickness: number;
+      minimumWallThickness: number;
+      sourceSha256: string;
+      sourceDimensionsMm: { x: number; y: number; z: number };
+    };
+  };
 
   const holderParams = Object.fromEntries(
     holder.parameters.map((parameter) => [parameter.key, parameter]),
@@ -494,6 +512,26 @@ test("model-specific parameter dependencies are declared auditable", () => {
   expect(drillBitHolder.audit.invariants.join(" ")).toContain(
     "flat base on the build plate",
   );
+
+  const knobParams = Object.fromEntries(
+    metricNutKnob.parameters.map((parameter) => [parameter.key, parameter]),
+  );
+  expect(metricNutKnob.geometry.sourceSha256).toHaveLength(64);
+  expect(metricNutKnob.geometry.sourceDimensionsMm).toEqual({
+    x: 22.644,
+    y: 25.038,
+    z: 17,
+  });
+  expect(knobParams.lobeCount.default).toBe(6);
+  expect(knobParams.handleHeight.default + knobParams.guardHeight.default).toBe(17);
+  expect(knobParams.boltDiameter.default + knobParams.boltClearance.default).toBeCloseTo(8.102, 5);
+  expect(knobParams.nutAcrossFlats.default + knobParams.nutClearance.default).toBeCloseTo(13.106, 5);
+  expect(knobParams.handleHeight.default - knobParams.nutPocketDepth.default).toBeGreaterThanOrEqual(
+    metricNutKnob.geometry.minimumRoofThickness,
+  );
+  expect(metricNutKnob.audit.invariants.join(" ")).toContain(
+    "independently editable",
+  );
 });
 
 test("request coverage document tracks the app behaviors under Playwright", () => {
@@ -513,6 +551,7 @@ test("request coverage document tracks the app behaviors under Playwright", () =
     "per-model JSON for parameters, audit, and scripts",
     "Japandi tray supports width, length, height, floor thickness, rib relief, and rotation",
     "Drill Bit Holder defaults to the seven requested fractional sizes",
+    "Parametric Metric Nut Knob reconstructs the supplied M8 mesh",
     "Handheld Router Mortise Jig derives its opening from the mortise, cutter, and guide bushing",
     "Handheld Router Tenon Jig derives external guide openings from the tenon, cutter, and bearing",
     "Dark theme is available",
@@ -568,6 +607,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   );
   const drillBitHolderDoc = readText(
     path.join(root, "docs/drill-bit-holder-audit-specifications.md"),
+  );
+  const metricNutKnobDoc = readText(
+    path.join(root, "docs/metric-nut-knob-audit-specifications.md"),
   );
   const routerMortiseJigDoc = readText(
     path.join(root, "docs/router-mortise-jig-audit-specifications.md"),
@@ -645,6 +687,18 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "exactly two triangles per mesh edge",
   ]) {
     expect(drillBitHolderDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "22.644 × 25.038 × 17 mm",
+    "four mesh edges whose multiplicity is not two",
+    "Six-lobe handle",
+    "Spacer / guard",
+    "13.106 mm across-flats hex pocket",
+    "Metric nut thickness varies by standard and style",
+    "exactly two triangles per mesh edge",
+  ]) {
+    expect(metricNutKnobDoc).toContain(phrase);
   }
 
   for (const phrase of [

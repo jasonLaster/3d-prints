@@ -1,0 +1,172 @@
+{
+  "id": "metric-nut-knob",
+  "name": "Metric Nut Knob",
+  "subtitle": "Captive-nut star knob with an adjustable spacer / guard",
+  "description": "A clean parametric reconstruction of the supplied M8 knob. Change the fastener and nut fit, six-lobe handle, rounded grip bulbs, and straight or tapered spacer / guard independently instead of uniformly scaling the mesh.",
+  "viewer": "metric-nut-knob-v1",
+  "stl": {
+    "fileName": "metric-nut-knob.stl",
+    "sourceName": "M8.stl",
+    "units": "mm",
+    "url": "/models/metric-nut-knob/metric-nut-knob.stl"
+  },
+  "export": {
+    "filePrefix": "metric-nut-knob"
+  },
+  "geometry": {
+    "mainAxis": { "x": -140.922005, "y": 121.919003, "z": 0 },
+    "radialSegments": 96,
+    "segmentsPerLobe": 32,
+    "roundoverSegments": 8,
+    "minimumWallThickness": 0.8,
+    "minimumRoofThickness": 1.2,
+    "sourceSha256": "6268ef3b955f704b299c68991eefb23ca7973c2e7f125775aade2dd37460b332",
+    "sourceDimensionsMm": { "x": 22.644, "y": 25.038, "z": 17 }
+  },
+  "parameters": [
+    {
+      "key": "knobDiameter",
+      "label": "Handle tip diameter",
+      "group": "Handle",
+      "statusLabel": "Handle",
+      "default": 25.038,
+      "limits": { "min": 16, "max": 100, "step": 0.1 }
+    },
+    {
+      "key": "handleHeight",
+      "label": "Handle height",
+      "group": "Handle",
+      "statusLabel": "Handle height",
+      "default": 9.375,
+      "limits": { "min": 4, "max": 50, "step": 0.1 }
+    },
+    {
+      "key": "lobeCount",
+      "label": "Grip lobe count",
+      "group": "Handle",
+      "default": 6,
+      "limits": { "min": 3, "max": 12, "step": 1 }
+    },
+    {
+      "key": "lobeDepth",
+      "label": "Grip scallop depth",
+      "group": "Handle",
+      "default": 2.847,
+      "limits": { "min": 0.5, "max": 15, "step": 0.1 }
+    },
+    {
+      "key": "lobeRadius",
+      "label": "Grip bulb radius",
+      "group": "Handle",
+      "default": 3.583,
+      "limits": { "min": 0.5, "max": 20, "step": 0.1 }
+    },
+    {
+      "key": "handleRoundover",
+      "label": "Handle edge round-over",
+      "group": "Handle",
+      "default": 1.29,
+      "limits": { "min": 0.2, "max": 6, "step": 0.1 }
+    },
+    {
+      "key": "guardBaseDiameter",
+      "label": "Spacer / guard base diameter",
+      "group": "Spacer / guard",
+      "statusLabel": "Guard base",
+      "default": 15,
+      "limits": { "min": 6, "max": 60, "step": 0.1 }
+    },
+    {
+      "key": "guardTopDiameter",
+      "label": "Spacer / guard top diameter",
+      "group": "Spacer / guard",
+      "statusLabel": "Guard top",
+      "default": 15,
+      "limits": { "min": 6, "max": 60, "step": 0.1 }
+    },
+    {
+      "key": "guardHeight",
+      "label": "Spacer / guard height",
+      "group": "Spacer / guard",
+      "statusLabel": "Guard height",
+      "default": 7.625,
+      "limits": { "min": 1, "max": 60, "step": 0.1 }
+    },
+    {
+      "key": "boltDiameter",
+      "label": "Bolt nominal diameter",
+      "group": "Fastener fit",
+      "statusLabel": "Bolt",
+      "default": 8,
+      "limits": { "min": 2, "max": 30, "step": 0.1 }
+    },
+    {
+      "key": "boltClearance",
+      "label": "Bolt-hole diametral clearance",
+      "group": "Fastener fit",
+      "default": 0.102,
+      "limits": { "min": 0, "max": 2, "step": 0.05 }
+    },
+    {
+      "key": "nutAcrossFlats",
+      "label": "Nut across flats",
+      "group": "Fastener fit",
+      "default": 13,
+      "limits": { "min": 4, "max": 50, "step": 0.1 }
+    },
+    {
+      "key": "nutClearance",
+      "label": "Nut-pocket across-flats clearance",
+      "group": "Fastener fit",
+      "default": 0.106,
+      "limits": { "min": 0, "max": 2, "step": 0.05 }
+    },
+    {
+      "key": "nutPocketDepth",
+      "label": "Nut-pocket depth",
+      "group": "Fastener fit",
+      "default": 5.705,
+      "limits": { "min": 1.5, "max": 25, "step": 0.1 }
+    },
+    {
+      "key": "nutLeadIn",
+      "label": "Nut-pocket entry lead-in",
+      "group": "Fastener fit",
+      "default": 0,
+      "limits": { "min": 0, "max": 2, "step": 0.1 }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.12,
+    "dimensionTargets": [
+      "The retained source STL measures 22.644 × 25.038 × 17 mm and contains a six-lobe handle, a 9.375 mm handle body, and a 7.625 mm spacer / guard.",
+      "The default procedural handle uses a 25.038 mm tip diameter, 2.847 mm radial scallop depth, and 3.583 mm circular grip-bulb radius.",
+      "The default 8.102 mm through-hole and 13.106 mm across-flats pocket reproduce the measured M8 interfaces.",
+      "The default nut pocket is 5.705 mm deep; users must measure the actual nut because metric nut thickness varies by standard and style."
+    ],
+    "invariants": [
+      "Keep bolt diameter, bolt clearance, nut across-flats size, nut clearance, and pocket depth independently editable rather than uniformly scaling the supplied M8 mesh.",
+      "Keep handle tip diameter, height, lobe count, scallop depth, grip-bulb radius, and edge round-over independently editable.",
+      "Keep spacer / guard base diameter, top diameter, and height independently editable so it may be straight or tapered.",
+      "Preserve a closed one-piece shell with a downward-opening captive-nut pocket, a continuous bolt bore, and a flat Z = 0 print face.",
+      "Maintain the configured minimum handle, guard, and pocket-roof material around every opening.",
+      "Treat fit as a measured starting point: print a short fit coupon or test knob before a long production run."
+    ],
+    "checks": [
+      { "key": "fastenerFit", "label": "Fastener interfaces" },
+      { "key": "handleEnvelope", "label": "Handle geometry" },
+      { "key": "guardEnvelope", "label": "Spacer / guard geometry" },
+      { "key": "pocketRoof", "label": "Pocket roof thickness" },
+      { "key": "minimumWalls", "label": "Minimum radial walls" },
+      { "key": "printOrientation", "label": "Recommended print orientation" }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/metric-nut-knob/audit.mjs",
+      "command": "npm run audit -- metric-nut-knob",
+      "description": "Checks source custody, independent parameter limits, default dimensional parity, manifold STL topology, wall and roof constraints, and flat Z placement."
+    }
+  ]
+}
