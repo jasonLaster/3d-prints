@@ -82,6 +82,15 @@ Parametric Metric Nut Knob:
 - Preserve one closed shell, a continuous bolt bore, a downward-opening captive-nut pocket, minimum radial walls, minimum pocket roof, and a flat Z = 0 print face.
 - See `docs/metric-nut-knob-audit-specifications.md` for source evidence, inferred defaults, equations, proof views, and the physical-fit boundary.
 
+Triangular Retaining Nut Knob:
+
+- Replace discrete grip lobes with one continuous soft triangle whose tip span, corner radius, palm-side bow, height, and edge round-over remain independent.
+- Preserve the independently sized captive-nut pocket, bolt clearance bore, and straight or tapered spacer / guard.
+- Add an optional short internal retention collar near the guard exit, with independently adjustable diametral interference, contact height, and lead-in ramps.
+- Treat the collar as a filament- and printer-dependent friction detent rather than a positive lock; allow zero interference to disable it and require an actual-bolt test before batching.
+- Preserve one closed manifold shell, a continuous bolt path, minimum walls and pocket roof, and a flat Z = 0 print face.
+- See `docs/triangular-retaining-knob-audit-specifications.md` for geometry, retention limits, STL checks, and the physical-fit boundary.
+
 Compact Wall Bracket:
 
 - The retained source body measures 190.9188 × 25.6 × 99.9285 mm and contains no bolt bores or countersinks.

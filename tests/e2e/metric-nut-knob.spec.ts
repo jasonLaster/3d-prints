@@ -81,7 +81,7 @@ function expectPrintable(params: ModelParams) {
 
 test("keeps the handle, guard, bore, and nut pocket independently parametric", () => {
   const defaults = getDefaultParams(model);
-  const spec = getMetricNutKnobSpec(defaults);
+  const spec = getMetricNutKnobSpec(defaults, model);
   expect(spec.lobeCount).toBe(6);
   expect(spec.knobDiameter).toBeCloseTo(25.038, 4);
   expect(spec.handleHeight).toBeCloseTo(9.375, 4);
@@ -114,7 +114,7 @@ test("keeps the handle, guard, bore, and nut pocket independently parametric", (
     nutPocketDepth: 8,
     nutLeadIn: 0.6,
   };
-  const largeSpec = getMetricNutKnobSpec(largeTapered);
+  const largeSpec = getMetricNutKnobSpec(largeTapered, model);
   expect(largeSpec.lobeCount).toBe(8);
   expect(largeSpec.guardBaseDiameter).not.toBe(largeSpec.guardTopDiameter);
   expect(largeSpec.boltHoleDiameter).toBeCloseTo(10.4, 5);

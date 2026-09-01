@@ -145,8 +145,10 @@ export type DrillBitHolderGeometry = {
 
 export type MetricNutKnobGeometry = {
   mainAxis: { x: number; y: number; z: number };
+  handleProfile?: "lobed" | "rounded-triangle";
   radialSegments: number;
   segmentsPerLobe: number;
+  triangleSegmentsPerSide?: number;
   roundoverSegments: number;
   minimumWallThickness: number;
   minimumRoofThickness: number;

@@ -45,6 +45,11 @@ Current models:
   - Retained source: `models/metric-nut-knob/reference/M8.stl`
   - Audit script: `models/metric-nut-knob/audit.mjs`
   - Source generator: `models/metric-nut-knob/generate-source.mjs`
+- `triangular-retaining-knob`
+  - STL: `public/models/triangular-retaining-knob/triangular-retaining-knob.stl`
+  - Config: `public/models/triangular-retaining-knob/model.json`
+  - Audit script: `models/triangular-retaining-knob/audit.mjs`
+  - Source generator: `models/triangular-retaining-knob/generate-source.mjs`
 - `router-mortise-jig`
   - STLs: `public/models/router-mortise-jig/router-mortise-jig-*.stl`
   - Config: `public/models/router-mortise-jig/model.json`
@@ -94,6 +99,7 @@ npm run audit -- door-lock-adapter
 npm run audit -- compact-wall-bracket
 npm run audit -- drill-bit-holder
 npm run audit -- metric-nut-knob
+npm run audit -- triangular-retaining-knob
 npm run audit -- router-mortise-jig
 npm run audit -- router-tenon-jig
 npm run test:e2e

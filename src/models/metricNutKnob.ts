@@ -26,6 +26,9 @@ export type MetricNutKnobSpec = {
   lobeCount: number;
   lobeDepth: number;
   lobeRadius: number;
+  handleProfile: "lobed" | "rounded-triangle";
+  triangleCornerRadius: number;
+  triangleSideBulge: number;
   nutLeadIn: number;
   nutEntryCornerDiameter: number;
   nutPocketAcrossFlats: number;
@@ -33,9 +36,17 @@ export type MetricNutKnobSpec = {
   nutPocketCornerDiameter: number;
   overallHeight: number;
   pocketRoofThickness: number;
+  retentionBandHeight: number;
+  retentionDiameter: number;
+  retentionInterference: number;
+  retentionLeadIn: number;
   thinnestHandleWall: number;
   thinnestGuardWall: number;
 };
+
+function hasParameter(model: MetricNutKnobModelDefinition, key: string) {
+  return model.parameters.some((parameter) => parameter.key === key);
+}
 
 function polygonArea(points: Point[]) {
   return points.reduce((area, current, index) => {
@@ -106,6 +117,82 @@ function starRing(
   });
 }
 
+function roundedTriangleRing(
+  maximumRadius: number,
+  cornerRadius: number,
+  sideBulge: number,
+  segmentsPerSide: number,
+) {
+  const vertexRadius = maximumRadius + cornerRadius;
+  const vertices = Array.from({ length: 3 }, (_, index) => {
+    const angle = Math.PI / 2 + (index / 3) * Math.PI * 2;
+    return new THREE.Vector2(
+      Math.cos(angle) * vertexRadius,
+      Math.sin(angle) * vertexRadius,
+    );
+  });
+  const tangentDistance = cornerRadius / Math.tan(Math.PI / 6);
+  const cornerCenters = vertices.map((vertex) =>
+    vertex.clone().add(vertex.clone().normalize().multiplyScalar(-cornerRadius * 2)),
+  );
+  const incoming = vertices.map((vertex, index) => {
+    const previous = vertices[(index + 2) % 3];
+    return vertex
+      .clone()
+      .add(previous.clone().sub(vertex).normalize().multiplyScalar(tangentDistance));
+  });
+  const outgoing = vertices.map((vertex, index) => {
+    const next = vertices[(index + 1) % 3];
+    return vertex
+      .clone()
+      .add(next.clone().sub(vertex).normalize().multiplyScalar(tangentDistance));
+  });
+  const sideSegments = Math.max(4, segmentsPerSide);
+  const cornerSegments = Math.max(4, Math.ceil(segmentsPerSide / 2));
+  const points: Point[] = [];
+
+  for (let index = 0; index < 3; index += 1) {
+    const next = (index + 1) % 3;
+    const start = outgoing[index];
+    const end = incoming[next];
+    const direction = end.clone().sub(start);
+    const outward = new THREE.Vector2(direction.y, -direction.x).normalize();
+    const control = start
+      .clone()
+      .add(end)
+      .multiplyScalar(0.5)
+      .add(outward.multiplyScalar(sideBulge * 2));
+    for (let segment = 0; segment < sideSegments; segment += 1) {
+      const t = segment / sideSegments;
+      const inverse = 1 - t;
+      points.push(
+        start
+          .clone()
+          .multiplyScalar(inverse * inverse)
+          .add(control.clone().multiplyScalar(2 * inverse * t))
+          .add(end.clone().multiplyScalar(t * t)),
+      );
+    }
+
+    const center = cornerCenters[next];
+    const startAngle = Math.atan2(end.y - center.y, end.x - center.x);
+    const cornerEnd = outgoing[next];
+    let sweep =
+      Math.atan2(cornerEnd.y - center.y, cornerEnd.x - center.x) - startAngle;
+    while (sweep <= 0) sweep += Math.PI * 2;
+    for (let segment = 0; segment < cornerSegments; segment += 1) {
+      const angle = startAngle + sweep * (segment / cornerSegments);
+      points.push(
+        new THREE.Vector2(
+          center.x + Math.cos(angle) * cornerRadius,
+          center.y + Math.sin(angle) * cornerRadius,
+        ),
+      );
+    }
+  }
+  return points;
+}
+
 function insetRing(points: Point[], inset: number) {
   return points.map((point) => {
     const radius = Math.max(EPSILON, point.length() - inset);
@@ -174,6 +261,7 @@ function addHorizontalFace(
 
 export function getMetricNutKnobSpec(
   params: ModelParams,
+  model: MetricNutKnobModelDefinition,
 ): MetricNutKnobSpec {
   const boltHoleDiameter =
     getParam(params, "boltDiameter") + getParam(params, "boltClearance");
@@ -181,7 +269,9 @@ export function getMetricNutKnobSpec(
     getParam(params, "nutAcrossFlats") + getParam(params, "nutClearance");
   const nutPocketCornerDiameter = nutPocketAcrossFlats / Math.cos(Math.PI / 6);
   const knobDiameter = getParam(params, "knobDiameter");
-  const lobeDepth = getParam(params, "lobeDepth");
+  const lobeDepth = hasParameter(model, "lobeDepth")
+    ? getParam(params, "lobeDepth")
+    : 0;
   const handleRoundover = getParam(params, "handleRoundover");
   const handleHeight = getParam(params, "handleHeight");
   const nutPocketDepth = getParam(params, "nutPocketDepth");
@@ -191,6 +281,38 @@ export function getMetricNutKnobSpec(
   const guardBaseDiameter = getParam(params, "guardBaseDiameter");
   const guardTopDiameter = getParam(params, "guardTopDiameter");
   const guardHeight = getParam(params, "guardHeight");
+  const handleProfile = model.geometry.handleProfile ?? "lobed";
+  const triangleCornerRadius = hasParameter(model, "triangleCornerRadius")
+    ? getParam(params, "triangleCornerRadius")
+    : 0;
+  const triangleSideBulge = hasParameter(model, "triangleSideBulge")
+    ? getParam(params, "triangleSideBulge")
+    : 0;
+  const retentionInterference = hasParameter(model, "retentionInterference")
+    ? getParam(params, "retentionInterference")
+    : 0;
+  const retentionBandHeight = hasParameter(model, "retentionBandHeight")
+    ? getParam(params, "retentionBandHeight")
+    : 0;
+  const retentionLeadIn = hasParameter(model, "retentionLeadIn")
+    ? getParam(params, "retentionLeadIn")
+    : 0;
+  const nominalHandle =
+    handleProfile === "rounded-triangle"
+      ? roundedTriangleRing(
+          knobDiameter / 2,
+          triangleCornerRadius,
+          triangleSideBulge,
+          model.geometry.triangleSegmentsPerSide ?? model.geometry.segmentsPerLobe,
+        )
+      : starRing(
+          knobDiameter / 2,
+          lobeDepth,
+          Math.round(getParam(params, "lobeCount")),
+          getParam(params, "lobeRadius"),
+          model.geometry.segmentsPerLobe,
+        );
+  const minimumHandleRadius = Math.min(...nominalHandle.map((point) => point.length()));
   return {
     boltHoleDiameter,
     guardBaseDiameter,
@@ -199,9 +321,16 @@ export function getMetricNutKnobSpec(
     handleHeight,
     handleRoundover,
     knobDiameter,
-    lobeCount: Math.round(getParam(params, "lobeCount")),
+    lobeCount: hasParameter(model, "lobeCount")
+      ? Math.round(getParam(params, "lobeCount"))
+      : 3,
     lobeDepth,
-    lobeRadius: getParam(params, "lobeRadius"),
+    lobeRadius: hasParameter(model, "lobeRadius")
+      ? getParam(params, "lobeRadius")
+      : 0,
+    handleProfile,
+    triangleCornerRadius,
+    triangleSideBulge,
     nutLeadIn,
     nutEntryCornerDiameter,
     nutPocketAcrossFlats,
@@ -209,8 +338,12 @@ export function getMetricNutKnobSpec(
     nutPocketCornerDiameter,
     overallHeight: handleHeight + guardHeight,
     pocketRoofThickness: handleHeight - nutPocketDepth,
+    retentionBandHeight,
+    retentionDiameter: Math.max(0.5, getParam(params, "boltDiameter") - retentionInterference),
+    retentionInterference,
+    retentionLeadIn,
     thinnestHandleWall:
-      knobDiameter / 2 - lobeDepth - handleRoundover - nutEntryCornerDiameter / 2,
+      minimumHandleRadius - handleRoundover - nutEntryCornerDiameter / 2,
     thinnestGuardWall:
       Math.min(guardBaseDiameter, guardTopDiameter) / 2 - boltHoleDiameter / 2,
   };
@@ -220,13 +353,20 @@ function getHandleRings(
   spec: MetricNutKnobSpec,
   model: MetricNutKnobModelDefinition,
 ) {
-  const nominal = starRing(
-    spec.knobDiameter / 2,
-    spec.lobeDepth,
-    spec.lobeCount,
-    spec.lobeRadius,
-    model.geometry.segmentsPerLobe,
-  );
+  const nominal = spec.handleProfile === "rounded-triangle"
+    ? roundedTriangleRing(
+        spec.knobDiameter / 2,
+        spec.triangleCornerRadius,
+        spec.triangleSideBulge,
+        model.geometry.triangleSegmentsPerSide ?? model.geometry.segmentsPerLobe,
+      )
+    : starRing(
+        spec.knobDiameter / 2,
+        spec.lobeDepth,
+        spec.lobeCount,
+        spec.lobeRadius,
+        model.geometry.segmentsPerLobe,
+      );
   const sections = Math.max(1, model.geometry.roundoverSegments);
   const bottom: { ring: Point[]; z: number }[] = [];
   for (let index = 0; index <= sections; index += 1) {
@@ -259,7 +399,7 @@ export function createMetricNutKnobGeometry(
   params: ModelParams,
   model: MetricNutKnobModelDefinition,
 ) {
-  const spec = getMetricNutKnobSpec(params);
+  const spec = getMetricNutKnobSpec(params, model);
   const handleRings = getHandleRings(spec, model);
   const bore = circleRing(spec.boltHoleDiameter / 2, model.geometry.radialSegments);
   const guardBase = circleRing(
@@ -327,14 +467,43 @@ export function createMetricNutKnobGeometry(
     spec.nutPocketDepth,
     false,
   );
-  addRingBridge(
-    positions,
-    bore,
-    bore,
-    spec.nutPocketDepth,
-    spec.overallHeight,
-    true,
-  );
+  if (spec.retentionInterference > EPSILON && spec.retentionBandHeight > EPSILON) {
+    const retention = circleRing(
+      spec.retentionDiameter / 2,
+      model.geometry.radialSegments,
+    );
+    const lowerRampStart =
+      spec.overallHeight - spec.retentionBandHeight - spec.retentionLeadIn * 2;
+    const bandStart = lowerRampStart + spec.retentionLeadIn;
+    const bandEnd = bandStart + spec.retentionBandHeight;
+    addRingBridge(
+      positions,
+      bore,
+      bore,
+      spec.nutPocketDepth,
+      lowerRampStart,
+      true,
+    );
+    addRingBridge(positions, bore, retention, lowerRampStart, bandStart, true);
+    addRingBridge(positions, retention, retention, bandStart, bandEnd, true);
+    addRingBridge(
+      positions,
+      retention,
+      bore,
+      bandEnd,
+      spec.overallHeight,
+      true,
+    );
+  } else {
+    addRingBridge(
+      positions,
+      bore,
+      bore,
+      spec.nutPocketDepth,
+      spec.overallHeight,
+      true,
+    );
+  }
   addRingBridge(
     positions,
     guardBase,
@@ -395,8 +564,13 @@ export function getMetricNutKnobParameterLimits(
   const minimumWall = model.geometry.minimumWallThickness;
   const minimumRoof = model.geometry.minimumRoofThickness;
   const knobDiameter = getParam(params, "knobDiameter");
-  const lobeDepth = getParam(params, "lobeDepth");
-  const lobeRadius = getParam(params, "lobeRadius");
+  const spec = getMetricNutKnobSpec(params, model);
+  const lobeDepth = hasParameter(model, "lobeDepth")
+    ? getParam(params, "lobeDepth")
+    : 0;
+  const lobeRadius = hasParameter(model, "lobeRadius")
+    ? getParam(params, "lobeRadius")
+    : 0;
   const handleRoundover = getParam(params, "handleRoundover");
   const handleHeight = getParam(params, "handleHeight");
   const nutPocketDepth = getParam(params, "nutPocketDepth");
@@ -407,18 +581,30 @@ export function getMetricNutKnobParameterLimits(
     (nutAcrossFlats + nutLeadIn * 2) / (2 * Math.cos(Math.PI / 6));
   const boltHoleDiameter =
     getParam(params, "boltDiameter") + getParam(params, "boltClearance");
+  const minimumHandleRadius =
+    spec.thinnestHandleWall + handleRoundover + spec.nutEntryCornerDiameter / 2;
+  const triangleRatio = Math.max(minimumHandleRadius / knobDiameter, 0.1);
   const maximumGuardBase =
-    knobDiameter - (lobeDepth + handleRoundover) * 2 - minimumWall * 0.5;
+    model.geometry.handleProfile === "rounded-triangle"
+      ? (minimumHandleRadius - handleRoundover) * 2 - minimumWall * 0.5
+      : knobDiameter - (lobeDepth + handleRoundover) * 2 - minimumWall * 0.5;
 
   if (key === "knobDiameter") {
-    limits.min = Math.max(
-      limits.min,
-      2 * (nutCornerRadius + lobeDepth + handleRoundover + minimumWall),
-      lobeRadius * 2 + minimumWall,
-      getParam(params, "guardBaseDiameter") +
-        (lobeDepth + handleRoundover) * 2 +
-        minimumWall * 0.5,
-    );
+    limits.min = model.geometry.handleProfile === "rounded-triangle"
+      ? Math.max(
+          limits.min,
+          (nutCornerRadius + handleRoundover + minimumWall) / triangleRatio,
+          (getParam(params, "guardBaseDiameter") / 2 + handleRoundover + minimumWall * 0.25) /
+            triangleRatio,
+        )
+      : Math.max(
+          limits.min,
+          2 * (nutCornerRadius + lobeDepth + handleRoundover + minimumWall),
+          lobeRadius * 2 + minimumWall,
+          getParam(params, "guardBaseDiameter") +
+            (lobeDepth + handleRoundover) * 2 +
+            minimumWall * 0.5,
+        );
   } else if (key === "lobeDepth") {
     limits.max = Math.min(
       limits.max,
@@ -430,13 +616,16 @@ export function getMetricNutKnobParameterLimits(
   } else if (key === "lobeRadius") {
     limits.min = Math.max(limits.min, lobeDepth / 2);
     limits.max = Math.min(limits.max, knobDiameter / 2 - minimumWall / 2);
+  } else if (key === "triangleCornerRadius") {
+    limits.max = Math.min(limits.max, knobDiameter * 0.2);
+  } else if (key === "triangleSideBulge") {
+    limits.max = Math.min(limits.max, knobDiameter * 0.2);
   } else if (key === "handleRoundover") {
     limits.max = Math.min(
       limits.max,
       handleHeight / 2,
-      knobDiameter / 2 - lobeDepth - nutCornerRadius - minimumWall,
-      (knobDiameter - getParam(params, "guardBaseDiameter") - minimumWall * 0.5) / 2 -
-        lobeDepth,
+      minimumHandleRadius - nutCornerRadius - minimumWall,
+      minimumHandleRadius - getParam(params, "guardBaseDiameter") / 2 - minimumWall * 0.25,
     );
   } else if (key === "handleHeight") {
     limits.min = Math.max(
@@ -451,8 +640,7 @@ export function getMetricNutKnobParameterLimits(
     limits.max = Math.min(
       limits.max,
       nutPocketDepth,
-      (knobDiameter / 2 -
-        lobeDepth -
+      (minimumHandleRadius -
         handleRoundover -
         nutAcrossFlats / (2 * Math.cos(Math.PI / 6)) -
         minimumWall) * Math.cos(Math.PI / 6),
@@ -466,7 +654,7 @@ export function getMetricNutKnobParameterLimits(
       limits.max,
       2 *
           Math.cos(Math.PI / 6) *
-          (knobDiameter / 2 - lobeDepth - handleRoundover - minimumWall) -
+          (minimumHandleRadius - handleRoundover - minimumWall) -
         other -
         nutLeadIn * 2,
     );
@@ -490,6 +678,27 @@ export function getMetricNutKnobParameterLimits(
     limits.max = Math.min(limits.max, maximumGuardBase);
   } else if (key === "guardTopDiameter") {
     limits.min = Math.max(limits.min, boltHoleDiameter + minimumWall * 2);
+  } else if (key === "guardHeight") {
+    if (hasParameter(model, "retentionBandHeight")) {
+      limits.min = Math.max(
+        limits.min,
+        getParam(params, "retentionBandHeight") +
+          getParam(params, "retentionLeadIn") * 2 +
+          0.4,
+      );
+    }
+  } else if (key === "retentionInterference") {
+    limits.max = Math.min(limits.max, getParam(params, "boltDiameter") * 0.12);
+  } else if (key === "retentionBandHeight") {
+    limits.max = Math.min(
+      limits.max,
+      getParam(params, "guardHeight") - getParam(params, "retentionLeadIn") * 2 - 0.4,
+    );
+  } else if (key === "retentionLeadIn") {
+    limits.max = Math.min(
+      limits.max,
+      (getParam(params, "guardHeight") - getParam(params, "retentionBandHeight") - 0.4) / 2,
+    );
   }
   limits.max = Math.max(limits.min, limits.max);
   return limits;
@@ -501,18 +710,23 @@ export function getMetricNutKnobAuditValue(
   unit: LengthUnit,
   model: MetricNutKnobModelDefinition,
 ): AuditItem {
-  const spec = getMetricNutKnobSpec(params);
+  const spec = getMetricNutKnobSpec(params, model);
   if (check.key === "fastenerFit") {
+    const retention = spec.retentionInterference > EPSILON
+      ? ` · ${formatLength(spec.retentionDiameter, unit)} retention collar`
+      : "";
     return {
       label: check.label,
-      value: `${formatLength(spec.boltHoleDiameter, unit)} bore · ${formatLength(spec.nutPocketAcrossFlats, unit)} AF pocket`,
+      value: `${formatLength(spec.boltHoleDiameter, unit)} bore · ${formatLength(spec.nutPocketAcrossFlats, unit)} AF pocket${retention}`,
       status: "pass",
     };
   }
   if (check.key === "handleEnvelope") {
     return {
       label: check.label,
-      value: `${spec.lobeCount} lobes · ${formatLength(spec.knobDiameter, unit)} tip diameter · ${formatLength(spec.handleHeight, unit)} high`,
+      value: spec.handleProfile === "rounded-triangle"
+        ? `Soft triangle · ${formatLength(spec.knobDiameter, unit)} tip span · ${formatLength(spec.handleHeight, unit)} high`
+        : `${spec.lobeCount} lobes · ${formatLength(spec.knobDiameter, unit)} tip diameter · ${formatLength(spec.handleHeight, unit)} high`,
       status: "pass",
     };
   }
@@ -544,7 +758,9 @@ export function getMetricNutKnobAuditValue(
   }
   return {
     label: check.label,
-    value: "Flat handle face on Z = 0; captive-nut pocket opens downward",
+    value: spec.retentionInterference > EPSILON
+      ? "Flat handle face on Z = 0; captive-nut pocket opens downward; retention collar sits inside the guard exit"
+      : "Flat handle face on Z = 0; captive-nut pocket opens downward",
     status: "pass",
   };
 }

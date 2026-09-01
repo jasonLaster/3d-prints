@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(10);
+  expect(catalog.models).toHaveLength(11);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -611,6 +611,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   const metricNutKnobDoc = readText(
     path.join(root, "docs/metric-nut-knob-audit-specifications.md"),
   );
+  const triangularRetainingKnobDoc = readText(
+    path.join(root, "docs/triangular-retaining-knob-audit-specifications.md"),
+  );
   const routerMortiseJigDoc = readText(
     path.join(root, "docs/router-mortise-jig-audit-specifications.md"),
   );
@@ -699,6 +702,18 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "exactly two triangles per mesh edge",
   ]) {
     expect(metricNutKnobDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "one continuous soft triangle",
+    "38 mm tip span",
+    "7.8 mm",
+    "nominal bolt diameter minus 0.2 mm",
+    "Setting retention interference to 0 disables the detent",
+    "tunable friction detent, not a positive mechanical lock",
+    "exactly two triangles per mesh edge",
+  ]) {
+    expect(triangularRetainingKnobDoc).toContain(phrase);
   }
 
   for (const phrase of [

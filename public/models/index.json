@@ -37,6 +37,11 @@
       "configUrl": "/models/metric-nut-knob/model.json"
     },
     {
+      "id": "triangular-retaining-knob",
+      "name": "Triangle Nut Knob",
+      "configUrl": "/models/triangular-retaining-knob/model.json"
+    },
+    {
       "id": "router-mortise-jig",
       "name": "Photo-Matched Handheld Router Mortise Jig",
       "configUrl": "/models/router-mortise-jig/photo-model.json"

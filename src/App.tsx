@@ -4022,12 +4022,6 @@ function CompactWallBracketParameterControls({
   );
 }
 
-const METRIC_NUT_KNOB_PARAMETER_GROUPS = [
-  "Handle",
-  "Spacer / guard",
-  "Fastener fit",
-] as const;
-
 function MetricNutKnobParameterControls({
   model,
   params,
@@ -4041,9 +4035,12 @@ function MetricNutKnobParameterControls({
   onChange: (key: string, value: number) => void;
   onUnitChange: (unit: LengthUnit) => void;
 }) {
+  const groups = Array.from(
+    new Set(model.parameters.map((parameter) => parameter.group).filter(Boolean)),
+  );
   return (
     <div className="parameter-groups metric-nut-knob-parameter-groups">
-      {METRIC_NUT_KNOB_PARAMETER_GROUPS.map((group) => (
+      {groups.map((group) => (
         <section className="nested-parameter-section" key={group}>
           <div className="divider-controls-heading">
             <h3>{group}</h3>
@@ -4069,7 +4066,8 @@ function MetricNutKnobParameterControls({
                   onUnitChange={onUnitChange}
                   preferFineStep={
                     parameter.key.includes("Clearance") ||
-                    parameter.key === "nutLeadIn"
+                    parameter.key === "nutLeadIn" ||
+                    parameter.key === "retentionInterference"
                   }
                   unit={unit}
                   valueMm={params[parameter.key]}
@@ -7295,6 +7293,12 @@ export default function App({
                       <li>Bolt bore = nominal bolt diameter + diametral clearance</li>
                       <li>Nut pocket = measured across-flats size + across-flats clearance</li>
                       <li>Base/top guard diameters may differ to create a tapered spacer</li>
+                      {model.geometry.handleProfile === "rounded-triangle" ? (
+                        <li>
+                          Retention collar diameter = nominal bolt diameter −
+                          retention interference; set interference to 0 to disable it
+                        </li>
+                      ) : null}
                     </ul>
                     <p>
                       Metric nut thickness varies by standard and style. Measure
@@ -7302,6 +7306,9 @@ export default function App({
                       before committing to a production batch. The geometry
                       audit checks printable topology and minimum material, not
                       torque capacity or pull-out strength.
+                      {model.geometry.handleProfile === "rounded-triangle"
+                        ? " The press-on collar is a filament- and printer-dependent friction detent, not a positive lock."
+                        : ""}
                     </p>
                   </section>
                 ) : null}
