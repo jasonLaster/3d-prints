@@ -16,6 +16,8 @@ import {
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
   createMetricNutKnobGeometry,
+  createPipeClampBedGeometry,
+  createPipeClampBedPreviewParts,
   createRouterMortiseJigGuideGeometry,
   createRouterMortiseJigPreviewParts,
   createRouterTenonJigBaseGeometry,
@@ -216,6 +218,17 @@ function createPreviewObject(
         mainMaterial,
       ),
     );
+  } else if (definition.viewer === "pipe-clamp-bed-v1") {
+    sourceGeometry.dispose();
+    group.add(
+      new THREE.Mesh(
+        createPipeClampBedGeometry(params, definition),
+        mainMaterial,
+      ),
+    );
+    createPipeClampBedPreviewParts(params, definition).forEach((part) => {
+      group.add(new THREE.Mesh(part.geometry, metalMaterial));
+    });
   } else if (definition.viewer === "router-mortise-jig-v1") {
     sourceGeometry.dispose();
     group.add(

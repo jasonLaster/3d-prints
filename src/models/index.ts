@@ -1,4 +1,4 @@
-import { formatLength } from "../units";
+import { formatLength, toUnit } from "../units";
 import {
   getHolderAuditValue,
   getHolderDimensions,
@@ -36,6 +36,12 @@ import {
   getMetricNutKnobDimensions,
   getMetricNutKnobParameterLimits,
 } from "./metricNutKnob";
+import {
+  getPipeClampBedAuditValue,
+  getPipeClampBedDimensions,
+  getPipeClampBedParameterLimits,
+  getPipeClampBedSpec,
+} from "./pipeClampBed";
 import {
   getRouterMortiseJigAuditValue,
   getRouterMortiseJigDimensions,
@@ -120,6 +126,15 @@ export {
   updateMetricNutKnobGuide,
 } from "./metricNutKnob";
 export type { MetricNutKnobSpec } from "./metricNutKnob";
+export {
+  createPipeClampBedFitCouponGeometry,
+  createPipeClampBedGeometry,
+  createPipeClampBedPreviewParts,
+  createPipeClampBedPrintGeometry,
+  getPipeClampBedSpec,
+  updatePipeClampBedGuide,
+} from "./pipeClampBed";
+export type { PipeClampBedSpec } from "./pipeClampBed";
 export {
   createRouterMortiseJigFenceGeometry,
   createRouterMortiseJigGuideGeometry,
@@ -222,6 +237,9 @@ function getAuditValue(
   if (model.viewer === "metric-nut-knob-v1") {
     return getMetricNutKnobAuditValue(check, params, unit, model);
   }
+  if (model.viewer === "pipe-clamp-bed-v1") {
+    return getPipeClampBedAuditValue(check, params, unit, model);
+  }
   if (model.viewer === "router-mortise-jig-v1") {
     return getRouterMortiseJigAuditValue(check, params, unit, model);
   }
@@ -275,6 +293,9 @@ export function getParameterLimits(
   if (model.viewer === "metric-nut-knob-v1") {
     return getMetricNutKnobParameterLimits(model, params, key);
   }
+  if (model.viewer === "pipe-clamp-bed-v1") {
+    return getPipeClampBedParameterLimits(model, params, key);
+  }
   if (model.viewer === "router-mortise-jig-v1") {
     return getRouterMortiseJigParameterLimits(model, params, key);
   }
@@ -316,6 +337,9 @@ export function getModelDimensions(
   }
   if (model.viewer === "metric-nut-knob-v1") {
     return getMetricNutKnobDimensions(params, model);
+  }
+  if (model.viewer === "pipe-clamp-bed-v1") {
+    return getPipeClampBedDimensions(params);
   }
   if (model.viewer === "router-mortise-jig-v1") {
     return getRouterMortiseJigDimensions(params, model);
@@ -373,6 +397,20 @@ export function getStatusItems(
         return `${label} ${formatLength(getParam(params, key), unit)}`;
       },
     );
+  }
+  if (model.viewer === "pipe-clamp-bed-v1") {
+    const spec = getPipeClampBedSpec(params);
+    const pipeDiameter =
+      unit === "in"
+        ? `${toUnit(spec.pipeDiameter, unit).toFixed(3)} in`
+        : formatLength(spec.pipeDiameter, unit);
+    return [
+      `Bed ${formatLength(spec.bedLength, unit)} × ${formatLength(spec.bedWidth, unit)}`,
+      `Pipe ${pipeDiameter} · ${formatLength(spec.pipeClearance, unit)} total clearance`,
+      `Surface ${formatLength(spec.surfaceLiftAboveCrown, unit)} above crown`,
+      `${formatLength(spec.workpieceThickness, unit)} stock center ${formatLength(spec.workpieceCenterZ, unit)} above pipe axis`,
+      `2 × ${formatLength(spec.hookWidth, unit)} easy-release clips`,
+    ];
   }
   if (model.viewer === "router-mortise-jig-v1") {
     const width = getParam(params, "mortiseWidth");

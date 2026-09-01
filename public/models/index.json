@@ -37,6 +37,11 @@
       "configUrl": "/models/metric-nut-knob/model.json"
     },
     {
+      "id": "pipe-clamp-bed",
+      "name": "Pipe Clamp Bed",
+      "configUrl": "/models/pipe-clamp-bed/model.json"
+    },
+    {
       "id": "router-mortise-jig",
       "name": "Photo-Matched Handheld Router Mortise Jig",
       "configUrl": "/models/router-mortise-jig/photo-model.json"

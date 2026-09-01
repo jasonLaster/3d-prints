@@ -154,6 +154,20 @@ export type MetricNutKnobGeometry = {
   sourceDimensionsMm: { x: number; y: number; z: number };
 };
 
+export type PipeClampBedGeometry = {
+  mainAxis: { x: number; y: number; z: number };
+  radialSegments: number;
+  minimumRoofThickness: number;
+  minimumHookWallThickness: number;
+  minimumCenterBridge: number;
+  pipePreviewOverhang: number;
+  sourceSha256: string;
+  sourceScaleToMm: number;
+  sourceDimensionsMm: { x: number; y: number; z: number };
+  sourceDegenerateTriangles: number;
+  sourceNonManifoldEdges: number;
+};
+
 export type RouterMortiseJigGeometry = {
   mainAxis: { x: number; y: number; z: number };
   radialSegments: number;
@@ -320,6 +334,7 @@ export type SupportedViewer =
   | "concentric-tube-jig-v1"
   | "drill-bit-holder-v1"
   | "metric-nut-knob-v1"
+  | "pipe-clamp-bed-v1"
   | "router-mortise-jig-v1"
   | "router-tenon-jig-v1"
   | "bandsaw-sled-v1"
@@ -393,6 +408,15 @@ export type DrillBitHolderModelDefinition = BaseModelDefinition & {
 export type MetricNutKnobModelDefinition = BaseModelDefinition & {
   viewer: "metric-nut-knob-v1";
   geometry: MetricNutKnobGeometry;
+};
+
+export type PipeClampBedModelDefinition = BaseModelDefinition & {
+  viewer: "pipe-clamp-bed-v1";
+  geometry: PipeClampBedGeometry;
+  fitCouponStl: {
+    fileName: string;
+    url: string;
+  };
 };
 
 export type RouterMortisePreset = {
@@ -472,6 +496,7 @@ export type ModelDefinition =
   | ConcentricTubeJigModelDefinition
   | DrillBitHolderModelDefinition
   | MetricNutKnobModelDefinition
+  | PipeClampBedModelDefinition
   | RouterMortiseJigModelDefinition
   | RouterTenonJigModelDefinition
   | BandsawSledModelDefinition

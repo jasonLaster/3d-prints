@@ -1,0 +1,154 @@
+{
+  "id": "pipe-clamp-bed",
+  "name": "Pipe Clamp Bed",
+  "subtitle": "A level work support that snaps onto 3/4-inch pipe clamps",
+  "description": "A continuous parametric bed with two easy-release end clips. The default 7 × 1.5 inch support follows a standard 1.050 inch pipe crown, lifts the work only 1/16 inch above it, and reports where the center of a 1 inch board lands relative to the pipe axis.",
+  "viewer": "pipe-clamp-bed-v1",
+  "stl": {
+    "fileName": "pipe-clamp-bed.stl",
+    "sourceName": "pipe-supporter.stl",
+    "units": "mm",
+    "url": "/models/pipe-clamp-bed/pipe-clamp-bed.stl"
+  },
+  "fitCouponStl": {
+    "fileName": "pipe-clamp-bed-fit-coupon.stl",
+    "url": "/models/pipe-clamp-bed/pipe-clamp-bed-fit-coupon.stl"
+  },
+  "export": {
+    "filePrefix": "pipe-clamp-bed"
+  },
+  "geometry": {
+    "mainAxis": { "x": 0, "y": 0, "z": 0 },
+    "radialSegments": 96,
+    "minimumRoofThickness": 1.2,
+    "minimumHookWallThickness": 2.4,
+    "minimumCenterBridge": 25.4,
+    "pipePreviewOverhang": 20,
+    "sourceSha256": "d02809790789484b7b3568a6bad2bcfc86d5a445a2de6f6126f23823520af05f",
+    "sourceScaleToMm": 1000,
+    "sourceDimensionsMm": { "x": 77.5516, "y": 46, "z": 40 },
+    "sourceDegenerateTriangles": 37,
+    "sourceNonManifoldEdges": 58
+  },
+  "parameters": [
+    {
+      "key": "bedLength",
+      "label": "Bed length",
+      "group": "Bed surface",
+      "statusLabel": "Length",
+      "default": 177.8,
+      "limits": { "min": 101.6, "max": 250, "step": 1 }
+    },
+    {
+      "key": "bedWidth",
+      "label": "Bed width",
+      "group": "Bed surface",
+      "statusLabel": "Width",
+      "default": 38.1,
+      "limits": { "min": 34, "max": 63.5, "step": 0.5 }
+    },
+    {
+      "key": "bedThickness",
+      "label": "Bed edge thickness",
+      "group": "Bed surface",
+      "statusLabel": "Edge",
+      "default": 6.35,
+      "limits": { "min": 3.2, "max": 12.7, "step": 0.1 }
+    },
+    {
+      "key": "workpieceThickness",
+      "label": "Reference workpiece thickness",
+      "group": "Bed surface",
+      "statusLabel": "Stock",
+      "default": 25.4,
+      "limits": { "min": 12.7, "max": 50.8, "step": 0.5 }
+    },
+    {
+      "key": "pipeDiameter",
+      "label": "Pipe outside diameter",
+      "group": "Pipe fit & height",
+      "statusLabel": "Pipe",
+      "default": 26.67,
+      "limits": { "min": 21.3, "max": 33.4, "step": 0.1 }
+    },
+    {
+      "key": "pipeClearance",
+      "label": "Total diametral pipe clearance",
+      "group": "Pipe fit & height",
+      "statusLabel": "Clearance",
+      "default": 0.8,
+      "limits": { "min": 0.4, "max": 2.4, "step": 0.1 }
+    },
+    {
+      "key": "crownCapThickness",
+      "label": "Material above fitted pipe crown",
+      "group": "Pipe fit & height",
+      "statusLabel": "Crown cap",
+      "default": 1.2,
+      "limits": { "min": 1.2, "max": 5, "step": 0.1 }
+    },
+    {
+      "key": "hookWidth",
+      "label": "Each end-clip width",
+      "group": "Snap clips",
+      "statusLabel": "Clip width",
+      "default": 25.4,
+      "limits": { "min": 12.7, "max": 38.1, "step": 0.5 }
+    },
+    {
+      "key": "hookWallThickness",
+      "label": "Clip wall thickness",
+      "group": "Snap clips",
+      "statusLabel": "Clip wall",
+      "default": 3,
+      "limits": { "min": 2.4, "max": 6, "step": 0.1 }
+    },
+    {
+      "key": "hookUndercut",
+      "label": "Clip retention per side",
+      "group": "Snap clips",
+      "statusLabel": "Retention",
+      "default": 1.2,
+      "limits": { "min": 0.4, "max": 3.5, "step": 0.1 }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.12,
+    "dimensionTargets": [
+      "The default bed is 177.8 × 38.1 mm (7 × 1.5 in) with a continuous level support face and two 25.4 mm (1 in) end clips.",
+      "The pipe interface targets standard 3/4-14 NPT black pipe at 26.67 mm (1.050 in) maximum outside diameter with 0.8 mm total diametral clearance.",
+      "The default support face is 1.6 mm (about 1/16 in) above the nominal pipe crown: 0.4 mm radial fit clearance plus a 1.2 mm supported crown cap.",
+      "A 25.4 mm (1 in) workpiece resting on the default surface has its center 27.635 mm (1.088 in) above the pipe axis.",
+      "Each default clip has a 3.0 mm wall and 1.2 mm fitted-radius undercut; the nominal pipe requires only 0.8 mm outward movement per side during snap-on or removal."
+    ],
+    "invariants": [
+      "Run the 177.8 mm bed length parallel to the pipe and keep the 38.1 mm support width transverse to it.",
+      "Use exactly two downward-opening snap clips, one at each end, while keeping the middle underside open around the pipe.",
+      "Derive support height from the fitted pipe crown plus crown-cap thickness; do not place a solid flat plate through the pipe envelope.",
+      "Keep pipe diameter, total diametral clearance, crown-cap thickness, clip wall, clip width, and retention undercut independently editable.",
+      "Keep the translucent pipe as a preview-only fit datum and exclude it from every STL export.",
+      "Export the support face flat at Z = 0 with both clips rising upward for the recommended support-free print orientation.",
+      "Retain the supplied pipe-supporter STL byte-for-byte as concept evidence, but do not copy its recorded degenerate triangles or non-manifold edges into the procedural model.",
+      "Treat the default as a Tough PLA starting point, not a certified clamp component. Print the fit coupon, test the actual pipe, and inspect for whitening or cracks before making the full bed."
+    ],
+    "checks": [
+      { "key": "bedEnvelope", "label": "Bed envelope" },
+      { "key": "pipeFit", "label": "Pipe fit" },
+      { "key": "supportHeight", "label": "Support height" },
+      { "key": "workpieceCenter", "label": "Workpiece center" },
+      { "key": "snapRelease", "label": "Snap-on / release" },
+      { "key": "hookBands", "label": "End clips" },
+      { "key": "minimumSections", "label": "Minimum sections" },
+      { "key": "printOrientation", "label": "Recommended print orientation" },
+      { "key": "sourceReference", "label": "Source reference" }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/pipe-clamp-bed/audit.mjs",
+      "command": "npm run audit -- pipe-clamp-bed",
+      "description": "Checks reference custody, pipe and workpiece datums, dependent parameter limits, easy-release clip geometry, printable orientation, STL topology, and fit-coupon parity."
+    }
+  ]
+}

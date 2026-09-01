@@ -82,6 +82,15 @@ Parametric Metric Nut Knob:
 - Preserve one closed shell, a continuous bolt bore, a downward-opening captive-nut pocket, minimum radial walls, minimum pocket roof, and a flat Z = 0 print face.
 - See `docs/metric-nut-knob-audit-specifications.md` for source evidence, inferred defaults, equations, proof views, and the physical-fit boundary.
 
+Pipe Clamp Bed:
+
+- A 177.8 × 38.1 mm (7 × 1.5 in) continuous support runs parallel to standard 3/4-inch pipe and uses two 25.4 mm-wide downward-opening clips at its ends.
+- The default pipe datum is 26.67 mm OD with 0.8 mm total clearance. A pipe-following underside relief preserves a supported crown cap instead of intersecting the upper pipe envelope.
+- The default support is 1.6 mm above the nominal pipe crown. A 25.4 mm workpiece then centers 27.635 mm above the pipe axis; this is reported rather than claimed to match every clamp casting.
+- Bed dimensions, reference workpiece thickness, pipe diameter, total clearance, crown-cap thickness, clip width, clip wall, and retention undercut remain independent.
+- The full STL and short fit coupon print with the support face at Z = 0 and clips upward. The translucent pipe is preview-only.
+- See `docs/pipe-clamp-bed-audit-specifications.md` for source custody, height equations, easy-release geometry, proof views, and the Tough PLA prototype gate.
+
 Compact Wall Bracket:
 
 - The retained source body measures 190.9188 × 25.6 × 99.9285 mm and contains no bolt bores or countersinks.

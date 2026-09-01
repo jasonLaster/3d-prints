@@ -45,6 +45,12 @@ Current models:
   - Retained source: `models/metric-nut-knob/reference/M8.stl`
   - Audit script: `models/metric-nut-knob/audit.mjs`
   - Source generator: `models/metric-nut-knob/generate-source.mjs`
+- `pipe-clamp-bed`
+  - STLs: `public/models/pipe-clamp-bed/pipe-clamp-bed*.stl`
+  - Config: `public/models/pipe-clamp-bed/model.json`
+  - Retained source: `models/pipe-clamp-bed/reference/pipe-supporter.stl`
+  - Audit script: `models/pipe-clamp-bed/audit.mjs`
+  - Source generator: `models/pipe-clamp-bed/generate-source.mjs`
 - `router-mortise-jig`
   - STLs: `public/models/router-mortise-jig/router-mortise-jig-*.stl`
   - Config: `public/models/router-mortise-jig/model.json`
@@ -94,6 +100,7 @@ npm run audit -- door-lock-adapter
 npm run audit -- compact-wall-bracket
 npm run audit -- drill-bit-holder
 npm run audit -- metric-nut-knob
+npm run audit -- pipe-clamp-bed
 npm run audit -- router-mortise-jig
 npm run audit -- router-tenon-jig
 npm run test:e2e

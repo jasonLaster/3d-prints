@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(10);
+  expect(catalog.models).toHaveLength(11);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -156,6 +156,17 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "pocketRoof",
       "minimumWalls",
       "printOrientation",
+    ],
+    "pipe-clamp-bed-v1": [
+      "bedEnvelope",
+      "pipeFit",
+      "supportHeight",
+      "workpieceCenter",
+      "snapRelease",
+      "hookBands",
+      "minimumSections",
+      "printOrientation",
+      "sourceReference",
     ],
     "router-mortise-jig-v1": [
       "mortiseTarget",
@@ -374,6 +385,20 @@ test("model-specific parameter dependencies are declared auditable", () => {
       sourceDimensionsMm: { x: number; y: number; z: number };
     };
   };
+  const pipeClampBed = readJson(
+    path.join(root, "public/models/pipe-clamp-bed/model.json"),
+  ) as ModelJson & {
+    geometry: {
+      minimumRoofThickness: number;
+      minimumHookWallThickness: number;
+      minimumCenterBridge: number;
+      sourceSha256: string;
+      sourceScaleToMm: number;
+      sourceDimensionsMm: { x: number; y: number; z: number };
+      sourceDegenerateTriangles: number;
+      sourceNonManifoldEdges: number;
+    };
+  };
 
   const holderParams = Object.fromEntries(
     holder.parameters.map((parameter) => [parameter.key, parameter]),
@@ -532,6 +557,35 @@ test("model-specific parameter dependencies are declared auditable", () => {
   expect(metricNutKnob.audit.invariants.join(" ")).toContain(
     "independently editable",
   );
+
+  const pipeBedParams = Object.fromEntries(
+    pipeClampBed.parameters.map((parameter) => [parameter.key, parameter]),
+  );
+  expect(pipeClampBed.geometry.sourceSha256).toHaveLength(64);
+  expect(pipeClampBed.geometry.sourceScaleToMm).toBe(1000);
+  expect(pipeClampBed.geometry.sourceDimensionsMm).toEqual({
+    x: 77.5516,
+    y: 46,
+    z: 40,
+  });
+  expect(pipeClampBed.geometry.sourceDegenerateTriangles).toBe(37);
+  expect(pipeClampBed.geometry.sourceNonManifoldEdges).toBe(58);
+  expect(pipeBedParams.bedLength.default).toBe(177.8);
+  expect(pipeBedParams.bedWidth.default).toBe(38.1);
+  expect(pipeBedParams.pipeDiameter.default).toBe(26.67);
+  expect(pipeBedParams.hookWidth.default).toBe(25.4);
+  expect(pipeBedParams.crownCapThickness.default).toBeGreaterThanOrEqual(
+    pipeClampBed.geometry.minimumRoofThickness,
+  );
+  expect(pipeBedParams.hookWallThickness.default).toBeGreaterThanOrEqual(
+    pipeClampBed.geometry.minimumHookWallThickness,
+  );
+  expect(
+    pipeBedParams.bedLength.default - pipeBedParams.hookWidth.default * 2,
+  ).toBeGreaterThanOrEqual(pipeClampBed.geometry.minimumCenterBridge);
+  expect(pipeClampBed.audit.invariants.join(" ")).toContain(
+    "two downward-opening snap clips",
+  );
 });
 
 test("request coverage document tracks the app behaviors under Playwright", () => {
@@ -552,6 +606,7 @@ test("request coverage document tracks the app behaviors under Playwright", () =
     "Japandi tray supports width, length, height, floor thickness, rib relief, and rotation",
     "Drill Bit Holder defaults to the seven requested fractional sizes",
     "Parametric Metric Nut Knob reconstructs the supplied M8 mesh",
+    "Pipe Clamp Bed supports a 1-inch board on standard 3/4-inch pipe clamps",
     "Handheld Router Mortise Jig derives its opening from the mortise, cutter, and guide bushing",
     "Handheld Router Tenon Jig derives external guide openings from the tenon, cutter, and bearing",
     "Dark theme is available",
@@ -610,6 +665,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   );
   const metricNutKnobDoc = readText(
     path.join(root, "docs/metric-nut-knob-audit-specifications.md"),
+  );
+  const pipeClampBedDoc = readText(
+    path.join(root, "docs/pipe-clamp-bed-audit-specifications.md"),
   );
   const routerMortiseJigDoc = readText(
     path.join(root, "docs/router-mortise-jig-audit-specifications.md"),
@@ -699,6 +757,19 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "exactly two triangles per mesh edge",
   ]) {
     expect(metricNutKnobDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "177.8 × 38.1 mm",
+    "26.67 mm",
+    "1.6 mm above the nominal pipe crown",
+    "27.635 mm above the pipe axis",
+    "0.8 mm per side",
+    "support face on the build plate",
+    "fit coupon",
+    "exactly two triangles per mesh edge",
+  ]) {
+    expect(pipeClampBedDoc).toContain(phrase);
   }
 
   for (const phrase of [

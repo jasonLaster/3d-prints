@@ -79,6 +79,9 @@ import {
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
   createMetricNutKnobGeometry,
+  createPipeClampBedGeometry,
+  createPipeClampBedPreviewParts,
+  createPipeClampBedPrintGeometry,
   createRouterMortiseJigGuideGeometry,
   createRouterMortiseJigPartGeometries,
   createRouterMortiseJigPreviewParts,
@@ -109,6 +112,7 @@ import {
   getGridfinityUnitCount,
   getBandsawSledSpec,
   getCompactWallBracketSpec,
+  getPipeClampBedSpec,
   getModelDimensions,
   getParam,
   getParameterLimits,
@@ -122,6 +126,7 @@ import {
   updateConcentricTubeJigGuide,
   updateDrillBitHolderGuide,
   updateMetricNutKnobGuide,
+  updatePipeClampBedGuide,
   updateBandsawSledGuide,
   updateRouterMortiseJigGuide,
   updateRouterTenonJigGuide,
@@ -859,6 +864,7 @@ function getParamsFromUrl(model: ModelDefinition) {
     model.viewer === "compact-wall-bracket-v1" ||
     model.viewer === "drill-bit-holder-v1" ||
     model.viewer === "metric-nut-knob-v1" ||
+    model.viewer === "pipe-clamp-bed-v1" ||
     model.viewer === "router-mortise-jig-v1" ||
     model.viewer === "router-tenon-jig-v1" ||
     model.viewer === "bandsaw-sled-v1"
@@ -866,6 +872,7 @@ function getParamsFromUrl(model: ModelDefinition) {
     const passes =
       model.viewer === "drill-bit-holder-v1" ||
       model.viewer === "metric-nut-knob-v1" ||
+      model.viewer === "pipe-clamp-bed-v1" ||
       model.viewer === "compact-wall-bracket-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
       model.viewer === "router-tenon-jig-v1" ||
@@ -1173,6 +1180,11 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
     const compact = (value: number) =>
       value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
     return `${model.export.filePrefix}-bolt-${compact(getParam(params, "boltDiameter"))}-nut-af-${compact(getParam(params, "nutAcrossFlats"))}-handle-${compact(getParam(params, "knobDiameter"))}x${compact(getParam(params, "handleHeight"))}-guard-${compact(getParam(params, "guardBaseDiameter"))}x${compact(getParam(params, "guardTopDiameter"))}x${compact(getParam(params, "guardHeight"))}.stl`;
+  }
+  if (model.viewer === "pipe-clamp-bed-v1") {
+    const compact = (value: number) =>
+      value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    return `${model.export.filePrefix}-${compact(getParam(params, "bedLength"))}x${compact(getParam(params, "bedWidth"))}-pipe-${compact(getParam(params, "pipeDiameter"))}-clearance-${compact(getParam(params, "pipeClearance"))}-clips-${compact(getParam(params, "hookWidth"))}.stl`;
   }
   if (model.viewer === "router-mortise-jig-v1") {
     const compact = (value: number) =>
@@ -1527,6 +1539,28 @@ const HolderViewer = forwardRef<
         model,
       );
       updateMetricNutKnobGuide(guideMesh, latestParamsRef.current, model);
+    } else if (model.viewer === "pipe-clamp-bed-v1") {
+      if (!routerMortisePreviewGroup || !routerPreviewMaterial) {
+        return;
+      }
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createPipeClampBedGeometry(
+        latestParamsRef.current,
+        model,
+      );
+      routerMortisePreviewGroup.children.forEach((child) => {
+        if (child instanceof THREE.Mesh) child.geometry.dispose();
+      });
+      routerMortisePreviewGroup.clear();
+      for (const part of createPipeClampBedPreviewParts(
+        latestParamsRef.current,
+        model,
+      )) {
+        const mesh = new THREE.Mesh(part.geometry, routerPreviewMaterial);
+        mesh.name = `${model.id}-${part.key}`;
+        routerMortisePreviewGroup.add(mesh);
+      }
+      updatePipeClampBedGuide(guideMesh, latestParamsRef.current);
     } else if (model.viewer === "router-mortise-jig-v1") {
       if (
         !routerMortisePreviewGroup ||
@@ -1920,6 +1954,7 @@ const HolderViewer = forwardRef<
     ghostMesh.visible =
       model.viewer !== "dining-table-v1" &&
       model.viewer !== "hover-dining-table-v1" &&
+      model.viewer !== "pipe-clamp-bed-v1" &&
       latestShowOriginalRef.current;
   }, [model]);
 
@@ -1935,7 +1970,14 @@ const HolderViewer = forwardRef<
     }
 
     const group = new THREE.Group();
-    const holder = new THREE.Mesh(createCleanExportGeometry(mainMesh.geometry));
+    const pipeClampPrintGeometry =
+      model.viewer === "pipe-clamp-bed-v1"
+        ? createPipeClampBedPrintGeometry(latestParamsRef.current, model)
+        : null;
+    const holder = new THREE.Mesh(
+      createCleanExportGeometry(pipeClampPrintGeometry ?? mainMesh.geometry),
+    );
+    pipeClampPrintGeometry?.dispose();
     holder.name = `${model.id}-body`;
     if (model.viewer === "dining-table-v1") {
       orientDiningTableForSupportFreePrint(
@@ -2489,6 +2531,7 @@ const HolderViewer = forwardRef<
       model.viewer === "concentric-tube-jig-v1" ||
       model.viewer === "drill-bit-holder-v1" ||
       model.viewer === "metric-nut-knob-v1" ||
+      model.viewer === "pipe-clamp-bed-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
       model.viewer === "router-tenon-jig-v1" ||
       model.viewer === "bandsaw-sled-v1"
@@ -2728,6 +2771,8 @@ const HolderViewer = forwardRef<
               ? createDrillBitHolderGeometry(latestParamsRef.current, model)
             : model.viewer === "metric-nut-knob-v1"
               ? createMetricNutKnobGeometry(latestParamsRef.current, model)
+            : model.viewer === "pipe-clamp-bed-v1"
+              ? createPipeClampBedGeometry(latestParamsRef.current, model)
             : model.viewer === "router-mortise-jig-v1"
               ? createRouterMortiseJigGuideGeometry(latestParamsRef.current, model)
             : model.viewer === "router-tenon-jig-v1"
@@ -2793,7 +2838,8 @@ const HolderViewer = forwardRef<
         } else if (
           model.viewer === "router-mortise-jig-v1" ||
           model.viewer === "router-tenon-jig-v1" ||
-          model.viewer === "bandsaw-sled-v1"
+          model.viewer === "bandsaw-sled-v1" ||
+          model.viewer === "pipe-clamp-bed-v1"
         ) {
           const previewGroup = new THREE.Group();
           previewGroup.name = `${model.id}-preview-stand-ins`;
@@ -2863,6 +2909,7 @@ const HolderViewer = forwardRef<
           model.viewer === "concentric-tube-jig-v1" ||
           model.viewer === "drill-bit-holder-v1" ||
           model.viewer === "metric-nut-knob-v1" ||
+          model.viewer === "pipe-clamp-bed-v1" ||
           model.viewer === "router-mortise-jig-v1" ||
           model.viewer === "router-tenon-jig-v1" ||
           model.viewer === "dining-table-v1" ||
@@ -3122,6 +3169,16 @@ const HolderViewer = forwardRef<
   );
 });
 
+function formatNumberControlValue(
+  valueMm: number,
+  unit: LengthUnit,
+  preferDecimalInches: boolean,
+) {
+  return unit === "in" && preferDecimalInches
+    ? toUnit(valueMm, unit).toFixed(3)
+    : formatLengthInput(valueMm, unit);
+}
+
 function NumberControl({
   label,
   valueMm,
@@ -3129,6 +3186,7 @@ function NumberControl({
   unit,
   onChange,
   onUnitChange,
+  preferDecimalInches = false,
   preferFineStep = false,
 }: {
   label: string;
@@ -3137,13 +3195,14 @@ function NumberControl({
   unit: LengthUnit;
   onChange: (valueMm: number) => void;
   onUnitChange: (unit: LengthUnit) => void;
+  preferDecimalInches?: boolean;
   preferFineStep?: boolean;
 }) {
   const id = label.toLowerCase().replace(/\s+/g, "-");
   const unitId = `${id}-unit`;
   const unitOption = UNIT_OPTIONS[unit];
   const [draftValue, setDraftValue] = useState(() =>
-    formatLengthInput(valueMm, unit),
+    formatNumberControlValue(valueMm, unit, preferDecimalInches),
   );
   const displayValue = Number(toUnit(valueMm, unit).toFixed(4));
   const displayMin = Number(toUnit(limits.min, unit).toFixed(4));
@@ -3164,13 +3223,15 @@ function NumberControl({
     const nextMm = clampValue(
       stepLengthInput(sourceMm, unit, limits.step, direction, preferFineStep),
     );
-    setDraftValue(formatLengthInput(nextMm, unit));
+    setDraftValue(formatNumberControlValue(nextMm, unit, preferDecimalInches));
     onChange(nextMm);
   };
 
   useEffect(() => {
-    setDraftValue(formatLengthInput(valueMm, unit));
-  }, [unit, valueMm]);
+    setDraftValue(
+      formatNumberControlValue(valueMm, unit, preferDecimalInches),
+    );
+  }, [preferDecimalInches, unit, valueMm]);
 
   return (
     <div className="number-control">
@@ -3190,7 +3251,11 @@ function NumberControl({
           inputMode={unit === "in" ? "text" : "decimal"}
           type="text"
           value={draftValue}
-          onBlur={() => setDraftValue(formatLengthInput(valueMm, unit))}
+          onBlur={() =>
+            setDraftValue(
+              formatNumberControlValue(valueMm, unit, preferDecimalInches),
+            )
+          }
           onChange={(event) => {
             setDraftValue(event.currentTarget.value);
             updateValue(event.currentTarget.value);
@@ -4076,6 +4141,64 @@ function MetricNutKnobParameterControls({
                 />
               ),
             )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+const PIPE_CLAMP_BED_PARAMETER_GROUPS = [
+  "Bed surface",
+  "Pipe fit & height",
+  "Snap clips",
+] as const;
+
+function PipeClampBedParameterControls({
+  model,
+  params,
+  unit,
+  onChange,
+  onUnitChange,
+}: {
+  model: Extract<ModelDefinition, { viewer: "pipe-clamp-bed-v1" }>;
+  params: ModelParams;
+  unit: LengthUnit;
+  onChange: (key: string, value: number) => void;
+  onUnitChange: (unit: LengthUnit) => void;
+}) {
+  return (
+    <div className="parameter-groups pipe-clamp-bed-parameter-groups">
+      {PIPE_CLAMP_BED_PARAMETER_GROUPS.map((group) => (
+        <section className="nested-parameter-section" key={group}>
+          <div className="divider-controls-heading">
+            <h3>{group}</h3>
+          </div>
+          {model.parameters
+            .filter((parameter) => parameter.group === group)
+            .map((parameter) => (
+              <NumberControl
+                key={parameter.key}
+                label={parameter.label}
+                limits={getParameterLimits(model, params, parameter.key)}
+                onChange={(value) => onChange(parameter.key, value)}
+                onUnitChange={onUnitChange}
+                preferDecimalInches={
+                  parameter.key === "pipeDiameter" ||
+                  parameter.key === "pipeClearance" ||
+                  parameter.key === "crownCapThickness" ||
+                  parameter.key === "hookWallThickness" ||
+                  parameter.key === "hookUndercut"
+                }
+                preferFineStep={
+                  parameter.key === "pipeClearance" ||
+                  parameter.key === "crownCapThickness" ||
+                  parameter.key === "hookWallThickness" ||
+                  parameter.key === "hookUndercut"
+                }
+                unit={unit}
+                valueMm={params[parameter.key]}
+              />
+            ))}
         </section>
       ))}
     </div>
@@ -6303,6 +6426,7 @@ export default function App({
             model.viewer === "concentric-tube-jig-v1" ||
             model.viewer === "drill-bit-holder-v1" ||
             model.viewer === "metric-nut-knob-v1" ||
+            model.viewer === "pipe-clamp-bed-v1" ||
             model.viewer === "router-mortise-jig-v1" ||
             model.viewer === "router-tenon-jig-v1" ||
             model.viewer === "compact-wall-bracket-v1" ||
@@ -6330,7 +6454,10 @@ export default function App({
           }
         }
       }
-      if (model.viewer === "metric-nut-knob-v1") {
+      if (
+        model.viewer === "metric-nut-knob-v1" ||
+        model.viewer === "pipe-clamp-bed-v1"
+      ) {
         for (let pass = 0; pass < 2; pass += 1) {
           for (const parameter of model.parameters) {
             const dependentLimits = getParameterLimits(
@@ -6718,7 +6845,10 @@ export default function App({
           }
         }
       }
-      if (model.viewer === "metric-nut-knob-v1") {
+      if (
+        model.viewer === "metric-nut-knob-v1" ||
+        model.viewer === "pipe-clamp-bed-v1"
+      ) {
         for (let pass = 0; pass < 2; pass += 1) {
           for (const parameter of model.parameters) {
             const limits = getParameterLimits(model, nextParams, parameter.key);
@@ -7174,7 +7304,15 @@ export default function App({
                       ) : null}
                     </>
                   ) : null}
-                  {model.viewer === "metric-nut-knob-v1" ? (
+                  {model.viewer === "pipe-clamp-bed-v1" ? (
+                    <PipeClampBedParameterControls
+                      model={model}
+                      onChange={updateParam}
+                      onUnitChange={setUnit}
+                      params={params}
+                      unit={unit}
+                    />
+                  ) : model.viewer === "metric-nut-knob-v1" ? (
                     <MetricNutKnobParameterControls
                       model={model}
                       onChange={updateParam}
@@ -7303,6 +7441,30 @@ export default function App({
                       audit checks printable topology and minimum material, not
                       torque capacity or pull-out strength.
                     </p>
+                  </section>
+                ) : null}
+
+                {model.viewer === "pipe-clamp-bed-v1" ? (
+                  <section className="panel-section router-mortise-print-set">
+                    <h2>Fit &amp; print notes</h2>
+                    <ul>
+                      <li>Print with the broad support face on the build plate and both clips opening upward</li>
+                      <li>The blue pipe is a fit preview and is excluded from STL exports</li>
+                      <li>Use Tough PLA, at least four perimeters, and avoid placing a seam at either clip root</li>
+                      <li>Snap the bed straight down; peel one edge upward to remove it instead of twisting the full 7-inch body</li>
+                    </ul>
+                    <p>
+                      Print the short fit coupon first and inspect for whitening,
+                      cracks, or excessive looseness on the actual pipe. Adjust
+                      total clearance and clip retention before printing the
+                      full bed.
+                    </p>
+                    <a
+                      download={model.fitCouponStl.fileName}
+                      href={model.fitCouponStl.url}
+                    >
+                      Download default fit coupon STL
+                    </a>
                   </section>
                 ) : null}
 
