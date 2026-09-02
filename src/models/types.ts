@@ -168,6 +168,29 @@ export type PipeClampBedGeometry = {
   sourceNonManifoldEdges: number;
 };
 
+export type MiterRunnerWedgeGeometry = {
+  mainAxis: { x: number; y: number; z: number };
+  sourceRunnerWidth: number;
+  interfaceStartX: number;
+  interfaceStartY: number;
+  interfaceEndX: number;
+  interfaceEndY: number;
+  capShoulderX: number;
+  sourceBottomZ: number;
+  sourceTopZ: number;
+  matingTaperDegrees: number;
+  endBevelDegrees: number;
+  minimumNarrowEndWidth: number;
+  recommendedClearanceMin: number;
+  recommendedClearanceMax: number;
+  safeBuildPlateSpan: number;
+  sourceScaleToMm: number;
+  sourceWedgeSha256: string;
+  sourceMainPartSha256: string;
+  sourceWedgeDimensionsMm: { x: number; y: number; z: number };
+  sourceMainPartDimensionsMm: { x: number; y: number; z: number };
+};
+
 export type RouterMortiseJigGeometry = {
   mainAxis: { x: number; y: number; z: number };
   radialSegments: number;
@@ -335,6 +358,7 @@ export type SupportedViewer =
   | "drill-bit-holder-v1"
   | "metric-nut-knob-v1"
   | "pipe-clamp-bed-v1"
+  | "miter-runner-wedge-v1"
   | "router-mortise-jig-v1"
   | "router-tenon-jig-v1"
   | "bandsaw-sled-v1"
@@ -419,6 +443,11 @@ export type PipeClampBedModelDefinition = BaseModelDefinition & {
   };
 };
 
+export type MiterRunnerWedgeModelDefinition = BaseModelDefinition & {
+  viewer: "miter-runner-wedge-v1";
+  geometry: MiterRunnerWedgeGeometry;
+};
+
 export type RouterMortisePreset = {
   label: string;
   mortiseWidth: number;
@@ -497,6 +526,7 @@ export type ModelDefinition =
   | DrillBitHolderModelDefinition
   | MetricNutKnobModelDefinition
   | PipeClampBedModelDefinition
+  | MiterRunnerWedgeModelDefinition
   | RouterMortiseJigModelDefinition
   | RouterTenonJigModelDefinition
   | BandsawSledModelDefinition

@@ -1,0 +1,97 @@
+{
+  "id": "miter-runner-wedge",
+  "name": "Adjustable Miter Runner Wedge",
+  "subtitle": "A source-matched 1° wedge sized from your measured miter slot",
+  "description": "Enter the measured slot width and desired total running clearance. The model derives the finished runner width, holds the Main Part interface fixed, and moves only the wedge's outside face while preserving the supplied 1° working taper, 40° end bevels, and 5.5 mm thickness.",
+  "viewer": "miter-runner-wedge-v1",
+  "stl": {
+    "fileName": "miter-runner-wedge.stl",
+    "sourceName": "Wedge.step",
+    "units": "mm",
+    "url": "/models/miter-runner-wedge/miter-runner-wedge.stl"
+  },
+  "export": {
+    "filePrefix": "miter-runner-wedge"
+  },
+  "geometry": {
+    "mainAxis": { "x": 0, "y": 0, "z": 0 },
+    "sourceRunnerWidth": 18.8,
+    "interfaceStartX": 15.5933687259879,
+    "interfaceStartY": 9.91587275634415,
+    "interfaceEndX": 11.4026846967153,
+    "interfaceEndY": 250,
+    "capShoulderX": 13.8,
+    "sourceBottomZ": 3.7,
+    "sourceTopZ": 9.2,
+    "matingTaperDegrees": 1,
+    "endBevelDegrees": 40,
+    "minimumNarrowEndWidth": 3.2,
+    "recommendedClearanceMin": 0.1,
+    "recommendedClearanceMax": 0.35,
+    "safeBuildPlateSpan": 250,
+    "sourceScaleToMm": 1000,
+    "sourceWedgeSha256": "75cde25941fcdc3883ea2909feea02ad5b00ef46277b1f20b5ab054a1bc3c7b4",
+    "sourceMainPartSha256": "05d187adaab6dd5ef9b90a0f2ce359fecefbe259dc3d83fce44652d8d453a202",
+    "sourceWedgeDimensionsMm": {
+      "x": 7.397315303284701,
+      "y": 240.08412724365584,
+      "z": 5.5
+    },
+    "sourceMainPartDimensionsMm": { "x": 18.8, "y": 250, "z": 9.2 }
+  },
+  "parameters": [
+    {
+      "key": "miterSlotWidth",
+      "label": "Measured miter slot width",
+      "group": "Slot fit",
+      "statusLabel": "Slot",
+      "default": 19.05,
+      "limits": { "min": 18.8, "max": 20.5, "step": 0.05 }
+    },
+    {
+      "key": "runningClearance",
+      "label": "Total running clearance",
+      "group": "Slot fit",
+      "statusLabel": "Clearance",
+      "default": 0.25,
+      "limits": { "min": 0, "max": 0.6, "step": 0.05 }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.02,
+    "dimensionTargets": [
+      "The supplied Wedge.step is 240.084127 mm long, 5.5 mm thick, and 7.397315 mm wide at its largest source envelope.",
+      "The Main Part.step outside width is 18.8 mm, so the replacement wedge may increase the assembled runner width but cannot reduce it below 18.8 mm.",
+      "Finished runner width equals measured miter slot width minus total running clearance.",
+      "The default 19.05 mm (3/4 inch) slot and 0.25 mm total clearance reproduce the source 18.8 mm assembled width.",
+      "The interface line remains at 1.000 degrees and both end bevels remain at 40.0 degrees for every allowed fit setting."
+    ],
+    "invariants": [
+      "Keep the five-vertex Wedge.step plan profile and the exact Main Part mating-face coordinates; move only the straight outside face to change fitted width.",
+      "Derive finished runner width from measured slot width minus total running clearance; do not expose a contradictory finished-width control.",
+      "Do not allow the finished runner width below the Main Part's fixed 18.8 mm outside edge.",
+      "Preserve the source 1 degree working taper, both 40 degree end bevels, and the 5.5 mm part thickness at every setting.",
+      "Export the same current-parameter geometry shown in the viewer, with a broad face flat at Z = 0 and no assembly proxy in the STL.",
+      "Retain Wedge.step and Main Part.step byte-for-byte as immutable dimensional evidence.",
+      "Treat 0.10 to 0.35 mm total clearance as a printable starting range, not a guaranteed machine fit; measure the slot at several locations and test the actual print before attaching a sled."
+    ],
+    "checks": [
+      { "key": "fitEquation", "label": "Finished runner width" },
+      { "key": "sourceDatum", "label": "Fixed Main Part datum" },
+      { "key": "preservedAngles", "label": "Preserved source angles" },
+      { "key": "wedgeSections", "label": "Wedge sections" },
+      { "key": "runningClearance", "label": "Running clearance" },
+      { "key": "buildPlateFit", "label": "250 mm plate fit" },
+      { "key": "printOrientation", "label": "Recommended print orientation" },
+      { "key": "sourceReference", "label": "Source custody" }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/miter-runner-wedge/audit.mjs",
+      "command": "npm run audit -- miter-runner-wedge",
+      "description": "Checks STEP custody and measured envelopes, fit equations, preserved angles, dependent limits, min/default/max topology, Z = 0, and 250 mm plate fit."
+    }
+  ]
+}

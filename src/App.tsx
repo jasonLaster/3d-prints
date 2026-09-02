@@ -79,6 +79,7 @@ import {
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
   createMetricNutKnobGeometry,
+  createMiterRunnerWedgeGeometry,
   createPipeClampBedGeometry,
   createPipeClampBedPreviewParts,
   createPipeClampBedPrintGeometry,
@@ -90,6 +91,7 @@ import {
   createRouterTenonJigPreviewParts,
   DRILL_BIT_PARAMETER_KEYS,
   getDrillBitDiameters,
+  formatMiterRunnerFitLength,
   createDiningTableHardwareGeometries,
   createDiningTableWoodGeometry,
   getDiningTableStructuralAssessment,
@@ -112,6 +114,7 @@ import {
   getGridfinityUnitCount,
   getBandsawSledSpec,
   getCompactWallBracketSpec,
+  getMiterRunnerWedgeSpec,
   getPipeClampBedSpec,
   getModelDimensions,
   getParam,
@@ -126,6 +129,7 @@ import {
   updateConcentricTubeJigGuide,
   updateDrillBitHolderGuide,
   updateMetricNutKnobGuide,
+  updateMiterRunnerWedgeGuide,
   updatePipeClampBedGuide,
   updateBandsawSledGuide,
   updateRouterMortiseJigGuide,
@@ -320,6 +324,8 @@ const PARAM_QUERY_KEYS = [
   "nutClearance",
   "nutPocketDepth",
   "nutLeadIn",
+  "miterSlotWidth",
+  "runningClearance",
   "mortiseWidth",
   "mortiseLength",
   "routerBitDiameter",
@@ -865,6 +871,7 @@ function getParamsFromUrl(model: ModelDefinition) {
     model.viewer === "drill-bit-holder-v1" ||
     model.viewer === "metric-nut-knob-v1" ||
     model.viewer === "pipe-clamp-bed-v1" ||
+    model.viewer === "miter-runner-wedge-v1" ||
     model.viewer === "router-mortise-jig-v1" ||
     model.viewer === "router-tenon-jig-v1" ||
     model.viewer === "bandsaw-sled-v1"
@@ -873,6 +880,7 @@ function getParamsFromUrl(model: ModelDefinition) {
       model.viewer === "drill-bit-holder-v1" ||
       model.viewer === "metric-nut-knob-v1" ||
       model.viewer === "pipe-clamp-bed-v1" ||
+      model.viewer === "miter-runner-wedge-v1" ||
       model.viewer === "compact-wall-bracket-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
       model.viewer === "router-tenon-jig-v1" ||
@@ -1185,6 +1193,12 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
     const compact = (value: number) =>
       value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
     return `${model.export.filePrefix}-${compact(getParam(params, "bedLength"))}x${compact(getParam(params, "bedWidth"))}-pipe-${compact(getParam(params, "pipeDiameter"))}-clearance-${compact(getParam(params, "pipeClearance"))}-clips-${compact(getParam(params, "hookWidth"))}.stl`;
+  }
+  if (model.viewer === "miter-runner-wedge-v1") {
+    const compact = (value: number) =>
+      value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    const spec = getMiterRunnerWedgeSpec(params, model);
+    return `${model.export.filePrefix}-runner-${compact(spec.finishedRunnerWidth)}-slot-${compact(spec.slotWidth)}-clearance-${compact(spec.runningClearance)}.stl`;
   }
   if (model.viewer === "router-mortise-jig-v1") {
     const compact = (value: number) =>
@@ -1561,6 +1575,17 @@ const HolderViewer = forwardRef<
         routerMortisePreviewGroup.add(mesh);
       }
       updatePipeClampBedGuide(guideMesh, latestParamsRef.current);
+    } else if (model.viewer === "miter-runner-wedge-v1") {
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createMiterRunnerWedgeGeometry(
+        latestParamsRef.current,
+        model,
+      );
+      updateMiterRunnerWedgeGuide(
+        guideMesh,
+        latestParamsRef.current,
+        model,
+      );
     } else if (model.viewer === "router-mortise-jig-v1") {
       if (
         !routerMortisePreviewGroup ||
@@ -2532,6 +2557,7 @@ const HolderViewer = forwardRef<
       model.viewer === "drill-bit-holder-v1" ||
       model.viewer === "metric-nut-knob-v1" ||
       model.viewer === "pipe-clamp-bed-v1" ||
+      model.viewer === "miter-runner-wedge-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
       model.viewer === "router-tenon-jig-v1" ||
       model.viewer === "bandsaw-sled-v1"
@@ -2773,6 +2799,8 @@ const HolderViewer = forwardRef<
               ? createMetricNutKnobGeometry(latestParamsRef.current, model)
             : model.viewer === "pipe-clamp-bed-v1"
               ? createPipeClampBedGeometry(latestParamsRef.current, model)
+            : model.viewer === "miter-runner-wedge-v1"
+              ? createMiterRunnerWedgeGeometry(latestParamsRef.current, model)
             : model.viewer === "router-mortise-jig-v1"
               ? createRouterMortiseJigGuideGeometry(latestParamsRef.current, model)
             : model.viewer === "router-tenon-jig-v1"
@@ -2910,6 +2938,7 @@ const HolderViewer = forwardRef<
           model.viewer === "drill-bit-holder-v1" ||
           model.viewer === "metric-nut-knob-v1" ||
           model.viewer === "pipe-clamp-bed-v1" ||
+          model.viewer === "miter-runner-wedge-v1" ||
           model.viewer === "router-mortise-jig-v1" ||
           model.viewer === "router-tenon-jig-v1" ||
           model.viewer === "dining-table-v1" ||
@@ -3173,10 +3202,15 @@ function formatNumberControlValue(
   valueMm: number,
   unit: LengthUnit,
   preferDecimalInches: boolean,
+  preferFineMetric: boolean,
 ) {
-  return unit === "in" && preferDecimalInches
-    ? toUnit(valueMm, unit).toFixed(3)
-    : formatLengthInput(valueMm, unit);
+  if (unit === "in" && preferDecimalInches) {
+    return toUnit(valueMm, unit).toFixed(3);
+  }
+  if (preferFineMetric && unit !== "in") {
+    return toUnit(valueMm, unit).toFixed(unit === "mm" ? 2 : 3);
+  }
+  return formatLengthInput(valueMm, unit);
 }
 
 function NumberControl({
@@ -3187,6 +3221,7 @@ function NumberControl({
   onChange,
   onUnitChange,
   preferDecimalInches = false,
+  preferFineMetric = false,
   preferFineStep = false,
 }: {
   label: string;
@@ -3196,13 +3231,19 @@ function NumberControl({
   onChange: (valueMm: number) => void;
   onUnitChange: (unit: LengthUnit) => void;
   preferDecimalInches?: boolean;
+  preferFineMetric?: boolean;
   preferFineStep?: boolean;
 }) {
   const id = label.toLowerCase().replace(/\s+/g, "-");
   const unitId = `${id}-unit`;
   const unitOption = UNIT_OPTIONS[unit];
   const [draftValue, setDraftValue] = useState(() =>
-    formatNumberControlValue(valueMm, unit, preferDecimalInches),
+    formatNumberControlValue(
+      valueMm,
+      unit,
+      preferDecimalInches,
+      preferFineMetric,
+    ),
   );
   const displayValue = Number(toUnit(valueMm, unit).toFixed(4));
   const displayMin = Number(toUnit(limits.min, unit).toFixed(4));
@@ -3223,15 +3264,27 @@ function NumberControl({
     const nextMm = clampValue(
       stepLengthInput(sourceMm, unit, limits.step, direction, preferFineStep),
     );
-    setDraftValue(formatNumberControlValue(nextMm, unit, preferDecimalInches));
+    setDraftValue(
+      formatNumberControlValue(
+        nextMm,
+        unit,
+        preferDecimalInches,
+        preferFineMetric,
+      ),
+    );
     onChange(nextMm);
   };
 
   useEffect(() => {
     setDraftValue(
-      formatNumberControlValue(valueMm, unit, preferDecimalInches),
+      formatNumberControlValue(
+        valueMm,
+        unit,
+        preferDecimalInches,
+        preferFineMetric,
+      ),
     );
-  }, [preferDecimalInches, unit, valueMm]);
+  }, [preferDecimalInches, preferFineMetric, unit, valueMm]);
 
   return (
     <div className="number-control">
@@ -3253,7 +3306,12 @@ function NumberControl({
           value={draftValue}
           onBlur={() =>
             setDraftValue(
-              formatNumberControlValue(valueMm, unit, preferDecimalInches),
+              formatNumberControlValue(
+                valueMm,
+                unit,
+                preferDecimalInches,
+                preferFineMetric,
+              ),
             )
           }
           onChange={(event) => {
@@ -4201,6 +4259,51 @@ function PipeClampBedParameterControls({
             ))}
         </section>
       ))}
+    </div>
+  );
+}
+
+function MiterRunnerWedgeParameterControls({
+  model,
+  params,
+  unit,
+  onChange,
+  onUnitChange,
+}: {
+  model: Extract<ModelDefinition, { viewer: "miter-runner-wedge-v1" }>;
+  params: ModelParams;
+  unit: LengthUnit;
+  onChange: (key: string, value: number) => void;
+  onUnitChange: (unit: LengthUnit) => void;
+}) {
+  const spec = getMiterRunnerWedgeSpec(params, model);
+  return (
+    <div className="parameter-groups miter-runner-wedge-parameter-groups">
+      <section className="nested-parameter-section">
+        <div className="divider-controls-heading">
+          <h3>Slot fit</h3>
+        </div>
+        {model.parameters.map((parameter) => (
+          <NumberControl
+            key={parameter.key}
+            label={parameter.label}
+            limits={getParameterLimits(model, params, parameter.key)}
+            onChange={(value) => onChange(parameter.key, value)}
+            onUnitChange={onUnitChange}
+            preferDecimalInches
+            preferFineMetric
+            preferFineStep
+            unit={unit}
+            valueMm={params[parameter.key]}
+          />
+        ))}
+        <p className="parameter-derived-note" data-testid="miter-runner-derived-width">
+          Finished runner: {formatMiterRunnerFitLength(spec.finishedRunnerWidth, unit)}
+          {spec.addedWidth > 0.0001
+            ? ` · wedge adds ${formatMiterRunnerFitLength(spec.addedWidth, unit)}`
+            : " · source width"}
+        </p>
+      </section>
     </div>
   );
 }
@@ -6427,6 +6530,7 @@ export default function App({
             model.viewer === "drill-bit-holder-v1" ||
             model.viewer === "metric-nut-knob-v1" ||
             model.viewer === "pipe-clamp-bed-v1" ||
+            model.viewer === "miter-runner-wedge-v1" ||
             model.viewer === "router-mortise-jig-v1" ||
             model.viewer === "router-tenon-jig-v1" ||
             model.viewer === "compact-wall-bracket-v1" ||
@@ -6456,7 +6560,8 @@ export default function App({
       }
       if (
         model.viewer === "metric-nut-knob-v1" ||
-        model.viewer === "pipe-clamp-bed-v1"
+        model.viewer === "pipe-clamp-bed-v1" ||
+        model.viewer === "miter-runner-wedge-v1"
       ) {
         for (let pass = 0; pass < 2; pass += 1) {
           for (const parameter of model.parameters) {
@@ -6847,7 +6952,8 @@ export default function App({
       }
       if (
         model.viewer === "metric-nut-knob-v1" ||
-        model.viewer === "pipe-clamp-bed-v1"
+        model.viewer === "pipe-clamp-bed-v1" ||
+        model.viewer === "miter-runner-wedge-v1"
       ) {
         for (let pass = 0; pass < 2; pass += 1) {
           for (const parameter of model.parameters) {
@@ -7312,6 +7418,14 @@ export default function App({
                       params={params}
                       unit={unit}
                     />
+                  ) : model.viewer === "miter-runner-wedge-v1" ? (
+                    <MiterRunnerWedgeParameterControls
+                      model={model}
+                      onChange={updateParam}
+                      onUnitChange={setUnit}
+                      params={params}
+                      unit={unit}
+                    />
                   ) : model.viewer === "metric-nut-knob-v1" ? (
                     <MetricNutKnobParameterControls
                       model={model}
@@ -7465,6 +7579,24 @@ export default function App({
                     >
                       Download default fit coupon STL
                     </a>
+                  </section>
+                ) : null}
+
+                {model.viewer === "miter-runner-wedge-v1" ? (
+                  <section className="panel-section router-mortise-print-set">
+                    <h2>Fit &amp; print notes</h2>
+                    <ul>
+                      <li>Measure the slot at the front, middle, and rear; use the smallest reading</li>
+                      <li>Finished runner width = measured slot width − total running clearance</li>
+                      <li>The fixed Main Part is already 18.8 mm wide, so this wedge can only add width</li>
+                      <li>Print with either broad face on the build plate; no supports are required</li>
+                    </ul>
+                    <p>
+                      Start with 0.15–0.25 mm total clearance for a typical
+                      FDM print, then verify the complete runner by hand before
+                      attaching a jig or sled. Printer, material, and slot
+                      variation can shift the best setting.
+                    </p>
                   </section>
                 ) : null}
 

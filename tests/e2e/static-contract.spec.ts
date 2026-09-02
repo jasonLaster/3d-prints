@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(11);
+  expect(catalog.models).toHaveLength(12);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -63,7 +63,7 @@ test("cataloged models declare STL files, parameters, audits, and scripts", () =
     expect(model.id).toBe(entry.id);
     expect(model.name).toBe(entry.name);
     expect(fs.existsSync(stlPath)).toBe(true);
-    expect(model.parameters.length).toBeGreaterThanOrEqual(3);
+    expect(model.parameters.length).toBeGreaterThanOrEqual(2);
     expect(model.audit.dimensionTargets.length).toBeGreaterThan(0);
     expect(model.audit.invariants.length).toBeGreaterThan(0);
     expect(model.audit.checks.length).toBeGreaterThan(0);
@@ -165,6 +165,16 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "snapRelease",
       "hookBands",
       "minimumSections",
+      "printOrientation",
+      "sourceReference",
+    ],
+    "miter-runner-wedge-v1": [
+      "fitEquation",
+      "sourceDatum",
+      "preservedAngles",
+      "wedgeSections",
+      "runningClearance",
+      "buildPlateFit",
       "printOrientation",
       "sourceReference",
     ],
@@ -399,6 +409,20 @@ test("model-specific parameter dependencies are declared auditable", () => {
       sourceNonManifoldEdges: number;
     };
   };
+  const miterRunnerWedge = readJson(
+    path.join(root, "public/models/miter-runner-wedge/model.json"),
+  ) as ModelJson & {
+    geometry: {
+      sourceRunnerWidth: number;
+      matingTaperDegrees: number;
+      endBevelDegrees: number;
+      safeBuildPlateSpan: number;
+      sourceWedgeSha256: string;
+      sourceMainPartSha256: string;
+      sourceWedgeDimensionsMm: { x: number; y: number; z: number };
+      sourceMainPartDimensionsMm: { x: number; y: number; z: number };
+    };
+  };
 
   const holderParams = Object.fromEntries(
     holder.parameters.map((parameter) => [parameter.key, parameter]),
@@ -586,6 +610,33 @@ test("model-specific parameter dependencies are declared auditable", () => {
   expect(pipeClampBed.audit.invariants.join(" ")).toContain(
     "two downward-opening snap clips",
   );
+
+  const miterParams = Object.fromEntries(
+    miterRunnerWedge.parameters.map((entry) => [entry.key, entry]),
+  );
+  expect(miterRunnerWedge.geometry.sourceWedgeSha256).toHaveLength(64);
+  expect(miterRunnerWedge.geometry.sourceMainPartSha256).toHaveLength(64);
+  expect(miterRunnerWedge.geometry.sourceWedgeDimensionsMm).toEqual({
+    x: 7.397315303284701,
+    y: 240.08412724365584,
+    z: 5.5,
+  });
+  expect(miterRunnerWedge.geometry.sourceMainPartDimensionsMm).toEqual({
+    x: 18.8,
+    y: 250,
+    z: 9.2,
+  });
+  expect(miterRunnerWedge.geometry.matingTaperDegrees).toBe(1);
+  expect(miterRunnerWedge.geometry.endBevelDegrees).toBe(40);
+  expect(miterParams.miterSlotWidth.default - miterParams.runningClearance.default).toBe(
+    miterRunnerWedge.geometry.sourceRunnerWidth,
+  );
+  expect(miterRunnerWedge.geometry.safeBuildPlateSpan).toBeGreaterThan(
+    miterRunnerWedge.geometry.sourceWedgeDimensionsMm.y,
+  );
+  expect(miterRunnerWedge.audit.invariants.join(" ")).toContain(
+    "move only the straight outside face",
+  );
 });
 
 test("request coverage document tracks the app behaviors under Playwright", () => {
@@ -607,6 +658,7 @@ test("request coverage document tracks the app behaviors under Playwright", () =
     "Drill Bit Holder defaults to the seven requested fractional sizes",
     "Parametric Metric Nut Knob reconstructs the supplied M8 mesh",
     "Pipe Clamp Bed supports a 1-inch board on standard 3/4-inch pipe clamps",
+    "Adjustable Miter Runner Wedge derives a replacement wedge from the measured slot",
     "Handheld Router Mortise Jig derives its opening from the mortise, cutter, and guide bushing",
     "Handheld Router Tenon Jig derives external guide openings from the tenon, cutter, and bearing",
     "Dark theme is available",
@@ -668,6 +720,9 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
   );
   const pipeClampBedDoc = readText(
     path.join(root, "docs/pipe-clamp-bed-audit-specifications.md"),
+  );
+  const miterRunnerWedgeDoc = readText(
+    path.join(root, "docs/miter-runner-wedge-audit-specifications.md"),
   );
   const routerMortiseJigDoc = readText(
     path.join(root, "docs/router-mortise-jig-audit-specifications.md"),
@@ -770,6 +825,18 @@ test("model-specific audit docs mention their JSON-owned runtime checks", () => 
     "exactly two triangles per mesh edge",
   ]) {
     expect(pipeClampBedDoc).toContain(phrase);
+  }
+
+  for (const phrase of [
+    "7.397315 × 240.084127 × 5.5 mm",
+    "18.8 × 250 × 9.2 mm",
+    "1.000° taper",
+    "Both end faces are 40.0° to the runner centerline",
+    "finished runner width",
+    "exactly two triangles",
+    "240.084127 mm length fits the 250 mm safe span",
+  ]) {
+    expect(miterRunnerWedgeDoc).toContain(phrase);
   }
 
   for (const phrase of [

@@ -43,6 +43,13 @@ import {
   getPipeClampBedSpec,
 } from "./pipeClampBed";
 import {
+  formatMiterRunnerFitLength,
+  getMiterRunnerWedgeAuditValue,
+  getMiterRunnerWedgeDimensions,
+  getMiterRunnerWedgeParameterLimits,
+  getMiterRunnerWedgeSpec,
+} from "./miterRunnerWedge";
+import {
   getRouterMortiseJigAuditValue,
   getRouterMortiseJigDimensions,
   getRouterMortiseJigParameterLimits,
@@ -135,6 +142,14 @@ export {
   updatePipeClampBedGuide,
 } from "./pipeClampBed";
 export type { PipeClampBedSpec } from "./pipeClampBed";
+export {
+  createMiterRunnerWedgeGeometry,
+  formatMiterRunnerFitLength,
+  getMiterRunnerWedgeProfile,
+  getMiterRunnerWedgeSpec,
+  updateMiterRunnerWedgeGuide,
+} from "./miterRunnerWedge";
+export type { MiterRunnerWedgeSpec } from "./miterRunnerWedge";
 export {
   createRouterMortiseJigFenceGeometry,
   createRouterMortiseJigGuideGeometry,
@@ -240,6 +255,9 @@ function getAuditValue(
   if (model.viewer === "pipe-clamp-bed-v1") {
     return getPipeClampBedAuditValue(check, params, unit, model);
   }
+  if (model.viewer === "miter-runner-wedge-v1") {
+    return getMiterRunnerWedgeAuditValue(check, params, unit, model);
+  }
   if (model.viewer === "router-mortise-jig-v1") {
     return getRouterMortiseJigAuditValue(check, params, unit, model);
   }
@@ -296,6 +314,9 @@ export function getParameterLimits(
   if (model.viewer === "pipe-clamp-bed-v1") {
     return getPipeClampBedParameterLimits(model, params, key);
   }
+  if (model.viewer === "miter-runner-wedge-v1") {
+    return getMiterRunnerWedgeParameterLimits(model, params, key);
+  }
   if (model.viewer === "router-mortise-jig-v1") {
     return getRouterMortiseJigParameterLimits(model, params, key);
   }
@@ -340,6 +361,9 @@ export function getModelDimensions(
   }
   if (model.viewer === "pipe-clamp-bed-v1") {
     return getPipeClampBedDimensions(params);
+  }
+  if (model.viewer === "miter-runner-wedge-v1") {
+    return getMiterRunnerWedgeDimensions(params, model);
   }
   if (model.viewer === "router-mortise-jig-v1") {
     return getRouterMortiseJigDimensions(params, model);
@@ -410,6 +434,16 @@ export function getStatusItems(
       `Surface ${formatLength(spec.surfaceLiftAboveCrown, unit)} above crown`,
       `${formatLength(spec.workpieceThickness, unit)} stock center ${formatLength(spec.workpieceCenterZ, unit)} above pipe axis`,
       `2 × ${formatLength(spec.hookWidth, unit)} easy-release clips`,
+    ];
+  }
+  if (model.viewer === "miter-runner-wedge-v1") {
+    const spec = getMiterRunnerWedgeSpec(params, model);
+    return [
+      `Slot ${formatMiterRunnerFitLength(spec.slotWidth, unit)}`,
+      `Runner ${formatMiterRunnerFitLength(spec.finishedRunnerWidth, unit)}`,
+      `Clearance ${formatMiterRunnerFitLength(spec.runningClearance, unit)} total`,
+      `Wedge +${formatMiterRunnerFitLength(spec.addedWidth, unit)} from source`,
+      `${spec.taperAngleDegrees.toFixed(3)}° taper · ${formatMiterRunnerFitLength(spec.thickness, unit)} thick`,
     ];
   }
   if (model.viewer === "router-mortise-jig-v1") {

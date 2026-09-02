@@ -42,6 +42,11 @@
       "configUrl": "/models/pipe-clamp-bed/model.json"
     },
     {
+      "id": "miter-runner-wedge",
+      "name": "Adjustable Miter Runner Wedge",
+      "configUrl": "/models/miter-runner-wedge/model.json"
+    },
+    {
       "id": "router-mortise-jig",
       "name": "Photo-Matched Handheld Router Mortise Jig",
       "configUrl": "/models/router-mortise-jig/photo-model.json"

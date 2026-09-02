@@ -3855,10 +3855,13 @@ html.dark .segmented-control button.active {
 
   .workspace-title h1 {
     overflow: hidden;
-    max-width: min(44vw, 180px);
-    font-size: 17px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    max-width: min(54vw, 220px);
+    max-height: 2.1em;
+    font-size: 16px;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
   }
 
   .workspace-actions {
@@ -3970,7 +3973,7 @@ html.dark .segmented-control button.active {
 
 @media (max-width: 560px) {
   .workspace-title h1 {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .model-preview {

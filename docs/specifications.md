@@ -91,6 +91,15 @@ Pipe Clamp Bed:
 - The full STL and short fit coupon print with the support face at Z = 0 and clips upward. The translucent pipe is preview-only.
 - See `docs/pipe-clamp-bed-audit-specifications.md` for source custody, height equations, easy-release geometry, proof views, and the Tough PLA prototype gate.
 
+Adjustable Miter Runner Wedge:
+
+- Retain the supplied `Wedge.step` and `Main Part.step` byte-for-byte as dimensional evidence; the files declare metre units and resolve to 7.397315 × 240.084127 × 5.5 mm and 18.8 × 250 × 9.2 mm solid envelopes after conversion to millimetres.
+- Use measured miter-slot width and desired total running clearance as the only fit controls. Derive finished runner width as slot width minus clearance.
+- Keep the Main Part interface fixed and move only the wedge outside face. Never allow the derived runner below the Main Part's existing 18.8 mm width.
+- Preserve the 1.000° mating taper, both 40.0° end bevels, and 5.5 mm thickness at every fit setting.
+- Export the current geometry broad-face-down at Z = 0; the 240.084127 mm length must fit the 250 mm safe build span.
+- See `docs/miter-runner-wedge-audit-specifications.md` for the evidence brief, exact equations, measured coordinates, proof views, and physical-fit gate.
+
 Compact Wall Bracket:
 
 - The retained source body measures 190.9188 × 25.6 × 99.9285 mm and contains no bolt bores or countersinks.
