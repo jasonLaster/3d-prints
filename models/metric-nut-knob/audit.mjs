@@ -105,10 +105,12 @@ function analyzeStl(filePath) {
 
 console.log(`Auditing ${model.name}`);
 const largeGrip = model.id === "metric-nut-knob-large-grip";
-assert(model.id === "metric-nut-knob" || largeGrip, "model id is a registered metric nut knob");
-if (largeGrip) {
+const threeLobe = model.id === "metric-nut-knob-three-lobe";
+assert(model.id === "metric-nut-knob" || largeGrip || threeLobe, "model id is a registered metric nut knob");
+if (largeGrip || threeLobe) {
   const original = JSON.parse(fs.readFileSync(path.join(root, "public/models/metric-nut-knob/model.json"), "utf8"));
   for (const entry of original.parameters.filter((entry) => entry.group !== "Handle" || ["handleHeight", "lobeCount"].includes(entry.key))) {
+    if (threeLobe && ["lobeCount", "nutAcrossFlats"].includes(entry.key)) continue;
     assert(parameter(entry.key).default === entry.default, `${entry.key} is unchanged from the original knob`);
   }
 }
@@ -147,8 +149,8 @@ for (const key of [
   );
 }
 
-assert(parameter("lobeCount").default === 6, "source-matched handle has six lobes");
-assert(nearlyEqual(parameter("knobDiameter").default, largeGrip ? 40 : 25.038), "tip diameter matches model target");
+assert(parameter("lobeCount").default === (threeLobe ? 3 : 6), "handle has the intended number of lobes");
+assert(nearlyEqual(parameter("knobDiameter").default, largeGrip || threeLobe ? 40 : 25.038), "tip diameter matches model target");
 assert(nearlyEqual(parameter("handleHeight").default, 9.375), "handle height matches source");
 assert(nearlyEqual(parameter("guardHeight").default, 7.625), "guard height matches source");
 assert(nearlyEqual(parameter("guardBaseDiameter").default, 15), "guard base matches source");
@@ -158,8 +160,8 @@ assert(
   "default bolt bore matches measured source",
 );
 assert(
-  nearlyEqual(parameter("nutAcrossFlats").default + parameter("nutClearance").default, 13.106),
-  "default captive-nut pocket matches measured source",
+  nearlyEqual(parameter("nutAcrossFlats").default + parameter("nutClearance").default, threeLobe ? 12.906 : 13.106, 0.001),
+  "default captive-nut pocket matches intended fit",
 );
 assert(nearlyEqual(parameter("nutPocketDepth").default, 5.705), "nut-pocket depth matches source");
 assert(
@@ -184,8 +186,8 @@ assert(generated.inconsistentEdges === 0, "procedural STL winding is consistent"
 assert(generated.components === 1, "procedural STL is one connected shell");
 assert(generated.signedVolume > 0, "procedural STL is outward-oriented");
 assert(generated.triangles > 4000, "procedural STL keeps smooth lobes and bore surfaces");
-assert(nearlyEqual(generated.size.x, largeGrip ? 36.168 : model.geometry.sourceDimensionsMm.x, 0.2), "default X envelope matches model target");
-assert(nearlyEqual(generated.size.y, largeGrip ? 40 : model.geometry.sourceDimensionsMm.y, 0.2), "default Y envelope matches model target");
+assert(nearlyEqual(generated.size.x, threeLobe ? 36.38 : largeGrip ? 36.168 : model.geometry.sourceDimensionsMm.x, 0.2), "default X envelope matches model target");
+assert(nearlyEqual(generated.size.y, threeLobe ? 33.25 : largeGrip ? 40 : model.geometry.sourceDimensionsMm.y, 0.2), "default Y envelope matches model target");
 assert(nearlyEqual(generated.size.z, model.geometry.sourceDimensionsMm.z), "default total height matches source");
 assert(nearlyEqual(generated.min.z, 0), "procedural STL rests on Z = 0");
 

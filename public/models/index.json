@@ -42,6 +42,11 @@
       "configUrl": "/models/metric-nut-knob-large-grip/model.json"
     },
     {
+      "id": "metric-nut-knob-three-lobe",
+      "name": "Metric Nut Knob \u2014 Three Lobes",
+      "configUrl": "/models/metric-nut-knob-three-lobe/model.json"
+    },
+    {
       "id": "pipe-clamp-bed",
       "name": "Pipe Clamp Bed",
       "configUrl": "/models/pipe-clamp-bed/model.json"
