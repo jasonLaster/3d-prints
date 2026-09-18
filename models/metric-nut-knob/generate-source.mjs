@@ -7,13 +7,13 @@ import * as THREE from "three";
 import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 
 const root = path.resolve(import.meta.dirname, "../..");
-const configPath = path.join(root, "public/models/metric-nut-knob/model.json");
-const outputPath = path.join(root, "public/models/metric-nut-knob/metric-nut-knob.stl");
+const configPath = path.resolve(root, process.argv[2] ?? "public/models/metric-nut-knob/model.json");
 const bundlePath = path.join(
   os.tmpdir(),
   `metric-nut-knob-${process.pid}-${Date.now()}.mjs`,
 );
 const model = JSON.parse(fs.readFileSync(configPath, "utf8"));
+const outputPath = path.join(root, "public", model.stl.url.replace(/^\/+/, ""));
 const params = Object.fromEntries(
   model.parameters.map((parameter) => [parameter.key, parameter.default]),
 );

@@ -37,6 +37,11 @@
       "configUrl": "/models/metric-nut-knob/model.json"
     },
     {
+      "id": "metric-nut-knob-large-grip",
+      "name": "Metric Nut Knob \u2014 Large Grip",
+      "configUrl": "/models/metric-nut-knob-large-grip/model.json"
+    },
+    {
       "id": "pipe-clamp-bed",
       "name": "Pipe Clamp Bed",
       "configUrl": "/models/pipe-clamp-bed/model.json"
