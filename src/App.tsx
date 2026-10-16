@@ -87,6 +87,7 @@ import {
   getKeyholeTabsSpec,
   updateKeyholeTabsGuide,
   keyholeVariantName,
+  getKeyholeTabsViewBounds,
   createPipeClampBedGeometry,
   createPipeClampBedPreviewParts,
   createPipeClampBedPrintGeometry,
@@ -1429,15 +1430,16 @@ const HolderViewer = forwardRef<
     const target = new THREE.Vector3(
       0,
       0,
-      model.viewer === "keyhole-leveling-tabs-v1" && Math.round(currentParams.previewMode) === 2
-        ? (9 - currentParams.openingCenterDrop - currentParams.wideOpeningDiameter / 2 - 3) / 2
-          + getKeyholeTabsSpec(currentParams, model).offset + model.geometry.edgeMargin
-        : model.viewer === "compact-wall-bracket-v1"
+      model.viewer === "compact-wall-bracket-v1"
         ? dimensions.height * 0.5
         : model.viewer !== "weighted-paper-towel-holder-v1"
         ? dimensions.height * 0.25
         : dimensions.height * 0.42,
     );
+    if (model.viewer === "keyhole-leveling-tabs-v1")
+      target.copy(
+        getKeyholeTabsViewBounds(currentParams, model).getCenter(new THREE.Vector3()),
+      );
     const edgeViewZ = target.z + dimensions.height * 0.2;
 
     camera.up.set(0, 0, 1);
@@ -1483,6 +1485,10 @@ const HolderViewer = forwardRef<
       camera.position.set(distance * 0.72, -distance, dimensions.height * 1.25);
     }
 
+    if (model.viewer === "keyhole-leveling-tabs-v1") {
+      camera.position.x += target.x;
+      camera.position.y += target.y;
+    }
     camera.near = 0.5;
     camera.far = 2000;
     camera.lookAt(target);

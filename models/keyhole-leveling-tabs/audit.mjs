@@ -114,7 +114,7 @@ function printable(g, label) {
   assert(info.signedVolume > 0, `${label}: positive enclosed volume`);
   assert(
     components(pos) === 1,
-    `${label}: pad, leg and all bumps form one connected shell`,
+    `${label}: pad and leg form one connected shell`,
   );
   return info;
 }
@@ -196,16 +196,13 @@ try {
       s.edgeHeight >= model.geometry.minimumLegEdgeHeight - 1e-8,
       `variant ${n}: crown leaves a positive edge section`,
     );
-    const apex = new Set();
-    for (let i = 0; i < pos.count; i++)
-      if (close(pos.getZ(i), s.padMaxZ + p.bumpHeight))
-        apex.add(`${pos.getX(i).toFixed(4)},${pos.getY(i).toFixed(4)}`);
     assert(
-      apex.size === n,
-      `variant ${n}: mesh contains ${n} integrated bump apices`,
+      close(g.boundingBox.max.z, s.padMaxZ),
+      `variant ${n}: outer pad face has no raised bumps`,
     );
     for (const key of [
       "roundedCrown",
+      "bedContact",
       "slotFit",
       "depthFit",
       "headEntry",
@@ -220,6 +217,48 @@ try {
     const printed = mod.createKeyholeTabPrintGeometry(p, model);
     const bounds = printable(printed, `printed ${n}`).bounds;
     assert(close(bounds.min.z, 0), `printed ${n}: rests on Z=0`);
+    const bedPosition = printed.getAttribute("position");
+    let padBedArea = 0;
+    for (let i = 0; i < bedPosition.count; i += 3) {
+      if ([0, 1, 2].some((j) => Math.abs(bedPosition.getZ(i + j)) > 1e-7))
+        continue;
+      const ax = bedPosition.getX(i),
+        ay = bedPosition.getY(i);
+      const bx = bedPosition.getX(i + 1),
+        by = bedPosition.getY(i + 1);
+      const cx = bedPosition.getX(i + 2),
+        cy = bedPosition.getY(i + 2);
+      const area = Math.abs((bx - ax) * (cy - ay) - (by - ay) * (cx - ax)) / 2;
+      padBedArea += area;
+    }
+    const expectedArea =
+      p.padWidth * p.padHeight -
+      (4 - Math.PI) * model.geometry.padCornerRadius ** 2;
+    assert(
+      Math.abs(padBedArea - expectedArea) < 0.05,
+      `printed ${n}: full rounded pad has ${padBedArea.toFixed(3)} mm² bed contact`,
+    );
+    assert(
+      close(bounds.max.z, s.padMaxZ + p.legDepth),
+      `printed ${n}: inward leg points upward above the pad`,
+    );
+    assert(
+      close(bounds.max.x - bounds.min.x, p.padWidth) &&
+        close(bounds.max.y - bounds.min.y, p.padHeight),
+      `printed ${n}: bed footprint matches pad width and height`,
+    );
+    const legacy = mod.createKeyholeTabPrintGeometry(
+      { ...p, bumpHeight: 0.4, bumpDiameter: 0.9 },
+      model,
+    );
+    assert(
+      Buffer.from(legacy.getAttribute("position").array.buffer).equals(
+        Buffer.from(bedPosition.array.buffer),
+      ),
+      `printed ${n}: old bump URL parameters cannot restore bumps`,
+    );
+    legacy.dispose();
+
     const data = fs.readFileSync(
       path.join(
         root,
@@ -286,6 +325,7 @@ try {
     wideOpeningDiameter: 7.8,
     screwHeadDiameter: 10,
     wallGap: 2,
+    padThickness: 2.4,
     legDepth: 3,
   };
   for (const key of ["headEntry", "depthFit", "wallClearance"])

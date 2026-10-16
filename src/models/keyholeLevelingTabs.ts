@@ -60,7 +60,6 @@ export function getKeyholeTabsSpec(
   return {
     variant,
     offset,
-    bumpCount: variant,
     legContactOffset: -offset,
     padBottom,
     padTop: padBottom + p.padHeight,
@@ -89,13 +88,10 @@ export function getKeyholeTabsSpec(
     legHeadClearance: p.rimThickness + p.clearance / 2 - p.legDepth,
     recessHeadClearance:
       p.keyholeDepth - p.rimThickness - p.clearance / 2 - p.screwHeadThickness,
-    wallClearance:
-      p.wallGap - (p.tapeThickness + p.padThickness + p.bumpHeight),
+    wallClearance: p.wallGap - (p.tapeThickness + p.padThickness),
     bearingWidth: Math.min(tipWidth, p.screwShankDiameter),
     plateWidth: 4 * p.padWidth + 3 * m.geometry.plateGap,
-    plateDepth:
-      2 * (p.legDepth + p.tapeThickness + p.padThickness + p.bumpHeight) +
-      m.geometry.plateGap,
+    plateDepth: 2 * p.padHeight + m.geometry.plateGap,
   };
 }
 
@@ -124,17 +120,6 @@ function roundedRectangle(
     }),
   );
 }
-function circle(x: number, y: number, r: number, count: number): P2[] {
-  return Array.from(
-    { length: count },
-    (_, i) =>
-      new THREE.Vector2(
-        x + r * Math.cos((i / count) * Math.PI * 2),
-        y + r * Math.sin((i / count) * Math.PI * 2),
-      ),
-  );
-}
-
 // Circular crown follows the rounded slot roof, with a flat screw-contact edge.
 // Every fillet section shares this circle; the apex remains Y=0.
 export function getKeyholeLegProfile(
@@ -170,7 +155,7 @@ export function getKeyholeLegProfile(
   return [...rightCorner, ...crown, ...leftCorner];
 }
 
-// Stitch the pad, root, leg and bump surfaces into ONE shell. No overlapping solids.
+// Stitch the pad, root and leg surfaces into ONE shell. No overlapping solids.
 export function createKeyholeTabCanonicalGeometry(
   p: ModelParams,
   m: KeyholeTabsModelDefinition,
@@ -191,10 +176,24 @@ export function createKeyholeTabCanonicalGeometry(
       else tri(aa, cc, bb);
     }
   }
-  function ring(lower: P2[], upper: P2[], lowZ: number, highZ: number) {
+  function ring(
+    lower: P2[],
+    upper: P2[],
+    lowZ: number,
+    highZ: number,
+    closingEdgeSplits: P2[] = [],
+  ) {
     lower.forEach((point, i) => {
       const j = (i + 1) % lower.length;
-      tri(v(point, lowZ), v(lower[j], lowZ), v(upper[j], highZ));
+      // The pad's lower edge shares the leg's screw-contact edge. Split that
+      // boundary explicitly so the attached leg creates no T-junctions.
+      if (i === lower.length - 1 && closingEdgeSplits.length) {
+        const edge = [point, ...closingEdgeSplits, lower[j]];
+        for (let k = 0; k < edge.length - 1; k++)
+          tri(v(edge[k], lowZ), v(edge[k + 1], lowZ), v(upper[j], highZ));
+      } else {
+        tri(v(point, lowZ), v(lower[j], lowZ), v(upper[j], highZ));
+      }
       tri(v(point, lowZ), v(upper[j], highZ), v(upper[i], highZ));
     });
   }
@@ -207,16 +206,16 @@ export function createKeyholeTabCanonicalGeometry(
   const leg = (width: number) =>
     getKeyholeLegProfile(width, s.offset, s.crownRadius);
   const root = leg(s.legWidth);
-  const centers = Array.from({ length: s.bumpCount }, (_, i) => ({
-    x: ((i % 4) - 1.5) * 1.6,
-    y: s.padBottom + p.padHeight / 2 + (Math.floor(i / 4) - 0.5) * 1.6,
-  }));
-  const bumps = centers.map(({ x, y }) =>
-    circle(x, y, p.bumpDiameter / 2, m.geometry.radialSegments),
-  );
-  face(pad, [root], s.padMinZ, false);
-  ring(pad, pad, s.padMinZ, s.padMaxZ);
-  face(pad, bumps, s.padMaxZ, true);
+  if (m.geometry.edgeMargin === 0) {
+    // The root opens onto the pad perimeter. It is a notch in this face,
+    // rather than a hole touching its outside boundary.
+    face([...pad, ...[...root].reverse()], [], s.padMinZ, false);
+    ring(pad, pad, s.padMinZ, s.padMaxZ, [root[root.length - 1], root[0]]);
+  } else {
+    face(pad, [root], s.padMinZ, false);
+    ring(pad, pad, s.padMinZ, s.padMaxZ);
+  }
+  face(pad, [], s.padMaxZ, true);
   // A concave 0.35 mm root fillet spreads the neck into the pad within the slot width.
   let previous = leg(s.tipWidth),
     previousZ = -p.legDepth;
@@ -235,30 +234,6 @@ export function createKeyholeTabCanonicalGeometry(
     previous = current;
     previousZ = currentZ;
   }
-  centers.forEach(({ x, y }, index) => {
-    let lower = bumps[index],
-      z = s.padMaxZ;
-    for (let i = 1; i <= 5; i++) {
-      const angle = ((i / 6) * Math.PI) / 2;
-      const upper = circle(
-        x,
-        y,
-        (p.bumpDiameter / 2) * Math.cos(angle),
-        m.geometry.radialSegments,
-      );
-      const nextZ = s.padMaxZ + p.bumpHeight * Math.sin(angle);
-      ring(lower, upper, z, nextZ);
-      lower = upper;
-      z = nextZ;
-    }
-    lower.forEach((point, i) =>
-      tri(
-        v(point, z),
-        v(lower[(i + 1) % lower.length], z),
-        new THREE.Vector3(x, y, s.padMaxZ + p.bumpHeight),
-      ),
-    );
-  });
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     "position",
@@ -276,8 +251,16 @@ export function keyholeFrameToPrint(
   p: ModelParams,
   m: KeyholeTabsModelDefinition,
 ) {
-  g.rotateX(Math.PI / 2);
-  g.translate(0, 0, -getKeyholeTabsSpec(p, m).padBottom);
+  const spec = getKeyholeTabsSpec(p, m);
+  // Entire smooth outer pad face rests on the bed; the inward leg points up.
+  g.rotateX(Math.PI);
+  g.translate(0, spec.padBottom + p.padHeight / 2, spec.padMaxZ);
+  const position = g.getAttribute("position");
+  for (let i = 0; i < position.count; i++) {
+    if (Math.abs(position.getZ(i)) < 1e-6) position.setZ(i, 0);
+  }
+  g.computeBoundingBox();
+  g.computeBoundingSphere();
   return g;
 }
 export function createKeyholeTabPrintGeometry(
@@ -296,12 +279,7 @@ export function createKeyholeTabsGeometry(
     const g = createKeyholeTabPrintGeometry({ ...p, variant: i + 1 }, m);
     g.translate(
       ((i % 4) - 1.5) * (p.padWidth + m.geometry.plateGap),
-      (Math.floor(i / 4) - 0.5) *
-        (p.legDepth +
-          p.tapeThickness +
-          p.padThickness +
-          p.bumpHeight +
-          m.geometry.plateGap),
+      (Math.floor(i / 4) - 0.5) * (p.padHeight + m.geometry.plateGap),
       0,
     );
     return g;
@@ -393,25 +371,25 @@ export function createKeyholeTabsPreviewParts(
     },
   ];
 }
+export function getKeyholeTabsViewBounds(
+  p: ModelParams,
+  m: KeyholeTabsModelDefinition,
+) {
+  const geometry = createKeyholeTabsGeometry(p, m);
+  const bounds = geometry.boundingBox!.clone();
+  geometry.dispose();
+  for (const part of createKeyholeTabsPreviewParts(p, m)) {
+    bounds.union(part.geometry.boundingBox!);
+    part.geometry.dispose();
+  }
+  return bounds;
+}
 export function getKeyholeTabsDimensions(
   p: ModelParams,
   m: KeyholeTabsModelDefinition,
 ) {
-  const s = getKeyholeTabsSpec(p, m);
-  if (Math.round(p.previewMode) === 2)
-    return {
-      length: 24,
-      width: p.wallGap + p.keyholeDepth,
-      height: 12 + p.openingCenterDrop + p.wideOpeningDiameter / 2,
-    };
-  return {
-    length: Math.round(p.previewMode) === 1 ? s.plateWidth : p.padWidth,
-    width:
-      Math.round(p.previewMode) === 1
-        ? s.plateDepth
-        : p.legDepth + s.padMaxZ + p.bumpHeight,
-    height: p.padHeight,
-  };
+  const size = getKeyholeTabsViewBounds(p, m).getSize(new THREE.Vector3());
+  return { length: size.x, width: size.y, height: size.z };
 }
 export function updateKeyholeTabsGuide(
   mesh: THREE.Mesh,
@@ -472,11 +450,16 @@ export function getKeyholeTabsAuditValue(
       );
     case "series":
       return item(
-        `${KEYHOLE_FRACTIONS[s.variant - 1]} in · ${s.bumpCount} bumps · fixed geometry`,
-        s.bumpCount === s.variant,
+        `${KEYHOLE_FRACTIONS[s.variant - 1]} in · flat pad · fixed geometry`,
+        s.variant >= 1 && s.variant <= 8,
       );
     case "inward":
       return item(`Z = −${p.legDepth.toFixed(2)} mm into frame`, s.legMinZ < 0);
+    case "bedContact":
+      return item(
+        "Full outer pad face at print Z = 0 · leg points up",
+        p.padThickness > 0 && p.legDepth > 0,
+      );
     case "roundedCrown":
       return item(
         `R ${s.crownRadius.toFixed(2)} mm circular crown · ${s.legWidth.toFixed(2)} mm root · assumed roof`,
@@ -509,7 +492,7 @@ export function getKeyholeTabsAuditValue(
       );
     case "wallClearance":
       return item(
-        `${s.wallClearance.toFixed(2)} mm beyond bumps and tape`,
+        `${s.wallClearance.toFixed(2)} mm beyond pad and tape`,
         s.wallClearance >= p.clearance / 2,
       );
     case "loadPath":

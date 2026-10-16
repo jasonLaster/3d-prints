@@ -46,9 +46,10 @@ try {
       mod.createKeyholeTabsGeometry({ ...params, previewMode: 1 }, model),
     ],
     ["installed", installed],
+    ["cross_section", installed.clone(), 3],
   ];
   fs.mkdirSync(out, { recursive: true });
-  for (const [name, geometry] of sources) {
+  for (const [name, geometry, view = 0] of sources) {
     geometry.rotateZ(Math.PI); // Show the inward-facing leg with the fixed ISO camera.
     geometry.computeBoundingBox();
     const pos = geometry.getAttribute("position"),
@@ -96,6 +97,8 @@ with zipfile.ZipFile(sys.argv[2],'w',zipfile.ZIP_DEFLATED) as z:
       [
         "--export-png",
         "1",
+        "--camera-view",
+        String(view),
         "--arrange",
         "0",
         "--orient",
@@ -105,7 +108,7 @@ with zipfile.ZipFile(sys.argv[2],'w',zipfile.ZIP_DEFLATED) as z:
       ],
       { cwd: dir, encoding: "utf8" },
     );
-    const png = path.join(dir, "plate_1_0.png");
+    const png = path.join(dir, `plate_1_${view}.png`);
     if (rendered.status !== 0 || !fs.existsSync(png))
       throw Error(rendered.stdout + rendered.stderr);
     fs.copyFileSync(png, path.join(out, `${name}.png`));

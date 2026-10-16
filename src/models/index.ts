@@ -12,6 +12,7 @@ export {
   updateKeyholeTabsGuide,
   KEYHOLE_FRACTIONS,
   keyholeVariantName,
+  getKeyholeTabsViewBounds,
 } from "./keyholeLevelingTabs";
 import { formatLength, toUnit } from "../units";
 import {
@@ -421,7 +422,7 @@ export function getStatusItems(
     const spec = getKeyholeTabsSpec(params, model);
     return [
       `Lift +${spec.offset.toFixed(5)} mm`,
-      `${spec.bumpCount} identification bumps`,
+      "Flat pad on bed · leg up",
       "PLA Tough / PETG",
       "Prototype · measurements pending",
     ];

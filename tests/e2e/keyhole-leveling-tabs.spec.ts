@@ -48,7 +48,7 @@ test("all fixed variants, previews, URL state, assumptions and selected export",
   ).toBeVisible();
   for (const [i, fraction] of KEYHOLE_FRACTIONS.entries()) {
     const button = page.getByRole("button", {
-      name: `${fraction}″ ${i + 1} ${i === 0 ? "bump" : "bumps"}`,
+      name: `${fraction}″ ${(((i + 1) * 25.4) / 32).toFixed(3)} mm`,
       exact: true,
     });
     await button.click();
@@ -77,14 +77,15 @@ test("all fixed variants, previews, URL state, assumptions and selected export",
     page.getByRole("button", { name: "Installed section", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
-    page.getByRole("button", { name: "1/4″ 8 bumps", exact: true }),
+    page.getByRole("button", { name: "1/4″ 6.350 mm", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await page.getByText("Dimensions & fit assumptions", { exact: true }).click();
   await expect(page.getByLabel("Pad width in millimeters")).toHaveValue("17");
+  await page.getByLabel("Pad thickness in millimeters").fill("2.4");
   await page.getByLabel("Frame to wall gap in millimeters").fill("2");
   await expect(
     page.getByText(
-      /−?0\.12 mm beyond bumps and tape|-0\.12 mm beyond bumps and tape/,
+      /−?0\.60 mm beyond pad and tape|-0\.60 mm beyond pad and tape/,
     ),
   ).toBeVisible();
   const [download] = await Promise.all([
@@ -110,6 +111,7 @@ test("all fixed variants, previews, URL state, assumptions and selected export",
       previewMode: 2,
       padWidth: 17,
       wallGap: 2,
+      padThickness: 2.4,
     },
     model,
   );
@@ -128,7 +130,7 @@ test("scalar variants survive inch URLs and keyboard selection", async ({
     `${url}/?model=keyhole-leveling-tabs&unit=in&variant=1&previewMode=1`,
   );
   const smallest = page.getByRole("button", {
-    name: "1/32″ 1 bump",
+    name: "1/32″ 0.794 mm",
     exact: true,
   });
   await expect(smallest).toHaveAttribute("aria-pressed", "true");
@@ -139,7 +141,7 @@ test("scalar variants survive inch URLs and keyboard selection", async ({
   await page.keyboard.press("Tab");
   await page.keyboard.press("Enter");
   await expect(
-    page.getByRole("button", { name: "1/16″ 2 bumps", exact: true }),
+    page.getByRole("button", { name: "1/16″ 1.587 mm", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await page.reload();
   await expect(page.getByTestId("keyhole-lift")).toHaveText(
@@ -280,4 +282,48 @@ test("circular crown width limits prevent a shallow tab from flattening the roof
   expect(limits.max).toBeGreaterThan(3);
   const spec = getKeyholeTabsSpec({ ...p, legWidth: limits.max }, model);
   expect(spec.crownRadius).toBeCloseTo(p.keyholeSlotWidth / 2, 8);
+});
+
+test("flat pad rests on bed with the inward leg up for all eight variants", () => {
+  const defaults = getDefaultParams(model);
+  expect(model.parameters.some((p) => p.key.startsWith("bump"))).toBe(false);
+  for (let variant = 1; variant <= 8; variant++) {
+    const p = { ...defaults, variant };
+    const geometry = createKeyholeTabPrintGeometry(p, model);
+    const position = geometry.getAttribute("position");
+    let padArea = 0;
+    for (let i = 0; i < position.count; i += 3) {
+      if ([0, 1, 2].some((j) => Math.abs(position.getZ(i + j)) > 1e-7))
+        continue;
+      const [ax, ay, bx, by, cx, cy] = [
+        position.getX(i),
+        position.getY(i),
+        position.getX(i + 1),
+        position.getY(i + 1),
+        position.getX(i + 2),
+        position.getY(i + 2),
+      ];
+      padArea += Math.abs((bx - ax) * (cy - ay) - (by - ay) * (cx - ax)) / 2;
+    }
+    const expected =
+      p.padWidth * p.padHeight -
+      (4 - Math.PI) * model.geometry.padCornerRadius ** 2;
+    expect(Math.abs(padArea - expected)).toBeLessThan(0.05);
+    const bounds = geometry.boundingBox!;
+    expect(bounds.min.z).toBe(0);
+    expect(bounds.max.z).toBeCloseTo(
+      p.padThickness + p.tapeThickness + p.legDepth,
+      5,
+    );
+    expect(bounds.max.y - bounds.min.y).toBeCloseTo(p.padHeight, 5);
+    const legacy = createKeyholeTabPrintGeometry(
+      { ...p, bumpHeight: 0.4, bumpDiameter: 0.9 },
+      model,
+    );
+    expect(Array.from(legacy.getAttribute("position").array)).toEqual(
+      Array.from(position.array),
+    );
+    legacy.dispose();
+    geometry.dispose();
+  }
 });

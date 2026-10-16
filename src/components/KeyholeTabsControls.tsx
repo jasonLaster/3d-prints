@@ -35,7 +35,7 @@ export function KeyholeTabsControls({
             >
               <strong>{fraction}″</strong>
               <span>
-                {i + 1} {i === 0 ? "bump" : "bumps"}
+                {((i + 1) * model.geometry.incrementMm).toFixed(3)} mm
               </span>
             </button>
           ))}
@@ -144,9 +144,10 @@ export function KeyholeTabsControls({
           infill.
         </p>
         <p>
-          The plate places each pad on its long edge to keep the leg and pad in
-          continuous XY paths. Enable local supports under the inward leg.
-          Inspect supports and layer orientation in Bambu Studio.
+          The smooth outer pad face lies flat on the build plate, with the
+          rounded inward leg pointing up. This provides the full pad footprint
+          for bed adhesion. Identify variants by their filenames and plate
+          positions; inspect the layers in Bambu Studio.
         </p>
         <p>
           Downloads use the default assumed dimensions. Workspace Export

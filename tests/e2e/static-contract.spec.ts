@@ -81,6 +81,7 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "series",
       "inward",
       "roundedCrown",
+      "bedContact",
       "slotFit",
       "depthFit",
       "headEntry",

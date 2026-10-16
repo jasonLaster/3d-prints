@@ -19,10 +19,8 @@ wide_opening_diameter = 8.4;   // assumed
 opening_center_drop = 14;      // assumed, measured from roof to entry center
 clearance = 0.4;
 tape_thickness = 0.2;
-bump_diameter = 0.9;
-bump_height = 0.4;
 root_radius = 0.35;
-edge_margin = 0.6;
+edge_margin = 0; // Pad edge aligns with the screw-contact face.
 $fn = 48;
 
 module rounded_rect(w, h, r) {
@@ -42,7 +40,6 @@ module leg_slice(w, offset) {
 }
 module tab(n) {
   leg_contact_offset = -n * 25.4/32;
-  bump_count = n;
   offset = -leg_contact_offset;
   pad_bottom = -offset-edge_margin;
   tip_width = leg_width-2*root_radius;
@@ -63,17 +60,11 @@ module tab(n) {
       w=tip_width+2*root_radius*(1-cos(angle));
       translate([0,0,z]) linear_extrude(.001) leg_slice(w,offset);
     }
-    for(i=[0:bump_count-1])
-      translate([(i%4-1.5)*1.6,pad_bottom+pad_height/2+(floor(i/4)-.5)*1.6,tape_thickness+pad_thickness])
-        intersection() {
-          scale([bump_diameter/2,bump_diameter/2,bump_height]) sphere(1);
-          translate([-bump_diameter,-bump_diameter,-.001]) cube([2*bump_diameter,2*bump_diameter,bump_height+.001]);
-        }
   }
 }
 module oriented_tab(n) {
-  if(print_orientation) translate([0,0,n*25.4/32+edge_margin]) rotate([90,0,0]) tab(n);
+  if(print_orientation) translate([0,-n*25.4/32-edge_margin+pad_height/2,tape_thickness+pad_thickness]) rotate([180,0,0]) tab(n);
   else tab(n);
 }
-if(all_variants) for(n=[1:8]) translate([((n-1)%4)*21,floor((n-1)/4)*12,0]) oriented_tab(n);
+if(all_variants) for(n=[1:8]) translate([((n-1)%4)*(pad_width+5),floor((n-1)/4)*(pad_height+5),0]) oriented_tab(n);
 else oriented_tab(variant);

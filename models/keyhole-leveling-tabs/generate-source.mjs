@@ -64,11 +64,14 @@ try {
       `<object id="${n}" type="model" name="${n}-${mod.KEYHOLE_FRACTIONS[n - 1].replace("/", "-")}"><mesh><vertices>${vertices.map(([x, y, z]) => `<vertex x="${x}" y="${y}" z="${z}"/>`).join("")}</vertices><triangles>${triangles.map(([a, b, c]) => `<triangle v1="${a}" v2="${b}" v3="${c}"/>`).join("")}</triangles></mesh></object>`,
     );
     items.push(
-      `<item objectid="${n}" transform="1 0 0 0 1 0 0 0 1 ${85 + ((n - 1) % 4) * 21} ${110 + Math.floor((n - 1) / 4) * 12} 0"/>`,
+      `<item objectid="${n}" transform="1 0 0 0 1 0 0 0 1 ${125 + (((n - 1) % 4) - 1.5) * (defaults.padWidth + m.geometry.plateGap)} ${125 + (Math.floor((n - 1) / 4) - 0.5) * (defaults.padHeight + m.geometry.plateGap)} 0"/>`,
     );
     g.dispose();
   }
-  fs.copyFileSync(path.join(out, "stl", mod.keyholeVariantName(defaults.variant)), path.join(out, m.stl.fileName));
+  fs.copyFileSync(
+    path.join(out, "stl", mod.keyholeVariantName(defaults.variant)),
+    path.join(out, m.stl.fileName),
+  );
   fs.mkdirSync(path.join(temp, "3D"));
   fs.mkdirSync(path.join(temp, "_rels"));
   fs.writeFileSync(

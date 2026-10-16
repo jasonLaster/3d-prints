@@ -18,11 +18,11 @@ Known: pad 15.24 × 7.62 × 1.52 mm initial size; screw head 7.62 mm; exact incr
 
 The 14 mm entry drop keeps even variant 8's shank in the narrow portion of this assumed slot. Measure yours before fabrication.
 
-The pad extends 0.6 mm below the contact datum, with at least 0.67 mm above the roof for default variant 8. Its back is flat except for the inward leg; apply tape on the surrounding wings, not across the leg. Tape thickness is included in the wall-space calculation and root depth. Bumps are rounded caps 0.9 mm across and 0.4 mm high, on the exposed pad face. No adhesive area or load capacity has been validated.
+The pad's lower edge is aligned with the leg's flat screw-contact face in frame coordinates. The pad extends at least 1.27 mm above the roof for default variant 8. Its back is flat except for the inward leg; apply tape on the surrounding wings, not across the leg. Tape thickness is included in the wall-space calculation and root depth. Identification bumps have been removed at the user’s request. The exposed outer pad face is completely flat. No adhesive area or load capacity has been validated.
 
-The supplied text is preserved in `models/keyhole-leveling-tabs/reference/design-specification.txt`. The material correction is PLA Tough accepted alongside PETG. These assumed dimensions are design inputs, not measurements from that source.
+The supplied text is preserved in `models/keyhole-leveling-tabs/reference/design-specification.txt`. Later user corrections accept PLA Tough alongside PETG, use a 3 mm root and rounded inward crown, remove identification bumps, and place the flat outer pad face on the bed. These assumed dimensions are design inputs, not measurements from that source.
 
-| Variant / bumps | Inches | Exact offset mm |
+| Variant | Inches | Exact offset mm |
 |---|---|---|
 | 1 | 1/32 | 0.79375 |
 | 2 | 1/16 | 1.58750 |
@@ -39,11 +39,11 @@ Each tab is one fixed piece. Choosing a different variant changes its screw cont
 
 Bambu Lab P2S, standard 0.4 mm nozzle; start at 0.12 mm layer height, 4 walls, 100% infill. Use the filament maker's profile for PLA Tough or PETG. No heat resistance or long-term load claim is made.
 
-The plate places the long pad edge on Z=0, so the pad and leg run together within print layers. The leg begins 0.6 mm above the bed and projects sideways; enable local supports beneath the leg and inspect the root and bump overhangs in the slicer. This is **not a support-free plate**. All eight fit within a conservative 250 × 250 mm envelope. The 3MF contains eight separate mesh objects in millimeters; it is geometry-only, with no printer, filament, support or slicing profile baked in.
+The plate places the full smooth outer pad face on print Z=0, with the inward leg pointing upward. Each default tab has approximately 115.2 mm² of bed contact. Identify offsets by their STL filenames and the 4 × 2 plate order (variants 1–4, then 5–8). Inspect root layers and extrusion in the slicer. All eight fit within a conservative 250 × 250 mm envelope. The 3MF contains eight separate mesh objects in millimeters; it is geometry-only, with no printer, filament, support or slicing profile baked in.
 
 1. Measure slot width, roof shape, rim/recess depth, entry diameter/drop, screw shank/head thickness, wall projection, available adhesive area, frame weight and surrounding material.
 2. Set these dimensions in the app. Check every fit assertion; do not use a tab with a fit warning.
-3. Print variants 1, 6 and 8 first. Remove supports without gouging bearing surfaces. Measure actual contact heights; 0.12 mm layers cannot reproduce every 0.79375 mm target exactly.
+3. Print variants 1, 6 and 8 first. Remove any supports or brim without gouging bearing surfaces. Measure actual contact heights; 0.12 mm layers cannot reproduce every 0.79375 mm target exactly.
 4. With the frame supported, verify head entry, upward seating, clearance behind the rim and positive roof contact. Confirm the screw is in the narrow neck. Try removal and reinstalling.
 5. Verify the tab does not rotate, withdraw, peel away or slip. Test the loaded frame with a catch/support and monitor deformation. Confirm the actual frame lift; do not infer it solely from CAD.
 
@@ -53,10 +53,10 @@ Physical fit and load testing remain pending. The downloadable eight-part set al
 
 The authoritative procedural model is `src/models/keyholeLevelingTabs.ts`. It generates the interactive geometry, STL exports, and the default plate from one function. A downloadable copy is included here. `keyhole_tab.scad` is a parametric OpenSCAD companion with the same dimensions and root curve; OpenSCAD rendering has not been verified in this environment. The distributed STL/3MF meshes come from the shared procedural model. App parameters use camelCase and the OpenSCAD companion uses the supplied snake_case parameter names.
 
-`node models/keyhole-leveling-tabs/generate-source.mjs` regenerates the eight STLs, geometry-only 3MF and downloadable TypeScript source. `npm run audit -- keyhole-leveling-tabs` checks exact offsets, actual mesh bearing datums, bump apices, one connected watertight shell, winding, volume, exported vertex parity, parameter extremes, fit calculations, invalid-fit warnings and 3MF layout integrity. Browser tests cover catalog routing, parameter/URL persistence, all three previews, exports, keyboard controls and mobile layout. Assertions do not establish physical strength.
+`node models/keyhole-leveling-tabs/generate-source.mjs` regenerates the eight STLs, geometry-only 3MF and downloadable TypeScript source. `npm run audit -- keyhole-leveling-tabs` checks exact offsets, actual mesh bearing datums, absence of bumps, full pad bed contact, leg-up orientation, legacy-URL compatibility, one connected watertight shell, winding, volume, exported vertex parity, parameter extremes, fit calculations, invalid-fit warnings and 3MF layout integrity. Browser tests cover catalog routing, parameter/URL persistence, all three previews, exports, keyboard controls and mobile layout. Assertions do not establish physical strength.
 
 Workspace Export always exports the **selected variant with current dimensions**, even while viewing all eight or the installed section. The linked 3MF uses default assumed dimensions; regenerate it after changing source defaults. STL names identify the variant; downloaded STL coordinates are millimeters.
 
 Bambu Studio 02.06.00.51 imported the default 3MF and reported eight manifold, single-part meshes via `--info`; a 3MF re-export also succeeded. This validates import, not slicing settings or physical fit.
 
-The refreshed selected, variants and installed renders are generated programmatically with Bambu Studio CLI, using the current procedural meshes. The centerline side-section diagram remains valid because the apex and lower contact datums are unchanged.
+The refreshed selected, variants and installed renders are generated programmatically with Bambu Studio CLI, using the current procedural meshes. The section render is regenerated from the same assembly geometry.
