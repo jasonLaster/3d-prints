@@ -4,9 +4,9 @@ Parametric **prototype** for the supplied digital-frame specification. PLA Tough
 
 ## Contact geometry
 
-Frame coordinates: XY is the back of the frame; +Y is up; +Z points toward the wall. An assumed flat, closed slot roof is Y=0. The leg's top seats against that roof. Its underside is Y=−offset, where the screw shank bears. Relative to the same stationary wall screw, moving this contact downward by d raises the frame by d. The radius of the screw cancels: original screw center = −r, new center = −d−r, lift = d.
+Frame coordinates: XY is the back of the frame; +Y is up; +Z points toward the wall. The assumed closed slot roof is semicircular, with its apex at Y=0 and radius equal to half the narrow-slot width. The leg has a matching circular crown that seats against that roof. Its underside is Y=−offset, where the screw shank bears. Relative to the same stationary wall screw, moving this contact downward by d raises the frame by d. The radius of the screw cancels: original screw center = −r, new center = −d−r, lift = d.
 
-Proposed vertical load path: frame slot roof → insert top → insert underside → screw shank → wall. Tape retains and positions the insert and resists rotation or withdrawal. This path requires actual contact at the roof, not merely a leg somewhere in the opening. A rounded roof, flexible keyhole surround, insufficient bearing area, head interference or a loose insert can invalidate it. Frame weight and frame material are unknown; there is no load rating or measured creep result.
+Proposed vertical load path: frame slot roof → insert top → insert underside → screw shank → wall. Tape retains and positions the insert and resists rotation or withdrawal. This path requires actual contact at the roof, not merely a leg somewhere in the opening. A different roof radius or shape, a flexible keyhole surround, insufficient bearing area, head interference or a loose insert can invalidate it. Frame weight and frame material are unknown; there is no load rating or measured creep result.
 
 The viewer's Installed section uses the same tab and parameter values as its standalone view; only the frame and screw are section/assembly stand-ins. The side diagram uses those contact datums. Frame and screw never enter the STL export.
 
@@ -14,7 +14,9 @@ The viewer's Installed section uses the same tab and parameter values as its sta
 
 Known: pad 15.24 × 7.62 × 1.52 mm initial size; screw head 7.62 mm; exact increment 25.4/32 = 0.79375 mm; frame 20 × 11.75 inches; screws 5.75 inches apart. The requested approximate correction 3/16 inch selects variant 6 initially.
 
-**Assumed and editable:** slot 4.5 mm; wide opening 8.4 mm; entry center 14 mm below roof; 2 mm rim; 6 mm recess; 3.5 mm screw shank; 2 mm head thickness; 3 mm wall gap; 0.2 mm tape. Leg root 4.1 mm wide, tip 3.4 mm wide, 1.4 mm inward projection, 0.35 mm root fillet; total fit clearance 0.4 mm. The 14 mm entry drop keeps even variant 8's shank in the narrow portion of this assumed slot. Measure yours before fabrication.
+**Assumed and editable:** slot 4.5 mm; wide opening 8.4 mm; entry center 14 mm below roof; 2 mm rim; 6 mm recess; 3.5 mm screw shank; 2 mm head thickness; 3 mm wall gap; 0.2 mm tape. Leg root 3 mm wide, tip 2.3 mm wide, 1.4 mm inward projection, 0.35 mm root fillet; total fit clearance 0.4 mm. The circular crown uses the assumed 2.25 mm roof radius. Its apex stays at Y=0 and its flat underside at Y=−offset; rounding does not alter the eight hanging offsets. The smallest default tab retains approximately 0.221 mm at the root edge. Oversized widths are limited in the app so the crown fits without flattening.
+
+The 14 mm entry drop keeps even variant 8's shank in the narrow portion of this assumed slot. Measure yours before fabrication.
 
 The pad extends 0.6 mm below the contact datum, with at least 0.67 mm above the roof for default variant 8. Its back is flat except for the inward leg; apply tape on the surrounding wings, not across the leg. Tape thickness is included in the wall-space calculation and root depth. Bumps are rounded caps 0.9 mm across and 0.4 mm high, on the exposed pad face. No adhesive area or load capacity has been validated.
 
@@ -56,3 +58,5 @@ The authoritative procedural model is `src/models/keyholeLevelingTabs.ts`. It ge
 Workspace Export always exports the **selected variant with current dimensions**, even while viewing all eight or the installed section. The linked 3MF uses default assumed dimensions; regenerate it after changing source defaults. STL names identify the variant; downloaded STL coordinates are millimeters.
 
 Bambu Studio 02.06.00.51 imported the default 3MF and reported eight manifold, single-part meshes via `--info`; a 3MF re-export also succeeded. This validates import, not slicing settings or physical fit.
+
+The refreshed selected, variants and installed renders are generated programmatically with Bambu Studio CLI, using the current procedural meshes. The centerline side-section diagram remains valid because the apex and lower contact datums are unchanged.

@@ -169,6 +169,33 @@ try {
       close(g.boundingBox.min.z, -p.legDepth),
       `variant ${n}: short leg projects into negative frame Z`,
     );
+    const crownBaseY =
+      -s.crownRadius + Math.sqrt(s.crownRadius ** 2 - (s.tipWidth / 2) ** 2);
+    const crownVertices = [];
+    for (let i = 0; i < pos.count; i++) {
+      if (close(pos.getZ(i), -p.legDepth) && pos.getY(i) >= crownBaseY - 1e-6) {
+        crownVertices.push([pos.getX(i), pos.getY(i)]);
+      }
+    }
+    assert(
+      crownVertices.length >= 33 &&
+        crownVertices.every(([x, y]) =>
+          close(x * x + (y + s.crownRadius) ** 2, s.crownRadius ** 2, 0.00001),
+        ),
+      `variant ${n}: actual front crown vertices lie on the slot-roof circle`,
+    );
+    assert(
+      crownVertices.some(([x, y]) => close(x, 0) && close(y, 0)),
+      `variant ${n}: round crown preserves Y=0 apex`,
+    );
+    assert(
+      close(s.legWidth, 3) && close(s.crownRadius, p.keyholeSlotWidth / 2),
+      `variant ${n}: 3 mm root follows assumed roof radius`,
+    );
+    assert(
+      s.edgeHeight >= model.geometry.minimumLegEdgeHeight - 1e-8,
+      `variant ${n}: crown leaves a positive edge section`,
+    );
     const apex = new Set();
     for (let i = 0; i < pos.count; i++)
       if (close(pos.getZ(i), s.padMaxZ + p.bumpHeight))
@@ -178,6 +205,7 @@ try {
       `variant ${n}: mesh contains ${n} integrated bump apices`,
     );
     for (const key of [
+      "roundedCrown",
       "slotFit",
       "depthFit",
       "headEntry",
@@ -229,6 +257,30 @@ try {
       );
       g.dispose();
     }
+  // All eight variants must also remain manifold at a wide, shallow input.
+  for (let n = 1; n <= 8; n++) {
+    const p = { ...defaults, variant: n, legWidth: 4.1 };
+    const g = mod.createKeyholeTabCanonicalGeometry(p, model);
+    const info = analyzePosition(g.getAttribute("position"));
+    assert(
+      info.finite &&
+        info.nonManifoldEdges === 0 &&
+        info.degenerateTriangles === 0 &&
+        info.inconsistentEdges === 0,
+      `wide variant ${n}: invalid fit still produces valid inspectable geometry`,
+    );
+    if (n === 1)
+      assert(
+        mod.getKeyholeTabsAuditValue(
+          { key: "roundedCrown", label: "Circular leg crown" },
+          p,
+          "mm",
+          model,
+        ).status === "warn",
+        "flatter crown mismatch is exposed as a warning",
+      );
+    g.dispose();
+  }
   const invalid = {
     ...defaults,
     wideOpeningDiameter: 7.8,

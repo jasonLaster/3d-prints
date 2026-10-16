@@ -31,6 +31,23 @@ export function getKeyholeTabsSpec(
   const padBottom = -offset - m.geometry.edgeMargin;
   const legWidth = p.legWidth;
   const tipWidth = legWidth - 2 * m.geometry.rootRadius;
+  const slotRoofRadius = p.keyholeSlotWidth / 2;
+  const halfWidth = legWidth / 2;
+  const maximumCrownRise = offset - m.geometry.minimumLegEdgeHeight;
+  // A very wide, shallow input needs a flatter arc to remain a valid solid.
+  // The fit assertion exposes that mismatch with the actual slot roof.
+  const minimumCrownRadius =
+    maximumCrownRise >= halfWidth
+      ? halfWidth
+      : (halfWidth ** 2 + maximumCrownRise ** 2) / (2 * maximumCrownRise);
+  const crownRadius = Math.max(
+    slotRoofRadius,
+    halfWidth + 1e-6,
+    minimumCrownRadius,
+  );
+  const crownEdgeY =
+    -crownRadius + Math.sqrt(crownRadius ** 2 - halfWidth ** 2);
+  const edgeHeight = offset + crownEdgeY;
   const screwCenterY = -offset - p.screwShankDiameter / 2;
   const neckEndY =
     -p.openingCenterDrop +
@@ -49,6 +66,10 @@ export function getKeyholeTabsSpec(
     padTop: padBottom + p.padHeight,
     legWidth,
     tipWidth,
+    slotRoofRadius,
+    crownRadius,
+    crownEdgeY,
+    edgeHeight,
     legTop: 0,
     legBottom: -offset,
     legMinZ: -p.legDepth,
@@ -67,10 +88,7 @@ export function getKeyholeTabsSpec(
     neckSeatClearance: screwCenterY - p.screwShankDiameter / 2 - neckEndY,
     legHeadClearance: p.rimThickness + p.clearance / 2 - p.legDepth,
     recessHeadClearance:
-      p.keyholeDepth -
-      p.rimThickness -
-      p.clearance / 2 -
-      p.screwHeadThickness,
+      p.keyholeDepth - p.rimThickness - p.clearance / 2 - p.screwHeadThickness,
     wallClearance:
       p.wallGap - (p.tapeThickness + p.padThickness + p.bumpHeight),
     bearingWidth: Math.min(tipWidth, p.screwShankDiameter),
@@ -117,6 +135,41 @@ function circle(x: number, y: number, r: number, count: number): P2[] {
   );
 }
 
+// Circular crown follows the rounded slot roof, with a flat screw-contact edge.
+// Every fillet section shares this circle; the apex remains Y=0.
+export function getKeyholeLegProfile(
+  width: number,
+  offset: number,
+  crownRadius: number,
+): P2[] {
+  const halfWidth = width / 2;
+  const bottomRadius = Math.min(0.12, offset / 5);
+  const bottom = -offset;
+  const rightCorner = Array.from({ length: 7 }, (_, i) => {
+    const angle = -Math.PI / 2 + ((i / 6) * Math.PI) / 2;
+    return new THREE.Vector2(
+      halfWidth - bottomRadius + bottomRadius * Math.cos(angle),
+      bottom + bottomRadius + bottomRadius * Math.sin(angle),
+    );
+  });
+  const startAngle = Math.acos(halfWidth / crownRadius);
+  const crown = Array.from({ length: 33 }, (_, i) => {
+    const angle = startAngle + (i / 32) * (Math.PI - 2 * startAngle);
+    return new THREE.Vector2(
+      crownRadius * Math.cos(angle),
+      -crownRadius + crownRadius * Math.sin(angle),
+    );
+  });
+  const leftCorner = Array.from({ length: 7 }, (_, i) => {
+    const angle = Math.PI + ((i / 6) * Math.PI) / 2;
+    return new THREE.Vector2(
+      -halfWidth + bottomRadius + bottomRadius * Math.cos(angle),
+      bottom + bottomRadius + bottomRadius * Math.sin(angle),
+    );
+  });
+  return [...rightCorner, ...crown, ...leftCorner];
+}
+
 // Stitch the pad, root, leg and bump surfaces into ONE shell. No overlapping solids.
 export function createKeyholeTabCanonicalGeometry(
   p: ModelParams,
@@ -152,7 +205,7 @@ export function createKeyholeTabCanonicalGeometry(
     m.geometry.padCornerRadius,
   );
   const leg = (width: number) =>
-    roundedRectangle(width, -s.offset, s.offset, Math.min(0.12, s.offset / 5));
+    getKeyholeLegProfile(width, s.offset, s.crownRadius);
   const root = leg(s.legWidth);
   const centers = Array.from({ length: s.bumpCount }, (_, i) => ({
     x: ((i % 4) - 1.5) * 1.6,
@@ -284,8 +337,14 @@ export function createKeyholeTabsPreviewParts(
       -p.openingCenterDrop + radius * Math.sin(a),
     );
   }
-  shape.lineTo(-halfSlot, 0);
-  shape.lineTo(0, 0);
+  shape.lineTo(-halfSlot, -halfSlot);
+  for (let i = 1; i <= 24; i++) {
+    const angle = Math.PI - ((i / 24) * Math.PI) / 2;
+    shape.lineTo(
+      halfSlot * Math.cos(angle),
+      -halfSlot + halfSlot * Math.sin(angle),
+    );
+  }
   shape.lineTo(0, 9);
   shape.lineTo(-12, 9);
   shape.closePath();
@@ -374,8 +433,20 @@ export function getKeyholeTabsParameterLimits(
   key: string,
 ) {
   const limits = { ...getParameter(m, key).limits };
-  if (key === "legWidth")
-    limits.max = Math.min(limits.max, p.keyholeSlotWidth - p.clearance);
+  if (key === "legWidth") {
+    const spec = getKeyholeTabsSpec(p, m);
+    const rise = spec.offset - m.geometry.minimumLegEdgeHeight;
+    const maximumCrownWidth =
+      rise >= spec.slotRoofRadius
+        ? p.keyholeSlotWidth
+        : 2 *
+          Math.sqrt(Math.max(0, 2 * spec.slotRoofRadius * rise - rise ** 2));
+    limits.max = Math.min(
+      limits.max,
+      p.keyholeSlotWidth - p.clearance,
+      maximumCrownWidth,
+    );
+  }
   if (key === "legDepth")
     limits.max = Math.min(limits.max, p.rimThickness - 0.1);
   limits.max = Math.max(limits.min, limits.max);
@@ -405,9 +476,12 @@ export function getKeyholeTabsAuditValue(
         s.bumpCount === s.variant,
       );
     case "inward":
+      return item(`Z = −${p.legDepth.toFixed(2)} mm into frame`, s.legMinZ < 0);
+    case "roundedCrown":
       return item(
-        `Z = −${p.legDepth.toFixed(2)} mm into frame`,
-        s.legMinZ < 0,
+        `R ${s.crownRadius.toFixed(2)} mm circular crown · ${s.legWidth.toFixed(2)} mm root · assumed roof`,
+        Math.abs(s.crownRadius - s.slotRoofRadius) < 1e-6 &&
+          s.edgeHeight >= m.geometry.minimumLegEdgeHeight - 1e-8,
       );
     case "slotFit":
       return item(

@@ -4,6 +4,9 @@ import path from "node:path";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import {
   createKeyholeTabPrintGeometry,
+  getKeyholeLegProfile,
+  getKeyholeTabsSpec,
+  getKeyholeTabsParameterLimits,
   KEYHOLE_FRACTIONS,
 } from "../../src/models/keyholeLevelingTabs";
 import { getDefaultParams } from "../../src/models/shared";
@@ -211,15 +214,70 @@ for (const width of [393, 1440, 1920])
     });
   });
 
-
-test("catalog navigation clears tab parameters from the next model", async ({ page }) => {
+test("catalog navigation clears tab parameters from the next model", async ({
+  page,
+}) => {
   await page.goto(open("&variant=8&previewMode=2&legDepth=1.3"));
-  await expect(page.getByTestId("keyhole-lift")).toHaveText("Frame lift: +6.35000 mm");
-  await page.getByRole("button", { name: "Open Simple Box", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Simple Box", exact: true })).toBeVisible();
-  await expect.poll(() => new URL(page.url()).searchParams.get("variant")).toBeNull();
-  await expect.poll(() => new URL(page.url()).searchParams.get("previewMode")).toBeNull();
-  await expect.poll(() => new URL(page.url()).searchParams.get("legDepth")).toBeNull();
-  await page.getByRole("button", { name: "Open Keyhole Leveling Tabs", exact: true }).click();
-  await expect(page.getByTestId("keyhole-lift")).toHaveText("Frame lift: +4.76250 mm");
+  await expect(page.getByTestId("keyhole-lift")).toHaveText(
+    "Frame lift: +6.35000 mm",
+  );
+  await page
+    .getByRole("button", { name: "Open Simple Box", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Simple Box", exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("variant"))
+    .toBeNull();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("previewMode"))
+    .toBeNull();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("legDepth"))
+    .toBeNull();
+  await page
+    .getByRole("button", { name: "Open Keyhole Leveling Tabs", exact: true })
+    .click();
+  await expect(page.getByTestId("keyhole-lift")).toHaveText(
+    "Frame lift: +4.76250 mm",
+  );
+});
+
+test("circular crown follows the roof without changing the eight offsets", () => {
+  const defaults = getDefaultParams(model);
+  expect(defaults.legWidth).toBe(3);
+  for (let variant = 1; variant <= 8; variant++) {
+    const p = { ...defaults, variant };
+    const spec = getKeyholeTabsSpec(p, model);
+    expect(spec.crownRadius).toBeCloseTo(p.keyholeSlotWidth / 2, 8);
+    expect(spec.lift).toBeCloseTo((variant * 25.4) / 32, 8);
+    const profile = getKeyholeLegProfile(
+      spec.tipWidth,
+      spec.offset,
+      spec.crownRadius,
+    );
+    for (const point of profile.slice(7, 40))
+      expect(point.x ** 2 + (point.y + spec.crownRadius) ** 2).toBeCloseTo(
+        spec.crownRadius ** 2,
+        8,
+      );
+    expect(Math.max(...profile.map((point) => point.y))).toBeCloseTo(0, 8);
+    expect(Math.min(...profile.map((point) => point.y))).toBeCloseTo(
+      -spec.offset,
+      8,
+    );
+    expect(spec.edgeHeight).toBeGreaterThanOrEqual(
+      model.geometry.minimumLegEdgeHeight,
+    );
+  }
+});
+
+test("circular crown width limits prevent a shallow tab from flattening the roof", () => {
+  const p = { ...getDefaultParams(model), variant: 1, legWidth: 4.1 };
+  const limits = getKeyholeTabsParameterLimits(model, p, "legWidth");
+  expect(limits.max).toBeLessThan(4.1);
+  expect(limits.max).toBeGreaterThan(3);
+  const spec = getKeyholeTabsSpec({ ...p, legWidth: limits.max }, model);
+  expect(spec.crownRadius).toBeCloseTo(p.keyholeSlotWidth / 2, 8);
 });

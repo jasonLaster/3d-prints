@@ -1,5 +1,5 @@
 // Keyhole leveling tabs — parametric prototype, millimeters.
-// XY = frame back, +Z = wall. Closed flat slot roof is at Y=0.
+// XY = frame back, +Z = wall. Rounded slot roof apex is at Y=0.
 // Supplied specification: PLA Tough and PETG are acceptable.
 // Measurements and a physical load test remain required.
 variant = 6;                  // [1:8]
@@ -8,7 +8,7 @@ print_orientation = true;
 pad_width = 15.24;
 pad_height = 7.62;
 pad_thickness = 1.52;
-leg_width = 4.1;
+leg_width = 3;
 leg_depth = 1.4;
 keyhole_slot_width = 4.5;       // assumed
 keyhole_depth = 6;             // assumed recess depth
@@ -29,8 +29,16 @@ module rounded_rect(w, h, r) {
   translate([-w/2+r, r])
     hull() for(x=[0,w-2*r], y=[0,h-2*r]) translate([x,y]) circle(r=r);
 }
+function crown_radius(offset) =
+  let(a=leg_width/2, rise=offset-.16)
+    max(keyhole_slot_width/2,a+.000001,rise>=a?a:(a*a+rise*rise)/(2*rise));
 module leg_slice(w, offset) {
-  translate([0,-offset]) rounded_rect(w,offset,min(.12,offset/5));
+  a=w/2; r=min(.12,offset/5); R=crown_radius(offset); start=acos(a/R);
+  polygon(concat(
+    [for(i=[0:6]) let(t=-90+i/6*90) [a-r+r*cos(t),-offset+r+r*sin(t)]],
+    [for(i=[0:32]) let(t=start+i/32*(180-2*start)) [R*cos(t),-R+R*sin(t)]],
+    [for(i=[0:6]) let(t=180+i/6*90) [-a+r+r*cos(t),-offset+r+r*sin(t)]]
+  ));
 }
 module tab(n) {
   leg_contact_offset = -n * 25.4/32;
@@ -40,6 +48,7 @@ module tab(n) {
   tip_width = leg_width-2*root_radius;
   assert(n>=1 && n<=8 && n==floor(n));
   assert(leg_width+clearance<=keyhole_slot_width+0.000001,"Leg too wide");
+  assert(abs(crown_radius(offset)-keyhole_slot_width/2)<.00001,"Crown does not match slot roof; reduce width");
   assert(leg_depth<rim_thickness,"Leg intersects screw-head plane");
   assert(pad_height>offset+2*edge_margin,"Pad lacks roof overlap");
   assert(wide_opening_diameter>=screw_head_diameter+clearance,"Entry too narrow");

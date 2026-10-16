@@ -354,6 +354,7 @@ export type KeyholeTabsModelDefinition = BaseModelDefinition & {
   geometry: {
     mainAxis: { x: number; y: number; z: number };
     incrementMm: number;
+    minimumLegEdgeHeight: number;
     padCornerRadius: number;
     edgeMargin: number;
     rootRadius: number;

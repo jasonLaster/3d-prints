@@ -67,7 +67,7 @@
     {
       "key": "legWidth",
       "label": "Leg root width",
-      "default": 4.1,
+      "default": 3,
       "limits": {
         "min": 2.8,
         "max": 6,
@@ -229,7 +229,8 @@
     "plateGap": 5,
     "safeBuildPlateSpan": 250,
     "dimensionsConfirmed": false,
-    "physicalLoadTestPassed": false
+    "physicalLoadTestPassed": false,
+    "minimumLegEdgeHeight": 0.16
   },
   "materials": [
     "PLA Tough",
@@ -241,14 +242,16 @@
       "Offsets: n \u00d7 25.4 / 32 mm for n = 1\u20268",
       "Pad: 15.24 \u00d7 7.62 \u00d7 1.52 mm by default",
       "Leg projects into negative frame Z; frame lift equals the downward contact shift",
-      "The default plate has eight separate parts grounded at print Z=0"
+      "The default plate has eight separate parts grounded at print Z=0",
+      "The inward leg has a circular crown matching the assumed slot roof radius; root width defaults to 3 mm"
     ],
     "invariants": [
       "One fixed solid per variant, with n integrated tactile bumps",
       "Closed slot top \u2192 insert \u2192 screw shank carries the vertical load only if contact is achieved",
       "Pad, leg, bumps, exports and preview share one procedural model",
       "Unmeasured fit and physical load validation remain pending",
-      "Screw and sectioned frame are preview-only and never included in exports"
+      "Screw and sectioned frame are preview-only and never included in exports",
+      "The circular crown apex stays at Y=0 and its flat screw-contact edge stays at Y=-offset"
     ],
     "checks": [
       {
@@ -262,6 +265,10 @@
       {
         "key": "inward",
         "label": "Inward projection"
+      },
+      {
+        "key": "roundedCrown",
+        "label": "Circular leg crown"
       },
       {
         "key": "slotFit",
