@@ -412,18 +412,8 @@ export function getKeyholeTabsParameterLimits(
 ) {
   const limits = { ...getParameter(m, key).limits };
   if (key === "legWidth") {
-    const spec = getKeyholeTabsSpec(p, m);
-    const rise = spec.offset - m.geometry.minimumLegEdgeHeight;
-    const maximumCrownWidth =
-      rise >= spec.slotRoofRadius
-        ? p.keyholeSlotWidth
-        : 2 *
-          Math.sqrt(Math.max(0, 2 * spec.slotRoofRadius * rise - rise ** 2));
-    limits.max = Math.min(
-      limits.max,
-      p.keyholeSlotWidth - p.clearance,
-      maximumCrownWidth,
-    );
+    // Preserve the requested width; shallow crown mismatch is a visible fit warning.
+    limits.max = Math.min(limits.max, p.keyholeSlotWidth - p.clearance);
   }
   if (key === "legDepth")
     limits.max = Math.min(limits.max, p.rimThickness - 0.1);
@@ -462,7 +452,9 @@ export function getKeyholeTabsAuditValue(
       );
     case "roundedCrown":
       return item(
-        `R ${s.crownRadius.toFixed(2)} mm circular crown · ${s.legWidth.toFixed(2)} mm root · assumed roof`,
+        Math.abs(s.crownRadius - s.slotRoofRadius) < 1e-6
+          ? `R ${s.crownRadius.toFixed(2)} mm circular crown · ${s.legWidth.toFixed(2)} mm root · assumed roof`
+          : `R ${s.crownRadius.toFixed(2)} mm crown differs from assumed R ${s.slotRoofRadius.toFixed(2)} mm roof · reduce root width or verify fit`,
         Math.abs(s.crownRadius - s.slotRoofRadius) < 1e-6 &&
           s.edgeHeight >= m.geometry.minimumLegEdgeHeight - 1e-8,
       );

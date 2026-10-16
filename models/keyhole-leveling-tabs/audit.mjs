@@ -144,6 +144,20 @@ try {
       !model.geometry.physicalLoadTestPassed,
     "unmeasured geometry and physical load test remain pending",
   );
+  assert(
+    close(defaults.padWidth, 15.24 * 1.5) &&
+      close(defaults.padHeight, 7.62 * 1.5) &&
+      close(defaults.padThickness, 1.52),
+    "pad footprint is 50 percent wider and taller with unchanged thickness",
+  );
+  assert(
+    mod.getKeyholeTabsParameterLimits(
+      model,
+      { ...defaults, variant: 1 },
+      "legWidth",
+    ).max >= 4,
+    "smallest variant retains requested 4 mm root without silent narrowing",
+  );
   const loader = new STLLoader();
   for (let n = 1; n <= 8; n++) {
     const p = { ...defaults, variant: n },
@@ -189,8 +203,11 @@ try {
       `variant ${n}: round crown preserves Y=0 apex`,
     );
     assert(
-      close(s.legWidth, 3) && close(s.crownRadius, p.keyholeSlotWidth / 2),
-      `variant ${n}: 3 mm root follows assumed roof radius`,
+      close(s.legWidth, 4) &&
+        (n === 1
+          ? s.crownRadius > s.slotRoofRadius
+          : close(s.crownRadius, s.slotRoofRadius)),
+      `variant ${n}: 4 mm root is preserved with explicit shallow-crown handling`,
     );
     assert(
       s.edgeHeight >= model.geometry.minimumLegEdgeHeight - 1e-8,
@@ -211,8 +228,8 @@ try {
     ])
       assert(
         mod.getKeyholeTabsAuditValue({ key, label: key }, p, "mm", model)
-          .status === "pass",
-        `variant ${n}: ${key} passes for assumed dimensions`,
+          .status === (key === "roundedCrown" && n === 1 ? "warn" : "pass"),
+        `variant ${n}: ${key} has the expected fit status`,
       );
     const printed = mod.createKeyholeTabPrintGeometry(p, model);
     const bounds = printable(printed, `printed ${n}`).bounds;

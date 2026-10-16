@@ -7,6 +7,7 @@ import {
   getKeyholeLegProfile,
   getKeyholeTabsSpec,
   getKeyholeTabsParameterLimits,
+  getKeyholeTabsAuditValue,
   KEYHOLE_FRACTIONS,
 } from "../../src/models/keyholeLevelingTabs";
 import { getDefaultParams } from "../../src/models/shared";
@@ -248,11 +249,25 @@ test("catalog navigation clears tab parameters from the next model", async ({
 
 test("circular crown follows the roof without changing the eight offsets", () => {
   const defaults = getDefaultParams(model);
-  expect(defaults.legWidth).toBe(3);
+  expect(defaults.legWidth).toBe(4);
+  expect(defaults.padWidth).toBe(22.86);
+  expect(defaults.padHeight).toBe(11.43);
+  expect(defaults.padThickness).toBe(1.52);
   for (let variant = 1; variant <= 8; variant++) {
     const p = { ...defaults, variant };
     const spec = getKeyholeTabsSpec(p, model);
-    expect(spec.crownRadius).toBeCloseTo(p.keyholeSlotWidth / 2, 8);
+    expect(spec.legWidth).toBe(4);
+    if (variant === 1)
+      expect(spec.crownRadius).toBeGreaterThan(spec.slotRoofRadius);
+    else expect(spec.crownRadius).toBeCloseTo(p.keyholeSlotWidth / 2, 8);
+    expect(
+      getKeyholeTabsAuditValue(
+        { key: "roundedCrown", label: "Crown" },
+        p,
+        "mm",
+        model,
+      ).status,
+    ).toBe(variant === 1 ? "warn" : "pass");
     expect(spec.lift).toBeCloseTo((variant * 25.4) / 32, 8);
     const profile = getKeyholeLegProfile(
       spec.tipWidth,
@@ -275,13 +290,23 @@ test("circular crown follows the roof without changing the eight offsets", () =>
   }
 });
 
-test("circular crown width limits prevent a shallow tab from flattening the roof", () => {
-  const p = { ...getDefaultParams(model), variant: 1, legWidth: 4.1 };
+test("circular crown warning preserves the requested 4 mm shallow root", () => {
+  const p = { ...getDefaultParams(model), variant: 1 };
   const limits = getKeyholeTabsParameterLimits(model, p, "legWidth");
-  expect(limits.max).toBeLessThan(4.1);
-  expect(limits.max).toBeGreaterThan(3);
-  const spec = getKeyholeTabsSpec({ ...p, legWidth: limits.max }, model);
-  expect(spec.crownRadius).toBeCloseTo(p.keyholeSlotWidth / 2, 8);
+  expect(limits.max).toBeGreaterThanOrEqual(4);
+  const spec = getKeyholeTabsSpec(p, model);
+  expect(spec.legWidth).toBe(4);
+  expect(spec.crownRadius).toBeGreaterThan(spec.slotRoofRadius);
+  const item = getKeyholeTabsAuditValue(
+    { key: "roundedCrown", label: "Crown" },
+    p,
+    "mm",
+    model,
+  );
+  expect(item.status).toBe("warn");
+  expect(item.value).toContain("differs from assumed");
+  const narrower = getKeyholeTabsSpec({ ...p, legWidth: 3 }, model);
+  expect(narrower.crownRadius).toBeCloseTo(narrower.slotRoofRadius, 8);
 });
 
 test("flat pad rests on bed with the inward leg up for all eight variants", () => {

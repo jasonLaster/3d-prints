@@ -12,15 +12,15 @@ The viewer's Installed section uses the same tab and parameter values as its sta
 
 ## Dimensions and custody
 
-Known: pad 15.24 × 7.62 × 1.52 mm initial size; screw head 7.62 mm; exact increment 25.4/32 = 0.79375 mm; frame 20 × 11.75 inches; screws 5.75 inches apart. The requested approximate correction 3/16 inch selects variant 6 initially.
+Known: original pad 15.24 × 7.62 × 1.52 mm; current requested pad 22.86 × 11.43 × 1.52 mm; screw head 7.62 mm; exact increment 25.4/32 = 0.79375 mm; frame 20 × 11.75 inches; screws 5.75 inches apart. The requested approximate correction 3/16 inch selects variant 6 initially.
 
-**Assumed and editable:** slot 4.5 mm; wide opening 8.4 mm; entry center 14 mm below roof; 2 mm rim; 6 mm recess; 3.5 mm screw shank; 2 mm head thickness; 3 mm wall gap; 0.2 mm tape. Leg root 3 mm wide, tip 2.3 mm wide, 1.4 mm inward projection, 0.35 mm root fillet; total fit clearance 0.4 mm. The circular crown uses the assumed 2.25 mm roof radius. Its apex stays at Y=0 and its flat underside at Y=−offset; rounding does not alter the eight hanging offsets. The smallest default tab retains approximately 0.221 mm at the root edge. Oversized widths are limited in the app so the crown fits without flattening.
+**Assumed and editable:** slot 4.5 mm; wide opening 8.4 mm; entry center 14 mm below roof; 2 mm rim; 6 mm recess; 3.5 mm screw shank; 2 mm head thickness; 3 mm wall gap; 0.2 mm tape. Leg root 4 mm wide, tip 3.3 mm wide, 1.4 mm inward projection, 0.35 mm root fillet; total fit clearance 0.4 mm. Variants 2–8 use the assumed 2.25 mm roof radius. The shallowest 1/32-inch variant uses a flatter circular crown to keep a valid 4 mm root and displays a roof-fit warning; verify that fit or reduce its root width. Its apex stays at Y=0 and its flat underside at Y=−offset; rounding does not alter the eight hanging offsets. The smallest default tab retains 0.16 mm at the root edge. Requested root widths are retained within slot-clearance limits; incompatible crown radii remain visible as warnings.
 
 The 14 mm entry drop keeps even variant 8's shank in the narrow portion of this assumed slot. Measure yours before fabrication.
 
-The pad's lower edge is aligned with the leg's flat screw-contact face in frame coordinates. The pad extends at least 1.27 mm above the roof for default variant 8. Its back is flat except for the inward leg; apply tape on the surrounding wings, not across the leg. Tape thickness is included in the wall-space calculation and root depth. Identification bumps have been removed at the user’s request. The exposed outer pad face is completely flat. No adhesive area or load capacity has been validated.
+The pad's lower edge is aligned with the leg's flat screw-contact face in frame coordinates. The pad extends at least 5.08 mm above the roof for default variant 8. Its back is flat except for the inward leg; apply tape on the surrounding wings, not across the leg. Tape thickness is included in the wall-space calculation and root depth. Identification bumps have been removed at the user’s request. The exposed outer pad face is completely flat. No adhesive area or load capacity has been validated.
 
-The supplied text is preserved in `models/keyhole-leveling-tabs/reference/design-specification.txt`. Later user corrections accept PLA Tough alongside PETG, use a 3 mm root and rounded inward crown, remove identification bumps, and place the flat outer pad face on the bed. These assumed dimensions are design inputs, not measurements from that source.
+The supplied text is preserved in `models/keyhole-leveling-tabs/reference/design-specification.txt`. Later user corrections accept PLA Tough alongside PETG, use a rounded inward crown, enlarge the pad width and height by 50% to 22.86 × 11.43 mm while keeping 1.52 mm thickness, and use a 4 mm root, remove identification bumps, and place the flat outer pad face on the bed. These assumed dimensions are design inputs, not measurements from that source.
 
 | Variant | Inches | Exact offset mm |
 |---|---|---|
@@ -39,7 +39,7 @@ Each tab is one fixed piece. Choosing a different variant changes its screw cont
 
 Bambu Lab P2S, standard 0.4 mm nozzle; start at 0.12 mm layer height, 4 walls, 100% infill. Use the filament maker's profile for PLA Tough or PETG. No heat resistance or long-term load claim is made.
 
-The plate places the full smooth outer pad face on print Z=0, with the inward leg pointing upward. Each default tab has approximately 115.2 mm² of bed contact. Identify offsets by their STL filenames and the 4 × 2 plate order (variants 1–4, then 5–8). Inspect root layers and extrusion in the slicer. All eight fit within a conservative 250 × 250 mm envelope. The 3MF contains eight separate mesh objects in millimeters; it is geometry-only, with no printer, filament, support or slicing profile baked in.
+The plate places the full smooth outer pad face on print Z=0, with the inward leg pointing upward. Each default tab has approximately 260.4 mm² of bed contact. Identify offsets by their STL filenames and the 4 × 2 plate order (variants 1–4, then 5–8). Inspect root layers and extrusion in the slicer. All eight fit within a conservative 250 × 250 mm envelope. The 3MF contains eight separate mesh objects in millimeters; it is geometry-only, with no printer, filament, support or slicing profile baked in.
 
 1. Measure slot width, roof shape, rim/recess depth, entry diameter/drop, screw shank/head thickness, wall projection, available adhesive area, frame weight and surrounding material.
 2. Set these dimensions in the app. Check every fit assertion; do not use a tab with a fit warning.

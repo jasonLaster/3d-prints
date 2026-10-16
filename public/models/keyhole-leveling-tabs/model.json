@@ -37,20 +37,20 @@
     {
       "key": "padWidth",
       "label": "Pad width",
-      "default": 15.24,
+      "default": 22.86,
       "limits": {
         "min": 12,
-        "max": 22,
+        "max": 33,
         "step": 0.1
       }
     },
     {
       "key": "padHeight",
       "label": "Pad height",
-      "default": 7.62,
+      "default": 11.43,
       "limits": {
         "min": 7.62,
-        "max": 14,
+        "max": 21,
         "step": 0.1
       }
     },
@@ -67,7 +67,7 @@
     {
       "key": "legWidth",
       "label": "Leg root width",
-      "default": 3,
+      "default": 4,
       "limits": {
         "min": 2.8,
         "max": 6,
@@ -217,10 +217,10 @@
     "toleranceMm": 0.0001,
     "dimensionTargets": [
       "Offsets: n \u00d7 25.4 / 32 mm for n = 1\u20268",
-      "Pad: 15.24 \u00d7 7.62 \u00d7 1.52 mm by default",
+      "Pad: 22.86 \u00d7 11.43 \u00d7 1.52 mm by default",
       "Leg projects into negative frame Z; frame lift equals the downward contact shift",
       "The default plate has eight separate parts grounded at print Z=0",
-      "The inward leg has a circular crown matching the assumed slot roof radius; root width defaults to 3 mm"
+      "The inward leg has a circular crown matching the assumed slot roof radius; root width defaults to 4 mm; the shallowest variant warns when that roof cannot be matched"
     ],
     "invariants": [
       "One fixed solid per variant, with a smooth outer pad face",

@@ -5,10 +5,10 @@
 variant = 6;                  // [1:8]
 all_variants = false;
 print_orientation = true;
-pad_width = 15.24;
-pad_height = 7.62;
+pad_width = 22.86;
+pad_height = 11.43;
 pad_thickness = 1.52;
-leg_width = 3;
+leg_width = 4;
 leg_depth = 1.4;
 keyhole_slot_width = 4.5;       // assumed
 keyhole_depth = 6;             // assumed recess depth
@@ -45,7 +45,7 @@ module tab(n) {
   tip_width = leg_width-2*root_radius;
   assert(n>=1 && n<=8 && n==floor(n));
   assert(leg_width+clearance<=keyhole_slot_width+0.000001,"Leg too wide");
-  assert(abs(crown_radius(offset)-keyhole_slot_width/2)<.00001,"Crown does not match slot roof; reduce width");
+  if(abs(crown_radius(offset)-keyhole_slot_width/2)>=.00001) echo("FIT WARNING: crown differs from assumed slot roof; reduce width or verify fit");
   assert(leg_depth<rim_thickness,"Leg intersects screw-head plane");
   assert(pad_height>offset+2*edge_margin,"Pad lacks roof overlap");
   assert(wide_opening_diameter>=screw_head_diameter+clearance,"Entry too narrow");
