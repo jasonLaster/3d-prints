@@ -10,6 +10,11 @@ more STL files.
 
 Current models:
 
+- `keyhole-leveling-tabs`
+  - Eight fixed offsets in exact 1/32-inch increments; PLA Tough or PETG.
+  - [Model notes](public/models/keyhole-leveling-tabs/README.md), STL set, 3MF plate and parametric source.
+  - Audit: `npm run audit -- keyhole-leveling-tabs`; physical fit and load validation pending.
+
 - `paper-towel-holder`
   - STL: `public/models/paper-towel-holder/paper-towel-holder.stl`
   - Config: `public/models/paper-towel-holder/model.json`

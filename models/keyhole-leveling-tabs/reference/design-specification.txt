@@ -1,0 +1,277 @@
+# Design Specification: 3D-Printed Keyhole Leveling Tabs
+
+## 1. Objective
+
+Design a family of miniature, 3D-printable leveling tabs for a wall-mounted digital picture frame.
+
+The frame hangs from two screws using keyhole-shaped mounting slots on its back. One side hangs slightly lower than the other.
+
+The tabs should allow the user to raise one side of the frame in precise **1/32-inch increments**, without relocating the wall screws or modifying the frame.
+
+**Deliverable:** A set of eight individual STL files, a parametric source model, and a combined print plate compatible with Bambu Studio and the Bambu Lab P2S.
+
+## 2. Mechanical Concept
+
+Each tab is a single, rigid, T-shaped component consisting of:
+
+1. **Adhesive mounting pad:** A thin rectangular plate that attaches to the back of the frame using double-sided tape.
+2. **Short inward-facing leg:** A small protrusion extending from the mounting pad into the existing keyhole opening.
+3. **Load-bearing contact surface:** The leg creates a new contact point for the screw, changing the height at which the frame hangs.
+4. **Identification bumps:** Small raised dots on the exposed face of the mounting pad identify the tab's offset.
+
+### Important mechanical requirements
+
+- The leg must be **very short and compact**.
+- The leg projects inward into the keyhole, rather than extending outward toward the wall.
+- The tab must not obstruct insertion of the 0.30-inch screw head through the keyhole's wider opening.
+- The load-bearing leg must engage the keyhole geometry and transfer the frame's weight reliably.
+- The adhesive pad primarily retains and positions the tab; the design should not depend solely on tape peel strength.
+- The tab must not interfere with the frame sitting close to the wall.
+- The leg and pad should form a single printed component, with a filleted transition to reduce stress concentration.
+
+### Coordinate system
+
+Use the back of the frame as the XY plane:
+
+- X: Horizontal across the frame.
+- Y: Vertical, positive upward.
+- Z: Perpendicular to the frame, positive toward the wall.
+
+The adhesive pad lies in the XY plane. The leg projects into the keyhole recess in the negative Z direction.
+
+The exact contact geometry must be determined from the actual keyhole dimensions. Do not assume that a simple vertical extension automatically produces the desired hanging offset.
+
+## 3. Known Measurements
+
+| Parameter | Value |
+|---|---|
+| Frame width | 20 inches |
+| Frame height | 11.75 inches |
+| Distance between mounting screws | 5.75 inches |
+| Screw-head diameter | 0.30 inches (7.62 mm) |
+| Estimated leveling correction | Approximately 3/16 inch |
+| Desired adjustment resolution | 1/32 inch (0.79375 mm) |
+| Printer | Bambu Lab P2S |
+| Nozzle | Standard 0.4 mm |
+
+### Dimensions requiring confirmation
+
+- Narrow keyhole slot width.
+- Keyhole recess depth.
+- Wide opening diameter.
+- Distance between the top of the narrow slot and the wide opening.
+- Screw shank diameter.
+- Screw-head projection from the wall.
+- Available flat adhesive area around the keyhole.
+- Frame weight and material surrounding the keyhole.
+
+These dimensions should remain configurable until verified.
+
+## 4. Parametric Tab Geometry
+
+### Adhesive pad
+
+Initial dimensions (adjustable):
+
+- Width: 0.60 inches (15.24 mm).
+- Height: 0.30 inches (7.62 mm).
+- Thickness: 0.06 inches (1.52 mm).
+- Corner radius: 1 mm.
+- Flat rear surface suitable for double-sided adhesive tape.
+
+The pad should be as small and unobtrusive as practical.
+
+### Inward-facing leg
+
+The leg should:
+
+- Be centered horizontally relative to the adhesive pad.
+- Fit inside the narrow keyhole slot with appropriate clearance.
+- Project only as far into the recess as needed to engage the load-bearing geometry.
+- Use rounded edges and a reinforced root.
+- Provide the desired vertical offset without blocking the screw head.
+
+**Critical:** Vary the leg's effective contact position, not merely its overall physical size.
+
+A longer or thicker leg is acceptable only if it changes the hanging position in the intended direction.
+
+### Offset variants
+
+Generate eight distinct, fixed-geometry tabs:
+
+| Variant | Offset (inches) | Offset (mm) | Bumps |
+|---|---|---|---|
+| 1 | 1/32 | 0.794 | 1 |
+| 2 | 1/16 | 1.588 | 2 |
+| 3 | 3/32 | 2.381 | 3 |
+| 4 | 1/8 | 3.175 | 4 |
+| 5 | 5/32 | 3.969 | 5 |
+| 6 | 3/16 | 4.763 | 6 |
+| 7 | 7/32 | 5.556 | 7 |
+| 8 | 1/4 | 6.350 | 8 |
+
+Each tab must be a single fixed-height piece.
+
+**Do not design an adjustable, sliding, ratcheting, or interchangeable mechanism.**
+
+## 5. Identification Bumps
+
+Each tab should have a unique number of tactile bumps corresponding to its position in the series.
+
+Requirements:
+
+- 1 bump for the smallest offset, 8 bumps for the largest.
+- Raised hemispherical or rounded cylindrical dots.
+- Approximately 0.8–1.0 mm diameter.
+- Approximately 0.4 mm protrusion.
+- Arrange in a compact, consistent grid.
+- Bumps must not interfere with adhesive placement or keyhole engagement.
+- Keep bumps on the visible, non-adhesive face.
+
+The bumps should be identifiable by sight and touch.
+
+## 6. Materials and Printing
+
+### Printer
+
+Bambu Lab P2S with a 0.4 mm nozzle.
+
+### Preferred material
+
+PETG, for toughness and resistance to brittle fracture.
+
+### Suggested print settings
+
+- Layer height: 0.12 mm.
+- Walls: 4.
+- Infill: 100% for these small components.
+- Supports: Avoid where possible.
+- Brim: Optional.
+- Orient to maximize strength at the leg-to-pad junction.
+
+The CAD agent should evaluate print orientation so that the leg does not fail through weak interlayer adhesion.
+
+All eight variants should fit on a single print plate.
+
+### Dimensional accuracy
+
+Model the offsets at their exact metric equivalents.
+
+Use Bambu Studio's normal layer quantization and dimensional compensation as appropriate. Verify actual contact heights after printing.
+
+## 7. Structural and Fit Requirements
+
+The agent must evaluate:
+
+1. Whether the leg engages the keyhole securely.
+2. Whether the screw head can still enter and seat properly.
+3. Whether the tab is mechanically retained by the keyhole or depends on adhesive to support the frame.
+4. Whether the adhesive is loaded in shear or peel.
+5. Whether the screw head and shank contact the intended surfaces.
+6. Whether the tab can slip, rotate, deform, or disengage during use.
+
+If the proposed geometry relies on tape to support the full frame weight, explicitly flag this and revise the design toward positive mechanical retention.
+
+Do not assume the keyhole supports the tab merely because the leg sits inside the opening.
+
+## 8. CAD Implementation
+
+Use a parametric modeling system such as:
+
+- OpenSCAD, preferred for reproducible scripted geometry.
+- CadQuery, acceptable alternative.
+
+Expose parameters for:
+
+- `pad_width`
+- `pad_height`
+- `pad_thickness`
+- `leg_width`
+- `leg_depth`
+- `leg_contact_offset`
+- `keyhole_slot_width`
+- `keyhole_depth`
+- `screw_head_diameter`
+- `screw_shank_diameter`
+- `clearance`
+- `bump_count`
+- `bump_diameter`
+- `bump_height`
+
+All dimensions should be modeled internally in millimeters.
+
+Use one shared model function to generate all eight variants.
+
+## 9. Deliverables
+
+Create the following files:
+
+```text
+keyhole-leveling-tabs/
+├── README.md
+├── src/
+│   └── keyhole_tab.scad
+├── stl/
+│   ├── tab_01_1-32.stl
+│   ├── tab_02_1-16.stl
+│   ├── tab_03_3-32.stl
+│   ├── tab_04_1-8.stl
+│   ├── tab_05_5-32.stl
+│   ├── tab_06_3-16.stl
+│   ├── tab_07_7-32.stl
+│   └── tab_08_1-4.stl
+├── print/
+│   └── all_variants.3mf
+└── renders/
+    ├── variants.png
+    ├── installed.png
+    └── cross_section.png
+```
+
+The 3MF should contain all eight correctly positioned models, ready to slice.
+
+The README should explain dimensions, installation, printing, and how to customize the design.
+
+## 10. Acceptance Criteria
+
+The design is complete when:
+
+- Eight distinct offsets are generated in exact 1/32-inch increments.
+- Every tab has the correct number of identification bumps.
+- The leg is short and projects inward into the keyhole.
+- The adhesive pad remains low-profile.
+- The screw-head clearance is preserved.
+- The tab creates the intended vertical displacement.
+- The CAD model is fully parametric.
+- All STL meshes are manifold.
+- The files import successfully into Bambu Studio.
+- The design includes a clear installed cross-section showing the actual load path.
+- A physical test confirms that the tab supports the frame securely without relying on an unverified adhesive joint.
+
+## 11. Development Sequence
+
+**Phase 1 — Geometry validation**
+
+Create a dimensioned cross-section of the original keyhole, wall screw, and proposed tab. Establish how the new contact point changes the frame's vertical position.
+
+Do not finalize the load-bearing leg before validating this geometry.
+
+**Phase 2 — Prototype**
+
+Generate three prototypes: 1/32", 3/16", and 1/4".
+
+Verify fit, installation clearance, and actual offset.
+
+**Phase 3 — Production set**
+
+Generate all eight variants, identification bumps, STL files, and the combined 3MF print plate.
+
+**Phase 4 — Documentation**
+
+Provide renders, installation instructions, measured tolerances, and the complete parametric source.
+
+### Design priority
+
+Favor **minimal size, simple geometry, positive mechanical engagement, accurate height offsets, and reliable 3D printing** over visual complexity.
+
+The finished product should resemble a tiny adhesive-backed T-shaped insert, not a conventional picture hanger or a large adjustable bracket.

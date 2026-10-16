@@ -1,3 +1,18 @@
+import {
+  getKeyholeTabsAuditValue,
+  getKeyholeTabsDimensions,
+  getKeyholeTabsParameterLimits,
+  getKeyholeTabsSpec,
+} from "./keyholeLevelingTabs";
+export {
+  createKeyholeTabsGeometry,
+  createKeyholeTabPrintGeometry,
+  createKeyholeTabsPreviewParts,
+  getKeyholeTabsSpec,
+  updateKeyholeTabsGuide,
+  KEYHOLE_FRACTIONS,
+  keyholeVariantName,
+} from "./keyholeLevelingTabs";
 import { formatLength, toUnit } from "../units";
 import {
   getHolderAuditValue,
@@ -237,6 +252,9 @@ function getAuditValue(
   unit: LengthUnit,
   model: ModelDefinition,
 ): AuditItem {
+  if (model.viewer === "keyhole-leveling-tabs-v1") {
+    return getKeyholeTabsAuditValue(check, params, unit, model);
+  }
   if (model.viewer === "door-lock-adapter-v1") {
     return getDoorLockAdapterAuditValue(check, params, unit, model);
   }
@@ -296,6 +314,9 @@ export function getParameterLimits(
   params: ModelParams,
   key: string,
 ): NumberLimits {
+  if (model.viewer === "keyhole-leveling-tabs-v1") {
+    return getKeyholeTabsParameterLimits(model, params, key);
+  }
   if (model.viewer === "door-lock-adapter-v1") {
     return getDoorLockAdapterParameterLimits(model, params, key);
   }
@@ -344,6 +365,9 @@ export function getModelDimensions(
   model: ModelDefinition,
   params: ModelParams,
 ): ModelDimensions {
+  if (model.viewer === "keyhole-leveling-tabs-v1") {
+    return getKeyholeTabsDimensions(params, model);
+  }
   if (model.viewer === "door-lock-adapter-v1") {
     return getDoorLockAdapterDimensions(params);
   }
@@ -393,6 +417,15 @@ export function getStatusItems(
   params: ModelParams,
   unit: LengthUnit,
 ) {
+  if (model.viewer === "keyhole-leveling-tabs-v1") {
+    const spec = getKeyholeTabsSpec(params, model);
+    return [
+      `Lift +${spec.offset.toFixed(5)} mm`,
+      `${spec.bumpCount} identification bumps`,
+      "PLA Tough / PETG",
+      "Prototype · measurements pending",
+    ];
+  }
   if (
     model.viewer === "dining-table-v1" ||
     model.viewer === "hover-dining-table-v1"

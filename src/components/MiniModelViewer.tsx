@@ -17,6 +17,7 @@ import {
   createDrillBitHolderGeometry,
   createMetricNutKnobGeometry,
   createMiterRunnerWedgeGeometry,
+  createKeyholeTabsGeometry,
   createPipeClampBedGeometry,
   createPipeClampBedPreviewParts,
   createRouterMortiseJigGuideGeometry,
@@ -230,6 +231,11 @@ function createPreviewObject(
     createPipeClampBedPreviewParts(params, definition).forEach((part) => {
       group.add(new THREE.Mesh(part.geometry, metalMaterial));
     });
+  } else if (definition.viewer === "keyhole-leveling-tabs-v1") {
+    sourceGeometry.dispose();
+    group.add(
+      new THREE.Mesh(createKeyholeTabsGeometry(params, definition), mainMaterial),
+    );
   } else if (definition.viewer === "miter-runner-wedge-v1") {
     sourceGeometry.dispose();
     group.add(

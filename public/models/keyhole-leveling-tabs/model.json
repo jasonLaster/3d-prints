@@ -1,0 +1,303 @@
+{
+  "id": "keyhole-leveling-tabs",
+  "name": "Keyhole Leveling Tabs",
+  "subtitle": "Eight fixed offsets \u00b7 PLA Tough",
+  "description": "Tiny T-shaped inserts for leveling a keyhole-mounted frame in 1/32-inch increments. Parametric prototype; measure the keyhole and test fit before loading.",
+  "viewer": "keyhole-leveling-tabs-v1",
+  "stl": {
+    "fileName": "keyhole-leveling-tabs.stl",
+    "sourceName": "User design specification",
+    "units": "mm",
+    "url": "/models/keyhole-leveling-tabs/keyhole-leveling-tabs.stl"
+  },
+  "export": {
+    "filePrefix": "keyhole-leveling-tabs"
+  },
+  "parameters": [
+    {
+      "key": "variant",
+      "label": "Offset variant",
+      "default": 6,
+      "limits": {
+        "min": 1,
+        "max": 8,
+        "step": 1
+      }
+    },
+    {
+      "key": "previewMode",
+      "label": "Preview mode",
+      "default": 0,
+      "limits": {
+        "min": 0,
+        "max": 2,
+        "step": 1
+      }
+    },
+    {
+      "key": "padWidth",
+      "label": "Pad width",
+      "default": 15.24,
+      "limits": {
+        "min": 12,
+        "max": 22,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "padHeight",
+      "label": "Pad height",
+      "default": 7.62,
+      "limits": {
+        "min": 7.62,
+        "max": 14,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "padThickness",
+      "label": "Pad thickness",
+      "default": 1.52,
+      "limits": {
+        "min": 1,
+        "max": 2.4,
+        "step": 0.04
+      }
+    },
+    {
+      "key": "legWidth",
+      "label": "Leg root width",
+      "default": 4.1,
+      "limits": {
+        "min": 2.8,
+        "max": 6,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "legDepth",
+      "label": "Inward leg depth",
+      "default": 1.4,
+      "limits": {
+        "min": 0.8,
+        "max": 3,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "keyholeSlotWidth",
+      "label": "Narrow slot width",
+      "default": 4.5,
+      "limits": {
+        "min": 3.4,
+        "max": 7,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "keyholeDepth",
+      "label": "Recess depth",
+      "default": 6,
+      "limits": {
+        "min": 3,
+        "max": 10,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "rimThickness",
+      "label": "Retaining rim thickness",
+      "default": 2,
+      "limits": {
+        "min": 1,
+        "max": 3,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "wideOpeningDiameter",
+      "label": "Wide opening diameter",
+      "default": 8.4,
+      "limits": {
+        "min": 7.8,
+        "max": 12,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "openingCenterDrop",
+      "label": "Opening center below slot top",
+      "default": 14,
+      "limits": {
+        "min": 10,
+        "max": 20,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "screwHeadDiameter",
+      "label": "Screw head diameter",
+      "default": 7.62,
+      "limits": {
+        "min": 6,
+        "max": 10,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "screwShankDiameter",
+      "label": "Screw shank diameter",
+      "default": 3.5,
+      "limits": {
+        "min": 2.5,
+        "max": 5,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "screwHeadThickness",
+      "label": "Screw head thickness",
+      "default": 2,
+      "limits": {
+        "min": 1,
+        "max": 3,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "wallGap",
+      "label": "Frame to wall gap",
+      "default": 3,
+      "limits": {
+        "min": 2,
+        "max": 6,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "clearance",
+      "label": "Total fit clearance",
+      "default": 0.4,
+      "limits": {
+        "min": 0.2,
+        "max": 0.8,
+        "step": 0.05
+      }
+    },
+    {
+      "key": "tapeThickness",
+      "label": "Tape thickness",
+      "default": 0.2,
+      "limits": {
+        "min": 0.1,
+        "max": 0.6,
+        "step": 0.05
+      }
+    },
+    {
+      "key": "bumpDiameter",
+      "label": "Bump diameter",
+      "default": 0.9,
+      "limits": {
+        "min": 0.8,
+        "max": 1,
+        "step": 0.05
+      }
+    },
+    {
+      "key": "bumpHeight",
+      "label": "Bump height",
+      "default": 0.4,
+      "limits": {
+        "min": 0.3,
+        "max": 0.5,
+        "step": 0.05
+      }
+    }
+  ],
+  "geometry": {
+    "mainAxis": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "incrementMm": 0.79375,
+    "padCornerRadius": 1,
+    "edgeMargin": 0.6,
+    "rootRadius": 0.35,
+    "radialSegments": 24,
+    "plateGap": 5,
+    "safeBuildPlateSpan": 250,
+    "dimensionsConfirmed": false,
+    "physicalLoadTestPassed": false
+  },
+  "materials": [
+    "PLA Tough",
+    "PETG"
+  ],
+  "audit": {
+    "toleranceMm": 0.0001,
+    "dimensionTargets": [
+      "Offsets: n \u00d7 25.4 / 32 mm for n = 1\u20268",
+      "Pad: 15.24 \u00d7 7.62 \u00d7 1.52 mm by default",
+      "Leg projects into negative frame Z; frame lift equals the downward contact shift",
+      "The default plate has eight separate parts grounded at print Z=0"
+    ],
+    "invariants": [
+      "One fixed solid per variant, with n integrated tactile bumps",
+      "Closed slot top \u2192 insert \u2192 screw shank carries the vertical load only if contact is achieved",
+      "Pad, leg, bumps, exports and preview share one procedural model",
+      "Unmeasured fit and physical load validation remain pending",
+      "Screw and sectioned frame are preview-only and never included in exports"
+    ],
+    "checks": [
+      {
+        "key": "contactShift",
+        "label": "Frame lift"
+      },
+      {
+        "key": "series",
+        "label": "Offset and bump series"
+      },
+      {
+        "key": "inward",
+        "label": "Inward projection"
+      },
+      {
+        "key": "slotFit",
+        "label": "Slot fit"
+      },
+      {
+        "key": "depthFit",
+        "label": "Recess and screw clearance"
+      },
+      {
+        "key": "headEntry",
+        "label": "Screw head insertion"
+      },
+      {
+        "key": "neckSeat",
+        "label": "Screw seats in narrow slot"
+      },
+      {
+        "key": "wallClearance",
+        "label": "Wall clearance"
+      },
+      {
+        "key": "loadPath",
+        "label": "Load path"
+      },
+      {
+        "key": "physical",
+        "label": "Physical validation"
+      }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/keyhole-leveling-tabs/audit.mjs",
+      "command": "npm run audit -- keyhole-leveling-tabs"
+    }
+  ]
+}

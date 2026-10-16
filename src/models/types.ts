@@ -348,7 +348,25 @@ export type HoverDiningTableGeometry = {
   channelCount: 3;
 };
 
+export type KeyholeTabsModelDefinition = BaseModelDefinition & {
+  viewer: "keyhole-leveling-tabs-v1";
+  materials: string[];
+  geometry: {
+    mainAxis: { x: number; y: number; z: number };
+    incrementMm: number;
+    padCornerRadius: number;
+    edgeMargin: number;
+    rootRadius: number;
+    radialSegments: number;
+    plateGap: number;
+    safeBuildPlateSpan: number;
+    dimensionsConfirmed: boolean;
+    physicalLoadTestPassed: boolean;
+  };
+};
+
 export type SupportedViewer =
+  | "keyhole-leveling-tabs-v1"
   | "weighted-paper-towel-holder-v1"
   | "japandi-tray-v1"
   | "simple-box-v1"
@@ -517,6 +535,7 @@ export type HoverDiningTableModelDefinition = BaseModelDefinition & {
 };
 
 export type ModelDefinition =
+  | KeyholeTabsModelDefinition
   | HolderModelDefinition
   | TrayModelDefinition
   | SimpleBoxModelDefinition

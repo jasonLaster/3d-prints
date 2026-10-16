@@ -78,3 +78,7 @@ npm run verify
 ```
 
 This command runs model audits, TypeScript plus Vite production build, and the full Playwright suite.
+
+## Keyhole leveling tabs
+
+The supplied specification and PLA Tough correction are implemented in `src/models/keyholeLevelingTabs.ts`, `public/models/keyhole-leveling-tabs/model.json`, and the model print/source assets. `models/keyhole-leveling-tabs/audit.mjs` checks all eight offsets and integrated bump counts, mesh topology, STL parity, contact direction, fit assumptions and 3MF spacing. `tests/e2e/keyhole-leveling-tabs.spec.ts` covers live parameter and URL state, preview modes, export isolation, keyboard interaction and 393/1440/1920 px layout. Bambu Studio 02.06.00.51 imported eight single-part manifold meshes and re-exported the plate. Physical measurements and a loaded fit test remain pending; see `docs/keyhole-leveling-tabs-audit-specifications.md`.

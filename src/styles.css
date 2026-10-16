@@ -4122,3 +4122,21 @@ html.dark .segmented-control button.active {
     animation-iteration-count: 1 !important;
   }
 }
+
+.keyhole-offsets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.keyhole-offsets button, .keyhole-view-options button { min-height: 46px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel); color: inherit; cursor: pointer; padding: 8px 4px; }
+.keyhole-offsets button { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.keyhole-offsets button span { font-size: 10px; opacity: .75; }
+.keyhole-offsets button[aria-pressed="true"], .keyhole-view-options button[aria-pressed="true"] { border-color: #6694bb; background: color-mix(in srgb, #6694bb 18%, transparent); }
+.keyhole-offsets button:focus-visible, .keyhole-view-options button:focus-visible, .keyhole-details summary:focus-visible { outline: 2px solid #6694bb; outline-offset: 3px; }
+.keyhole-view-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.keyhole-view-options button { font-size: 11px; line-height: 1.4; }
+.keyhole-prototype-note, .keyhole-details p { font-size: 12px; line-height: 1.6; color: var(--muted); }
+.keyhole-details { border-top: 1px solid var(--border); padding: 12px 0; }
+.keyhole-details summary { cursor: pointer; min-height: 36px; font-size: 12px; font-weight: 600; display: list-item; align-content: center; }
+.keyhole-dimension-row { display: grid; grid-template-columns: minmax(0, 1fr) 80px; align-items: center; gap: 12px; margin: 10px 0; font-size: 12px; }
+.keyhole-dimension-row small { opacity: .6; }
+.keyhole-dimension-row input { min-width: 0; width: 100%; min-height: 36px; padding: 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--panel); color: inherit; }
+.keyhole-section { width: 100%; height: auto; margin: 12px 0 0; font-size: 11px; color: var(--foreground); }
+.keyhole-section text { fill: currentColor; }
+.keyhole-downloads { display: flex; flex-direction: column; gap: 12px; font-size: 12px; }

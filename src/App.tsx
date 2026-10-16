@@ -1,3 +1,4 @@
+import { KeyholeTabsControls } from "./components/KeyholeTabsControls";
 import {
   Box,
   ChevronDown,
@@ -80,6 +81,12 @@ import {
   createDrillBitHolderGeometry,
   createMetricNutKnobGeometry,
   createMiterRunnerWedgeGeometry,
+  createKeyholeTabsGeometry,
+  createKeyholeTabPrintGeometry,
+  createKeyholeTabsPreviewParts,
+  getKeyholeTabsSpec,
+  updateKeyholeTabsGuide,
+  keyholeVariantName,
   createPipeClampBedGeometry,
   createPipeClampBedPreviewParts,
   createPipeClampBedPrintGeometry,
@@ -283,6 +290,27 @@ const CATALOG_URL = "/models/index.json";
 const DEFAULT_MODEL_ID = "japandi-tray";
 const DEFAULT_LENGTH_UNIT: LengthUnit = "in";
 const PARAM_QUERY_KEYS = [
+  "variant",
+  "previewMode",
+  "padWidth",
+  "padHeight",
+  "padThickness",
+  "legWidth",
+  "legDepth",
+  "keyholeSlotWidth",
+  "keyholeDepth",
+  "rimThickness",
+  "wideOpeningDiameter",
+  "openingCenterDrop",
+  "screwHeadDiameter",
+  "screwShankDiameter",
+  "screwHeadThickness",
+  "wallGap",
+  "clearance",
+  "tapeThickness",
+  "bumpDiameter",
+  "bumpHeight",
+
   "height",
   "diameter",
   "tubeDiameter",
@@ -495,6 +523,8 @@ const PARAM_QUERY_KEYS = [
 ];
 const ANGLE_PARAM_KEYS = new Set(["rotation", "cutoutRotation"]);
 const SCALAR_PARAM_KEYS = new Set([
+  "variant",
+  "previewMode",
   "bitCount",
   "lobeCount",
   "dividerCount",
@@ -871,6 +901,7 @@ function getParamsFromUrl(model: ModelDefinition) {
     model.viewer === "drill-bit-holder-v1" ||
     model.viewer === "metric-nut-knob-v1" ||
     model.viewer === "pipe-clamp-bed-v1" ||
+    model.viewer === "keyhole-leveling-tabs-v1" ||
     model.viewer === "miter-runner-wedge-v1" ||
     model.viewer === "router-mortise-jig-v1" ||
     model.viewer === "router-tenon-jig-v1" ||
@@ -880,6 +911,7 @@ function getParamsFromUrl(model: ModelDefinition) {
       model.viewer === "drill-bit-holder-v1" ||
       model.viewer === "metric-nut-knob-v1" ||
       model.viewer === "pipe-clamp-bed-v1" ||
+      model.viewer === "keyhole-leveling-tabs-v1" ||
       model.viewer === "miter-runner-wedge-v1" ||
       model.viewer === "compact-wall-bracket-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
@@ -1194,6 +1226,9 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
       value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
     return `${model.export.filePrefix}-${compact(getParam(params, "bedLength"))}x${compact(getParam(params, "bedWidth"))}-pipe-${compact(getParam(params, "pipeDiameter"))}-clearance-${compact(getParam(params, "pipeClearance"))}-clips-${compact(getParam(params, "hookWidth"))}.stl`;
   }
+  if (model.viewer === "keyhole-leveling-tabs-v1") {
+    return keyholeVariantName(getKeyholeTabsSpec(params, model).variant);
+  }
   if (model.viewer === "miter-runner-wedge-v1") {
     const compact = (value: number) =>
       value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
@@ -1388,11 +1423,16 @@ const HolderViewer = forwardRef<
       dimensions.height * 2.2,
       dimensions.length * 1.55,
       dimensions.width * 2.25,
-    );
+    ) * (model.viewer === "keyhole-leveling-tabs-v1"
+      ? Math.max(1, 1 / camera.aspect)
+      : 1);
     const target = new THREE.Vector3(
       0,
       0,
-      model.viewer === "compact-wall-bracket-v1"
+      model.viewer === "keyhole-leveling-tabs-v1" && Math.round(currentParams.previewMode) === 2
+        ? (9 - currentParams.openingCenterDrop - currentParams.wideOpeningDiameter / 2 - 3) / 2
+          + getKeyholeTabsSpec(currentParams, model).offset + model.geometry.edgeMargin
+        : model.viewer === "compact-wall-bracket-v1"
         ? dimensions.height * 0.5
         : model.viewer !== "weighted-paper-towel-holder-v1"
         ? dimensions.height * 0.25
@@ -1422,7 +1462,9 @@ const HolderViewer = forwardRef<
     } else if (preset === "yEdge") {
       camera.position.set(distance, 0, edgeViewZ);
     } else if (model.viewer !== "weighted-paper-towel-holder-v1") {
-      if (model.viewer === "compact-wall-bracket-v1") {
+      if (model.viewer === "keyhole-leveling-tabs-v1" && Math.round(currentParams.previewMode) !== 1) {
+        camera.position.set(distance * 0.95, distance * 0.65, target.z + distance * 0.48);
+      } else if (model.viewer === "compact-wall-bracket-v1") {
         camera.position.set(
           distance * 1.05,
           -distance * 1.1,
@@ -1575,6 +1617,24 @@ const HolderViewer = forwardRef<
         routerMortisePreviewGroup.add(mesh);
       }
       updatePipeClampBedGuide(guideMesh, latestParamsRef.current);
+    } else if (model.viewer === "keyhole-leveling-tabs-v1") {
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createKeyholeTabsGeometry(latestParamsRef.current, model);
+      if (routerMortisePreviewGroup && routerWorkpieceMaterial && diningMetalMaterial) {
+        routerMortisePreviewGroup.children.forEach((child) => {
+          if (child instanceof THREE.Mesh) child.geometry.dispose();
+        });
+        routerMortisePreviewGroup.clear();
+        for (const part of createKeyholeTabsPreviewParts(latestParamsRef.current, model)) {
+          const mesh = new THREE.Mesh(
+            part.geometry,
+            part.material === "frame" ? routerWorkpieceMaterial : diningMetalMaterial,
+          );
+          mesh.name = `${model.id}-${part.key}`;
+          routerMortisePreviewGroup.add(mesh);
+        }
+      }
+      updateKeyholeTabsGuide(guideMesh, latestParamsRef.current, model);
     } else if (model.viewer === "miter-runner-wedge-v1") {
       mainMesh.geometry.dispose();
       mainMesh.geometry = createMiterRunnerWedgeGeometry(
@@ -1996,7 +2056,9 @@ const HolderViewer = forwardRef<
 
     const group = new THREE.Group();
     const pipeClampPrintGeometry =
-      model.viewer === "pipe-clamp-bed-v1"
+      model.viewer === "keyhole-leveling-tabs-v1"
+        ? createKeyholeTabPrintGeometry(latestParamsRef.current, model)
+        : model.viewer === "pipe-clamp-bed-v1"
         ? createPipeClampBedPrintGeometry(latestParamsRef.current, model)
         : null;
     const holder = new THREE.Mesh(
@@ -2488,13 +2550,17 @@ const HolderViewer = forwardRef<
   );
 
   useEffect(() => {
+    const keyholeViewChanged =
+      model.viewer === "keyhole-leveling-tabs-v1" &&
+      latestParamsRef.current.previewMode !== params.previewMode;
     latestParamsRef.current = params;
     latestCoreViewModeRef.current = coreViewMode;
     latestRenderModeRef.current = renderMode;
     latestShowOriginalRef.current = showOriginal;
     latestAssemblyModeRef.current = assemblyMode;
     updateMeshes();
-  }, [params, coreViewMode, renderMode, showOriginal, assemblyMode, updateMeshes]);
+    if (keyholeViewChanged) resetCamera();
+  }, [params, coreViewMode, renderMode, showOriginal, assemblyMode, updateMeshes, model.viewer, resetCamera]);
 
   useEffect(() => {
     if (sceneRef.current) {
@@ -2557,6 +2623,7 @@ const HolderViewer = forwardRef<
       model.viewer === "drill-bit-holder-v1" ||
       model.viewer === "metric-nut-knob-v1" ||
       model.viewer === "pipe-clamp-bed-v1" ||
+      model.viewer === "keyhole-leveling-tabs-v1" ||
       model.viewer === "miter-runner-wedge-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
       model.viewer === "router-tenon-jig-v1" ||
@@ -2799,6 +2866,8 @@ const HolderViewer = forwardRef<
               ? createMetricNutKnobGeometry(latestParamsRef.current, model)
             : model.viewer === "pipe-clamp-bed-v1"
               ? createPipeClampBedGeometry(latestParamsRef.current, model)
+            : model.viewer === "keyhole-leveling-tabs-v1"
+              ? createKeyholeTabsGeometry(latestParamsRef.current, model)
             : model.viewer === "miter-runner-wedge-v1"
               ? createMiterRunnerWedgeGeometry(latestParamsRef.current, model)
             : model.viewer === "router-mortise-jig-v1"
@@ -2867,7 +2936,8 @@ const HolderViewer = forwardRef<
           model.viewer === "router-mortise-jig-v1" ||
           model.viewer === "router-tenon-jig-v1" ||
           model.viewer === "bandsaw-sled-v1" ||
-          model.viewer === "pipe-clamp-bed-v1"
+          model.viewer === "pipe-clamp-bed-v1" ||
+          model.viewer === "keyhole-leveling-tabs-v1"
         ) {
           const previewGroup = new THREE.Group();
           previewGroup.name = `${model.id}-preview-stand-ins`;
@@ -2938,6 +3008,7 @@ const HolderViewer = forwardRef<
           model.viewer === "drill-bit-holder-v1" ||
           model.viewer === "metric-nut-knob-v1" ||
           model.viewer === "pipe-clamp-bed-v1" ||
+          model.viewer === "keyhole-leveling-tabs-v1" ||
           model.viewer === "miter-runner-wedge-v1" ||
           model.viewer === "router-mortise-jig-v1" ||
           model.viewer === "router-tenon-jig-v1" ||
@@ -6530,6 +6601,7 @@ export default function App({
             model.viewer === "drill-bit-holder-v1" ||
             model.viewer === "metric-nut-knob-v1" ||
             model.viewer === "pipe-clamp-bed-v1" ||
+            model.viewer === "keyhole-leveling-tabs-v1" ||
             model.viewer === "miter-runner-wedge-v1" ||
             model.viewer === "router-mortise-jig-v1" ||
             model.viewer === "router-tenon-jig-v1" ||
@@ -6561,6 +6633,7 @@ export default function App({
       if (
         model.viewer === "metric-nut-knob-v1" ||
         model.viewer === "pipe-clamp-bed-v1" ||
+        model.viewer === "keyhole-leveling-tabs-v1" ||
         model.viewer === "miter-runner-wedge-v1"
       ) {
         for (let pass = 0; pass < 2; pass += 1) {
@@ -6953,6 +7026,7 @@ export default function App({
       if (
         model.viewer === "metric-nut-knob-v1" ||
         model.viewer === "pipe-clamp-bed-v1" ||
+        model.viewer === "keyhole-leveling-tabs-v1" ||
         model.viewer === "miter-runner-wedge-v1"
       ) {
         for (let pass = 0; pass < 2; pass += 1) {
@@ -7410,7 +7484,13 @@ export default function App({
                       ) : null}
                     </>
                   ) : null}
-                  {model.viewer === "pipe-clamp-bed-v1" ? (
+                  {model.viewer === "keyhole-leveling-tabs-v1" ? (
+                    <KeyholeTabsControls
+                      model={model}
+                      params={params}
+                      onChange={updateParam}
+                    />
+                  ) : model.viewer === "pipe-clamp-bed-v1" ? (
                     <PipeClampBedParameterControls
                       model={model}
                       onChange={updateParam}
