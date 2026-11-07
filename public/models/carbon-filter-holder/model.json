@@ -2,7 +2,7 @@
   "id": "carbon-filter-holder",
   "name": "Carbon Filter Holder",
   "subtitle": "Slide-in filter · glue-on lid mount",
-  "description": "A compact holder for a 3 × 3 × 1/4 inch carbon filter beneath a trash-can lid. A flat glue back, two narrow retaining lips and a rear stop leave the front fully open for replacement and 93% of the filter face exposed to the trash.",
+  "description": "A compact holder for a 3 × 3 × 1/4 inch carbon filter beneath a trash-can lid. A flat glue back, two narrow retaining lips and a rear stop leave the front fully open for replacement and 88% of the filter face exposed to the trash.",
   "viewer": "carbon-filter-holder-v1",
   "stl": {
     "fileName": "carbon-filter-holder.stl",
@@ -81,7 +81,7 @@
       "key": "lipWidth",
       "label": "Retaining lip width",
       "group": "Holder",
-      "default": 3,
+      "default": 5,
       "limits": {
         "min": 1.6,
         "max": 6,
@@ -146,9 +146,9 @@
     "toleranceMm": 0.02,
     "dimensionTargets": [
       "Filter is exactly 76.2 × 76.2 × 6.35 mm (3 × 3 × 1/4 inch).",
-      "Default holder envelope is 82 × 79.1 × 13.35 mm.",
+      "Default holder envelope is 82 × 79.1 × 15.35 mm.",
       "Default clear entry is 77.2 × 7.15 mm with 0.5 mm per-side clearance.",
-      "Two 3 mm lips overlap the nominal filter by 2.5 mm each, leaving 93.44% exposed."
+      "Two 5 mm lips overlap the nominal filter by 4.5 mm each, leaving 88.19% exposed."
     ],
     "invariants": [
       "A solid flat back bonds to the underside of the trash-can lid.",

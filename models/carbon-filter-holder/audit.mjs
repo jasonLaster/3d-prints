@@ -113,9 +113,9 @@ try {
   check(defaults.filterWidth === 76.2 && defaults.filterLength === 76.2 && defaults.filterThickness === 6.35,
     "exact supplied 3 × 3 × 1/4 inch filter dimensions");
   const s = api.getCarbonFilterHolderSpec(defaults);
-  check(close(s.width, 82) && close(s.length, 79.1) && close(s.height, 13.35), "default envelope");
+  check(close(s.width, 82) && close(s.length, 79.1) && close(s.height, 15.35), "default envelope");
   check(close(s.channelWidth, 77.2) && close(s.channelHeight, 7.15), "clear slide envelope");
-  check(close(s.overlap, 2.5) && s.exposedPercent > 93.4 && s.exposedPercent < 93.5, "93.44 percent filter exposure");
+  check(defaults.lipWidth === 5 && close(s.overlap, 4.5) && close(s.exposedPercent, 88.18897637795), "5 mm lips retain 4.5 mm per side with 88.19 percent exposure");
   const fixtures = [
     ["default", defaults],
     ["small thin filter", { ...defaults, filterWidth: 40, filterLength: 40, filterThickness: 2 }],

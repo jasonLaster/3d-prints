@@ -10,16 +10,16 @@ Default dimensions:
 
 | Feature | Dimension |
 | --- | --- |
-| Overall holder | 82 × 79.1 × 13.35 mm (about 3.23 × 3.11 × 0.53 in) |
+| Overall holder | 82 × 79.1 × 15.35 mm (about 3.23 × 3.11 × 0.60 in) |
 | Clear slide opening | 77.2 mm wide × 7.15 mm high |
 | Width clearance | 0.5 mm per side |
 | Rear clearance | 0.5 mm; seated filter front is flush with the mouth |
 | Thickness allowance | 0.8 mm total |
 | Glue back | 2 mm thick, uninterrupted 82 × 79.1 mm flat face |
 | Side and rear walls | 2.4 mm thick |
-| Side retaining lips | 3 mm projection, 2.5 mm overlap over each filter edge |
-| Lip tips | 1.2 mm thick above a 3 mm rise at 45 degrees |
-| Exposed filter face | 93.44% of nominal face area, projected through the opening |
+| Side retaining lips | 5 mm projection, 4.5 mm overlap over each filter edge |
+| Lip tips | 1.2 mm thick above a 5 mm rise at 45 degrees |
+| Exposed filter face | 88.19% of nominal face area, projected through the opening |
 
 Print with the glue face on the bed and the lips up. The lip undersides rise at
 45 degrees above the clear sliding envelope so they do not require supports.

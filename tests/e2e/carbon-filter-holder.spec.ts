@@ -21,8 +21,9 @@ test("opens from the catalog, previews sliding, restores dimensions and exports 
   await expect(page.getByRole("heading", { name: "Carbon Filter Holder", exact: true })).toBeVisible();
   const canvas = page.locator(".scene-panel canvas");
   await expect(canvas).toBeVisible();
-  await expect(page.getByTestId("carbon-filter-exposure")).toContainText("93.4%");
+  await expect(page.getByTestId("carbon-filter-exposure")).toContainText("88.2%");
   await expect(page.getByLabel("Filter thickness in millimeters")).toHaveValue("6.35");
+  await expect(page.getByLabel("Retaining lip width in millimeters")).toHaveValue("5.00");
   await expect(page.getByText("Physical fit", { exact: true })).toBeVisible();
   await expect(page.getByText(/Test the actual filter fit and lid adhesive/)).toBeVisible();
   const image = PNG.sync.read(await canvas.screenshot());
@@ -52,7 +53,7 @@ test("opens from the catalog, previews sliding, restores dimensions and exports 
     page.getByRole("button", { name: "Workspace actions" }).click().then(() =>
       page.getByRole("button", { name: "Export", exact: true }).click()),
   ]);
-  expect(download.suggestedFilename()).toBe("carbon-filter-holder-80x76.2x6.35-clearance-0.5-lip-3.stl");
+  expect(download.suggestedFilename()).toBe("carbon-filter-holder-80x76.2x6.35-clearance-0.5-lip-5.stl");
   const bytes = fs.readFileSync((await download.path())!);
   const exported = new STLLoader().parse(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
   const expected = createCarbonFilterHolderGeometry({

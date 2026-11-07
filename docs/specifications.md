@@ -23,7 +23,7 @@ This document defines the product and engineering contract for the 3D Prints app
 ## Carbon Filter Holder
 
 - The filter defaults to 76.2 × 76.2 × 6.35 mm (3 × 3 × 1/4 in).
-- A flat glue back mounts under the trash-can lid; two side lips retain the filter and leave 93.44% of its trash-facing face exposed.
+- A flat glue back mounts under the trash-can lid; two 5 mm side lips retain the filter and leave 88.19% of its trash-facing face exposed.
 - One edge is fully open for replacement; the opposing rear wall is the stop. No front bar crosses the insertion path.
 - Independent filter dimensions and sliding allowances derive the channel, envelope and lip overlap. A minimum 1.2 mm overlap is preserved as clearance changes.
 - The glue face prints flat at Z=0 with 45-degree lip undersides. Preview-only filter withdrawal never enters STL exports.
