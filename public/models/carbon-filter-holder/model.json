@@ -2,7 +2,7 @@
   "id": "carbon-filter-holder",
   "name": "Carbon Filter Holder",
   "subtitle": "Slide-in filter · glue-on lid mount",
-  "description": "A compact holder for a 3 × 3 × 1/4 inch carbon filter beneath a trash-can lid. A flat glue back, two narrow retaining lips and a rear stop leave the front fully open for replacement and 88% of the filter face exposed to the trash.",
+  "description": "A glue-on trash-can lid holder for a 3 × 3 × 1/4 inch flexible carbon pad. Three 5 mm retaining lips frame the sides and rear; two rounded front side detents catch the seated pad while leaving the middle of the insertion edge open. About 83% of the filter face remains exposed.",
   "viewer": "carbon-filter-holder-v1",
   "stl": {
     "fileName": "carbon-filter-holder.stl",
@@ -122,6 +122,28 @@
       }
     },
     {
+      "key": "detentOverlap",
+      "label": "Front detent overlap per side",
+      "group": "Holder",
+      "default": 0.4,
+      "limits": {
+        "min": 0.2,
+        "max": 0.8,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "detentLength",
+      "label": "Front detent length",
+      "group": "Holder",
+      "default": 4,
+      "limits": {
+        "min": 3,
+        "max": 6,
+        "step": 0.2
+      }
+    },
+    {
       "key": "showFilter",
       "label": "Show filter",
       "default": 0,
@@ -137,7 +159,7 @@
       "default": 0,
       "limits": {
         "min": 0,
-        "max": 150,
+        "max": 170,
         "step": 1
       }
     }
@@ -146,18 +168,20 @@
     "toleranceMm": 0.02,
     "dimensionTargets": [
       "Filter is exactly 76.2 × 76.2 × 6.35 mm (3 × 3 × 1/4 inch).",
-      "Default holder envelope is 82 × 79.1 × 15.35 mm.",
-      "Default clear entry is 77.2 × 7.15 mm with 0.5 mm per-side clearance.",
-      "Two 5 mm lips overlap the nominal filter by 4.5 mm each, leaving 88.19% exposed."
+      "Default holder envelope is 82 × 84.4 × 15.35 mm.",
+      "The nominal channel is 77.2 mm wide and 7.15 mm high; the two front detents narrow it locally to 75.4 mm.",
+      "Three 5 mm lips overlap the pad by 4.5 mm along each side and rear, leaving 82.98% exposed.",
+      "Rounded 4 mm long front side detents engage each nominal pad edge by 0.4 mm; the seated front edge clears them by 0.5 mm."
     ],
     "invariants": [
       "A solid flat back bonds to the underside of the trash-can lid.",
-      "The trash-facing face has only two retaining side lips, with no center grille or front crossbar.",
-      "The front is fully open across the slide envelope; the opposite edge is a closed rear stop.",
+      "Both sides and the rear have retaining lips; the trash-facing center remains open.",
+      "The front has no crossbar. Two integral rounded side detents require a flexible pad to compress at its edges during insertion and removal.",
+      "The seated filter rests behind the front detents with a 0.5 mm gap and 0.5 mm nominal rear clearance.",
       "Lip undersides rise inward at 45 degrees above the clear filter channel.",
       "One outward-oriented manifold shell rests on its glue face at Z = 0.",
-      "Filter preview and withdrawal never change the printed holder or exported STL.",
-      "Adhesion, actual filter tolerances and retention during lid motion require a physical check."
+      "Filter preview and withdrawal never change the printed holder or exported STL; preview does not simulate pad compression.",
+      "Actual pad compressibility, detent force, repeated use and lid adhesion require a physical check."
     ],
     "checks": [
       {
@@ -174,11 +198,15 @@
       },
       {
         "key": "retention",
-        "label": "Side retention"
+        "label": "Side and rear lips"
+      },
+      {
+        "key": "frontDetents",
+        "label": "Front retention"
       },
       {
         "key": "openEntry",
-        "label": "Open insertion edge"
+        "label": "Detent throat"
       },
       {
         "key": "glueFace",

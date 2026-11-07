@@ -21,11 +21,13 @@ test("opens from the catalog, previews sliding, restores dimensions and exports 
   await expect(page.getByRole("heading", { name: "Carbon Filter Holder", exact: true })).toBeVisible();
   const canvas = page.locator(".scene-panel canvas");
   await expect(canvas).toBeVisible();
-  await expect(page.getByTestId("carbon-filter-exposure")).toContainText("88.2%");
+  await expect(page.getByTestId("carbon-filter-exposure")).toContainText("83.0%");
   await expect(page.getByLabel("Filter thickness in millimeters")).toHaveValue("6.35");
   await expect(page.getByLabel("Retaining lip width in millimeters")).toHaveValue("5.00");
+  await expect(page.getByLabel("Front detent overlap per side in millimeters")).toHaveValue("0.40");
+  await expect(page.getByText("Front retention", { exact: true })).toBeVisible();
   await expect(page.getByText("Physical fit", { exact: true })).toBeVisible();
-  await expect(page.getByText(/Test the actual filter fit and lid adhesive/)).toBeVisible();
+  await expect(page.getByText(/Test a flexible pad through the detents and check lid adhesion/)).toBeVisible();
   const image = PNG.sync.read(await canvas.screenshot());
   const colors = new Set<string>();
   for (let i = 0; i < image.data.length; i += 160) {
@@ -43,21 +45,27 @@ test("opens from the catalog, previews sliding, restores dimensions and exports 
   await expect.poll(() => new URL(page.url()).searchParams.get("filterWithdrawal")).toBe("25");
   await page.getByLabel("Filter width in millimeters").fill("80");
   await expect.poll(() => new URL(page.url()).searchParams.get("filterWidth")).toBe("80");
+  await page.getByLabel("Front detent overlap per side in millimeters").fill("0.6");
+  await page.getByLabel("Front detent length in millimeters").fill("4.4");
+  await expect.poll(() => new URL(page.url()).searchParams.get("detentLength")).toBe("4.4");
   await page.reload();
   await expect(page.getByRole("checkbox", { name: "Show carbon filter" })).toBeChecked();
   await expect(page.getByLabel("Slide filter out in millimeters")).toHaveValue(/^25(?:\.0+)?$/);
   await expect(page.getByLabel("Filter width in millimeters")).toHaveValue("80.00");
+  await expect(page.getByLabel("Front detent overlap per side in millimeters")).toHaveValue("0.60");
+  await expect(page.getByLabel("Front detent length in millimeters")).toHaveValue("4.40");
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     page.getByRole("button", { name: "Workspace actions" }).click().then(() =>
       page.getByRole("button", { name: "Export", exact: true }).click()),
   ]);
-  expect(download.suggestedFilename()).toBe("carbon-filter-holder-80x76.2x6.35-clearance-0.5-lip-5.stl");
+  expect(download.suggestedFilename()).toBe("carbon-filter-holder-80x76.2x6.35-clearance-0.5-lip-5-detent-0.6x4.4.stl");
   const bytes = fs.readFileSync((await download.path())!);
   const exported = new STLLoader().parse(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
   const expected = createCarbonFilterHolderGeometry({
     ...getDefaultParams(model), filterWidth: 80, showFilter: 1, filterWithdrawal: 25,
+    detentOverlap: 0.6, detentLength: 4.4,
   }, model);
   expect(Array.from(exported.getAttribute("position").array)).toEqual(
     Array.from(expected.getAttribute("position").array),
@@ -73,11 +81,13 @@ test("opens from the catalog, previews sliding, restores dimensions and exports 
 test("couples retention limits and keeps a rectangular filter independently editable", async ({ page }) => {
   await page.goto("/?model=carbon-filter-holder&unit=mm&sideClearance=1.2&lipWidth=1.6&filterLength=50&showFilter=1&filterWithdrawal=100");
   await expect(page.getByLabel("Retaining lip width in millimeters")).toHaveValue("2.40");
-  await expect(page.getByLabel("Slide filter out in millimeters")).toHaveValue(/^50(?:\.0+)?$/);
+  await expect(page.getByLabel("Slide filter out in millimeters")).toHaveValue("55.3");
   await page.getByLabel("Clearance per side in millimeters").fill("0.5");
   await page.getByLabel("Retaining lip width in millimeters").fill("1.7");
   await page.getByLabel("Clearance per side in millimeters").fill("1.2");
   await expect(page.getByLabel("Retaining lip width in millimeters")).toHaveValue("2.40");
+  await page.getByLabel("Front detent length in millimeters").fill("3");
+  await expect(page.getByLabel("Slide filter out in millimeters")).toHaveValue("54.3");
   await expect(page.getByLabel("Filter width in millimeters")).toHaveValue("76.20");
   await expect(page.getByLabel("Filter length in millimeters")).toHaveValue(/^50(?:\.0+)?$/);
 });

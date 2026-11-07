@@ -56,4 +56,4 @@ After deployment, verify production:
 
 ## Carbon filter holder checks
 
-Run `npm run audit -- carbon-filter-holder` and `npx playwright test tests/e2e/carbon-filter-holder.spec.ts --workers=1`. Confirm the mouth is clear across the complete filter section, the rear stop and two lips retain the nominal filter, and optional preview geometry does not enter exports. Review desktop and mobile screenshots; test actual filter fit and lid adhesion before installation.
+Run `npm run audit -- carbon-filter-holder` and `npx playwright test tests/e2e/carbon-filter-holder.spec.ts --workers=1`. Confirm a clear center insertion path, two front detents with the specified edge interference, clearance for the seated pad behind those bumps, capture by both side lips and the rear lip, and exclusion of preview geometry from exports. Review desktop and mobile screenshots; test actual filter fit and lid adhesion before installation.

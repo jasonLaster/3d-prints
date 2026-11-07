@@ -62,46 +62,75 @@ function inspect(geometry, p, label) {
   check(vertices.size - edges.size + positions.count / 3 === 2,
     `${label}: closed genus-zero shell`);
 
-  // Independent dimensions and integrated volume of plate + U-wall + tapered lips.
+  // Independent dimensions and integrated volume of plate + rounded side
+  // detents + three-sided tapered lip. The two sine-squared bump profiles
+  // together contribute depth * length to each horizontal wall section.
   const cw = p.filterWidth + 2 * p.sideClearance;
-  const cl = p.filterLength + p.sideClearance;
+  const frontPocket = 0.8 + p.detentLength + 0.5;
+  const cl = p.filterLength + p.sideClearance + frontPocket;
   const w = cw + 2 * p.wallThickness;
   const l = cl + p.wallThickness;
   const ch = p.filterThickness + p.thicknessClearance;
   const h = p.baseThickness + ch + p.lipWidth + p.lipThickness;
-  const uArea = w * l - cw * cl;
+  const bumpDepth = p.sideClearance + p.detentOverlap;
+  const uArea = w * l - cw * cl + bumpDepth * p.detentLength;
   const expectedVolume = w * l * p.baseThickness + uArea * ch +
-    p.lipWidth * (uArea + p.lipWidth * cl) +
-    p.lipThickness * (uArea + 2 * p.lipWidth * cl);
+    uArea * p.lipWidth + (cw + 2 * cl) * p.lipWidth ** 2 / 2 -
+    2 * p.lipWidth ** 3 / 3 +
+    p.lipThickness * (uArea + (cw + 2 * cl) * p.lipWidth - 2 * p.lipWidth ** 2);
   check(close(volume, expectedVolume, 0.05), `${label}: outward shell with exact union volume`);
   geometry.computeBoundingBox();
   const box = geometry.boundingBox;
   const size = box.getSize(new THREE.Vector3());
   check(close(size.x, w) && close(size.y, l) && close(size.z, h), `${label}: envelope`);
   check(close(box.min.z, 0), `${label}: flat glue face on Z=0`);
-  check(size.x <= 165 && size.y <= 160, `${label}: compact print envelope`);
+  check(size.x <= 165 && size.y <= 170, `${label}: compact print envelope`);
 
   const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
   const cast = (origin, direction) => new THREE.Raycaster(origin, direction).intersectObject(mesh)[0];
-  // Sample the entire nominal filter section, including both edges and corners.
-  for (const x of [-p.filterWidth / 2, 0, p.filterWidth / 2]) {
+  // The center slides freely. The pad edges intentionally meet the detents.
+  const clearHalf = p.filterWidth / 2 - p.detentOverlap - 0.1;
+  for (const x of [-clearHalf, 0, clearHalf]) {
     for (const z of [0.01, p.filterThickness / 2, p.filterThickness - 0.01]) {
       const hit = cast(new THREE.Vector3(x, -l / 2 - 1, p.baseThickness + z), new THREE.Vector3(0, 1, 0));
       check(hit && close(hit.point.y, l / 2 - p.wallThickness),
-        `${label}: unobstructed front-to-rear slide at ${x},${z}`);
+        `${label}: clear center insertion path at ${x},${z}`);
     }
   }
+  const filterFrontY = -l / 2 + frontPocket;
+  const filterRearY = filterFrontY + p.filterLength;
+  for (const x of [-p.filterWidth / 2, 0, p.filterWidth / 2]) {
+    for (const z of [0.01, p.filterThickness / 2, p.filterThickness - 0.01]) {
+      const hit = cast(new THREE.Vector3(x, filterFrontY + 0.01, p.baseThickness + z), new THREE.Vector3(0, 1, 0));
+      check(hit && close(hit.point.y, l / 2 - p.wallThickness),
+        `${label}: seated pad has room behind detents`);
+    }
+  }
+  for (const sign of [-1, 1]) {
+    const contact = cast(new THREE.Vector3(sign * p.filterWidth / 2, -l / 2 - 1,
+      p.baseThickness + p.filterThickness / 2), new THREE.Vector3(0, 1, 0));
+    check(contact && contact.point.y > -l / 2 + 0.8 &&
+      contact.point.y < -l / 2 + 0.8 + p.detentLength,
+      `${label}: front detent intercepts each nominal filter edge`);
+    const throat = cast(new THREE.Vector3(0, -l / 2 + 0.8 + p.detentLength / 2,
+      p.baseThickness + p.filterThickness / 2), new THREE.Vector3(sign, 0, 0));
+    check(throat && close(Math.abs(throat.point.x), p.filterWidth / 2 - p.detentOverlap),
+      `${label}: prescribed detent interference is present`);
+  }
   const openWidth = cw - 2 * p.lipWidth;
+  const openRearY = l / 2 - p.wallThickness - p.lipWidth;
   for (const x of [-openWidth / 2 + 0.1, 0, openWidth / 2 - 0.1]) {
-    for (const y of [-l / 2 + 1, 0, l / 2 - p.wallThickness - 1]) {
+    for (const y of [filterFrontY + 0.1, (filterFrontY + openRearY) / 2, openRearY - 0.1]) {
       const hit = cast(new THREE.Vector3(x, y, h + 1), new THREE.Vector3(0, 0, -1));
       check(hit && close(hit.point.z, p.baseThickness), `${label}: open trash-facing window`);
     }
   }
   for (const x of [-p.filterWidth / 2, p.filterWidth / 2]) {
-    const hit = cast(new THREE.Vector3(x, 0, h + 1), new THREE.Vector3(0, 0, -1));
+    const hit = cast(new THREE.Vector3(x, (filterFrontY + filterRearY) / 2, h + 1), new THREE.Vector3(0, 0, -1));
     check(hit && close(hit.point.z, h), `${label}: side lips catch the filter`);
   }
+  const rear = cast(new THREE.Vector3(0, filterRearY, h + 1), new THREE.Vector3(0, 0, -1));
+  check(rear && close(rear.point.z, h), `${label}: rear lip catches the far pad edge`);
   mesh.material.dispose();
 }
 
@@ -113,9 +142,11 @@ try {
   check(defaults.filterWidth === 76.2 && defaults.filterLength === 76.2 && defaults.filterThickness === 6.35,
     "exact supplied 3 × 3 × 1/4 inch filter dimensions");
   const s = api.getCarbonFilterHolderSpec(defaults);
-  check(close(s.width, 82) && close(s.length, 79.1) && close(s.height, 15.35), "default envelope");
+  check(close(s.width, 82) && close(s.length, 84.4) && close(s.height, 15.35), "default envelope");
   check(close(s.channelWidth, 77.2) && close(s.channelHeight, 7.15), "clear slide envelope");
-  check(defaults.lipWidth === 5 && close(s.overlap, 4.5) && close(s.exposedPercent, 88.18897637795), "5 mm lips retain 4.5 mm per side with 88.19 percent exposure");
+  check(defaults.lipWidth === 5 && close(s.overlap, 4.5) && close(s.exposedPercent, 82.9810359532), "three 5 mm lips overlap by 4.5 mm with 82.98 percent exposure");
+  check(close(s.detentThroatWidth, 75.4) && close(s.detentOverlap, 0.4), "0.4 mm detent engagement at each front corner");
+  check(close(s.filterFrontY - s.detentEndY, 0.5), "seated front edge clears detents by 0.5 mm");
   const fixtures = [
     ["default", defaults],
     ["small thin filter", { ...defaults, filterWidth: 40, filterLength: 40, filterThickness: 2 }],
@@ -123,25 +154,27 @@ try {
     ["loose fit, minimum overlap", { ...defaults, sideClearance: 1.2, thicknessClearance: 2, lipWidth: 2.4 }],
     ["thick walls, wide lips", { ...defaults, wallThickness: 4, baseThickness: 4, lipWidth: 6, lipThickness: 2.4 }],
     ["minimum print walls", { ...defaults, wallThickness: 1.6, baseThickness: 1.2, lipThickness: 1.2 }],
+    ["short gentle detents", { ...defaults, detentOverlap: 0.2, detentLength: 3, sideClearance: 0.2 }],
+    ["largest detents", { ...defaults, detentOverlap: 0.8, detentLength: 6, sideClearance: 1.2 }],
   ];
   for (const [label, p] of fixtures) {
     const g = api.createCarbonFilterHolderGeometry(p, model);
     inspect(g, p, label);
     g.dispose();
-    console.log(`PASS ${label}: one closed shell, clear slide and exposed face`);
+    console.log(`PASS ${label}: one closed shell, three lips, front capture and seated clearance`);
   }
   const narrow = { ...defaults, sideClearance: 1.2, lipWidth: 1.6 };
   check(close(api.getCarbonFilterHolderParameterLimits(model, narrow, "lipWidth").min, 2.4),
     "limits preserve at least 1.2 mm overlap as clearance changes");
-  check(api.getCarbonFilterHolderParameterLimits(model, defaults, "filterWithdrawal").max === 76.2,
-    "preview withdrawal follows filter length");
+  check(close(api.getCarbonFilterHolderParameterLimits(model, defaults, "filterWithdrawal").max, 81.5),
+    "preview withdrawal includes the front detent pocket");
   const empty = api.createCarbonFilterHolderGeometry(defaults, model);
   const preview = api.createCarbonFilterHolderGeometry({ ...defaults, showFilter: 1, filterWithdrawal: 50 }, model);
   check(Buffer.from(empty.getAttribute("position").array.buffer).equals(Buffer.from(preview.getAttribute("position").array.buffer)),
     "preview settings do not alter printable geometry");
   check(api.createCarbonFilterPreviewGeometry(defaults) === null, "hidden preview adds no filter");
   const withdrawn = api.createCarbonFilterPreviewGeometry({ ...defaults, showFilter: 1, filterWithdrawal: 30 });
-  check(close(withdrawn.boundingBox.min.y, s.frontY - 30), "filter withdraws through the open mouth");
+  check(close(withdrawn.boundingBox.min.y, s.filterFrontY - 30), "filter withdraws from its seated position");
   const bytes = fs.readFileSync(path.join(root, "public", model.stl.url));
   const stl = new STLLoader().parse(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
   inspect(stl, defaults, "default STL");

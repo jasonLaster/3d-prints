@@ -77,7 +77,7 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
   const catalogIds = new Set<string>();
   const expectedCheckKeys: Record<string, string[]> = {
     "carbon-filter-holder-v1": [
-      "filterFit", "slideClearance", "exposure", "retention", "openEntry",
+      "filterFit", "slideClearance", "exposure", "retention", "frontDetents", "openEntry",
       "glueFace", "printOrientation", "physicalFit",
     ],
     "keyhole-leveling-tabs-v1": [

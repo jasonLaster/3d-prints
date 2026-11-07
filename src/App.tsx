@@ -1238,7 +1238,7 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
     return keyholeVariantName(getKeyholeTabsSpec(params, model).variant);
   }
   if (model.viewer === "carbon-filter-holder-v1") {
-    return `${model.export.filePrefix}-${params.filterWidth}x${params.filterLength}x${params.filterThickness}-clearance-${params.sideClearance}-lip-${params.lipWidth}.stl`;
+    return `${model.export.filePrefix}-${params.filterWidth}x${params.filterLength}x${params.filterThickness}-clearance-${params.sideClearance}-lip-${params.lipWidth}-detent-${params.detentOverlap}x${params.detentLength}.stl`;
   }
   if (model.viewer === "miter-runner-wedge-v1") {
     const compact = (value: number) =>
@@ -4417,7 +4417,7 @@ function CarbonFilterHolderParameterControls({
         ) : null}
         <p className="parameter-derived-note" data-testid="carbon-filter-exposure">
           {spec.exposedPercent.toFixed(1)}% of the filter face exposed to the trash.
-          {" "}Slide in through the open front; the rear wall is the stop.
+          {" "}Squeeze the flexible pad edges past the front bumps; the rear lip holds the far edge.
         </p>
       </section>
       {["Filter size", "Sliding fit", "Holder"].map((group) => (
@@ -4440,8 +4440,8 @@ function CarbonFilterHolderParameterControls({
       ))}
       <p className="parameter-derived-note">
         Print with the flat glue face on the bed. Mount with the lips toward
-        the trash and leave room to slide the filter out. Aim the opening away
-        from gravity as the lid opens.
+        the trash and leave room to slide the filter out. Test the detents with
+        your actual pad before gluing. The preview shows an undeformed filter.
       </p>
     </div>
   );

@@ -22,12 +22,13 @@ This document defines the product and engineering contract for the 3D Prints app
 
 ## Carbon Filter Holder
 
-- The filter defaults to 76.2 × 76.2 × 6.35 mm (3 × 3 × 1/4 in).
-- A flat glue back mounts under the trash-can lid; two 5 mm side lips retain the filter and leave 88.19% of its trash-facing face exposed.
-- One edge is fully open for replacement; the opposing rear wall is the stop. No front bar crosses the insertion path.
-- Independent filter dimensions and sliding allowances derive the channel, envelope and lip overlap. A minimum 1.2 mm overlap is preserved as clearance changes.
-- The glue face prints flat at Z=0 with 45-degree lip undersides. Preview-only filter withdrawal never enters STL exports.
-- See `docs/carbon-filter-holder-audit-specifications.md` for dimensions, print orientation and the pending physical-fit/adhesion check.
+- The filter defaults to a flexible 76.2 × 76.2 × 6.35 mm carbon pad (3 × 3 × 1/4 in).
+- A flat glue back mounts under the trash-can lid. Three 5 mm lips retain the sides and rear, leaving 82.98% of the nominal trash-facing pad area exposed.
+- Two rounded front side detents engage each pad edge by 0.4 mm. The pad edges compress past the bumps and the seated front edge rests 0.5 mm behind them; no front crossbar closes the middle of the opening.
+- The 5.3 mm front pocket holds the seated pad clear of the bumps. The default holder is 82 × 84.4 × 15.35 mm; its local detent throat is 75.4 mm wide.
+- Filter dimensions, sliding allowances, lip width, detent overlap and detent length remain independently editable. Withdrawal limits include the front pocket; exports include the active detent settings.
+- The glue face prints flat at Z=0 with 45-degree lip undersides. The preview pad is nominal and does not simulate detent compression; it never enters STL exports.
+- See `docs/carbon-filter-holder-audit-specifications.md` for geometry and the pending pad-compression, repeated-use and adhesion checks.
 
 ## Information Architecture
 

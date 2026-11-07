@@ -445,7 +445,7 @@ export function getStatusItems(
     return [
       `Filter ${formatLength(params.filterWidth, unit, 2)} × ${formatLength(params.filterLength, unit, 2)} × ${formatLength(params.filterThickness, unit, 2)}`,
       `${spec.exposedPercent.toFixed(1)}% exposed`,
-      "Open front · rear stop · flat glue back",
+      "Side + rear lips · front detents",
     ];
   }
   if (model.viewer === "keyhole-leveling-tabs-v1") {
