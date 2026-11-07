@@ -1,0 +1,205 @@
+{
+  "id": "carbon-filter-holder",
+  "name": "Carbon Filter Holder",
+  "subtitle": "Slide-in filter · glue-on lid mount",
+  "description": "A compact holder for a 3 × 3 × 1/4 inch carbon filter beneath a trash-can lid. A flat glue back, two narrow retaining lips and a rear stop leave the front fully open for replacement and 93% of the filter face exposed to the trash.",
+  "viewer": "carbon-filter-holder-v1",
+  "stl": {
+    "fileName": "carbon-filter-holder.stl",
+    "sourceName": "User dimensions: 3 × 3 × 1/4 in carbon filter",
+    "units": "mm",
+    "url": "/models/carbon-filter-holder/carbon-filter-holder.stl"
+  },
+  "export": {
+    "filePrefix": "carbon-filter-holder"
+  },
+  "geometry": {
+    "mainAxis": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "minimumOverlap": 1.2
+  },
+  "parameters": [
+    {
+      "key": "filterWidth",
+      "label": "Filter width",
+      "group": "Filter size",
+      "default": 76.2,
+      "limits": {
+        "min": 40,
+        "max": 150,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "filterLength",
+      "label": "Filter length",
+      "group": "Filter size",
+      "default": 76.2,
+      "limits": {
+        "min": 40,
+        "max": 150,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "filterThickness",
+      "label": "Filter thickness",
+      "group": "Filter size",
+      "default": 6.35,
+      "limits": {
+        "min": 2,
+        "max": 15,
+        "step": 0.05
+      }
+    },
+    {
+      "key": "sideClearance",
+      "label": "Clearance per side",
+      "group": "Sliding fit",
+      "default": 0.5,
+      "limits": {
+        "min": 0.2,
+        "max": 1.2,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "thicknessClearance",
+      "label": "Thickness allowance",
+      "group": "Sliding fit",
+      "default": 0.8,
+      "limits": {
+        "min": 0.3,
+        "max": 2,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "lipWidth",
+      "label": "Retaining lip width",
+      "group": "Holder",
+      "default": 3,
+      "limits": {
+        "min": 1.6,
+        "max": 6,
+        "step": 0.1
+      }
+    },
+    {
+      "key": "wallThickness",
+      "label": "Side and rear walls",
+      "group": "Holder",
+      "default": 2.4,
+      "limits": {
+        "min": 1.6,
+        "max": 4,
+        "step": 0.2
+      }
+    },
+    {
+      "key": "baseThickness",
+      "label": "Glue back thickness",
+      "group": "Holder",
+      "default": 2,
+      "limits": {
+        "min": 1.2,
+        "max": 4,
+        "step": 0.2
+      }
+    },
+    {
+      "key": "lipThickness",
+      "label": "Lip tip thickness",
+      "group": "Holder",
+      "default": 1.2,
+      "limits": {
+        "min": 1.2,
+        "max": 2.4,
+        "step": 0.2
+      }
+    },
+    {
+      "key": "showFilter",
+      "label": "Show filter",
+      "default": 0,
+      "limits": {
+        "min": 0,
+        "max": 1,
+        "step": 1
+      }
+    },
+    {
+      "key": "filterWithdrawal",
+      "label": "Slide filter out",
+      "default": 0,
+      "limits": {
+        "min": 0,
+        "max": 150,
+        "step": 1
+      }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.02,
+    "dimensionTargets": [
+      "Filter is exactly 76.2 × 76.2 × 6.35 mm (3 × 3 × 1/4 inch).",
+      "Default holder envelope is 82 × 79.1 × 13.35 mm.",
+      "Default clear entry is 77.2 × 7.15 mm with 0.5 mm per-side clearance.",
+      "Two 3 mm lips overlap the nominal filter by 2.5 mm each, leaving 93.44% exposed."
+    ],
+    "invariants": [
+      "A solid flat back bonds to the underside of the trash-can lid.",
+      "The trash-facing face has only two retaining side lips, with no center grille or front crossbar.",
+      "The front is fully open across the slide envelope; the opposite edge is a closed rear stop.",
+      "Lip undersides rise inward at 45 degrees above the clear filter channel.",
+      "One outward-oriented manifold shell rests on its glue face at Z = 0.",
+      "Filter preview and withdrawal never change the printed holder or exported STL.",
+      "Adhesion, actual filter tolerances and retention during lid motion require a physical check."
+    ],
+    "checks": [
+      {
+        "key": "filterFit",
+        "label": "Nominal filter"
+      },
+      {
+        "key": "slideClearance",
+        "label": "Sliding clearance"
+      },
+      {
+        "key": "exposure",
+        "label": "Trash-facing exposure"
+      },
+      {
+        "key": "retention",
+        "label": "Side retention"
+      },
+      {
+        "key": "openEntry",
+        "label": "Open insertion edge"
+      },
+      {
+        "key": "glueFace",
+        "label": "Lid bonding surface"
+      },
+      {
+        "key": "printOrientation",
+        "label": "Print orientation"
+      },
+      {
+        "key": "physicalFit",
+        "label": "Physical fit"
+      }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/carbon-filter-holder/audit.mjs",
+      "command": "npm run audit -- carbon-filter-holder",
+      "description": "Checks filter dimensions, exposure, insertion path, retention, shared preview/export geometry and one-shell STL topology."
+    }
+  ]
+}

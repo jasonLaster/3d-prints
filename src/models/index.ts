@@ -1,4 +1,17 @@
 import {
+  getCarbonFilterHolderAuditValue,
+  getCarbonFilterHolderDimensions,
+  getCarbonFilterHolderParameterLimits,
+  getCarbonFilterHolderSpec,
+} from "./carbonFilterHolder";
+export {
+  createCarbonFilterHolderGeometry,
+  createCarbonFilterPreviewGeometry,
+  getCarbonFilterHolderSpec,
+  getCarbonFilterHolderViewBounds,
+  updateCarbonFilterHolderGuide,
+} from "./carbonFilterHolder";
+import {
   getKeyholeTabsAuditValue,
   getKeyholeTabsDimensions,
   getKeyholeTabsParameterLimits,
@@ -253,6 +266,9 @@ function getAuditValue(
   unit: LengthUnit,
   model: ModelDefinition,
 ): AuditItem {
+  if (model.viewer === "carbon-filter-holder-v1") {
+    return getCarbonFilterHolderAuditValue(check, params, unit, model);
+  }
   if (model.viewer === "keyhole-leveling-tabs-v1") {
     return getKeyholeTabsAuditValue(check, params, unit, model);
   }
@@ -315,6 +331,9 @@ export function getParameterLimits(
   params: ModelParams,
   key: string,
 ): NumberLimits {
+  if (model.viewer === "carbon-filter-holder-v1") {
+    return getCarbonFilterHolderParameterLimits(model, params, key);
+  }
   if (model.viewer === "keyhole-leveling-tabs-v1") {
     return getKeyholeTabsParameterLimits(model, params, key);
   }
@@ -366,6 +385,9 @@ export function getModelDimensions(
   model: ModelDefinition,
   params: ModelParams,
 ): ModelDimensions {
+  if (model.viewer === "carbon-filter-holder-v1") {
+    return getCarbonFilterHolderDimensions(params);
+  }
   if (model.viewer === "keyhole-leveling-tabs-v1") {
     return getKeyholeTabsDimensions(params, model);
   }
@@ -418,6 +440,14 @@ export function getStatusItems(
   params: ModelParams,
   unit: LengthUnit,
 ) {
+  if (model.viewer === "carbon-filter-holder-v1") {
+    const spec = getCarbonFilterHolderSpec(params);
+    return [
+      `Filter ${formatLength(params.filterWidth, unit, 2)} × ${formatLength(params.filterLength, unit, 2)} × ${formatLength(params.filterThickness, unit, 2)}`,
+      `${spec.exposedPercent.toFixed(1)}% exposed`,
+      "Open front · rear stop · flat glue back",
+    ];
+  }
   if (model.viewer === "keyhole-leveling-tabs-v1") {
     const spec = getKeyholeTabsSpec(params, model);
     return [

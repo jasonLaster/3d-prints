@@ -366,7 +366,16 @@ export type KeyholeTabsModelDefinition = BaseModelDefinition & {
   };
 };
 
+export type CarbonFilterHolderModelDefinition = BaseModelDefinition & {
+  viewer: "carbon-filter-holder-v1";
+  geometry: {
+    mainAxis: { x: number; y: number; z: number };
+    minimumOverlap: number;
+  };
+};
+
 export type SupportedViewer =
+  | "carbon-filter-holder-v1"
   | "keyhole-leveling-tabs-v1"
   | "weighted-paper-towel-holder-v1"
   | "japandi-tray-v1"
@@ -536,6 +545,7 @@ export type HoverDiningTableModelDefinition = BaseModelDefinition & {
 };
 
 export type ModelDefinition =
+  | CarbonFilterHolderModelDefinition
   | KeyholeTabsModelDefinition
   | HolderModelDefinition
   | TrayModelDefinition

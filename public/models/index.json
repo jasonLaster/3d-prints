@@ -75,6 +75,11 @@
       "id": "keyhole-leveling-tabs",
       "name": "Keyhole Leveling Tabs",
       "configUrl": "/models/keyhole-leveling-tabs/model.json"
+    },
+    {
+      "id": "carbon-filter-holder",
+      "name": "Carbon Filter Holder",
+      "configUrl": "/models/carbon-filter-holder/model.json"
     }
   ]
 }

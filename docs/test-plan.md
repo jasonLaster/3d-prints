@@ -53,3 +53,7 @@ After deployment, verify production:
 - The 3D viewer renders a nonblank canvas.
 - Actions menu commands are present and dismiss on click-away.
 - Save/Fork appear when production Convex env vars are active.
+
+## Carbon filter holder checks
+
+Run `npm run audit -- carbon-filter-holder` and `npx playwright test tests/e2e/carbon-filter-holder.spec.ts --workers=1`. Confirm the mouth is clear across the complete filter section, the rear stop and two lips retain the nominal filter, and optional preview geometry does not enter exports. Review desktop and mobile screenshots; test actual filter fit and lid adhesion before installation.

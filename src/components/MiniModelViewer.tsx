@@ -17,6 +17,7 @@ import {
   createDrillBitHolderGeometry,
   createMetricNutKnobGeometry,
   createMiterRunnerWedgeGeometry,
+  createCarbonFilterHolderGeometry,
   createKeyholeTabsGeometry,
   createPipeClampBedGeometry,
   createPipeClampBedPreviewParts,
@@ -236,6 +237,9 @@ function createPreviewObject(
     group.add(
       new THREE.Mesh(createKeyholeTabsGeometry(params, definition), mainMaterial),
     );
+  } else if (definition.viewer === "carbon-filter-holder-v1") {
+    sourceGeometry.dispose();
+    group.add(new THREE.Mesh(createCarbonFilterHolderGeometry(params, definition), mainMaterial));
   } else if (definition.viewer === "miter-runner-wedge-v1") {
     sourceGeometry.dispose();
     group.add(

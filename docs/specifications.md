@@ -20,6 +20,15 @@ This document defines the product and engineering contract for the 3D Prints app
 - Each X crosses at the table center with a derived 50/50 half-lap. Both boards retain full plan width, complementary half-depth pockets preserve one continuous assembled thickness, and there are no parallel lengthwise stretchers, hover pads, or spacer gaps.
 - See `docs/hover-dining-table-audit-specifications.md` for the evidence and invariant contract.
 
+## Carbon Filter Holder
+
+- The filter defaults to 76.2 × 76.2 × 6.35 mm (3 × 3 × 1/4 in).
+- A flat glue back mounts under the trash-can lid; two side lips retain the filter and leave 93.44% of its trash-facing face exposed.
+- One edge is fully open for replacement; the opposing rear wall is the stop. No front bar crosses the insertion path.
+- Independent filter dimensions and sliding allowances derive the channel, envelope and lip overlap. A minimum 1.2 mm overlap is preserved as clearance changes.
+- The glue face prints flat at Z=0 with 45-degree lip undersides. Preview-only filter withdrawal never enters STL exports.
+- See `docs/carbon-filter-holder-audit-specifications.md` for dimensions, print orientation and the pending physical-fit/adhesion check.
+
 ## Information Architecture
 
 - The root route `/` opens the default model workspace and writes `model=<model-id>` into the URL.

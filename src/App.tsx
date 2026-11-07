@@ -81,6 +81,11 @@ import {
   createDrillBitHolderGeometry,
   createMetricNutKnobGeometry,
   createMiterRunnerWedgeGeometry,
+  createCarbonFilterHolderGeometry,
+  createCarbonFilterPreviewGeometry,
+  getCarbonFilterHolderSpec,
+  getCarbonFilterHolderViewBounds,
+  updateCarbonFilterHolderGuide,
   createKeyholeTabsGeometry,
   createKeyholeTabPrintGeometry,
   createKeyholeTabsPreviewParts,
@@ -903,6 +908,7 @@ function getParamsFromUrl(model: ModelDefinition) {
     model.viewer === "metric-nut-knob-v1" ||
     model.viewer === "pipe-clamp-bed-v1" ||
     model.viewer === "keyhole-leveling-tabs-v1" ||
+    model.viewer === "carbon-filter-holder-v1" ||
     model.viewer === "miter-runner-wedge-v1" ||
     model.viewer === "router-mortise-jig-v1" ||
     model.viewer === "router-tenon-jig-v1" ||
@@ -913,6 +919,7 @@ function getParamsFromUrl(model: ModelDefinition) {
       model.viewer === "metric-nut-knob-v1" ||
       model.viewer === "pipe-clamp-bed-v1" ||
       model.viewer === "keyhole-leveling-tabs-v1" ||
+      model.viewer === "carbon-filter-holder-v1" ||
       model.viewer === "miter-runner-wedge-v1" ||
       model.viewer === "compact-wall-bracket-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
@@ -1230,6 +1237,9 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
   if (model.viewer === "keyhole-leveling-tabs-v1") {
     return keyholeVariantName(getKeyholeTabsSpec(params, model).variant);
   }
+  if (model.viewer === "carbon-filter-holder-v1") {
+    return `${model.export.filePrefix}-${params.filterWidth}x${params.filterLength}x${params.filterThickness}-clearance-${params.sideClearance}-lip-${params.lipWidth}.stl`;
+  }
   if (model.viewer === "miter-runner-wedge-v1") {
     const compact = (value: number) =>
       value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
@@ -1419,12 +1429,18 @@ const HolderViewer = forwardRef<
     }
 
     const currentParams = latestParamsRef.current;
-    const dimensions = getModelDimensions(model, currentParams);
+    const carbonViewBounds = model.viewer === "carbon-filter-holder-v1"
+      ? getCarbonFilterHolderViewBounds(currentParams)
+      : null;
+    const viewSize = carbonViewBounds?.getSize(new THREE.Vector3());
+    const dimensions = viewSize
+      ? { length: viewSize.x, width: viewSize.y, height: viewSize.z }
+      : getModelDimensions(model, currentParams);
     const distance = Math.max(
       dimensions.height * 2.2,
       dimensions.length * 1.55,
       dimensions.width * 2.25,
-    ) * (model.viewer === "keyhole-leveling-tabs-v1"
+    ) * (model.viewer === "keyhole-leveling-tabs-v1" || model.viewer === "carbon-filter-holder-v1"
       ? Math.max(1, 1 / camera.aspect)
       : 1);
     const target = new THREE.Vector3(
@@ -1440,6 +1456,7 @@ const HolderViewer = forwardRef<
       target.copy(
         getKeyholeTabsViewBounds(currentParams, model).getCenter(new THREE.Vector3()),
       );
+    if (carbonViewBounds) target.copy(carbonViewBounds.getCenter(new THREE.Vector3()));
     const edgeViewZ = target.z + dimensions.height * 0.2;
 
     camera.up.set(0, 0, 1);
@@ -1486,6 +1503,10 @@ const HolderViewer = forwardRef<
     }
 
     if (model.viewer === "keyhole-leveling-tabs-v1") {
+      camera.position.x += target.x;
+      camera.position.y += target.y;
+    }
+    if (carbonViewBounds) {
       camera.position.x += target.x;
       camera.position.y += target.y;
     }
@@ -1641,6 +1662,22 @@ const HolderViewer = forwardRef<
         }
       }
       updateKeyholeTabsGuide(guideMesh, latestParamsRef.current, model);
+    } else if (model.viewer === "carbon-filter-holder-v1") {
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createCarbonFilterHolderGeometry(latestParamsRef.current, model);
+      if (routerMortisePreviewGroup && routerPreviewMaterial) {
+        routerMortisePreviewGroup.children.forEach((child) => {
+          if (child instanceof THREE.Mesh) child.geometry.dispose();
+        });
+        routerMortisePreviewGroup.clear();
+        const filter = createCarbonFilterPreviewGeometry(latestParamsRef.current);
+        if (filter) {
+          const mesh = new THREE.Mesh(filter, routerPreviewMaterial);
+          mesh.name = "carbon-filter-preview-only";
+          routerMortisePreviewGroup.add(mesh);
+        }
+      }
+      updateCarbonFilterHolderGuide(guideMesh, latestParamsRef.current);
     } else if (model.viewer === "miter-runner-wedge-v1") {
       mainMesh.geometry.dispose();
       mainMesh.geometry = createMiterRunnerWedgeGeometry(
@@ -2559,13 +2596,17 @@ const HolderViewer = forwardRef<
     const keyholeViewChanged =
       model.viewer === "keyhole-leveling-tabs-v1" &&
       latestParamsRef.current.previewMode !== params.previewMode;
+    const carbonPreviewChanged = model.viewer === "carbon-filter-holder-v1" && (
+      latestParamsRef.current.showFilter !== params.showFilter ||
+      latestParamsRef.current.filterWithdrawal !== params.filterWithdrawal
+    );
     latestParamsRef.current = params;
     latestCoreViewModeRef.current = coreViewMode;
     latestRenderModeRef.current = renderMode;
     latestShowOriginalRef.current = showOriginal;
     latestAssemblyModeRef.current = assemblyMode;
     updateMeshes();
-    if (keyholeViewChanged) resetCamera();
+    if (keyholeViewChanged || carbonPreviewChanged) resetCamera();
   }, [params, coreViewMode, renderMode, showOriginal, assemblyMode, updateMeshes, model.viewer, resetCamera]);
 
   useEffect(() => {
@@ -2630,6 +2671,7 @@ const HolderViewer = forwardRef<
       model.viewer === "metric-nut-knob-v1" ||
       model.viewer === "pipe-clamp-bed-v1" ||
       model.viewer === "keyhole-leveling-tabs-v1" ||
+      model.viewer === "carbon-filter-holder-v1" ||
       model.viewer === "miter-runner-wedge-v1" ||
       model.viewer === "router-mortise-jig-v1" ||
       model.viewer === "router-tenon-jig-v1" ||
@@ -2807,13 +2849,13 @@ const HolderViewer = forwardRef<
         });
         diningMetalMaterialRef.current = diningMetalMaterial;
         const routerPreviewMaterial = new THREE.MeshStandardMaterial({
-          color: "#4f7fa8",
-          roughness: 0.32,
-          metalness: 0.42,
-          transparent: true,
-          opacity: 0.34,
+          color: model.viewer === "carbon-filter-holder-v1" ? "#25282b" : "#4f7fa8",
+          roughness: model.viewer === "carbon-filter-holder-v1" ? 0.95 : 0.32,
+          metalness: model.viewer === "carbon-filter-holder-v1" ? 0 : 0.42,
+          transparent: model.viewer !== "carbon-filter-holder-v1",
+          opacity: model.viewer === "carbon-filter-holder-v1" ? 1 : 0.34,
           side: THREE.DoubleSide,
-          depthWrite: false,
+          depthWrite: model.viewer === "carbon-filter-holder-v1",
         });
         routerPreviewMaterialRef.current = routerPreviewMaterial;
         const routerWorkpieceMaterial = new THREE.MeshStandardMaterial({
@@ -2874,6 +2916,8 @@ const HolderViewer = forwardRef<
               ? createPipeClampBedGeometry(latestParamsRef.current, model)
             : model.viewer === "keyhole-leveling-tabs-v1"
               ? createKeyholeTabsGeometry(latestParamsRef.current, model)
+            : model.viewer === "carbon-filter-holder-v1"
+              ? createCarbonFilterHolderGeometry(latestParamsRef.current, model)
             : model.viewer === "miter-runner-wedge-v1"
               ? createMiterRunnerWedgeGeometry(latestParamsRef.current, model)
             : model.viewer === "router-mortise-jig-v1"
@@ -2943,7 +2987,8 @@ const HolderViewer = forwardRef<
           model.viewer === "router-tenon-jig-v1" ||
           model.viewer === "bandsaw-sled-v1" ||
           model.viewer === "pipe-clamp-bed-v1" ||
-          model.viewer === "keyhole-leveling-tabs-v1"
+          model.viewer === "keyhole-leveling-tabs-v1" ||
+          model.viewer === "carbon-filter-holder-v1"
         ) {
           const previewGroup = new THREE.Group();
           previewGroup.name = `${model.id}-preview-stand-ins`;
@@ -3015,6 +3060,7 @@ const HolderViewer = forwardRef<
           model.viewer === "metric-nut-knob-v1" ||
           model.viewer === "pipe-clamp-bed-v1" ||
           model.viewer === "keyhole-leveling-tabs-v1" ||
+          model.viewer === "carbon-filter-holder-v1" ||
           model.viewer === "miter-runner-wedge-v1" ||
           model.viewer === "router-mortise-jig-v1" ||
           model.viewer === "router-tenon-jig-v1" ||
@@ -4336,6 +4382,67 @@ function PipeClampBedParameterControls({
             ))}
         </section>
       ))}
+    </div>
+  );
+}
+
+function CarbonFilterHolderParameterControls({
+  model, params, unit, onChange, onUnitChange,
+}: {
+  model: Extract<ModelDefinition, { viewer: "carbon-filter-holder-v1" }>;
+  params: ModelParams;
+  unit: LengthUnit;
+  onChange: (key: string, value: number) => void;
+  onUnitChange: (unit: LengthUnit) => void;
+}) {
+  const spec = getCarbonFilterHolderSpec(params);
+  return (
+    <div className="parameter-groups carbon-filter-parameter-groups">
+      <section className="nested-parameter-section">
+        <div className="divider-controls-heading"><h3>Filter preview</h3></div>
+        <OriginalOverlayToggle
+          label="Show carbon filter"
+          checked={params.showFilter >= 0.5}
+          onChange={(checked) => onChange("showFilter", checked ? 1 : 0)}
+        />
+        {params.showFilter >= 0.5 ? (
+          <NumberControl
+            label="Slide filter out"
+            limits={getParameterLimits(model, params, "filterWithdrawal")}
+            onChange={(value) => onChange("filterWithdrawal", value)}
+            onUnitChange={onUnitChange}
+            unit={unit}
+            valueMm={params.filterWithdrawal}
+          />
+        ) : null}
+        <p className="parameter-derived-note" data-testid="carbon-filter-exposure">
+          {spec.exposedPercent.toFixed(1)}% of the filter face exposed to the trash.
+          {" "}Slide in through the open front; the rear wall is the stop.
+        </p>
+      </section>
+      {["Filter size", "Sliding fit", "Holder"].map((group) => (
+        <section className="nested-parameter-section" key={group}>
+          <div className="divider-controls-heading"><h3>{group}</h3></div>
+          {model.parameters.filter((parameter) => parameter.group === group).map((parameter) => (
+            <NumberControl
+              key={parameter.key}
+              label={parameter.label}
+              limits={getParameterLimits(model, params, parameter.key)}
+              onChange={(value) => onChange(parameter.key, value)}
+              onUnitChange={onUnitChange}
+              preferFineMetric
+              preferFineStep
+              unit={unit}
+              valueMm={params[parameter.key]}
+            />
+          ))}
+        </section>
+      ))}
+      <p className="parameter-derived-note">
+        Print with the flat glue face on the bed. Mount with the lips toward
+        the trash and leave room to slide the filter out. Aim the opening away
+        from gravity as the lid opens.
+      </p>
     </div>
   );
 }
@@ -6608,6 +6715,7 @@ export default function App({
             model.viewer === "metric-nut-knob-v1" ||
             model.viewer === "pipe-clamp-bed-v1" ||
             model.viewer === "keyhole-leveling-tabs-v1" ||
+            model.viewer === "carbon-filter-holder-v1" ||
             model.viewer === "miter-runner-wedge-v1" ||
             model.viewer === "router-mortise-jig-v1" ||
             model.viewer === "router-tenon-jig-v1" ||
@@ -6640,6 +6748,7 @@ export default function App({
         model.viewer === "metric-nut-knob-v1" ||
         model.viewer === "pipe-clamp-bed-v1" ||
         model.viewer === "keyhole-leveling-tabs-v1" ||
+        model.viewer === "carbon-filter-holder-v1" ||
         model.viewer === "miter-runner-wedge-v1"
       ) {
         for (let pass = 0; pass < 2; pass += 1) {
@@ -7033,6 +7142,7 @@ export default function App({
         model.viewer === "metric-nut-knob-v1" ||
         model.viewer === "pipe-clamp-bed-v1" ||
         model.viewer === "keyhole-leveling-tabs-v1" ||
+        model.viewer === "carbon-filter-holder-v1" ||
         model.viewer === "miter-runner-wedge-v1"
       ) {
         for (let pass = 0; pass < 2; pass += 1) {
@@ -7490,7 +7600,15 @@ export default function App({
                       ) : null}
                     </>
                   ) : null}
-                  {model.viewer === "keyhole-leveling-tabs-v1" ? (
+                  {model.viewer === "carbon-filter-holder-v1" ? (
+                    <CarbonFilterHolderParameterControls
+                      model={model}
+                      params={params}
+                      unit={unit}
+                      onChange={updateParam}
+                      onUnitChange={setUnit}
+                    />
+                  ) : model.viewer === "keyhole-leveling-tabs-v1" ? (
                     <KeyholeTabsControls
                       model={model}
                       params={params}
