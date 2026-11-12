@@ -75,6 +75,11 @@
       "id": "keyhole-leveling-tabs",
       "name": "Keyhole Leveling Tabs",
       "configUrl": "/models/keyhole-leveling-tabs/model.json"
+    },
+    {
+      "id": "right-angle-drill-guide",
+      "name": "90\u00b0 Drill Guide",
+      "configUrl": "/models/right-angle-drill-guide/model.json"
     }
   ]
 }

@@ -15,6 +15,7 @@ import {
   createCompactWallBracketGeometry,
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
+  createRightAngleDrillGuideGeometry,
   createMetricNutKnobGeometry,
   createMiterRunnerWedgeGeometry,
   createKeyholeTabsGeometry,
@@ -204,6 +205,9 @@ function createPreviewObject(
         mainMaterial,
       ),
     );
+  } else if (definition.viewer === "right-angle-drill-guide-v1") {
+    sourceGeometry.dispose();
+    group.add(new THREE.Mesh(createRightAngleDrillGuideGeometry(params, definition), mainMaterial));
   } else if (definition.viewer === "drill-bit-holder-v1") {
     sourceGeometry.dispose();
     group.add(

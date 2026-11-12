@@ -375,6 +375,7 @@ export type SupportedViewer =
   | "compact-wall-bracket-v1"
   | "concentric-tube-jig-v1"
   | "drill-bit-holder-v1"
+  | "right-angle-drill-guide-v1"
   | "metric-nut-knob-v1"
   | "pipe-clamp-bed-v1"
   | "miter-runner-wedge-v1"
@@ -441,6 +442,15 @@ export type CompactWallBracketModelDefinition = BaseModelDefinition & {
 export type ConcentricTubeJigModelDefinition = BaseModelDefinition & {
   viewer: "concentric-tube-jig-v1";
   geometry: ConcentricTubeJigGeometry;
+};
+
+export type RightAngleDrillGuideModelDefinition = BaseModelDefinition & {
+  viewer: "right-angle-drill-guide-v1";
+  geometry: {
+    mainAxis: { x: number; y: number; z: number };
+    bitDiameters: number[];
+    radialSegments: number;
+  };
 };
 
 export type DrillBitHolderModelDefinition = BaseModelDefinition & {
@@ -544,6 +554,7 @@ export type ModelDefinition =
   | CompactWallBracketModelDefinition
   | ConcentricTubeJigModelDefinition
   | DrillBitHolderModelDefinition
+  | RightAngleDrillGuideModelDefinition
   | MetricNutKnobModelDefinition
   | PipeClampBedModelDefinition
   | MiterRunnerWedgeModelDefinition

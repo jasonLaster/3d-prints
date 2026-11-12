@@ -53,7 +53,7 @@ type ModelJson = {
 
 test("cataloged models declare STL files, parameters, audits, and scripts", () => {
   const catalog = readJson(path.join(root, "public/models/index.json"));
-  expect(catalog.models).toHaveLength(15);
+  expect(catalog.models).toHaveLength(16);
 
   for (const entry of catalog.models) {
     const model = readJson(path.join(root, "public", entry.configUrl.replace(/^\//, "")));
@@ -150,6 +150,7 @@ test("model JSON files satisfy the stricter catalog schema contract", () => {
       "tubeBore",
       "minimumWall",
     ],
+    "right-angle-drill-guide-v1": ["bitSet", "bores", "envelope", "guidance", "alignment", "walls", "print", "fit"],
     "drill-bit-holder-v1": [
       "bitSet",
       "largestBit",

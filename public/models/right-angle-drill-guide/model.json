@@ -1,0 +1,133 @@
+{
+  "id": "right-angle-drill-guide",
+  "name": "90\u00b0 Drill Guide",
+  "subtitle": "Six perpendicular bores \u00b7 8.5\u20139.75 mm",
+  "description": "A flat-bottom drill guide for perpendicular holes in wood, with six through-bores for 8.50, 8.75, 9.00, 9.25, 9.50 and 9.75 mm bits. Engraved metric sizes and paired edge notches identify each bore axis. Clamp the end lands to the workpiece. Printed bores are wear parts: check fit on scrap, drill slowly in short passes and clear chips.",
+  "viewer": "right-angle-drill-guide-v1",
+  "stl": {
+    "fileName": "right-angle-drill-guide.stl",
+    "sourceName": "procedural-right-angle-drill-guide.stl",
+    "units": "mm",
+    "url": "/models/right-angle-drill-guide/right-angle-drill-guide.stl"
+  },
+  "export": {
+    "filePrefix": "right-angle-drill-guide"
+  },
+  "geometry": {
+    "mainAxis": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "bitDiameters": [
+      8.5,
+      8.75,
+      9,
+      9.25,
+      9.5,
+      9.75
+    ],
+    "radialSegments": 128
+  },
+  "parameters": [
+    {
+      "key": "boreClearance",
+      "label": "Bore clearance (total diameter)",
+      "default": 0.15,
+      "limits": {
+        "min": 0,
+        "max": 0.4,
+        "step": 0.05
+      }
+    },
+    {
+      "key": "guideHeight",
+      "label": "Guide height",
+      "default": 25,
+      "limits": {
+        "min": 18,
+        "max": 35,
+        "step": 1
+      }
+    },
+    {
+      "key": "borePitch",
+      "label": "Bore center spacing",
+      "default": 18,
+      "limits": {
+        "min": 16,
+        "max": 24,
+        "step": 1
+      }
+    },
+    {
+      "key": "bodyWidth",
+      "label": "Guide width",
+      "default": 44,
+      "limits": {
+        "min": 38,
+        "max": 60,
+        "step": 1
+      }
+    }
+  ],
+  "audit": {
+    "toleranceMm": 0.05,
+    "dimensionTargets": [
+      "Six bit sizes from 8.50 mm through 9.75 mm, in 0.25 mm increments.",
+      "Default bore diameters add 0.15 mm total clearance to each nominal bit.",
+      "Default envelope is 130 \u00d7 44 \u00d7 25 mm with 18 mm bore pitch.",
+      "Each axis is perpendicular to the Z=0 seating face; the 0.6 mm entry chamfer leaves 24.4 mm straight guidance."
+    ],
+    "invariants": [
+      "All six bores remain open through the bottom seating plane.",
+      "Bore axes are parallel to Z and normal to the flat seating face.",
+      "Labels show nominal bit sizes in millimetres, independent of added clearance and display units.",
+      "Paired V notches on the long edges locate each bore centerline.",
+      "One connected watertight shell, flat on Z=0, with no supports required.",
+      "Printed fit, wear and achievable angular accuracy require physical testing."
+    ],
+    "checks": [
+      {
+        "key": "bitSet",
+        "label": "Supported bits (mm)"
+      },
+      {
+        "key": "bores",
+        "label": "Finished bore diameters"
+      },
+      {
+        "key": "envelope",
+        "label": "Guide size"
+      },
+      {
+        "key": "guidance",
+        "label": "Straight guidance"
+      },
+      {
+        "key": "alignment",
+        "label": "Alignment marks"
+      },
+      {
+        "key": "walls",
+        "label": "Minimum bore web"
+      },
+      {
+        "key": "print",
+        "label": "Print orientation"
+      },
+      {
+        "key": "fit",
+        "label": "Fit and wear"
+      }
+    ]
+  },
+  "scripts": [
+    {
+      "name": "audit",
+      "path": "models/right-angle-drill-guide/audit.mjs",
+      "command": "npm run audit -- right-angle-drill-guide",
+      "description": "Checks exact sizes, true through-bores, perpendicular axes, manifold topology, parameter extremes and exported STL parity."
+    }
+  ]
+}

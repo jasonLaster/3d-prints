@@ -53,3 +53,9 @@ After deployment, verify production:
 - The 3D viewer renders a nonblank canvas.
 - Actions menu commands are present and dismiss on click-away.
 - Save/Fork appear when production Convex env vars are active.
+
+90° Drill Guide: run `npm run audit -- right-angle-drill-guide` and
+`npx playwright test tests/e2e/right-angle-drill-guide.spec.ts tests/e2e/static-contract.spec.ts --workers=1`.
+The audit probes through-bores and perpendicular walls at default and extreme
+parameters, manifold topology and STL parity. Browser checks cover desktop,
+phone layout, exact clearance URL reload and modified STL export.

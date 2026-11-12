@@ -262,3 +262,11 @@ X-Hover Dining Table:
 - Per-vertex mesh editing in the browser.
 - Persisting unsaved draft params outside the URL.
 - Replacing slicer validation. The app provides parameterized geometry and audit cues, but final print readiness still requires slicer inspection.
+
+90° Drill Guide:
+
+- Six fixed nominal sizes from 8.50–9.75 mm in 0.25 mm increments, with perpendicular through-bores.
+- Adjustable diametral clearance, height, bore pitch and width; default 130 × 44 × 25 mm.
+- Engraved metric labels, entry chamfers, paired alignment notches and flat seating face.
+- Shared geometry for the viewer, library and STL; see `docs/right-angle-drill-guide-audit-specifications.md`.
+- Printed fit and wear require physical verification.

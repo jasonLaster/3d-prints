@@ -79,6 +79,8 @@ import {
   createCompactWallBracketTwoUpGeometries,
   createConcentricTubeJigGeometry,
   createDrillBitHolderGeometry,
+  createRightAngleDrillGuideGeometry,
+  updateRightAngleDrillGuide,
   createMetricNutKnobGeometry,
   createMiterRunnerWedgeGeometry,
   createKeyholeTabsGeometry,
@@ -1262,7 +1264,7 @@ function getExportFileName(model: ModelDefinition, params: ModelParams) {
     .map(
       (parameter) => {
         const value = getParam(params, parameter.key);
-        const formatted = model.viewer === "concentric-tube-jig-v1"
+        const formatted = model.viewer === "right-angle-drill-guide-v1" || model.viewer === "concentric-tube-jig-v1"
           ? value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "")
           : value.toFixed(1);
         return `${parameter.key}-${formatted}`;
@@ -1424,7 +1426,7 @@ const HolderViewer = forwardRef<
       dimensions.height * 2.2,
       dimensions.length * 1.55,
       dimensions.width * 2.25,
-    ) * (model.viewer === "keyhole-leveling-tabs-v1"
+    ) * ((model.viewer === "keyhole-leveling-tabs-v1" || model.viewer === "right-angle-drill-guide-v1")
       ? Math.max(1, 1 / camera.aspect)
       : 1);
     const target = new THREE.Vector3(
@@ -1587,6 +1589,10 @@ const HolderViewer = forwardRef<
         model,
       );
       updateConcentricTubeJigGuide(guideMesh, latestParamsRef.current, model);
+    } else if (model.viewer === "right-angle-drill-guide-v1") {
+      mainMesh.geometry.dispose();
+      mainMesh.geometry = createRightAngleDrillGuideGeometry(latestParamsRef.current, model);
+      updateRightAngleDrillGuide(guideMesh, latestParamsRef.current, model);
     } else if (model.viewer === "drill-bit-holder-v1") {
       mainMesh.geometry.dispose();
       mainMesh.geometry = createDrillBitHolderGeometry(
@@ -2625,6 +2631,7 @@ const HolderViewer = forwardRef<
     controls.minDistance =
       model.viewer === "door-lock-adapter-v1" ||
       model.viewer === "compact-wall-bracket-v1" ||
+      model.viewer === "right-angle-drill-guide-v1" ||
       model.viewer === "concentric-tube-jig-v1" ||
       model.viewer === "drill-bit-holder-v1" ||
       model.viewer === "metric-nut-knob-v1" ||
@@ -2866,6 +2873,8 @@ const HolderViewer = forwardRef<
             ? createCompactWallBracketGeometry(latestParamsRef.current, model)
           : model.viewer === "concentric-tube-jig-v1"
             ? createConcentricTubeJigGeometry(latestParamsRef.current, model)
+            : model.viewer === "right-angle-drill-guide-v1"
+              ? createRightAngleDrillGuideGeometry(latestParamsRef.current, model)
             : model.viewer === "drill-bit-holder-v1"
               ? createDrillBitHolderGeometry(latestParamsRef.current, model)
             : model.viewer === "metric-nut-knob-v1"
@@ -3010,7 +3019,8 @@ const HolderViewer = forwardRef<
         if (
           model.viewer === "door-lock-adapter-v1" ||
           model.viewer === "compact-wall-bracket-v1" ||
-          model.viewer === "concentric-tube-jig-v1" ||
+          model.viewer === "right-angle-drill-guide-v1" ||
+      model.viewer === "concentric-tube-jig-v1" ||
           model.viewer === "drill-bit-holder-v1" ||
           model.viewer === "metric-nut-knob-v1" ||
           model.viewer === "pipe-clamp-bed-v1" ||
@@ -6603,7 +6613,8 @@ export default function App({
         ...current,
         [key]: Number(
           nextValue.toFixed(
-            model.viewer === "concentric-tube-jig-v1" ||
+            model.viewer === "right-angle-drill-guide-v1" ||
+      model.viewer === "concentric-tube-jig-v1" ||
             model.viewer === "drill-bit-holder-v1" ||
             model.viewer === "metric-nut-knob-v1" ||
             model.viewer === "pipe-clamp-bed-v1" ||
@@ -7574,6 +7585,8 @@ export default function App({
                         limits={getParameterLimits(model, params, parameter.key)}
                         onChange={(value) => updateParam(parameter.key, value)}
                         onUnitChange={setUnit}
+                        preferFineMetric={model.viewer === "right-angle-drill-guide-v1"}
+                        preferDecimalInches={model.viewer === "right-angle-drill-guide-v1"}
                         preferFineStep={parameter.key.endsWith("Clearance")}
                         unit={unit}
                         valueMm={params[parameter.key]}

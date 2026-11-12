@@ -1,0 +1,14 @@
+import fs from "node:fs";
+import path from "node:path";
+import * as THREE from "three";
+import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
+import { loadModel } from "./load-model.mjs";
+const root = path.resolve(import.meta.dirname,"../..");
+const model = JSON.parse(fs.readFileSync(path.join(root,"public/models/right-angle-drill-guide/model.json")));
+const params = Object.fromEntries(model.parameters.map(p=>[p.key,p.default]));
+const { createRightAngleDrillGuideGeometry } = await loadModel();
+const geometry = createRightAngleDrillGuideGeometry(params, model);
+const data = new STLExporter().parse(new THREE.Mesh(geometry),{binary:true});
+fs.writeFileSync(path.join(root,"public",model.stl.url),Buffer.from(data.buffer,data.byteOffset,data.byteLength));
+geometry.dispose();
+console.log("Generated default drill guide STL from shared parametric geometry.");

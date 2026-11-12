@@ -39,6 +39,10 @@ Current models:
   - Retained source: `models/compact-wall-bracket/reference/obj_4_Corpo_04_(2).stl`
   - Audit script: `models/compact-wall-bracket/audit.mjs`
   - Source generator: `models/compact-wall-bracket/generate-source.mjs`
+- `right-angle-drill-guide`
+  - Six perpendicular bores: 8.50–9.75 mm at 0.25 mm increments.
+  - [STL](public/models/right-angle-drill-guide/right-angle-drill-guide.stl) · [Design, print and fit notes](docs/right-angle-drill-guide-audit-specifications.md).
+  - Audit: `npm run audit -- right-angle-drill-guide`.
 - `drill-bit-holder`
   - STL: `public/models/drill-bit-holder/drill-bit-holder.stl`
   - Config: `public/models/drill-bit-holder/model.json`

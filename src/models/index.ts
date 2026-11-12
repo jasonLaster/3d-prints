@@ -1,4 +1,13 @@
 import {
+  getRightAngleDrillGuideAuditValue,
+  getRightAngleDrillGuideDimensions,
+} from "./rightAngleDrillGuide";
+export {
+  createRightAngleDrillGuideGeometry,
+  getRightAngleDrillGuideSpec,
+  updateRightAngleDrillGuide,
+} from "./rightAngleDrillGuide";
+import {
   getKeyholeTabsAuditValue,
   getKeyholeTabsDimensions,
   getKeyholeTabsParameterLimits,
@@ -265,6 +274,9 @@ function getAuditValue(
   if (model.viewer === "concentric-tube-jig-v1") {
     return getConcentricTubeJigAuditValue(check, params, unit, model);
   }
+  if (model.viewer === "right-angle-drill-guide-v1") {
+    return getRightAngleDrillGuideAuditValue(check, params, unit, model);
+  }
   if (model.viewer === "drill-bit-holder-v1") {
     return getDrillBitHolderAuditValue(check, params, unit, model);
   }
@@ -327,6 +339,9 @@ export function getParameterLimits(
   if (model.viewer === "concentric-tube-jig-v1") {
     return getConcentricTubeJigParameterLimits(model, params, key);
   }
+  if (model.viewer === "right-angle-drill-guide-v1") {
+    return { ...getParameter(model, key).limits };
+  }
   if (model.viewer === "drill-bit-holder-v1") {
     return getDrillBitHolderParameterLimits(model, params, key);
   }
@@ -377,6 +392,9 @@ export function getModelDimensions(
   }
   if (model.viewer === "concentric-tube-jig-v1") {
     return getConcentricTubeJigDimensions(params, model);
+  }
+  if (model.viewer === "right-angle-drill-guide-v1") {
+    return getRightAngleDrillGuideDimensions(params, model);
   }
   if (model.viewer === "drill-bit-holder-v1") {
     return getDrillBitHolderDimensions(params, model);
@@ -437,6 +455,15 @@ export function getStatusItems(
       `Width ${formatLength(getParam(params, "tableWidth"), unit)}`,
       `Height ${formatLength(getParam(params, "overallHeight"), unit)}`,
     ];
+  }
+  if (model.viewer === "right-angle-drill-guide-v1") {
+    return model.parameters.map(parameter => {
+      const value = getParam(params, parameter.key);
+      const formatted = unit === "in"
+        ? `${(value / 25.4).toFixed(4)} in`
+        : formatLength(value, unit, unit === "mm" ? 2 : 3);
+      return `${parameter.label} ${formatted}`;
+    });
   }
   if (model.viewer === "drill-bit-holder-v1") {
     return ["bitClearance", "bitSpacing", "holderHeight", "holeDepth"].map(

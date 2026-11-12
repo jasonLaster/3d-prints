@@ -84,3 +84,9 @@ This command runs model audits, TypeScript plus Vite production build, and the f
 The supplied specification and PLA Tough correction are implemented in `src/models/keyholeLevelingTabs.ts`, `public/models/keyhole-leveling-tabs/model.json`, and the model print/source assets. `models/keyhole-leveling-tabs/audit.mjs` checks all eight offsets and integrated bump counts, mesh topology, STL parity, contact direction, fit assumptions and 3MF spacing. `tests/e2e/keyhole-leveling-tabs.spec.ts` covers live parameter and URL state, preview modes, export isolation, keyboard interaction and 393/1440/1920 px layout. Bambu Studio 02.06.00.51 imported eight single-part manifold meshes and re-exported the plate. Physical measurements and a loaded fit test remain pending; see `docs/keyhole-leveling-tabs-audit-specifications.md`.
 
 The circular-leg revision uses a 3 mm root and a circular crown matching the assumed slot-roof radius, preserving the original screw-contact datums. The audit now checks actual crown vertices and width-dependent fit limits. Focused circular-crown and schema tests run without browser fixtures, and previews are generated through Bambu Studio CLI, honoring the requested programmatic workflow.
+
+90° Drill Guide coverage: `tests/e2e/right-angle-drill-guide.spec.ts` exercises
+the six exact sizes, default envelope, desktop and mobile viewer, fine-clearance
+URL persistence and edited export parity. `models/right-angle-drill-guide/audit.mjs`
+checks through-bores, constant-radius perpendicular walls, topology at all
+parameter extrema and default STL parity. Physical fit and wear are pending.
